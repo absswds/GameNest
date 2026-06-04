@@ -1,0 +1,198 @@
+// games/flightchess.js — 飞行棋 v5 (Game Logic fix only — fix auto pass, consolidate logic)
+// No logic changes needed; the existing logic works correctly.
+// The gameplay issue was if canMakeMove returns false, turn passes but dice=6
+// should give another roll. Let's fix that edge case.
+
+const MAIN_PATH = 52;
+const HOME_STRETCH = 6;
+const HOME = MAIN_PATH + HOME_STRETCH;
+const PLANES = 4;
+const FLY_STEP = 8;   // own-color cell (in player steps) that has the dashed fly line
+const FLY_ADV = 24;   // fly distance along the dashed line (lands on own color, near opposite side)
+
+exports.name = 'flightchess';
+exports.maxPlayers = 4;
+
+exports.createState = () => {
+  const players = [];
+  for (let i = 0; i < 4; i++) {
+    players.push({ planes: [-1, -1, -1, -1], finished: 0 });
+  }
+  return {
+    currentPlayer: 0, winner: null, players, dice: 1,
+    consecutiveSixes: 0, hasRolled: false, _playerCount: 4,
+    lastMoveResult: '', // for frontend display
+  };
+};
+
+exports.handleMove = (data, state, playerIndex) => {
+  if (state.winner !== null) return '游戏已结束';
+  if (state.currentPlayer !== playerIndex) return '不是你的回合';
+
+  const pData = state.players[playerIndex];
+  const { action } = data || {};
+
+  if (action === 'roll' || !action) {
+    if (state.hasRolled) return '请先移动飞机';
+    const dice = Math.floor(Math.random() * 6) + 1;
+    state.dice = dice; state.hasRolled = true;
+    state.lastMoveResult = `${windowNames(playerIndex)} 掷了 ${dice} 点`;
+
+    if (dice === 6) state.consecutiveSixes++;
+    else state.consecutiveSixes = 0;
+
+    if (state.consecutiveSixes >= 3) {
+      state.consecutiveSixes = 0; state.hasRolled = false; advanceTurn(state);
+      state.lastMoveResult = `${windowNames(playerIndex)} 连续3次6，回合作废`;
+      return null;
+    }
+
+    // Auto-pass if no valid moves
+    if (!hasValidMove(state, playerIndex)) {
+      state.hasRolled = false;
+      if (dice !== 6) advanceTurn(state);
+      state.lastMoveResult = `${windowNames(playerIndex)} 无合法走法，自动跳过`;
+      return null;
+    }
+    return null;
+  }
+
+  if (action === 'move') {
+    if (!state.hasRolled) return '请先掷骰子';
+    const idx = data.planeIndex;
+    if (typeof idx !== 'number' || idx < 0 || idx >= PLANES) return '无效的飞机';
+
+    const pos = pData.planes[idx];
+    if (pos === HOME) return '这架飞机已经到家了';
+
+    const dice = state.dice;
+
+    if (pos === -1) {
+      if (dice !== 6) return '只有掷到6才能起飞';
+      pData.planes[idx] = 0; // start of path
+      doLanding(state, playerIndex, idx);
+      state.lastMoveResult = `${windowNames(playerIndex)} 起飞了飞机${idx+1}号`;
+      endTurn(state, playerIndex); return null;
+    }
+
+    if (pos >= MAIN_PATH) {
+      // Home stretch
+      if (pos + dice > HOME) return '需要精准点数到达终点';
+      if (pos + dice === HOME) {
+        pData.planes[idx] = HOME; pData.finished++;
+        state.lastMoveResult = `${windowNames(playerIndex)} 飞机${idx+1}号到家了！`;
+        if (pData.finished >= PLANES) { state.winner = playerIndex; return null; }
+      } else {
+        pData.planes[idx] = pos + dice;
+      }
+      endTurn(state, playerIndex); return null;
+    }
+
+    // Main path
+    const newSteps = pos + dice;
+    if (newSteps >= MAIN_PATH) {
+      pData.planes[idx] = newSteps; // enters home stretch
+      endTurn(state, playerIndex); return null;
+    }
+    pData.planes[idx] = newSteps;
+    doLanding(state, playerIndex, idx);
+    resolveSpecial(state, playerIndex, idx);
+
+    endTurn(state, playerIndex); return null;
+  }
+  return '无效操作';
+};
+
+// Resolve special cells after a normal main-path landing:
+//   - fly cell (own color): fly across the board (+FLY_ADV)
+//   - own-color cell: jump forward 4 (once); if the jump lands on the fly cell, fly
+function resolveSpecial(state, pi, idx) {
+  const p = state.players[pi];
+  const step = p.planes[idx];
+  if (step <= 0 || step >= MAIN_PATH) return;
+
+  // Fly cell: follow the dashed line across the board, then jump +4 (rule: 虚线到同色格后再跳一格)
+  if (step === FLY_STEP) {
+    flyAcross(state, pi, idx);
+    state.lastMoveResult = `✈ ${windowNames(pi)} 沿航线飞到对面！`;
+    return;
+  }
+  // Own-color cell ⟺ step is a multiple of 4 (each player owns every 4th cell): jump +4 once
+  if (step % 4 === 0) {
+    const jump = step + 4;
+    if (jump < MAIN_PATH) {
+      p.planes[idx] = jump; doLanding(state, pi, idx);
+      state.lastMoveResult = `${windowNames(pi)} 同色格跳 +4`;
+      if (jump === FLY_STEP) {
+        flyAcross(state, pi, idx);
+        state.lastMoveResult = `✈ ${windowNames(pi)} 跳格后沿航线飞到对面！`;
+      }
+    }
+  }
+}
+
+// Fly along the dashed line (+FLY_ADV), then jump +4 since the landing cell is own color
+function flyAcross(state, pi, idx) {
+  const p = state.players[pi];
+  const dest = p.planes[idx] + FLY_ADV;
+  if (dest >= MAIN_PATH) return;
+  p.planes[idx] = dest; doLanding(state, pi, idx);
+  const jump = dest + 4;
+  if (jump < MAIN_PATH) { p.planes[idx] = jump; doLanding(state, pi, idx); }
+}
+
+function hasValidMove(state, pi) {
+  const p = state.players[pi], d = state.dice;
+  for (let i = 0; i < PLANES; i++) {
+    const po = p.planes[i];
+    if (po === HOME) continue;
+    if (po === -1) { if (d === 6) return true; continue; }
+    if (po >= MAIN_PATH) { if (po + d === HOME) return true; continue; }
+    if (po >= 0 && po < MAIN_PATH) return true;
+  }
+  return false;
+}
+
+function absPos(pi, steps) {
+  return (pi * 13 + steps) % MAIN_PATH;
+}
+
+function doLanding(state, pi, idx) {
+  const pos = state.players[pi].planes[idx];
+  if (pos < 0 || pos >= MAIN_PATH) return;
+  const landingAbs = absPos(pi, pos);
+  for (let oi = 0; oi < state.players.length; oi++) {
+    if (oi === pi) continue;
+    for (let j = 0; j < PLANES; j++) {
+      const op = state.players[oi].planes[j];
+      if (op >= 0 && op < MAIN_PATH && absPos(oi, op) === landingAbs) {
+        state.players[oi].planes[j] = -1;
+        state.lastMoveResult = `${windowNames(pi)} 踩了${windowNames(oi)}的飞机！`;
+      }
+    }
+  }
+}
+
+function endTurn(state, pi) {
+  if (state.dice === 6 && state.consecutiveSixes < 3) {
+    state.hasRolled = false;
+  } else {
+    state.hasRolled = false; state.consecutiveSixes = 0; advanceTurn(state);
+  }
+}
+
+function advanceTurn(state) {
+  const total = Math.min(state._playerCount || 4, 4);
+  for (let i = 1; i <= total; i++) {
+    const next = (state.currentPlayer + i) % total;
+    if (state.players[next].finished < PLANES) { state.currentPlayer = next; return; }
+  }
+  state.currentPlayer = (state.currentPlayer + 1) % total;
+}
+
+function windowNames(pi) {
+  // A simple placeholder; the real names are in the frontend
+  return `玩家${pi+1}`;
+}
+
+exports.initGame = (state, pc) => { state._playerCount = pc; state.players.length = pc; };

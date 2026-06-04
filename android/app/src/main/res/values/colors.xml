@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mirrors the web app's :root CSS variables -->
+    <color name="lobby_bg">#F8F9FA</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="text">#1A1A1A</color>
+    <color name="text_muted">#999999</color>
+    <color name="accent">#C8A45C</color>
+    <color name="accent_dim">#FAF6EF</color>
+    <color name="border">#EEEEEE</color>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+</resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Exclude the extracted nodejs-project (will be re-copied from assets) -->
+    <exclude domain="file" path="nodejs-project/" />
+    <exclude domain="file" path="nodejs-project.version" />
+</full-backup-content>

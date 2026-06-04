@@ -1,0 +1,19 @@
+# Gradle
+.gradle/
+build/
+*/build/
+local.properties
+
+# IntelliJ / Android Studio
+*.iml
+.idea/
+.DS_Store
+
+# Native build artifacts
+.cxx/
+
+# Generated extracted Node.js project (run copy-nodejs-project.ps1 to regenerate)
+app/src/main/assets/nodejs-project/
+
+# Large nodejs-mobile native libs (download separately, see SETUP.md)
+app/libs/jniLibs/

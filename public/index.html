@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>联机桌游</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="lobby-container">
+    <h1 class="page-title">联 机 桌 游</h1>
+    <div class="title-divider"></div>
+    <p class="subtitle">打开浏览器 · 加入房间 · 开始游戏</p>
+
+    <!-- Create -->
+    <div class="lobby-section">
+      <h3>选择游戏</h3>
+      <div id="gameOptions">
+        <div class="game-option selected" data-game="tictactoe">
+          <div class="game-option-icon">⚡</div>
+          <div class="game-option-info">
+            <div class="name">井字棋</div>
+            <div class="desc">三子连珠 · 简单有趣</div>
+            <div class="meta">2人 · 约5分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="gomoku">
+          <div class="game-option-icon">◉</div>
+          <div class="game-option-info">
+            <div class="name">五子棋</div>
+            <div class="desc">15×15 棋盘 · 五子连珠</div>
+            <div class="meta">2人 · 约15分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="davinci">
+          <div class="game-option-icon">🔢</div>
+          <div class="game-option-info">
+            <div class="name">达芬奇密码</div>
+            <div class="desc">逻辑推理 · 猜对手隐藏数字</div>
+            <div class="meta">2-6人 · 约15分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="uno">
+          <div class="game-option-icon">🃏</div>
+          <div class="game-option-info">
+            <div class="name">UNO</div>
+            <div class="desc">经典卡牌 · 颜色数字匹配</div>
+            <div class="meta">2-6人 · 约20分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="doudizhu">
+          <div class="game-option-icon">🂡</div>
+          <div class="game-option-info">
+            <div class="name">斗地主</div>
+            <div class="desc">经典扑克 · 叫地主出牌</div>
+            <div class="meta">3人 · 约20分钟（可加AI）</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="exploding-kittens">
+          <div class="game-option-icon">💣</div>
+          <div class="game-option-info">
+            <div class="name">爆炸猫</div>
+            <div class="desc">俄罗斯轮盘卡牌 · 别抽到炸弹！</div>
+            <div class="meta">2-6人 · 约15分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="rummikub">
+          <div class="game-option-icon">🧩</div>
+          <div class="game-option-info">
+            <div class="name">魔力桥</div>
+            <div class="desc">以色列麻将 · 数字排列组合</div>
+            <div class="meta">2-4人 · 约25分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="twentyfour">
+          <div class="game-option-icon">🔢</div>
+          <div class="game-option-info">
+            <div class="name">24点</div>
+            <div class="desc">4个数字 · 加减乘除算24</div>
+            <div class="meta">2-6人 · 约5分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="minesweeper">
+          <div class="game-option-icon">💣</div>
+          <div class="game-option-info">
+            <div class="name">扫雷竞速</div>
+            <div class="desc">同翻一张图 · 翻到雷就出局</div>
+            <div class="meta">2-6人 · 约5分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="numberbomb">
+          <div class="game-option-icon">💣</div>
+          <div class="game-option-info">
+            <div class="name">数字炸弹</div>
+            <div class="desc">猜数字 · 范围缩小 · 别中弹</div>
+            <div class="meta">2-10人 · 约10分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="oldmaid">
+          <div class="game-option-icon">👻</div>
+          <div class="game-option-info">
+            <div class="name">抽鬼牌</div>
+            <div class="desc">抽下家牌 · 凑对丢掉 · 别拿鬼牌</div>
+            <div class="meta">2-6人 · 约15分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="liarsbar">
+          <div class="game-option-icon">🤥</div>
+          <div class="game-option-info">
+            <div class="name">骗子酒馆</div>
+            <div class="desc">JQK+万能+鬼牌 · 俄罗斯转盘</div>
+            <div class="meta">2-6人 · 约15分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="bigtwo">
+          <div class="game-option-icon">🂡</div>
+          <div class="game-option-info">
+            <div class="name">大老二</div>
+            <div class="desc">锄大地 · 花色比大小 · 出完为胜</div>
+            <div class="meta">2-4人 · 约20分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="texas">
+          <div class="game-option-icon">🎰</div>
+          <div class="game-option-info">
+            <div class="name">德州扑克</div>
+            <div class="desc">下注·加注·全下 · 摊牌比大小</div>
+            <div class="meta">2-8人 · 约20分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="flightchess">
+          <div class="game-option-icon">✈️</div>
+          <div class="game-option-info">
+            <div class="name">飞行棋</div>
+            <div class="desc">掷骰起飞 · 踩人回基地 · 竞速到家</div>
+            <div class="meta">2-4人 · 约20分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="chinesechess">
+          <div class="game-option-icon">♟️</div>
+          <div class="game-option-info">
+            <div class="name">中国象棋</div>
+            <div class="desc">九宫格 · 将死对方 · 经典博弈</div>
+            <div class="meta">2人 · 约30分钟</div>
+          </div>
+        </div>
+        <div class="game-option" data-game="go9">
+          <div class="game-option-icon">⚫</div>
+          <div class="game-option-info">
+            <div class="name">围棋9路</div>
+            <div class="desc">9×9棋盘 · 提子打劫 · 数子判胜</div>
+            <div class="meta">2人 · 约15分钟</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="createBtn" style="margin-top:14px">创建房间</button>
+    </div>
+
+    <!-- Join -->
+    <div class="lobby-section" id="joinSection" style="animation-delay:.15s">
+      <h3>加入房间</h3>
+      <div class="join-row">
+        <input class="input" id="roomCodeInput" type="text" maxlength="4" placeholder="输入房间号" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+        <button class="btn btn-outline" id="joinBtn">加入</button>
+      </div>
+    </div>
+
+    <p style="text-align:center;color:var(--text-muted);font-size:12px;animation:fadeInUp .5s ease .4s both">
+      📶 确保所有设备连到同一个 Wi-Fi 或热点
+    </p>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <button id="scrollToJoin"
+    style="position:fixed;bottom:28px;right:24px;width:52px;height:52px;border-radius:50%;
+    background:var(--text);color:#fff;border:none;font-size:22px;cursor:pointer;
+    box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:30;transition:opacity .3s,transform .15s;
+    display:flex;align-items:center;justify-content:center;"
+    onclick="document.getElementById('joinSection').scrollIntoView({behavior:'smooth'})"
+    title="加入房间">↓</button>
+
+<script>
+let selectedGame = 'tictactoe';
+
+document.querySelectorAll('.game-option').forEach(opt => {
+  opt.addEventListener('click', () => {
+    document.querySelectorAll('.game-option').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    selectedGame = opt.dataset.game;
+  });
+});
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+document.getElementById('createBtn').addEventListener('click', () => {
+  const ws = new WebSocket(`ws://${location.host}`);
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'create_room', data: { game: selectedGame } }));
+  };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'room_created') {
+      sessionStorage.setItem('roomId', msg.roomId);
+      sessionStorage.setItem('playerIndex', msg.playerIndex);
+      sessionStorage.setItem('game', msg.game);
+      ws.close();
+      location.href = '/game.html';
+    } else if (msg.type === 'error') {
+      toast('错误：' + msg.message);
+    }
+  };
+  ws.onerror = () => toast('连接失败，服务器是否已启动？');
+});
+
+document.getElementById('joinBtn').addEventListener('click', () => {
+  const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+  if (!code) { toast('请输入房间号'); return; }
+  const ws = new WebSocket(`ws://${location.host}`);
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'join_room', data: { roomId: code } }));
+  };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'room_joined') {
+      sessionStorage.setItem('roomId', msg.roomId);
+      sessionStorage.setItem('playerIndex', msg.playerIndex);
+      sessionStorage.setItem('game', msg.game);
+      ws.close();
+      location.href = '/game.html';
+    } else if (msg.type === 'error') {
+      toast('错误：' + msg.message);
+    }
+  };
+  ws.onerror = () => toast('连接失败，服务器是否已启动？');
+});
+
+document.getElementById('roomCodeInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('joinBtn').click();
+});
+
+// Auto-join from QR code scan (?room=XXXXXX)
+(function() {
+  var params = new URLSearchParams(location.search);
+  var roomCode = params.get('room');
+  if (roomCode) {
+    roomCode = roomCode.trim().toUpperCase();
+    document.getElementById('roomCodeInput').value = roomCode;
+    var ws = new WebSocket('ws://' + location.host);
+    ws.onopen = function() {
+      ws.send(JSON.stringify({ type: 'join_room', data: { roomId: roomCode } }));
+    };
+    ws.onmessage = function(e) {
+      var msg = JSON.parse(e.data);
+      if (msg.type === 'room_joined') {
+        sessionStorage.setItem('roomId', msg.roomId);
+        sessionStorage.setItem('playerIndex', msg.playerIndex);
+        sessionStorage.setItem('game', msg.game);
+        ws.close();
+        location.href = '/game.html';
+      } else if (msg.type === 'error') {
+        toast('加入失败：' + msg.message);
+        ws.close();
+      }
+    };
+    ws.onerror = function() { toast('连接失败'); };
+  }
+})();
+</script>
+</body>
+</html>

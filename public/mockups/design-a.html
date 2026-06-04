@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root {
+  --bg: #0a0a12;
+  --cyan: #00f0ff;
+  --magenta: #ff2d95;
+  --surface: #12121f;
+  --text: #e0e0e0;
+  --muted: #666;
+  --radius: 18px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  background-image:
+    linear-gradient(rgba(0,240,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,240,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  color: var(--text);
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 24px 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+.container { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 20px; }
+
+/* Header */
+.logo { text-align: center; margin-bottom: 4px; }
+.logo .icon { font-size: 44px; display: block; margin-bottom: 6px;
+  text-shadow: 0 0 30px var(--cyan); }
+.logo h1 {
+  font-size: 26px; font-weight: 800; letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--cyan), var(--magenta));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.logo p { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: ''; position: absolute; top: -1px; left: 20px; right: 20px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+}
+.card h3 { font-size: 14px; font-weight: 700; color: var(--cyan); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 2px; }
+
+/* Game Options */
+.game-opt {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s;
+}
+.game-opt:last-child { margin-bottom: 0; }
+.game-opt:hover, .game-opt.selected { border-color: var(--cyan); background: rgba(0,240,255,0.06); box-shadow: 0 0 20px rgba(0,240,255,0.08); }
+.game-opt-icon {
+  width: 50px; height: 50px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center; font-size: 28px;
+  background: rgba(0,240,255,0.08); flex-shrink: 0;
+}
+.game-opt-info .name { font-weight: 700; font-size: 15px; }
+.game-opt-info .desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.game-opt-info .meta { font-size: 11px; color: var(--cyan); margin-top: 3px; }
+
+/* Buttons */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  border: none; border-radius: 14px; padding: 15px 24px; font-size: 16px;
+  font-weight: 700; cursor: pointer; width: 100%; min-height: 52px;
+  transition: all 0.2s; font-family: inherit;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--cyan), #00c8e0);
+  color: #000; margin-top: 14px; letter-spacing: 1px;
+}
+.btn-primary:hover { box-shadow: 0 0 30px rgba(0,240,255,0.3); }
+.btn-outline {
+  background: transparent; color: var(--cyan);
+  border: 2px solid var(--cyan); min-width: 80px; width: auto;
+}
+
+/* Join */
+.join-row { display: flex; gap: 10px; }
+.input {
+  flex: 1; background: rgba(255,255,255,0.03); border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 14px; padding: 14px 16px; color: var(--text); font-size: 18px;
+  text-align: center; letter-spacing: 4px; text-transform: uppercase;
+  outline: none; font-family: inherit; transition: border-color 0.2s;
+}
+.input:focus { border-color: var(--cyan); }
+.input::placeholder { color: #444; letter-spacing: 0; text-transform: none; font-size: 14px; }
+
+/* Glow orbs */
+.orb { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0; }
+.orb-1 { width: 200px; height: 200px; background: var(--cyan); opacity: 0.05; top: -50px; right: -50px; }
+.orb-2 { width: 150px; height: 150px; background: var(--magenta); opacity: 0.05; bottom: 20px; left: -40px; }
+.container { position: relative; z-index: 1; }
+
+.footer { text-align: center; font-size: 11px; color: #333; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="container">
+  <div class="logo">
+    <span class="icon">🎮</span>
+    <h1>联机桌游</h1>
+    <p>和朋友一起玩 · 无需下载</p>
+  </div>
+
+  <div class="card">
+    <h3>▸ 选择游戏</h3>
+    <div class="game-opt selected">
+      <div class="game-opt-icon">⚡</div>
+      <div class="game-opt-info">
+        <div class="name">井字棋</div>
+        <div class="desc">三子连珠 · 简单有趣</div>
+        <div class="meta">2人 · 5分钟</div>
+      </div>
+    </div>
+    <div class="game-opt">
+      <div class="game-opt-icon">◉</div>
+      <div class="game-opt-info">
+        <div class="name">五子棋</div>
+        <div class="desc">15×15 棋盘 · 五子连珠</div>
+        <div class="meta">2人 · 15分钟</div>
+      </div>
+    </div>
+    <button class="btn btn-primary">⚡ 创建房间</button>
+  </div>
+
+  <div class="card">
+    <h3>▸ 加入房间</h3>
+    <div class="join-row">
+      <input class="input" placeholder="输入房间码" maxlength="6">
+      <button class="btn btn-outline">加入</button>
+    </div>
+  </div>
+
+  <p class="footer">确保所有设备连到同一个 Wi-Fi 或热点</p>
+</div>
+</body>
+</html>

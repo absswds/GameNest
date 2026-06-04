@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Base application theme -->
+    <style name="Theme.LocalGames" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/text</item>
+        <item name="colorPrimaryDark">@color/text</item>
+        <item name="colorAccent">@color/accent</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/surface</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:navigationBarColor">@color/surface</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+    </style>
+
+    <!-- Splash variant (same as base but explicit for first launch) -->
+    <style name="Theme.LocalGames.Splash" parent="Theme.LocalGames">
+        <item name="android:windowBackground">@color/lobby_bg</item>
+    </style>
+
+</resources>

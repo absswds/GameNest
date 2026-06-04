@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>游戏</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+    display: flex; align-items: center; justify-content: center; z-index: 50; }
+  .overlay-card { background: var(--surface); border-radius: var(--radius);
+    padding: 32px 28px; text-align: center; max-width: 300px; width: 90%; }
+  .overlay-card .result { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+  .overlay-card .sub { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
+</style>
+</head>
+<body>
+  <div id="notifyBar" style="position:fixed;top:0;left:0;right:0;background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:14px 20px;text-align:center;font-size:15px;font-weight:600;z-index:60;transform:translateY(-100%);transition:transform .3s ease;box-shadow:0 2px 12px rgba(0,0,0,.08);"></div>
+  <div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:0 12px;">
+    <button class="back-btn" onclick="location.href='/'">← 大厅</button>
+    <div class="room-id-badge" id="roomBadge">---</div>
+  </div>
+
+  <!-- Waiting Room (visible before game starts) -->
+  <div id="waitingRoom" class="waiting-room" style="display:none">
+    <div class="waiting-header">
+      <span class="waiting-game-name" id="waitingGameName"></span>
+    </div>
+    <div class="waiting-slots" id="waitingSlots"></div>
+    <div id="profileEdit" style="display:flex;align-items:center;gap:12px;padding:10px 0;">
+      <span id="avatarDisplay" onclick="window.openAvatarDrawer&&window.openAvatarDrawer()" style="font-size:32px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:var(--bg);border-radius:50%;border:2px solid var(--border);transition:border-color .2s;cursor:pointer;position:relative;"><span id="avatarEmoji">😊</span><span style="position:absolute;bottom:-2px;right:-2px;font-size:11px;background:var(--accent);color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface);">✎</span></span>
+      <input id="nameInput" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:10px 14px;font-size:14px;font-weight:600;text-align:center;max-width:160px;transition:border-color .2s,box-shadow .2s;outline:none;" maxlength="8" placeholder="你的名字" onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px rgba(200,164,92,0.25)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+    </div>
+    <!-- Avatar drawer (bottom sheet) -->
+    <div id="avatarDrawer" class="avatar-drawer-backdrop" style="display:none" onclick="if(event.target===this)window.closeAvatarDrawer()">
+      <div class="avatar-drawer-sheet">
+        <div class="avatar-drawer-handle"></div>
+        <div class="avatar-drawer-title">选择头像</div>
+        <div id="emojiRow" class="emoji-grid"></div>
+      </div>
+    </div>
+    <div id="gameOptions" style="display:none;background:var(--bg);border-radius:14px;padding:12px;"></div>
+    <div class="waiting-actions">
+      <button class="btn btn-outline btn-sm" id="readyBtn">准备</button>
+      <button class="btn btn-outline btn-sm" id="addBotBtn" style="display:none">+ 添加AI</button>
+      <button class="btn btn-accent btn-sm" id="startGameBtn" style="display:none">开始游戏</button>
+    </div>
+    <button class="btn btn-outline btn-sm" id="tutorialBtn" style="width:100%;" onclick="var g=sessionStorage.getItem('game');if(typeof showGameTutorial==='function')showGameTutorial(g);">📖 游戏规则</button>
+    <div class="qr-card" id="qrArea">
+      <img id="qrImage" src="" alt="QR">
+      <div class="qr-room-code" id="qrRoomCode"></div>
+      <div class="qr-hint">扫码或输入房间号加入</div>
+    </div>
+    <div class="waiting-status" id="waitingStatus">等待所有玩家准备...</div>
+  </div>
+
+  <div class="player-bar" id="playerBar" style="display:none"></div>
+  <div class="game-status" id="status" style="display:none">等待玩家加入...</div>
+  <div class="board-wrap"><div id="boardArea"></div></div>
+  <div class="game-actions-fixed" id="gameActions" style="display:none">
+    <button class="btn btn-outline btn-sm" onclick="window.doRestart()">重新开始</button>
+  </div>
+  <div class="overlay" id="overlay" style="display:none">
+    <div class="overlay-card">
+      <div class="result" id="resultText"></div>
+      <div class="sub" id="resultSub"></div>
+      <button class="btn btn-accent" onclick="window.doRestart()">再来一局</button>
+      <button class="btn btn-outline btn-sm" onclick="window.doReturnToRoom()" style="margin-top:10px;">返回房间</button>
+      <button class="btn btn-outline btn-sm" onclick="window.doLeaveRoom()" style="margin-top:10px;">返回大厅</button>
+    </div>
+  </div>
+  <script src="/js/tutorials.js"></script>
+  <script src="/js/renderers/tictactoe.js"></script>
+  <script src="/js/renderers/gomoku.js"></script>
+  <script src="/js/renderers/doudizhu.js"></script>
+  <script src="/js/renderers/uno.js"></script>
+  <script src="/js/renderers/davinci.js"></script>
+  <script src="/js/renderers/exploding-kittens.js"></script>
+  <script src="/js/renderers/rummikub.js"></script>
+  <script src="/js/renderers/twentyfour.js"></script>
+  <script src="/js/renderers/minesweeper.js"></script>
+  <script src="/js/renderers/numberbomb.js"></script>
+  <script src="/js/renderers/oldmaid.js"></script>
+  <script src="/js/renderers/liarsbar.js"></script>
+  <script src="/js/renderers/bigtwo.js"></script>
+  <script src="/js/renderers/texas.js"></script>
+  <script src="/js/renderers/flightchess.js"></script>
+  <script src="/js/renderers/chinesechess.js"></script>
+  <script src="/js/renderers/go9.js"></script>
+  <script src="/js/room-client.js"></script>
+</body>
+</html>

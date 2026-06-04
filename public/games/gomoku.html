@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>五子棋</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 50;
+  }
+  .overlay-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 32px 28px;
+    text-align: center;
+    max-width: 300px;
+    width: 90%;
+  }
+  .overlay-card .result { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+  .overlay-card .sub { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
+</style>
+</head>
+<body>
+  <div style="width:100%;max-width:420px;display:flex;align-items:center;justify-content:space-between">
+    <button class="back-btn" onclick="location.href='/'">← 大厅</button>
+    <div class="room-id-badge" id="roomBadge">---</div>
+  </div>
+
+  <div class="player-bar">
+    <div class="player-tag p1 active" id="p1Tag"><span class="dot"></span><span id="p1Name">你</span></div>
+    <span class="vs-text">VS</span>
+    <div class="player-tag p2" id="p2Tag"><span class="dot"></span><span id="p2Name">---</span></div>
+  </div>
+
+  <div class="game-status" id="status">等待对手加入...</div>
+
+  <div class="board-wrap">
+    <div class="gomoku-wrap" id="gomokuWrap">
+      <canvas id="gomokuCanvas"></canvas>
+    </div>
+  </div>
+
+  <div class="game-actions">
+    <button class="btn btn-outline" id="restartBtn">重新开始</button>
+  </div>
+
+  <div class="overlay" id="overlay" style="display:none">
+    <div class="overlay-card">
+      <div class="result" id="resultText"></div>
+      <div class="sub" id="resultSub"></div>
+      <button class="btn btn-primary" onclick="doRestart()">再来一局</button>
+    </div>
+  </div>
+
+<script>
+const SIZE = 15;
+const roomId = sessionStorage.getItem('roomId');
+const playerIndex = parseInt(sessionStorage.getItem('playerIndex'));
+
+let ws = null;
+let board = Array.from({length:SIZE}, () => Array(SIZE).fill(null));
+let currentPlayer = 0;
+let winner = null;
+let players = [];
+let lastMove = null;
+let reconnectTimer = null;
+let canvas, ctx, cellSize, padding, boardW;
+
+document.getElementById('roomBadge').textContent = roomId;
+
+function connect() {
+  if (ws) { try { ws.close(); } catch(e) {} }
+  ws = new WebSocket(`ws://${location.host}`);
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'join_room', data: { roomId } }));
+  };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    handleMessage(msg);
+  };
+  ws.onclose = () => { reconnectTimer = setTimeout(connect, 1500); };
+  ws.onerror = () => {};
+}
+
+function handleMessage(msg) {
+  if (msg.type === 'room_joined' || msg.type === 'game_state') {
+    board = (msg.state && msg.state.board) ? msg.state.board : board;
+    currentPlayer = msg.state ? (msg.state.currentPlayer ?? currentPlayer) : currentPlayer;
+    winner = msg.state ? (msg.state.winner ?? winner) : winner;
+    players = msg.players || players;
+    updatePlayerBar();
+    draw();
+  }
+  if (msg.type === 'player_joined' || msg.type === 'player_left') {
+    players = msg.players || players;
+    if (msg.state) {
+      board = msg.state.board;
+      currentPlayer = msg.state.currentPlayer;
+      winner = msg.state.winner;
+    }
+    updatePlayerBar();
+    if (msg.type === 'player_left') {
+      document.getElementById('status').textContent = '对手离开了，等待中...';
+      document.getElementById('overlay').style.display = 'none';
+    }
+    draw();
+  }
+  if (msg.type === 'game_started') {
+    board = msg.state.board;
+    currentPlayer = msg.state.currentPlayer;
+    winner = msg.state.winner;
+    players = msg.players;
+    updatePlayerBar();
+    draw();
+    document.getElementById('status').textContent = '';
+  }
+  if (msg.type === 'error') {
+    document.getElementById('status').textContent = msg.message;
+  }
+}
+
+function updatePlayerBar() {
+  const me = players.find(p => p.index === playerIndex);
+  const other = players.find(p => p.index !== playerIndex);
+  document.getElementById('p1Name').textContent = me ? (me.index === 0 ? '你（●）' : '你（○）') : '你';
+  document.getElementById('p2Name').textContent = other ? (other.index === 0 ? '对手（●）' : '对手（○）') : '等待中...';
+
+  document.getElementById('p1Tag').classList.toggle('active', currentPlayer === 0);
+  document.getElementById('p2Tag').classList.toggle('active', currentPlayer === 1);
+
+  if (players.length < 2) {
+    document.getElementById('status').textContent = '等待对手加入...';
+  } else if (winner === null) {
+    document.getElementById('status').textContent = currentPlayer === playerIndex ? '轮到你了' : '对手回合';
+  }
+}
+
+function initCanvas() {
+  canvas = document.getElementById('gomokuCanvas');
+  const wrap = document.getElementById('gomokuWrap');
+  const size = wrap.clientWidth;
+  canvas.width = size * (window.devicePixelRatio || 1);
+  canvas.height = size * (window.devicePixelRatio || 1);
+  canvas.style.width = size + 'px';
+  canvas.style.height = size + 'px';
+  ctx = canvas.getContext('2d');
+  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+  boardW = size;
+  padding = boardW / (SIZE + 1);
+  cellSize = (boardW - padding * 2) / (SIZE - 1);
+}
+
+function draw() {
+  if (!ctx) return;
+  const w = boardW;
+  ctx.clearRect(0, 0, w, w);
+
+  // Board
+  ctx.fillStyle = '#d4a574';
+  ctx.fillRect(0, 0, w, w);
+  ctx.fillStyle = '#c9975b';
+  const r = 12, x = 4, y = 4, bw = w - 8, bh = w - 8;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + bw - r, y);
+  ctx.arcTo(x + bw, y, x + bw, y + r, r);
+  ctx.lineTo(x + bw, y + bh - r);
+  ctx.arcTo(x + bw, y + bh, x + bw - r, y + bh, r);
+  ctx.lineTo(x + r, y + bh);
+  ctx.arcTo(x, y + bh, x, y + bh - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+  ctx.fill();
+
+  // Grid
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 0.8;
+  for (let i = 0; i < SIZE; i++) {
+    const pos = padding + i * cellSize;
+    ctx.beginPath();
+    ctx.moveTo(padding, pos);
+    ctx.lineTo(padding + (SIZE-1) * cellSize, pos);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pos, padding);
+    ctx.lineTo(pos, padding + (SIZE-1) * cellSize);
+    ctx.stroke();
+  }
+
+  // Star points
+  const stars = [[3,3],[3,7],[3,11],[7,3],[7,7],[7,11],[11,3],[11,7],[11,11]];
+  for (const [sr, sc] of stars) {
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(padding + sc * cellSize, padding + sr * cellSize, 3.5, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Stones
+  for (let row = 0; row < SIZE; row++) {
+    for (let col = 0; col < SIZE; col++) {
+      if (board[row][col] === null) continue;
+      const cx = padding + col * cellSize;
+      const cy = padding + row * cellSize;
+      const radius = cellSize * 0.44;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.arc(cx + 1.5, cy + 1.5, radius, 0, Math.PI*2);
+      ctx.fill();
+
+      // Stone
+      const isBlack = board[row][col] === 0;
+      const grad = ctx.createRadialGradient(cx - radius*0.3, cy - radius*0.3, radius*0.1, cx, cy, radius);
+      if (isBlack) {
+        grad.addColorStop(0, '#666');
+        grad.addColorStop(1, '#111');
+      } else {
+        grad.addColorStop(0, '#fff');
+        grad.addColorStop(1, '#ccc');
+      }
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI*2);
+      ctx.fill();
+
+      // Last move dot
+      if (lastMove && lastMove.row === row && lastMove.col === col) {
+        ctx.fillStyle = '#f44';
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius * 0.3, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+  }
+
+  updatePlayerBar();
+  if (winner !== null) showOverlay();
+}
+
+function showOverlay() {
+  let txt, sub;
+  if (winner === playerIndex) {
+    txt = '你赢了！'; sub = '五子连珠！';
+  } else {
+    txt = '你输了'; sub = '对手先连成五子。';
+  }
+  document.getElementById('resultText').textContent = txt;
+  document.getElementById('resultSub').textContent = sub;
+  document.getElementById('overlay').style.display = 'flex';
+  document.getElementById('status').textContent = winner === playerIndex ? '你赢了！' : '对手赢了';
+  document.getElementById('status').className = 'game-status winner';
+}
+
+canvas = document.getElementById('gomokuCanvas');
+canvas.addEventListener('click', (e) => {
+  if (!ctx) return;
+  if (players.length < 2) return;
+  if (winner !== null) return;
+  if (currentPlayer !== playerIndex) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+  const col = Math.round((cx - padding) / cellSize);
+  const row = Math.round((cy - padding) / cellSize);
+
+  if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return;
+  if (board[row][col] !== null) return;
+
+  const distX = Math.abs(cx - padding - col * cellSize);
+  const distY = Math.abs(cy - padding - row * cellSize);
+  if (distX > cellSize * 0.45 || distY > cellSize * 0.45) return;
+
+  ws.send(JSON.stringify({ type: 'game_move', data: { row, col } }));
+  lastMove = { row, col };
+});
+
+function doRestart() {
+  document.getElementById('overlay').style.display = 'none';
+  lastMove = null;
+  document.getElementById('status').className = 'game-status';
+  ws.send(JSON.stringify({ type: 'game_restart' }));
+}
+
+document.getElementById('restartBtn').addEventListener('click', doRestart);
+
+initCanvas();
+window.addEventListener('resize', () => { initCanvas(); draw(); });
+connect();
+</script>
+</body>
+</html>

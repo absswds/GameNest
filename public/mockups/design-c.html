@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root {
+  --bg: #f8f9fa;
+  --surface: #ffffff;
+  --text: #1a1a1a;
+  --muted: #999;
+  --accent: #c8a45c;
+  --accent2: #a08a58;
+  --border: #eee;
+  --radius: 24px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 32px 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+.container { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 16px; }
+
+/* Header */
+.header { text-align: center; margin-bottom: 12px; }
+.header h1 {
+  font-size: 30px; font-weight: 300; letter-spacing: 4px;
+  color: var(--text);
+}
+.header .line {
+  width: 40px; height: 2px; background: var(--accent);
+  margin: 12px auto;
+}
+.header p { font-size: 13px; color: var(--muted); font-weight: 300; }
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+.card h3 { font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 3px; }
+
+/* Game Options */
+.game-opt {
+  display: flex; align-items: center; gap: 16px; padding: 16px 18px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 20px; cursor: pointer; margin-bottom: 8px; transition: all 0.25s;
+}
+.game-opt:last-child { margin-bottom: 0; }
+.game-opt:hover, .game-opt.selected {
+  border-color: var(--accent);
+  box-shadow: 0 2px 16px rgba(200,164,92,0.12);
+}
+.game-opt-icon {
+  width: 46px; height: 46px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 24px;
+  background: #faf6ef; flex-shrink: 0;
+}
+.game-opt-info .name { font-weight: 600; font-size: 15px; color: var(--text); }
+.game-opt-info .desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.game-opt-info .meta { font-size: 11px; color: var(--accent2); margin-top: 3px; }
+
+/* Buttons */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  border: none; border-radius: 30px; padding: 16px 24px; font-size: 15px;
+  font-weight: 600; cursor: pointer; width: 100%; min-height: 52px;
+  transition: all 0.2s; font-family: inherit; letter-spacing: 1px;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+  background: var(--text); color: #fff;
+  margin-top: 14px;
+}
+.btn-primary:hover { background: #333; box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+.btn-outline {
+  background: transparent; color: var(--text);
+  border: 2px solid #ddd; min-width: 80px; width: auto; border-radius: 30px;
+}
+.btn-outline:hover { border-color: var(--text); }
+
+/* Join */
+.join-row { display: flex; gap: 10px; }
+.input {
+  flex: 1; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 30px; padding: 15px 20px; color: var(--text); font-size: 16px;
+  text-align: center; letter-spacing: 3px; text-transform: uppercase;
+  outline: none; font-family: inherit; transition: border-color 0.2s;
+}
+.input:focus { border-color: var(--accent); }
+.input::placeholder { color: #ccc; letter-spacing: 0; text-transform: none; font-size: 14px; }
+
+.footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 12px; font-weight: 300; }
+
+/* Deco */
+.deco { position: fixed; top: 0; right: 0; width: 120px; height: 120px;
+  background: linear-gradient(135deg, var(--accent)22, transparent);
+  border-radius: 0 0 0 120px; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="deco"></div>
+<div class="container">
+  <div class="header">
+    <h1>联 机 桌 游</h1>
+    <div class="line"></div>
+    <p>打开浏览器 · 加入房间 · 开始游戏</p>
+  </div>
+
+  <div class="card">
+    <h3>选择游戏</h3>
+    <div class="game-opt selected">
+      <div class="game-opt-icon">⚡</div>
+      <div class="game-opt-info">
+        <div class="name">井字棋</div>
+        <div class="desc">三子连珠 · 简单有趣</div>
+        <div class="meta">2人 · 约5分钟</div>
+      </div>
+    </div>
+    <div class="game-opt">
+      <div class="game-opt-icon">◉</div>
+      <div class="game-opt-info">
+        <div class="name">五子棋</div>
+        <div class="desc">15×15 棋盘 · 五子连珠即胜</div>
+        <div class="meta">2人 · 约15分钟</div>
+      </div>
+    </div>
+    <button class="btn btn-primary">创建房间</button>
+  </div>
+
+  <div class="card">
+    <h3>加入房间</h3>
+    <div class="join-row">
+      <input class="input" placeholder="输入房间码" maxlength="6">
+      <button class="btn btn-outline">加入</button>
+    </div>
+  </div>
+
+  <p class="footer">确保所有设备连到同一个 Wi-Fi 或热点</p>
+</div>
+</body>
+</html>

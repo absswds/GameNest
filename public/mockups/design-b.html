@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root {
+  --cream: #faf3e6;
+  --wood: #c4956a;
+  --wood-dark: #8b5e3c;
+  --card-bg: #fffef9;
+  --text: #3d2b1f;
+  --muted: #a08978;
+  --green: #5a9e6f;
+  --red: #d4695a;
+  --radius: 20px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--cream);
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 5 L55 30 L30 55 L5 30Z' fill='none' stroke='%23e8d5c0' stroke-width='0.5'/%3E%3C/svg%3E");
+  color: var(--text);
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 24px 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+.container { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 20px; position: relative; z-index: 1; }
+
+/* Header */
+.header { text-align: center; margin-bottom: 4px; }
+.header .table-icon { font-size: 48px; display: block; margin-bottom: 8px; }
+.header h1 { font-size: 28px; font-weight: 800; color: var(--wood-dark); letter-spacing: 1px; }
+.header p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+/* Cards */
+.card {
+  background: var(--card-bg);
+  border: 2px solid #f0e0cc;
+  border-radius: var(--radius);
+  padding: 22px;
+  box-shadow: 0 4px 24px rgba(139,94,60,0.08), 0 1px 3px rgba(139,94,60,0.06);
+}
+.card h3 { font-size: 15px; font-weight: 700; color: var(--wood-dark); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.card h3::before { content: ''; display: inline-block; width: 12px; height: 12px; background: var(--wood); border-radius: 3px; }
+
+/* Game Options */
+.game-opt {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+  background: #fefcf8; border: 2px solid #f0e0cc;
+  border-radius: 16px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s;
+}
+.game-opt:last-child { margin-bottom: 0; }
+.game-opt:hover, .game-opt.selected { border-color: var(--wood); background: #fdf5ea; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(139,94,60,0.1); }
+.game-opt-icon {
+  width: 50px; height: 50px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center; font-size: 28px;
+  background: #fdf5ea; flex-shrink: 0;
+}
+.game-opt-info .name { font-weight: 700; font-size: 15px; color: var(--text); }
+.game-opt-info .desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.game-opt-info .meta { font-size: 11px; color: var(--wood); margin-top: 3px; font-weight: 600; }
+
+/* Buttons */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  border: none; border-radius: 16px; padding: 15px 24px; font-size: 16px;
+  font-weight: 700; cursor: pointer; width: 100%; min-height: 52px;
+  transition: all 0.2s; font-family: inherit;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+  background: var(--green); color: #fff;
+  margin-top: 14px; letter-spacing: 1px;
+}
+.btn-primary:hover { background: #4a8a5e; box-shadow: 0 4px 16px rgba(90,158,111,0.3); }
+.btn-outline {
+  background: transparent; color: var(--wood-dark);
+  border: 2px solid var(--wood); min-width: 80px; width: auto;
+}
+.btn-outline:hover { background: #fdf5ea; }
+
+/* Join */
+.join-row { display: flex; gap: 10px; }
+.input {
+  flex: 1; background: #fefcf8; border: 2px solid #f0e0cc;
+  border-radius: 16px; padding: 14px 16px; color: var(--text); font-size: 18px;
+  text-align: center; letter-spacing: 4px; text-transform: uppercase;
+  outline: none; font-family: inherit; transition: border-color 0.2s;
+}
+.input:focus { border-color: var(--wood); }
+.input::placeholder { color: #d0c0af; letter-spacing: 0; text-transform: none; font-size: 14px; }
+
+.footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 8px; }
+
+/* Texture overlay */
+.noise { position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.5; }
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<div class="container">
+  <div class="header">
+    <span class="table-icon">🃏</span>
+    <h1>联机桌游</h1>
+    <p>像围坐在桌边一样 · 和朋友一起玩</p>
+  </div>
+
+  <div class="card">
+    <h3>选择游戏</h3>
+    <div class="game-opt selected">
+      <div class="game-opt-icon">⚡</div>
+      <div class="game-opt-info">
+        <div class="name">井字棋</div>
+        <div class="desc">三子连珠 · 简单有趣</div>
+        <div class="meta">2人 · 约5分钟</div>
+      </div>
+    </div>
+    <div class="game-opt">
+      <div class="game-opt-icon">◉</div>
+      <div class="game-opt-info">
+        <div class="name">五子棋</div>
+        <div class="desc">15×15 棋盘 · 五子连珠即胜</div>
+        <div class="meta">2人 · 约15分钟</div>
+      </div>
+    </div>
+    <button class="btn btn-primary">🃏 创建房间</button>
+  </div>
+
+  <div class="card">
+    <h3>加入房间</h3>
+    <div class="join-row">
+      <input class="input" placeholder="输入房间码" maxlength="6">
+      <button class="btn btn-outline">加入</button>
+    </div>
+  </div>
+
+  <p class="footer">确保所有设备连到同一个 Wi-Fi 或热点</p>
+</div>
+</body>
+</html>
