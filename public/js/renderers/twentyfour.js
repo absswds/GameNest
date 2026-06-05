@@ -512,12 +512,14 @@
     if (hintEl) hintEl.textContent = '';
     var hintBtn = document.getElementById('tfHintBtn');
     clearInterval(_hintCooldownTimer); _hintCooldownTimer = null;
-    // 开局 15 秒内不能用提示
-    if (hintBtn) startHintCooldown(hintBtn, 15, true);
+    // 人少+有机器人：开局10s冷却，之后每次2s；否则15s冷却，每次5s
+    var fewPlayers = _lastState && _lastState._hasBots && (_lastState._realPlayerCount || 99) < 3;
+    var openCd = fewPlayers ? 10 : 15;
+    if (hintBtn) startHintCooldown(hintBtn, openCd, true);
   }
 
   var _hintCooldownTimer = null;
-  var HINT_COOLDOWN = 5; // seconds between hints after using a hint
+  var HINT_COOLDOWN = 5; // seconds between hints after using a hint (default)
 
   function startHintCooldown(btn, seconds, isOpening) {
     if (!btn) return;
@@ -560,7 +562,8 @@
     if (_hintLevel >= 16) {
       if (hintBtn) { hintBtn.disabled = true; hintBtn.textContent = '💡 提示已用尽'; }
     } else {
-      startHintCooldown(hintBtn, HINT_COOLDOWN, false);
+      var fewPlayers = _lastState && _lastState._hasBots && (_lastState._realPlayerCount || 99) < 3;
+      startHintCooldown(hintBtn, fewPlayers ? 2 : HINT_COOLDOWN, false);
     }
   };
 })();

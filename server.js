@@ -143,7 +143,10 @@ function roomPlayersList(room) {
 function scheduleTwentyFourBots(room) {
   if (!room.bots || room.bots.size === 0) return;
   for (const [idx, bot] of room.bots) {
-    const delay = 20000 + Math.random() * 10000; // 20~30s — gives players a fair chance
+    const realCount = room.state._realPlayerCount || room.players.size;
+    const delay = realCount < 3
+      ? 20000 + Math.random() * 10000   // 1-2 real players: 20~30s
+      : 30000 + Math.random() * 10000;  // 3+ real players: 30~40s
     const attempt = (retries) => {
       setTimeout(() => {
         if (!rooms.has(room._roomId)) return;
@@ -451,6 +454,8 @@ wss.on('connection', (ws) => {
 
       currentRoom.phase = 'playing';
       currentRoom.state._playerCount = totalPlayers;
+      currentRoom.state._realPlayerCount = currentRoom.players.size;
+      currentRoom.state._hasBots = currentRoom.bots.size > 0;
       currentRoom.state._options = { ...currentRoom.options };
 
       // Init game state if the game module supports it
@@ -745,6 +750,8 @@ wss.on('connection', (ws) => {
       state.roundWinner = null;
       state.solutions = [];
       state.playerSubmissions = {};
+      state._realPlayerCount = currentRoom.players.size;
+      state._hasBots = currentRoom.bots.size > 0;
       // Generate new numbers (use the game module's function)
       gameRegistry['twentyfour'].initGame(state, totalPlayers);
       broadcastRoom(currentRoom, { type: 'game_state', state: state, players: roomPlayersList(currentRoom) });
