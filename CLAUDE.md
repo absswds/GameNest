@@ -217,6 +217,18 @@ function animTick(now) {
 
 Design C 极简轻奢：浅灰底 `#f8f9fa`，白色卡片，金色点缀 `#c8a45c`，黑胶囊按钮。CSS 变量定义在 `style.css` 的 `:root` 中。
 
+## 已知 Bug 模式 / 易踩坑
+
+**骗子酒馆 AI 开枪调度：** `scheduleBotMove` 默认用 `state.currentPlayer` 查 bot。骗子酒馆进入 `phase:'shooting'` 后控制权转给 `state.currentShooter`，两者不同会导致 bot 永远不被调度。已在 `server.js` 加特判，其他有自定义"当前行动者"字段的新游戏需同样处理。
+
+**飞行棋四色跑道是核心机制：** `TK[i % 4]` 的四色循环不是装饰，是跳格逻辑（落在自己颜色格跳 +4）的视觉依据，**不能**按玩家颜色改色。
+
+**飞行棋中心终点覆盖层次：** `center triangles` → `home stretch cells` → `hub circle` 必须按此顺序绘制（home stretch 盖在三角上），否则 home 最内侧格被三角遮住，棋子看起来"在终点范围内"。三角 `reach` 须 ≤ 0.6cs，避免盖过 home 格。
+
+**Canvas 渲染器动画与走法检测：** `render()` 里的走法检测（prev 快照对比）必须在 `animState.type !== 'move'` 时才跳过，而非 `!animState.running`。否则玩家自己点击触发 pickup 动画期间 state 更新回来时，检测被跳过、prevPlanes 被覆盖，导致自己走棋没有滑行动画，只有对手有。
+
+**象棋/跨端字体统一：** Canvas `ctx.font` 不能以 `system-ui` 开头（不同 OS 字体差异大）。`game.html` 已加载 Google Fonts `Ma Shan Zheng`，象棋渲染器字体栈以 `"Ma Shan Zheng"` 开头保证跨端一致。
+
 ## Android 已知坑
 
 - **NDK 版本:** 必须用 NDK 24.0.8215888（`app/build.gradle` 中 `ndkVersion`），与 nodejs-mobile v18.20.4 的 libnode.so 编译版本一致
