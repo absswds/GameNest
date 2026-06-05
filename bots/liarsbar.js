@@ -26,11 +26,11 @@ exports.createBot = function(playerIndex) {
         const pileSize = (state.pileCards || []).length;
         const myThemeCount = themeCards.length - wildCards.length;
 
-        let challengeChance = 0.08;
-        if (pileSize >= 3) challengeChance += 0.12;
-        if (pileSize >= 5) challengeChance += 0.15;
+        let challengeChance = 0.20;
+        if (pileSize >= 3) challengeChance += 0.15;
+        if (pileSize >= 5) challengeChance += 0.20;
         if (myThemeCount >= 2) challengeChance += 0.15;
-        if (totalAlive <= 2) challengeChance += 0.2;
+        if (totalAlive <= 2) challengeChance += 0.20;
 
         if (Math.random() < challengeChance) {
           return { action: 'suspect' };

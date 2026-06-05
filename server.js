@@ -201,7 +201,11 @@ function scheduleBotMove(room) {
     return;
   }
 
-  const cp = state.currentPlayer;
+  // Liarsbar shooting phase: use currentShooter instead of currentPlayer
+  let cp = state.currentPlayer;
+  if (state.phase === 'shooting' && state.currentShooter >= 0) {
+    cp = state.currentShooter;
+  }
   const bot = room.bots.get(cp);
   if (!bot) return;
 

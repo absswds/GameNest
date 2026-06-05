@@ -140,8 +140,16 @@
     ctx.fillStyle = '#1a2540'; ctx.fillRect(0, 0, W, W);
 
     // === Track cells ===
+    // Pre-compute safe runway: 5 cells before each player's home entry = their own color
+    var safeColor = {};
+    for (var sp = 0; sp < 4; sp++) {
+      for (var ss = 47; ss <= 51; ss++) {
+        safeColor[(sp * 13 + ss) % 52] = sp;
+      }
+    }
     TK.forEach(function(tc, i) {
-      tile(tc[0], tc[1], CO[i % 4]);
+      var col = safeColor.hasOwnProperty(i) ? CO[safeColor[i]] : CO[i % 4];
+      tile(tc[0], tc[1], col);
     });
 
     // === Launch cells ===

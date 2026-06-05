@@ -73,7 +73,7 @@
 
     // Character (system fonts first for mobile readability)
     ctx.fillStyle = isRed ? '#b02020' : '#2a2018';
-    ctx.font = 'bold ' + (radius * 1.2) + 'px system-ui,-apple-system,"KaiTi","楷体","STKaiti","Microsoft YaHei","PingFang SC",sans-serif';
+    ctx.font = 'bold ' + (radius * 1.2) + 'px "Ma Shan Zheng","KaiTi","楷体","STKaiti","Microsoft YaHei","PingFang SC",serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     var name = (PIECE_NAMES[piece.type] || {})[piece.side] || piece.type;
     ctx.fillText(name, x, y + 1.5);
@@ -232,7 +232,7 @@
     drawPalace(0); drawPalace(7);
 
     // River text
-    ctx.fillStyle = '#6b5040'; ctx.font = 'bold ' + (cs * 0.46) + 'px system-ui,-apple-system,"KaiTi","楷体","STKaiti","Microsoft YaHei","PingFang SC",sans-serif';
+    ctx.fillStyle = '#6b5040'; ctx.font = 'bold ' + (cs * 0.46) + 'px "Ma Shan Zheng","KaiTi","楷体","STKaiti","Microsoft YaHei","PingFang SC",serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('楚   河', margin + cs * 1.6, margin + 4.5 * cs);
     ctx.fillText('汉   界', margin + cs * 6.4, margin + 4.5 * cs);
