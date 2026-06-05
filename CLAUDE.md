@@ -54,7 +54,15 @@ rm -rf android/app/build
 - `public/style.css` — 全局样式（Design C 极简轻奢）
 - `android/` — Android Studio 项目（详见 `android/SETUP.md`）
 
-**新增一款游戏要改 5 处：** `games/<name>.js` + `bots/<name>.js` + `public/js/renderers/<name>.js` + `game.html` 引入脚本 + `index.html`/`room-client.js` 注册（名称映射、人数）。教程加到 `tutorials.js`。
+**新增一款游戏要改 5-6 处：**
+1. `games/<name>.js` — 游戏逻辑
+2. `bots/<name>.js` — AI（纯 PvP 可跳过）
+3. `public/js/renderers/<name>.js` — 前端渲染器
+4. `public/game.html` — `<script>` 引入渲染器
+5. `public/index.html` + `public/js/room-client.js` — 注册名称映射、人数
+6. `server.js` — 如果需要 per-player 视图（隐藏信息/合法走法），三个位置各加一个 else-if 分支
+
+教程加到 `tutorials.js`。
 
 ## 游戏模块接口（`games/*.js`）
 
@@ -70,8 +78,9 @@ exports.initGame = (state, playerCount) => {...}; // 可选，用于开局初始
 
 **特殊模式:**
 - 24 点游戏是同时竞速（非回合制），`scheduleBotMove` 和 `next_round` 有特殊处理分支。
-- **per-player 视图**（隐藏对手信息）：游戏导出 `exports.playerView(state, playerIndex)` 或 `exports.playerBoardView(...)`，server.js 在 `game_started`/`game_move`/`game_restart` 三处分别为每个玩家广播过滤后的 state。已用此模式：扫雷（`playerBoardView`，共享雷布局、独立 reveal/flag）、德州扑克（`playerView`，隐藏对手底牌）。新增需隐藏信息的游戏照此扩展 server.js 的 `if (room.game === ...)` 分支。
+- **per-player 视图**（隐藏对手信息 / 提供合法走法）：游戏导出 `exports.playerView(state, playerIndex)` 或 `exports.playerBoardView(...)`，server.js 在 `game_started`/`game_state`/`game_restart` 三处分别为每个玩家广播过滤后的 state。已用此模式：扫雷（`playerBoardView`，共享雷布局、独立 reveal/flag）、德州扑克（`playerView`，隐藏对手底牌）、中国象棋（`playerView`，向当前玩家提供 `legalMoves` 数组，非当前玩家为空）。新增需此模式的游戏照此扩展 server.js 的 `if (room.game === ...)` 分支。
 - **魔力桥重组**：rummikub 有 `phase: 'manipulate'` 操作台——`start_manipulate` 把桌面+手牌快照进 workspace，submit 校验"桌面原有牌必须全部重新成组"（否则丢牌），cancel 还原快照。前端 `renderManipulate` 是分格牌桌交互。
+- **飞行棋保底**：`noSixStreak` 字段存在每个 player 对象上，连续 5 次掷不出 6 且全部飞机在基地时自动给 6。
 
 ## AI 机器人接口（`bots/*.js`）
 
@@ -151,6 +160,33 @@ window.gameRenderers.set('gamename', {
 
 **逻辑/渲染常量同步:** 飞行棋的 `FLY_STEP`/`FLY_ADV`（跳棋+飞行落点）在 `games/flightchess.js` 与 `renderers/flightchess.js` 各有一份，改一处必须同步另一处，否则虚线画的位置和实际飞的位置对不上。
 
+**Canvas 动画模式（象棋/飞行棋已用）:** 纯 Canvas 渲染器实现动画的通用模式：
+
+```js
+// 动画状态机 — 模块级变量
+var animState = {
+  running: false, rafId: null,
+  type: 'none',        // 'none' | 'pickup' | 'move'
+  startTime: 0,
+  // 具体动画参数按需定义...
+};
+
+function startAnimLoop() { animState.running = true; animState.startTime = performance.now(); animTick(); }
+function stopAnimLoop() { animState.running = false; animState.type = 'none'; if (animState.rafId) cancelAnimationFrame(animState.rafId); }
+
+function animTick(now) {
+  var elapsed = now - animState.startTime;
+  // ease-out cubic: t = 1 - Math.pow(1 - Math.min(elapsed/duration, 1), 3)
+  // ease-in-out quad: t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2
+  // 动画进度更新 animState 字段 → drawFrame() → 完成后 running=false
+  if (animState.running) animState.rafId = requestAnimationFrame(animTick);
+}
+```
+
+**render() 职责分离：** `render()` 只做三件事：(1) 保存 state 到 `window._xSt`，(2) 检测对手走法（prev 快照对比），(3) 动画进行中直接 return（`animTick` 负责重绘），否则调用静态 `drawFrame()`。`drawFrame()` 包含完整绘制逻辑，在正常渲染和动画帧间共用。动画 overlay（被拿起的棋子/移动中的棋子）在 `drawFrame` 末尾绘制，正常棋子循环中 skip 被动画的棋子。
+
+**对手走法检测：** 象棋用 `cloneBoard` + `detectMove()`（遍历 2D 数组找变化），飞行棋用 `prevPlanes` 快照（比较每个 `planes[j]` 数值变化）。检测到变化后自动启动画。
+
 ## 现有游戏（17 款）
 
 | 游戏 | name | 人数 | AI | 特殊说明 |
@@ -169,8 +205,8 @@ window.gameRenderers.set('gamename', {
 | 大老二 | bigtwo | 2-4 | ✅ | 花色比大小 + ♦3 先手；多种牌型 |
 | 德州扑克 | texas | 2-8 | ✅ | 盲注 + 四轮下注 + 公共牌；per-player `playerView` 隐藏底牌 |
 | 骗子酒馆 | liarsbar | 2-6 | ✅ | 面朝下出牌 + 声明 + 质疑；命数可设 |
-| 飞行棋 | flightchess | 2-4 | ✅ | 掷6起飞/再掷；同色跳+4、虚线飞+24；`FLY_STEP/FLY_ADV` 逻辑与渲染各一份须同步 |
-| 中国象棋 | chinesechess | 2 | ✅ | minimax + alpha-beta；Canvas 木纹棋盘 |
+| 飞行棋 | flightchess | 2-4 | ✅ | 掷6起飞/再掷；同色跳+4、虚线飞+24；`FLY_STEP/FLY_ADV` 常量双份须同步；`noSixStreak` 保底机制（per-player）；堆叠偏移+拿起走子动画 |
+| 中国象棋 | chinesechess | 2 | ✅ | minimax + alpha-beta；Canvas 木纹棋盘；per-player view 提供 `legalMoves`；拿起/走子动画 + 合法走法绿点红圈指示 |
 | 围棋(9×9) | go9 | 2 | ✅ | 提子/禁着/打劫；EMPTY=0/BLACK=1/WHITE=2（与 playerIndex 区分）；黑贴3.75子 |
 
 ## 关键端点
