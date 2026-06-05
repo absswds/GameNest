@@ -319,3 +319,21 @@ exports.handleMove = (data, state, playerIndex) => {
 
   return null;
 };
+
+// Per-player view: include legal moves for the current player only
+exports.playerView = function(state, playerIndex) {
+  var view = {
+    currentPlayer: state.currentPlayer,
+    winner: state.winner,
+    board: state.board,
+    moveHistory: state.moveHistory,
+    _playerCount: state._playerCount,
+  };
+  // Only include legal moves if it is this player's turn and game is not over
+  if (state.winner === null && state.currentPlayer === playerIndex) {
+    view.legalMoves = getLegalMoves(state.board, playerIndex);
+  } else {
+    view.legalMoves = [];
+  }
+  return view;
+};

@@ -466,6 +466,14 @@ wss.on('connection', (ws) => {
             client.send(JSON.stringify({ type: 'game_started', state: viewState, players: roomPlayersList(currentRoom) }));
           }
         }
+      } else if (currentRoom.game === 'chinesechess' && gameMod.playerView) {
+        // Chinese Chess: per-player view (legal moves only for current player)
+        for (const [client, info] of currentRoom.players) {
+          if (client.readyState === 1) {
+            const viewState = gameMod.playerView(currentRoom.state, info.index);
+            client.send(JSON.stringify({ type: 'game_started', state: viewState, players: roomPlayersList(currentRoom) }));
+          }
+        }
       } else {
         broadcastRoom(currentRoom, {
           type: 'game_started',
@@ -613,6 +621,14 @@ wss.on('connection', (ws) => {
             client.send(JSON.stringify({ type: 'game_state', state: viewState, players: roomPlayersList(currentRoom) }));
           }
         }
+      } else if (currentRoom.game === 'chinesechess' && gameMod.playerView) {
+        // Chinese Chess: per-player view (legal moves only for current player)
+        for (const [client, info] of currentRoom.players) {
+          if (client.readyState === 1) {
+            const viewState = gameMod.playerView(currentRoom.state, info.index);
+            client.send(JSON.stringify({ type: 'game_state', state: viewState, players: roomPlayersList(currentRoom) }));
+          }
+        }
       } else {
         broadcastRoom(currentRoom, {
           type: 'game_state',
@@ -653,6 +669,14 @@ wss.on('connection', (ws) => {
           }
         }
       } else if (currentRoom.game === 'texas' && gameMod.playerView) {
+        for (const [client, info] of currentRoom.players) {
+          if (client.readyState === 1) {
+            const viewState = gameMod.playerView(currentRoom.state, info.index);
+            client.send(JSON.stringify({ type: 'game_state', state: viewState, players: roomPlayersList(currentRoom) }));
+          }
+        }
+      } else if (currentRoom.game === 'chinesechess' && gameMod.playerView) {
+        // Chinese Chess: per-player view (legal moves only for current player)
         for (const [client, info] of currentRoom.players) {
           if (client.readyState === 1) {
             const viewState = gameMod.playerView(currentRoom.state, info.index);
