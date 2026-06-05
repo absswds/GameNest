@@ -143,7 +143,7 @@ function roomPlayersList(room) {
 function scheduleTwentyFourBots(room) {
   if (!room.bots || room.bots.size === 0) return;
   for (const [idx, bot] of room.bots) {
-    const delay = 500 + Math.random() * 400; // 0.5~0.9s — feel human but actually fast
+    const delay = 20000 + Math.random() * 10000; // 20~30s — gives players a fair chance
     const attempt = (retries) => {
       setTimeout(() => {
         if (!rooms.has(room._roomId)) return;
