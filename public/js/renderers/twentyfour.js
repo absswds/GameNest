@@ -98,7 +98,8 @@
         var hintEl = document.getElementById('tfHint');
         if (hintEl) hintEl.textContent = '';
         var hintBtn = document.getElementById('tfHintBtn');
-        if (hintBtn) hintBtn.disabled = false;
+        clearInterval(_hintCooldownTimer); _hintCooldownTimer = null;
+        if (hintBtn) { hintBtn.disabled = false; hintBtn.textContent = '💡 来点提示'; }
         numsDiv.innerHTML = '';
         for (var i = 0; i < state.numbers.length; i++) {
           (function(idx) {
@@ -491,12 +492,38 @@
     var hintEl = document.getElementById('tfHint');
     if (hintEl) hintEl.textContent = '';
     var hintBtn = document.getElementById('tfHintBtn');
-    if (hintBtn) hintBtn.disabled = false;
+    clearInterval(_hintCooldownTimer); _hintCooldownTimer = null;
+    if (hintBtn) { hintBtn.disabled = false; hintBtn.textContent = '💡 来点提示'; }
+  }
+
+  var _hintCooldownTimer = null;
+  var HINT_COOLDOWN = 5; // seconds between hints
+
+  function startHintCooldown(btn) {
+    if (!btn) return;
+    var remain = HINT_COOLDOWN;
+    btn.disabled = true;
+    var baseLabel = '💡 来点提示';
+    btn.textContent = '⏳ ' + remain + 's';
+    clearInterval(_hintCooldownTimer);
+    _hintCooldownTimer = setInterval(function() {
+      remain--;
+      if (remain <= 0) {
+        clearInterval(_hintCooldownTimer);
+        _hintCooldownTimer = null;
+        // Only re-enable if not exhausted
+        if (_hintLevel < 16) btn.disabled = false;
+        btn.textContent = baseLabel;
+      } else {
+        btn.textContent = '⏳ ' + remain + 's';
+      }
+    }, 1000);
   }
 
   window._tfHint = function() {
     var hintEl = document.getElementById('tfHint');
     var hintBtn = document.getElementById('tfHintBtn');
+    if (hintBtn && hintBtn.disabled) return; // guard against spam / programmatic calls
     if (!_lastState || !_lastState.numbers) { if (hintEl) hintEl.textContent = '暂无数字'; return; }
     var solution = findSolution(_lastState.numbers.slice());
     if (!solution) {
@@ -511,7 +538,9 @@
       hintEl.textContent = '💡 [' + label + '] ' + hintText;
     }
     if (_hintLevel >= 16) {
-      if (hintBtn) hintBtn.disabled = true;
+      if (hintBtn) { hintBtn.disabled = true; hintBtn.textContent = '💡 提示已用尽'; }
+    } else {
+      startHintCooldown(hintBtn);
     }
   };
 })();

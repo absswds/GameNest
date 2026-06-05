@@ -139,17 +139,9 @@
     // === Background ===
     ctx.fillStyle = '#1a2540'; ctx.fillRect(0, 0, W, W);
 
-    // === Track cells ===
-    // Pre-compute safe runway: 5 cells before each player's home entry = their own color
-    var safeColor = {};
-    for (var sp = 0; sp < 4; sp++) {
-      for (var ss = 47; ss <= 51; ss++) {
-        safeColor[(sp * 13 + ss) % 52] = sp;
-      }
-    }
+    // === Track cells === (rainbow i%4 is core mechanic: landing on own color = jump)
     TK.forEach(function(tc, i) {
-      var col = safeColor.hasOwnProperty(i) ? CO[safeColor[i]] : CO[i % 4];
-      tile(tc[0], tc[1], col);
+      tile(tc[0], tc[1], CO[i % 4]);
     });
 
     // === Launch cells ===
@@ -184,18 +176,6 @@
       ctx.fillText('✈', a.x, a.y);
     }
 
-    // === Home stretch cells ===
-    for (var p2 = 0; p2 < 4; p2++) {
-      for (var h = 0; h < 6; h++) {
-        var hc = HM[p2 * 6 + h]; tile(hc[0], hc[1], CO[p2]);
-        if (h === 0) {
-          var pt2 = gp(hc[0], hc[1]);
-          ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold ' + (cs * .44) + 'px system-ui';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(HOME_ARROW[p2], pt2.x, pt2.y);
-        }
-      }
-    }
-
     // === Bases ===
     BS.forEach(function(bc, bi) {
       var bx = bc.c * cs, by = bc.r * cs, bw = 6 * cs, bh = 6 * cs, g = cs * .12;
@@ -211,16 +191,35 @@
     });
 
     // === Center triangles + hub ===
-    var ccx = 7.5 * cs, ccy = 7.5 * cs, reach = cs * 1.5;
+    // Keep reach small so the home-stretch arms stay clearly OUTSIDE the endpoint —
+    // otherwise the inner-most home cell (and its plane) overlaps the triangle.
+    var ccx = 7.5 * cs, ccy = 7.5 * cs, reach = cs * 0.55;
     var corners = [{x: ccx + reach, y: ccy - reach}, {x: ccx + reach, y: ccy + reach}, {x: ccx - reach, y: ccy + reach}, {x: ccx - reach, y: ccy - reach}];
     var triEdges = [[0, 1], [1, 2], [2, 3], [3, 0]];
     for (var t = 0; t < 4; t++) {
-      // Remap center triangle colors: right=blue(P2), bottom=green(P1), left=red(P0), top=yellow(P3)
-      var tc = t === 0 ? 2 : t === 2 ? 0 : t;
+      // Center triangle must match the home-stretch arm pointing at it:
+      // t=0 right→green(P1), t=1 bottom→blue(P2), t=2 left→yellow(P3), t=3 top→red(P0)
+      var tc = (t + 1) % 4;
       var e = triEdges[t]; ctx.fillStyle = CO[tc];
       ctx.beginPath(); ctx.moveTo(ccx, ccy); ctx.lineTo(corners[e[0]].x, corners[e[0]].y); ctx.lineTo(corners[e[1]].x, corners[e[1]].y); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
     }
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ccx, ccy, cs * .34, 0, 6.28); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(ccx, ccy, cs * .34, 0, 6.28); ctx.stroke();
+
+    // === Home stretch cells === (drawn ON TOP of center triangles so the inner-most
+    // home cell sits on a clear colored tile, not floating inside the endpoint triangle)
+    for (var p2 = 0; p2 < 4; p2++) {
+      for (var h = 0; h < 6; h++) {
+        var hc = HM[p2 * 6 + h]; tile(hc[0], hc[1], CO[p2]);
+        if (h === 0) {
+          var pt2 = gp(hc[0], hc[1]);
+          ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold ' + (cs * .44) + 'px system-ui';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(HOME_ARROW[p2], pt2.x, pt2.y);
+        }
+      }
+    }
+    // Re-draw center hub on top of home cells so the finish point stays clean
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ccx, ccy, cs * .34, 0, 6.28); ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(ccx, ccy, cs * .34, 0, 6.28); ctx.stroke();
 
@@ -281,6 +280,22 @@
           window._fcHb.push({x: ppX, y: ppY, r: pR + cs * .14, pi: p.pli, idx: p.idx});
         }
       }
+    }
+
+    // === "已到家" badge: finished planes sit stacked in the base centre, label them ===
+    for (var fp = 0; fp < s._playerCount; fp++) {
+      var fpd = s.players[fp]; if (!fpd) continue;
+      var fin = fpd.planes.filter(function(pp2) { return pp2 >= 58; }).length;
+      if (fin <= 0) continue;
+      var fbc = BS[fp];
+      var lx = fbc.c * cs + 3 * cs, ly = fbc.r * cs + 3 * cs - 1.55 * cs;
+      var txt = '🏆 已到家 ' + fin + '/' + PP;
+      ctx.font = 'bold ' + (cs * .42) + 'px system-ui';
+      var tw = ctx.measureText(txt).width, pad = cs * .28;
+      ctx.fillStyle = 'rgba(0,0,0,0.62)';
+      ctx.beginPath(); rr(lx - tw / 2 - pad, ly - cs * .34, tw + 2 * pad, cs * .68, cs * .34); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(txt, lx, ly);
     }
 
     // === Animation overlay: picked-up plane ===
@@ -455,8 +470,10 @@
       window._fcSt = s; window._fcCnt = container;
       if (!cvs) return;
 
-      // Detect opponent plane movement for animation
-      if (!animState.running && prevPlanes && s.players) {
+      // Detect plane movement for animation. Allow detection during a 'pickup'
+      // (so the player's OWN move chains pickup→slide); only skip while a 'move'
+      // animation is already playing.
+      if (animState.type !== 'move' && prevPlanes && s.players) {
         for (var pli = 0; pli < s._playerCount; pli++) {
           if (!s.players[pli] || !prevPlanes[pli]) continue;
           for (var i = 0; i < PP; i++) {
