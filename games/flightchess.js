@@ -22,6 +22,7 @@ exports.createState = () => {
     currentPlayer: 0, winner: null, players, dice: 1,
     consecutiveSixes: 0, hasRolled: false, _playerCount: 4,
     lastMoveResult: '', // for frontend display
+    palette: [0, 1, 2, 3], // slot → base-color index (cosmetic only); randomized in initGame
   };
 };
 
@@ -208,4 +209,14 @@ function windowNames(pi) {
   return `玩家${pi+1}`;
 }
 
-exports.initGame = (state, pc) => { state._playerCount = pc; state.players.length = pc; };
+exports.initGame = (state, pc) => {
+  state._playerCount = pc;
+  state.players.length = pc;
+  // Randomize the cosmetic color assignment each game (Fisher–Yates on [0,1,2,3]).
+  const pal = [0, 1, 2, 3];
+  for (let i = pal.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pal[i], pal[j]] = [pal[j], pal[i]];
+  }
+  state.palette = pal;
+};

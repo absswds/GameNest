@@ -137,12 +137,18 @@
     window._fcHb = [];
     var cs = cellSize();
 
+    // === Color palette remap (random per game; slot → base color) ===
+    var pal = (s.palette && s.palette.length === 4) ? s.palette : [0, 1, 2, 3];
+    var rCO  = pal.map(function(k) { return CO[k]; });
+    var rCOL = pal.map(function(k) { return COL[k]; });
+    var rCOD = pal.map(function(k) { return COD[k]; });
+
     // === Background ===
     ctx.fillStyle = '#1a2540'; ctx.fillRect(0, 0, W, W);
 
     // === Track cells === (rainbow i%4 is core mechanic: landing on own color = jump)
     TK.forEach(function(tc, i) {
-      tile(tc[0], tc[1], CO[i % 4]);
+      tile(tc[0], tc[1], rCO[i % 4]);
     });
 
     // === Launch cells ===
@@ -161,33 +167,33 @@
       ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = cs * .16;
       ctx.setLineDash([cs * .26, cs * .2]);
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-      ctx.strokeStyle = CO[p]; ctx.lineWidth = cs * .09;
+      ctx.strokeStyle = rCO[p]; ctx.lineWidth = cs * .09;
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       ctx.setLineDash([]);
       var ang = Math.atan2(b.y - a.y, b.x - a.x), ah = cs * .34;
-      ctx.fillStyle = CO[p];
+      ctx.fillStyle = rCO[p];
       ctx.beginPath();
       ctx.moveTo(b.x, b.y);
       ctx.lineTo(b.x - ah * Math.cos(ang - 0.4), b.y - ah * Math.sin(ang - 0.4));
       ctx.lineTo(b.x - ah * Math.cos(ang + 0.4), b.y - ah * Math.sin(ang + 0.4));
       ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(a.x, a.y, cs * .32, 0, 6.28); ctx.fill();
-      ctx.strokeStyle = CO[p]; ctx.lineWidth = cs * .08; ctx.beginPath(); ctx.arc(a.x, a.y, cs * .32, 0, 6.28); ctx.stroke();
-      ctx.fillStyle = CO[p]; ctx.font = 'bold ' + (cs * .4) + 'px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.strokeStyle = rCO[p]; ctx.lineWidth = cs * .08; ctx.beginPath(); ctx.arc(a.x, a.y, cs * .32, 0, 6.28); ctx.stroke();
+      ctx.fillStyle = rCO[p]; ctx.font = 'bold ' + (cs * .4) + 'px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('✈', a.x, a.y);
     }
 
     // === Bases ===
     BS.forEach(function(bc, bi) {
       var bx = bc.c * cs, by = bc.r * cs, bw = 6 * cs, bh = 6 * cs, g = cs * .12;
-      ctx.fillStyle = COL[bi];
+      ctx.fillStyle = rCOL[bi];
       ctx.beginPath(); rr(bx + g, by + g, bw - 2 * g, bh - 2 * g, cs * .55); ctx.fill();
-      ctx.strokeStyle = CO[bi]; ctx.lineWidth = cs * .1;
+      ctx.strokeStyle = rCO[bi]; ctx.lineWidth = cs * .1;
       ctx.beginPath(); rr(bx + g, by + g, bw - 2 * g, bh - 2 * g, cs * .55); ctx.stroke();
       for (var si = 0; si < 4; si++) {
         var sx = bx + bw * (.22 + (si % 2) * .56), sy = by + bh * (.22 + (si < 2 ? 0 : .56));
         ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(sx, sy, cs * .4, 0, 6.28); ctx.fill();
-        ctx.strokeStyle = CO[bi]; ctx.lineWidth = cs * .06; ctx.beginPath(); ctx.arc(sx, sy, cs * .4, 0, 6.28); ctx.stroke();
+        ctx.strokeStyle = rCO[bi]; ctx.lineWidth = cs * .06; ctx.beginPath(); ctx.arc(sx, sy, cs * .4, 0, 6.28); ctx.stroke();
       }
     });
 
@@ -201,7 +207,7 @@
       // Center triangle must match the home-stretch arm pointing at it:
       // t=0 right→green(P1), t=1 bottom→blue(P2), t=2 left→yellow(P3), t=3 top→red(P0)
       var tc = (t + 1) % 4;
-      var e = triEdges[t]; ctx.fillStyle = CO[tc];
+      var e = triEdges[t]; ctx.fillStyle = rCO[tc];
       ctx.beginPath(); ctx.moveTo(ccx, ccy); ctx.lineTo(corners[e[0]].x, corners[e[0]].y); ctx.lineTo(corners[e[1]].x, corners[e[1]].y); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
     }
@@ -212,7 +218,7 @@
     // home cell sits on a clear colored tile, not floating inside the endpoint triangle)
     for (var p2 = 0; p2 < 4; p2++) {
       for (var h = 0; h < 6; h++) {
-        var hc = HM[p2 * 6 + h]; homeTile(hc[0], hc[1], CO[p2]);
+        var hc = HM[p2 * 6 + h]; homeTile(hc[0], hc[1], rCO[p2]);
         if (h === 0) {
           var pt2 = gp(hc[0], hc[1]);
           ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold ' + (cs * .44) + 'px system-ui';
@@ -264,7 +270,7 @@
 
         // Plane body radial gradient
         var pgr = ctx.createRadialGradient(ppX - pR * .3, ppY - pR * .3, pR * .05, ppX, ppY, pR);
-        pgr.addColorStop(0, '#fff'); pgr.addColorStop(0.5, CO[p.pli]); pgr.addColorStop(1, COD[p.pli]);
+        pgr.addColorStop(0, '#fff'); pgr.addColorStop(0.5, rCO[p.pli]); pgr.addColorStop(1, rCOD[p.pli]);
         ctx.fillStyle = pgr; ctx.strokeStyle = '#fff'; ctx.lineWidth = cs * .05;
         ctx.beginPath(); ctx.arc(ppX, ppY, pR, 0, 6.28); ctx.fill(); ctx.stroke();
 
@@ -314,7 +320,7 @@
 
         // Lifted body
         var agr = ctx.createRadialGradient(ap.x - ar * .3, ap.y - ar * .4, ar * .05, ap.x, ap.y, ar);
-        agr.addColorStop(0, '#ffffff'); agr.addColorStop(0.5, CO[animState.pickupPli]); agr.addColorStop(1, COD[animState.pickupPli]);
+        agr.addColorStop(0, '#ffffff'); agr.addColorStop(0.5, rCO[animState.pickupPli]); agr.addColorStop(1, rCOD[animState.pickupPli]);
         ctx.fillStyle = agr; ctx.strokeStyle = '#fff'; ctx.lineWidth = cs * .05;
         ctx.beginPath(); ctx.arc(ap.x, ap.y, ar, 0, 6.28); ctx.fill(); ctx.stroke();
 
@@ -348,7 +354,7 @@
       ctx.beginPath(); ctx.arc(mx + mShadowOff, my + mShadowOff + 2, mr, 0, 6.28); ctx.fill();
 
       var mgr = ctx.createRadialGradient(mx - mr * .3, my - mr * .3, mr * .05, mx, my, mr);
-      mgr.addColorStop(0, '#ffffff'); mgr.addColorStop(0.5, CO[animState.movePli]); mgr.addColorStop(1, COD[animState.movePli]);
+      mgr.addColorStop(0, '#ffffff'); mgr.addColorStop(0.5, rCO[animState.movePli]); mgr.addColorStop(1, rCOD[animState.movePli]);
       ctx.fillStyle = mgr; ctx.strokeStyle = '#fff'; ctx.lineWidth = cs * .05;
       ctx.beginPath(); ctx.arc(mx, my, mr, 0, 6.28); ctx.fill(); ctx.stroke();
 
@@ -373,7 +379,7 @@
     if (diceEl) {
       var dv = s.dice;
       if (s.hasRolled && dv) {
-        var who = s.currentPlayer, wc = CO[who] || '#333';
+        var who = s.currentPlayer, wc = rCO[who] || '#333';
         var wn = (window.gamePlayers && window.gamePlayers[who]) ? window.gamePlayers[who].name : '玩家' + (who + 1);
         diceEl.innerHTML = dieBox(dv, wc) + '<span style="font-size:18px;font-weight:800;color:' + wc + ';">' + wn + ' 掷出 ' + dv + ' 点</span>';
       } else if (dv) {
@@ -381,6 +387,23 @@
       } else {
         diceEl.innerHTML = '<span style="font-size:40px;opacity:.25;">🎲</span>';
       }
+    }
+
+    // === Color legend (which player is which color) ===
+    var legEl = document.getElementById('fcLegend');
+    if (legEl) {
+      var chips = '';
+      for (var lp = 0; lp < s._playerCount; lp++) {
+        var lnm = (window.gamePlayers && window.gamePlayers[lp]) ? window.gamePlayers[lp].name : '玩家' + (lp + 1);
+        var isMe = lp === pi;
+        var isTurn = lp === s.currentPlayer && s.winner == null;
+        chips += '<span style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;' +
+          'padding:3px 9px;border-radius:14px;background:' + (isTurn ? 'rgba(200,164,92,.18)' : '#fff') +
+          ';border:1px solid ' + (isTurn ? '#c8a45c' : '#e4e4e4') + ';color:#444;">' +
+          '<span style="width:12px;height:12px;border-radius:50%;background:' + rCO[lp] + ';border:1px solid rgba(0,0,0,.15);"></span>' +
+          lnm + (isMe ? '（你）' : '') + '</span>';
+      }
+      legEl.innerHTML = chips;
     }
 
     // === Info & button ===
@@ -405,6 +428,7 @@
       cnt = container;
       container.innerHTML =
         '<div style="width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;">' +
+        '<div id="fcLegend" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;min-height:26px;"></div>' +
         '<canvas id="fcCanvas" style="display:block;border-radius:16px;touch-action:manipulation;cursor:pointer;box-shadow:0 6px 28px rgba(0,0,0,.18);"></canvas>' +
         '<div id="fcDice" style="display:flex;align-items:center;justify-content:center;gap:12px;min-height:60px;"></div>' +
         '<div id="fcInfo" style="font-size:15px;color:#666;font-weight:600;text-align:center;min-height:22px;"></div>' +
