@@ -62,18 +62,18 @@
     ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
 
     // Outer ring
-    ctx.strokeStyle = isRed ? '#c04040' : '#1a1a1a';
+    ctx.strokeStyle = isRed ? '#c04040' : '#3a3028';
     ctx.lineWidth = 2.8;
     ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.stroke();
 
     // Inner ring
-    ctx.strokeStyle = isRed ? '#c04040' : '#1a1a1a';
+    ctx.strokeStyle = isRed ? '#c04040' : '#3a3028';
     ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.arc(x, y, radius * 0.78, 0, Math.PI * 2); ctx.stroke();
 
-    // Character
-    ctx.fillStyle = isRed ? '#b02020' : '#111';
-    ctx.font = 'bold ' + (radius * 1.2) + 'px "KaiTi","楷体","STKaiti","SimSun",serif';
+    // Character (system fonts first for mobile readability)
+    ctx.fillStyle = isRed ? '#b02020' : '#2a2018';
+    ctx.font = 'bold ' + (radius * 1.2) + 'px system-ui,-apple-system,"KaiTi","楷体","STKaiti","Microsoft YaHei","PingFang SC",sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     var name = (PIECE_NAMES[piece.type] || {})[piece.side] || piece.type;
     ctx.fillText(name, x, y + 1.5);
@@ -187,14 +187,14 @@
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
     var boardH = cs * (ROWS - 1);
 
-    // === Board background (wood gradient) ===
+    // === Board background (wood gradient — warm, bright) ===
     var bgGrad = ctx.createLinearGradient(0, 0, W, boardH + margin * 2);
-    bgGrad.addColorStop(0, '#e8c97a'); bgGrad.addColorStop(0.5, '#dfb85a'); bgGrad.addColorStop(1, '#d4a840');
+    bgGrad.addColorStop(0, '#f2da90'); bgGrad.addColorStop(0.5, '#ebcc70'); bgGrad.addColorStop(1, '#e2bc50');
     ctx.fillStyle = bgGrad;
     ctx.beginPath(); rrect(ctx, margin - 16, margin - 16, cs * (COLS - 1) + 32, boardH + 32, 10); ctx.fill();
 
-    // Inner shadow effect
-    ctx.fillStyle = '#d4a535';
+    // Inner border
+    ctx.fillStyle = '#dac080';
     ctx.beginPath(); rrect(ctx, margin - 8, margin - 8, cs * (COLS - 1) + 16, boardH + 16, 6); ctx.fill();
 
     // Wood grain lines (subtle)
@@ -204,8 +204,8 @@
       ctx.moveTo(margin - 8, gy); ctx.lineTo(margin + cs * (COLS - 1) + 8, gy + Math.sin(gy * 0.1) * 8); ctx.stroke();
     }
 
-    // === Grid lines ===
-    ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 1.5;
+    // === Grid lines (warm brown) ===
+    ctx.strokeStyle = '#8b6b4a'; ctx.lineWidth = 1.5;
     var riverTop = margin + 4 * cs, riverBot = margin + 5 * cs;
 
     // Horizontals
@@ -232,7 +232,7 @@
     drawPalace(0); drawPalace(7);
 
     // River text
-    ctx.fillStyle = '#5a3a1a'; ctx.font = 'bold ' + (cs * 0.46) + 'px "KaiTi","楷体","STKaiti",serif';
+    ctx.fillStyle = '#6b5040'; ctx.font = 'bold ' + (cs * 0.46) + 'px system-ui,-apple-system,"KaiTi","楷体","STKaiti","Microsoft YaHei","PingFang SC",sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('楚   河', margin + cs * 1.6, margin + 4.5 * cs);
     ctx.fillText('汉   界', margin + cs * 6.4, margin + 4.5 * cs);
@@ -315,7 +315,7 @@
 
     // === Status bar ===
     var sy = margin + boardH + 22;
-    ctx.fillStyle = '#1a1a1a'; ctx.font = 'bold 16px system-ui'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#3a3028'; ctx.font = 'bold 16px system-ui,-apple-system,sans-serif'; ctx.textAlign = 'center';
     var pi = parseInt(sessionStorage.getItem('playerIndex'));
     if (state.winner != null) {
       ctx.fillText(state.winner === pi ? '🏆 你赢了！' : '😢 你输了', W / 2, sy);

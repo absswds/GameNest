@@ -207,7 +207,9 @@
     var corners = [{x: ccx + reach, y: ccy - reach}, {x: ccx + reach, y: ccy + reach}, {x: ccx - reach, y: ccy + reach}, {x: ccx - reach, y: ccy - reach}];
     var triEdges = [[0, 1], [1, 2], [2, 3], [3, 0]];
     for (var t = 0; t < 4; t++) {
-      var e = triEdges[t]; ctx.fillStyle = CO[t];
+      // Remap center triangle colors: right=blue(P2), bottom=green(P1), left=red(P0), top=yellow(P3)
+      var tc = t === 0 ? 2 : t === 2 ? 0 : t;
+      var e = triEdges[t]; ctx.fillStyle = CO[tc];
       ctx.beginPath(); ctx.moveTo(ccx, ccy); ctx.lineTo(corners[e[0]].x, corners[e[0]].y); ctx.lineTo(corners[e[1]].x, corners[e[1]].y); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
     }
@@ -262,9 +264,10 @@
         ctx.fillStyle = '#fff'; ctx.font = (pR * .95) + 'px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText('✈', ppX, ppY);
 
-        // Selection ring (for movable pieces)
+        // Selection ring (for movable pieces) — base planes only glow when dice=6
         if (p.pli === parseInt(sessionStorage.getItem('playerIndex')) &&
-            s.hasRolled && s.currentPlayer === p.pli && p.pos !== 58) {
+            s.hasRolled && s.currentPlayer === p.pli && p.pos !== 58 &&
+            (s.dice === 6 || p.pos !== -1)) {
           ctx.strokeStyle = '#ffe24d'; ctx.lineWidth = cs * .08; ctx.setLineDash([cs * .16, cs * .1]);
           ctx.beginPath(); ctx.arc(ppX, ppY, pR + cs * .14, 0, 6.28); ctx.stroke(); ctx.setLineDash([]);
           window._fcHb.push({x: ppX, y: ppY, r: pR + cs * .14, pi: p.pli, idx: p.idx});

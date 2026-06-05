@@ -16,7 +16,7 @@ exports.maxPlayers = 4;
 exports.createState = () => {
   const players = [];
   for (let i = 0; i < 4; i++) {
-    players.push({ planes: [-1, -1, -1, -1], finished: 0 });
+    players.push({ planes: [-1, -1, -1, -1], finished: 0, noSixStreak: 0 });
   }
   return {
     currentPlayer: 0, winner: null, players, dice: 1,
@@ -34,7 +34,22 @@ exports.handleMove = (data, state, playerIndex) => {
 
   if (action === 'roll' || !action) {
     if (state.hasRolled) return '请先移动飞机';
-    const dice = Math.floor(Math.random() * 6) + 1;
+    let dice = Math.floor(Math.random() * 6) + 1;
+
+    // Pity mechanism: if all planes are in base (or home) and player has rolled
+    // non-6 for 5 consecutive turns, force a 6 so they can launch
+    const allInBase = pData.planes.every(function(p) { return p === -1 || p === HOME; });
+    if (allInBase && dice !== 6) {
+      pData.noSixStreak = (pData.noSixStreak || 0) + 1;
+      if (pData.noSixStreak >= 5) {
+        dice = 6;
+        pData.noSixStreak = 0;
+        state.lastMoveResult = '🎲 保底机制触发！自动获得6点';
+      }
+    } else if (dice === 6 || !allInBase) {
+      pData.noSixStreak = 0;
+    }
+
     state.dice = dice; state.hasRolled = true;
     state.lastMoveResult = `${windowNames(playerIndex)} 掷了 ${dice} 点`;
 
