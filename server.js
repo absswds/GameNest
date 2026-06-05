@@ -143,19 +143,26 @@ function roomPlayersList(room) {
 function scheduleTwentyFourBots(room) {
   if (!room.bots || room.bots.size === 0) return;
   for (const [idx, bot] of room.bots) {
-    const delay = 1000 + Math.random() * 1000;
-    setTimeout(() => {
-      if (!rooms.has(room._roomId)) return;
-      if (room.state.phase !== 'playing') return;
-      try {
-        const moveData = bot.getMove(room.state);
-        if (!moveData.expression) return;
-        const gameMod = gameRegistry[room.game];
-        const err = gameMod.handleMove(moveData, room.state, idx);
-        if (err) { console.error('24 Bot error:', err); return; }
-        broadcastRoom(room, { type: 'game_state', state: room.state, players: roomPlayersList(room) });
-      } catch(e) { console.error('24 Bot exception:', e.message); }
-    }, delay);
+    const delay = 500 + Math.random() * 400; // 0.5~0.9s — feel human but actually fast
+    const attempt = (retries) => {
+      setTimeout(() => {
+        if (!rooms.has(room._roomId)) return;
+        if (room.state.phase !== 'playing') {
+          // round hasn't started yet — retry once after a short wait
+          if (retries > 0) attempt(retries - 1);
+          return;
+        }
+        try {
+          const moveData = bot.getMove(room.state);
+          if (!moveData.expression) return;
+          const gameMod = gameRegistry[room.game];
+          const err = gameMod.handleMove(moveData, room.state, idx);
+          if (err) { console.error('24 Bot error:', err); return; }
+          broadcastRoom(room, { type: 'game_state', state: room.state, players: roomPlayersList(room) });
+        } catch(e) { console.error('24 Bot exception:', e.message); }
+      }, retries === 3 ? delay : 300);
+    };
+    attempt(3);
   }
 }
 
