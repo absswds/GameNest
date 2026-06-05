@@ -668,6 +668,8 @@ wss.on('connection', (ws) => {
       const totalPlayers = currentRoom.players.size + (currentRoom.bots ? currentRoom.bots.size : 0);
       currentRoom.state = gameMod.createState();
       currentRoom.state._playerCount = totalPlayers;
+      currentRoom.state._realPlayerCount = currentRoom.players.size;
+      currentRoom.state._hasBots = currentRoom.bots.size > 0;
       currentRoom.state._options = { ...currentRoom.options };
       if (gameMod && gameMod.initGame) {
         gameMod.initGame(currentRoom.state, totalPlayers);
