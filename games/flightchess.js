@@ -144,14 +144,14 @@ function resolveSpecial(state, pi, idx) {
   }
 }
 
-// Fly along the dashed line (+FLY_ADV), then jump +4 since the landing cell is own color
+// Fly along the dashed line (+FLY_ADV) and STOP exactly at the arrow's end.
+// No extra +4: the landing cell is own color, but chaining would overshoot the
+// visible dashed arrow and confuse the player.
 function flyAcross(state, pi, idx) {
   const p = state.players[pi];
   const dest = p.planes[idx] + FLY_ADV;
   if (dest >= MAIN_PATH) return;
   p.planes[idx] = dest; doLanding(state, pi, idx);
-  const jump = dest + 4;
-  if (jump < MAIN_PATH) { p.planes[idx] = jump; doLanding(state, pi, idx); }
 }
 
 function hasValidMove(state, pi) {
