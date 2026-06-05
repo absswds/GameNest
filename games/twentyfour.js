@@ -4,17 +4,42 @@
 exports.name = 'twentyfour';
 exports.maxPlayers = 99;
 
-function generateNumbers() {
-  for (let attempts = 0; attempts < 100; attempts++) {
-    const nums = [
-      Math.floor(Math.random() * 13) + 1,
-      Math.floor(Math.random() * 13) + 1,
-      Math.floor(Math.random() * 13) + 1,
-      Math.floor(Math.random() * 13) + 1,
-    ];
-    if (hasSolution(nums)) return nums;
+// Pre-shuffled pool of all solvable 4-number combinations (1-13, sorted key, deduplicated).
+// Built once on first use, reshuffled each time it's exhausted.
+let _numPool = [];
+let _numPoolIdx = 0;
+
+function buildPool() {
+  const seen = new Set();
+  const pool = [];
+  // Enumerate all sorted combos (allow repeats, i≤j≤k≤l for dedup)
+  for (let a = 1; a <= 13; a++)
+    for (let b = a; b <= 13; b++)
+      for (let c = b; c <= 13; c++)
+        for (let d = c; d <= 13; d++) {
+          const nums = [a, b, c, d];
+          if (hasSolution(nums)) pool.push(nums);
+        }
+  // Fisher-Yates shuffle
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  return [8, 3, 8, 3];
+  return pool;
+}
+
+function generateNumbers() {
+  if (_numPoolIdx >= _numPool.length) {
+    _numPool = buildPool();
+    _numPoolIdx = 0;
+  }
+  // Return a copy with random ordering of the 4 numbers
+  const base = _numPool[_numPoolIdx++].slice();
+  for (let i = base.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [base[i], base[j]] = [base[j], base[i]];
+  }
+  return base;
 }
 
 function genResults(nums) {
