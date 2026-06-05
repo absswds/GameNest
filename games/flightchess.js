@@ -92,14 +92,17 @@ exports.handleMove = (data, state, playerIndex) => {
     }
 
     if (pos >= MAIN_PATH) {
-      // Home stretch
-      if (pos + dice > HOME) return '需要精准点数到达终点';
-      if (pos + dice === HOME) {
+      // Home stretch — exact count finishes; overshoot bounces back off the end,
+      // so a plane is never permanently stuck waiting for the exact roll.
+      let target = pos + dice;
+      if (target > HOME) target = HOME - (target - HOME); // bounce back
+      if (target === HOME) {
         pData.planes[idx] = HOME; pData.finished++;
         state.lastMoveResult = `${windowNames(playerIndex)} 飞机${idx+1}号到家了！`;
         if (pData.finished >= PLANES) { state.winner = playerIndex; return null; }
       } else {
-        pData.planes[idx] = pos + dice;
+        if (target < pos) state.lastMoveResult = `${windowNames(playerIndex)} 点数过头，反弹回退`;
+        pData.planes[idx] = target;
       }
       endTurn(state, playerIndex); return null;
     }
@@ -161,7 +164,7 @@ function hasValidMove(state, pi) {
     const po = p.planes[i];
     if (po === HOME) continue;
     if (po === -1) { if (d === 6) return true; continue; }
-    if (po >= MAIN_PATH) { if (po + d === HOME) return true; continue; }
+    if (po >= MAIN_PATH) { return true; } // home stretch: exact finishes, overshoot bounces
     if (po >= 0 && po < MAIN_PATH) return true;
   }
   return false;

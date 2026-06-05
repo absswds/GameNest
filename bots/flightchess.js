@@ -30,8 +30,11 @@ exports.createBot = (playerIndex) => ({
         // In base — can only move with 6
         if (dice === 6) score = 100; // launch has high priority
       } else if (pos >= 52) {
-        // Home stretch
-        if (pos + dice === 58) score = 200; // reaching home!
+        // Home stretch — exact finishes; otherwise advance (overshoot bounces back)
+        let target = pos + dice;
+        if (target > 58) target = 58 - (target - 58); // bounce back off the end
+        if (target === 58) score = 200;               // reaching home!
+        else score = 50 + (target - pos);             // prefer forward progress over a bounce
       } else {
         // On main path
         const newPos = pos + dice;
