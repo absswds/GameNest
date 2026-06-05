@@ -229,6 +229,14 @@ Design C 极简轻奢：浅灰底 `#f8f9fa`，白色卡片，金色点缀 `#c8a4
 
 **象棋/跨端字体统一：** Canvas `ctx.font` 不能以 `system-ui` 开头（不同 OS 字体差异大）。`game.html` 已加载 Google Fonts `Ma Shan Zheng`，象棋渲染器字体栈以 `"Ma Shan Zheng"` 开头保证跨端一致。
 
+**24 点 bot solver 对象/基值混用：** `bots/twentyfour.js` 的 `genResults` 接收 `{val, expr}` 对象数组。运算时必须用 `a.val + b.val`，表达式用 `a.expr + '+' + b.expr`；基准情况直接 `return [nums[0]]`（不能再包一层 `{val: nums[0], ...}`）。历史上这里用了 `a + b`（对象加法→字符串拼接 `[object Object]`），导致 solver 从未真正找到过解。
+
+**24 点竞速游戏的"一次性调度"陷阱：** `scheduleTwentyFourBots` 只在 `start_game` / `next_round` / `game_restart` 时各调度一次。若调度触发时 `state.phase !== 'playing'`（开局时序问题），原来直接 return 导致 bot 永远不提交。现已改为最多重试 3 次（每次 300ms 间隔）。
+
+**`_hasBots`/`_realPlayerCount` 跨事件丢失：** server.js 在 `start_game` 和 `next_round` 里向 state 写入 `_hasBots`、`_realPlayerCount`，但 `game_restart` 用 `createState()` 重建 state 后会丢失这两个字段，导致前端判断逻辑回退默认值。凡是调用 `createState()` 重置 state 的路径，都要重新写入这类"运行时注入"字段。
+
+**前端渲染器模块级变量跨局持久：** 渲染器是单例，`_lastTimedNumsKey`、`_hintLevel` 等模块级变量在同一页面会话内跨局保留。依赖这些变量判断"新一局"时，需确认重置逻辑（如 `resetHintForRound`）一定被触发，而不依赖页面刷新。
+
 ## Android 已知坑
 
 - **NDK 版本:** 必须用 NDK 24.0.8215888（`app/build.gradle` 中 `ndkVersion`），与 nodejs-mobile v18.20.4 的 libnode.so 编译版本一致
