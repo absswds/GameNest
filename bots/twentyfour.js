@@ -2,23 +2,23 @@
 exports.name = 'twentyfour';
 
 function genResults(nums) {
-  if (nums.length === 1) return [{ val: nums[0], expr: String(nums[0]) }];
+  // nums: array of {val, expr}
+  if (nums.length === 1) return [nums[0]];
   const results = [];
   for (let i = 0; i < nums.length; i++) {
     for (let j = i + 1; j < nums.length; j++) {
       const a = nums[i], b = nums[j];
       const rest = nums.filter((_, k) => k !== i && k !== j);
       const pairs = [
-        { val: a + b, expr: '(' + a + '+' + b + ')' },
-        { val: a - b, expr: '(' + a + '-' + b + ')' },
-        { val: b - a, expr: '(' + b + '-' + a + ')' },
-        { val: a * b, expr: '(' + a + '*' + b + ')' },
+        { val: a.val + b.val, expr: '(' + a.expr + '+' + b.expr + ')' },
+        { val: a.val - b.val, expr: '(' + a.expr + '-' + b.expr + ')' },
+        { val: b.val - a.val, expr: '(' + b.expr + '-' + a.expr + ')' },
+        { val: a.val * b.val, expr: '(' + a.expr + '*' + b.expr + ')' },
       ];
-      if (b !== 0) pairs.push({ val: a / b, expr: '(' + a + '/' + b + ')' });
-      if (a !== 0) pairs.push({ val: b / a, expr: '(' + b + '/' + a + ')' });
+      if (b.val !== 0) pairs.push({ val: a.val / b.val, expr: '(' + a.expr + '/' + b.expr + ')' });
+      if (a.val !== 0) pairs.push({ val: b.val / a.val, expr: '(' + b.expr + '/' + a.expr + ')' });
       for (const p of pairs) {
-        const sub = genResults([{ val: p.val, expr: p.expr }, ...rest]);
-        for (const s of sub) results.push(s);
+        for (const s of genResults([p, ...rest])) results.push(s);
       }
     }
   }
