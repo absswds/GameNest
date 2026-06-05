@@ -461,47 +461,47 @@
     var level = ((_hintLevel - 1) % 4) + 1;
     switch (level) {
       case 1: {
-        // Which two numbers interact first, and how — must match the real first step
-        var fs = firstStep();
-        var res = calcSym(fs.x, fs.y, fs.op);
-        var resStr = Number.isInteger(res) ? res : res.toFixed(1);
-        if (fs.op === '×') return fs.x + ' × ' + fs.y + ' = ' + resStr + '，从这里开始试试';
-        if (fs.op === '+') return fs.x + ' + ' + fs.y + ' = ' + resStr + '，先加这两个';
-        if (fs.op === '-') return fs.x + ' - ' + fs.y + ' = ' + resStr + '，先减这两个';
-        if (fs.op === '÷') return fs.x + ' ÷ ' + fs.y + ' = ' + resStr + '，从这里入手';
-        return '第一步试试 ' + fs.x + ' ' + fs.op + ' ' + fs.y;
+        // Only reveal which operators are used — no numbers, no result
+        var opSet = ops.filter(function(o, i, a) { return a.indexOf(o) === i; });
+        var opNames = { '×': '乘法', '+': '加法', '-': '减法', '÷': '除法' };
+        var opWords = opSet.map(function(o) { return opNames[o] || o; });
+        var hasMul = ops.indexOf('×') >= 0, hasDiv = ops.indexOf('÷') >= 0;
+        if (hasMul && hasDiv) return '需要用乘法和除法';
+        if (hasMul) return '乘法是关键，想想哪两个数相乘';
+        if (hasDiv) return '除法是关键，想想哪个数能被整除';
+        return '只用加减法：' + opWords.join('、');
       }
       case 2:
-        // What intermediate result to target
+        // The overall bracket structure (blanks only, no numbers)
+        if (solution.pattern === 1) return '括号结构：((□ _ □) _ □) _ □';
+        if (solution.pattern === 2) return '括号结构：(□ _ (□ _ □)) _ □';
+        if (solution.pattern === 3) return '括号结构：(□ _ □) _ (□ _ □)';
+        if (solution.pattern === 4) return '括号结构：□ _ ((□ _ □) _ □)';
+        if (solution.pattern === 5) return '括号结构：□ _ (□ _ (□ _ □))';
+        return '试试不同的括号分组方式';
+      case 3: {
+        // Intermediate target
         if (solution.pattern === 1 || solution.pattern === 2) {
-          var t1_1 = solution.pattern === 1 ? (ops[0] === '+' ? a + b : ops[0] === '-' ? a - b : ops[0] === '×' ? a * b : a / b) : 0;
-          var t1_2 = solution.pattern === 2 ? (ops[1] === '+' ? b + c : ops[1] === '-' ? b - c : ops[1] === '×' ? b * c : b / c) : 0;
+          var t1_1 = solution.pattern === 1 ? calcSym(a, b, ops[0]) : 0;
+          var t1_2 = solution.pattern === 2 ? calcSym(b, c, ops[1]) : 0;
           var target = solution.pattern === 1 ? t1_1 : t1_2;
-          if (target && Number.isInteger(target)) return '需要先凑出 ' + Math.round(target) + '，然后继续运算';
+          if (target !== null && Number.isInteger(target)) return '先凑出 ' + Math.round(target) + '，再和剩余数字运算';
         }
         if (solution.pattern === 3) {
-          var ta = ops[0] === '+' ? a + b : ops[0] === '-' ? a - b : ops[0] === '×' ? a * b : a / b;
-          var tb = ops[2] === '+' ? c + d : ops[2] === '-' ? c - d : ops[2] === '×' ? c * d : c / d;
-          if (ta && tb && Number.isInteger(ta) && Number.isInteger(tb))
-            return '分成两组：凑 ' + Math.round(ta) + ' 和 ' + Math.round(tb) + '，再用 ' + ops[1] + ' 组合';
+          var ta = calcSym(a, b, ops[0]);
+          var tb = calcSym(c, d, ops[2]);
+          if (ta !== null && tb !== null && Number.isInteger(ta) && Number.isInteger(tb))
+            return '分成两组分别算：一组得 ' + Math.round(ta) + '，另一组得 ' + Math.round(tb);
         }
-        return '想想中间需要凑出什么数，再和剩余数字运算';
-      case 3:
-        // The critical operation / insight
-        var critical = ops[0] === '×' || ops[1] === '×' || ops[2] === '×' ? '乘法' :
-                        ops[0] === '÷' || ops[1] === '÷' || ops[2] === '÷' ? '除法' : '加减法';
-        if (ops.filter(function(o){return o==='×'}).length >= 2) return '关键：两次乘法，注意乘积不要太大';
-        if (ops.indexOf('÷') >= 0) return '除法是关键，想想哪个数除以哪个能得到整数';
-        if (ops[0] === '-' || ops[1] === '-' || ops[2] === '-') return '用减法来消掉多余的数';
-        return '最后一步用 ' + ops[2] + '，倒推需要什么中间结果';
-      case 4:
-        // The overall structure
-        if (solution.pattern === 1) return '结构: ((' + a + ' _ ' + b + ') _ ' + c + ') _ ' + d;
-        if (solution.pattern === 2) return '结构: (' + a + ' _ (' + b + ' _ ' + c + ')) _ ' + d;
-        if (solution.pattern === 3) return '结构: (' + a + ' _ ' + b + ') _ (' + c + ' _ ' + d + ')';
-        if (solution.pattern === 4) return '结构: ' + a + ' _ ((' + b + ' _ ' + c + ') _ ' + d + ')';
-        if (solution.pattern === 5) return '结构: ' + a + ' _ (' + b + ' _ (' + c + ' _ ' + d + '))';
-        return '括号结构是突破口，试试不同分组';
+        return '想想中间需要先凑出什么数';
+      }
+      case 4: {
+        // First actual step with result
+        var fs = firstStep();
+        var res = calcSym(fs.x, fs.y, fs.op);
+        var resStr = res !== null ? (Number.isInteger(res) ? res : res.toFixed(1)) : '?';
+        return '第一步：' + fs.x + ' ' + fs.op + ' ' + fs.y + ' = ' + resStr;
+      }
     }
   }
 
@@ -512,18 +512,19 @@
     if (hintEl) hintEl.textContent = '';
     var hintBtn = document.getElementById('tfHintBtn');
     clearInterval(_hintCooldownTimer); _hintCooldownTimer = null;
-    if (hintBtn) { hintBtn.disabled = false; hintBtn.textContent = '💡 来点提示'; }
+    // 开局 15 秒内不能用提示
+    if (hintBtn) startHintCooldown(hintBtn, 15, true);
   }
 
   var _hintCooldownTimer = null;
-  var HINT_COOLDOWN = 5; // seconds between hints
+  var HINT_COOLDOWN = 5; // seconds between hints after using a hint
 
-  function startHintCooldown(btn) {
+  function startHintCooldown(btn, seconds, isOpening) {
     if (!btn) return;
-    var remain = HINT_COOLDOWN;
+    var remain = seconds != null ? seconds : HINT_COOLDOWN;
     btn.disabled = true;
     var baseLabel = '💡 来点提示';
-    btn.textContent = '⏳ ' + remain + 's';
+    btn.textContent = isOpening ? '⏳ ' + remain + 's 后可提示' : '⏳ ' + remain + 's';
     clearInterval(_hintCooldownTimer);
     _hintCooldownTimer = setInterval(function() {
       remain--;
@@ -534,7 +535,7 @@
         if (_hintLevel < 16) btn.disabled = false;
         btn.textContent = baseLabel;
       } else {
-        btn.textContent = '⏳ ' + remain + 's';
+        btn.textContent = isOpening ? '⏳ ' + remain + 's 后可提示' : '⏳ ' + remain + 's';
       }
     }, 1000);
   }
@@ -559,7 +560,7 @@
     if (_hintLevel >= 16) {
       if (hintBtn) { hintBtn.disabled = true; hintBtn.textContent = '💡 提示已用尽'; }
     } else {
-      startHintCooldown(hintBtn);
+      startHintCooldown(hintBtn, HINT_COOLDOWN, false);
     }
   };
 })();
