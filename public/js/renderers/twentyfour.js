@@ -439,19 +439,38 @@
     var ops = solution.ops;
     var a = solution.nums[0], b = solution.nums[1], c = solution.nums[2], d = solution.nums[3];
 
+    // The genuine first (innermost) operation depends on the parenthesization pattern.
+    // Only patterns 1 & 3 actually compute nums[0] op nums[1] first.
+    function calcSym(x, y, sym) {
+      if (sym === '×') return x * y;
+      if (sym === '+') return x + y;
+      if (sym === '-') return x - y;
+      if (sym === '÷') return x / y;
+      return null;
+    }
+    function firstStep() {
+      var n = solution.nums;
+      switch (solution.pattern) {
+        case 2: return { x: n[1], y: n[2], op: ops[1] }; // (a op (b op c)) op d → b op c
+        case 4: return { x: n[1], y: n[2], op: ops[1] }; // a op ((b op c) op d) → b op c
+        case 5: return { x: n[2], y: n[3], op: ops[2] }; // a op (b op (c op d)) → c op d
+        default: return { x: n[0], y: n[1], op: ops[0] }; // patterns 1 & 3 → a op b
+      }
+    }
+
     var level = ((_hintLevel - 1) % 4) + 1;
     switch (level) {
-      case 1:
-        // Which two numbers interact first, and how
-        if (ops[0] === '×')
-          return a + ' × ' + b + ' = ' + (a * b) + '，从这里开始试试';
-        if (ops[0] === '+')
-          return a + ' + ' + b + ' = ' + (a + b) + '，先加这两个';
-        if (ops[0] === '-')
-          return a + ' - ' + b + ' = ' + (a - b) + '，先减这两个';
-        if (ops[0] === '÷')
-          return a + ' ÷ ' + b + ' = ' + (a / b).toFixed(1) + '，从这里入手';
-        return '第一步试试 ' + a + ' ' + ops[0] + ' ' + b;
+      case 1: {
+        // Which two numbers interact first, and how — must match the real first step
+        var fs = firstStep();
+        var res = calcSym(fs.x, fs.y, fs.op);
+        var resStr = Number.isInteger(res) ? res : res.toFixed(1);
+        if (fs.op === '×') return fs.x + ' × ' + fs.y + ' = ' + resStr + '，从这里开始试试';
+        if (fs.op === '+') return fs.x + ' + ' + fs.y + ' = ' + resStr + '，先加这两个';
+        if (fs.op === '-') return fs.x + ' - ' + fs.y + ' = ' + resStr + '，先减这两个';
+        if (fs.op === '÷') return fs.x + ' ÷ ' + fs.y + ' = ' + resStr + '，从这里入手';
+        return '第一步试试 ' + fs.x + ' ' + fs.op + ' ' + fs.y;
+      }
       case 2:
         // What intermediate result to target
         if (solution.pattern === 1 || solution.pattern === 2) {
