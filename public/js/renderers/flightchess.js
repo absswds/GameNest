@@ -32,7 +32,8 @@
   function cellSize(){return W/SZ;}
   function gp(gx,gy){var cs=cellSize();return{x:gx*cs+cs/2,y:gy*cs+cs/2};}
   function rr(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();}
-  function tile(gx,gy,color){var cs=cellSize(),g=cs*.07;ctx.fillStyle=color;ctx.beginPath();rr(gx*cs+g,gy*cs+g,cs-2*g,cs-2*g,cs*.24);ctx.fill();}
+  function tile(gx,gy,color,gap){var cs=cellSize(),g=gap!=null?gap:cs*.07;ctx.fillStyle=color;ctx.beginPath();rr(gx*cs+g,gy*cs+g,cs-2*g,cs-2*g,cs*.24);ctx.fill();}
+  function homeTile(gx,gy,color){var cs=cellSize(),g=cs*.18;ctx.fillStyle=color;ctx.beginPath();rr(gx*cs+g,gy*cs+g,cs-2*g,cs-2*g,cs*.28);ctx.fill();ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=cs*.04;ctx.beginPath();rr(gx*cs+g,gy*cs+g,cs-2*g,cs-2*g,cs*.28);ctx.stroke();}
 
   // ---- Animation state ----
   var animState = {
@@ -211,7 +212,7 @@
     // home cell sits on a clear colored tile, not floating inside the endpoint triangle)
     for (var p2 = 0; p2 < 4; p2++) {
       for (var h = 0; h < 6; h++) {
-        var hc = HM[p2 * 6 + h]; tile(hc[0], hc[1], CO[p2]);
+        var hc = HM[p2 * 6 + h]; homeTile(hc[0], hc[1], CO[p2]);
         if (h === 0) {
           var pt2 = gp(hc[0], hc[1]);
           ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold ' + (cs * .44) + 'px system-ui';

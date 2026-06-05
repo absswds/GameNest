@@ -132,16 +132,14 @@ function resolveSpecial(state, pi, idx) {
     state.lastMoveResult = `✈ ${windowNames(pi)} 沿航线飞到对面！`;
     return;
   }
-  // Own-color cell ⟺ step is a multiple of 4 (each player owns every 4th cell): jump +4 once
+  // Own-color cell ⟺ step is a multiple of 4 (each player owns every 4th cell):
+  // jump +4 to the next own-color cell and STOP — do not chain into the fly shortcut,
+  // only a direct landing on FLY_STEP (handled above) flies.
   if (step % 4 === 0) {
     const jump = step + 4;
     if (jump < MAIN_PATH) {
       p.planes[idx] = jump; doLanding(state, pi, idx);
       state.lastMoveResult = `${windowNames(pi)} 同色格跳 +4`;
-      if (jump === FLY_STEP) {
-        flyAcross(state, pi, idx);
-        state.lastMoveResult = `✈ ${windowNames(pi)} 跳格后沿航线飞到对面！`;
-      }
     }
   }
 }
