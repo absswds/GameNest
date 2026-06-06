@@ -289,7 +289,7 @@
   }
 
   function wsSend(data) {
-    window.sendMove && window.sendMove(data);
+    window.makeGameMove && window.makeGameMove(data);
   }
 
   window.gameRenderers.set('monopoly', {

@@ -17,7 +17,7 @@
   var COLORS = ['#1a1a1a','#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#ffffff','#95a5a6'];
 
   function wsSend(data) {
-    window.sendMove && window.sendMove(data);
+    window.makeGameMove && window.makeGameMove(data);
   }
 
   function setupCanvas(container) {
@@ -191,7 +191,12 @@
       timerEl = document.createElement('div');
       timerEl.id = 'dg-timer';
       timerEl.style.cssText = 'text-align:center;font-size:14px;color:var(--text-muted);margin-bottom:4px;';
-      container.insertBefore(timerEl, canvas);
+      // Insert before canvas if it's a child of container, else just append
+      if (canvas && canvas.parentNode === container) {
+        container.insertBefore(timerEl, canvas);
+      } else {
+        container.appendChild(timerEl);
+      }
     }
     var end = Date.now() + seconds * 1000;
     timerInterval = setInterval(function () {

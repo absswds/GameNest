@@ -33,7 +33,7 @@
   var DANGER_Y = 60; // overflow line
 
   function wsSend(data) {
-    window.sendMove && window.sendMove(data);
+    window.makeGameMove && window.makeGameMove(data);
   }
 
   function waitForMatter(cb) {
