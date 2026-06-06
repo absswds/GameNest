@@ -99,6 +99,8 @@ exports.handleMove = (data, state, playerIndex) => {
   const slot = state.slots[playerIndex];
 
   if (data.type === 'pick') {
+    // Advance currentPlayer so scheduleBotMove triggers bot on next cycle
+    state.currentPlayer = (playerIndex + 1) % state._playerCount;
     const tile = board.find(t => t.id === data.tileId);
     if (!tile) return '找不到此牌';
     if (tile.removed) return '已移除';

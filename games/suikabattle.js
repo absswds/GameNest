@@ -3,6 +3,7 @@
 // 物理引擎（Matter.js）完全在客户端运行
 exports.name = 'suikabattle';
 exports.maxPlayers = 4;
+exports.minPlayers = 1;
 
 const FRUIT_COUNT = 11;
 

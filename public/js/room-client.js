@@ -404,7 +404,8 @@
       if (isHost) {
         const allReady = players && players.filter(p => !p.isBot).every(p => p.ready);
         const totalPlayers = players ? players.length : 0;
-        const canStart = allReady && totalPlayers >= 2;
+        const minPlayers = (game === 'suikabattle' || game === 'drawguess') ? 1 : 2;
+        const canStart = allReady && totalPlayers >= minPlayers;
         startBtn.disabled = !canStart;
         startBtn.classList.toggle('disabled', !canStart);
       }

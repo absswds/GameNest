@@ -2,6 +2,7 @@
 // 玩法: 词→画→猜→画→猜... 依次传递，最后揭示全链，投票最好笑的一步
 exports.name = 'drawguess';
 exports.maxPlayers = 8;
+exports.minPlayers = 1;
 
 const WORDS = [
   // 动物

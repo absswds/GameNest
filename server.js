@@ -440,8 +440,10 @@ wss.on('connection', (ws) => {
         ws.send(JSON.stringify({ type: 'error', message: '游戏已经开始' }));
         return;
       }
+      const gameMod = gameRegistry[currentRoom.game];
       const totalPlayers = currentRoom.players.size + (currentRoom.bots ? currentRoom.bots.size : 0);
-      if (totalPlayers < 2) {
+      const minPlayers = (gameMod && gameMod.minPlayers) || 2;
+      if (totalPlayers < minPlayers) {
         ws.send(JSON.stringify({ type: 'error', message: '至少需要2名玩家' }));
         return;
       }
@@ -457,9 +459,6 @@ wss.on('connection', (ws) => {
       currentRoom.state._realPlayerCount = currentRoom.players.size;
       currentRoom.state._hasBots = currentRoom.bots.size > 0;
       currentRoom.state._options = { ...currentRoom.options };
-
-      // Init game state if the game module supports it
-      const gameMod = gameRegistry[currentRoom.game];
       if (gameMod && gameMod.initGame) {
         gameMod.initGame(currentRoom.state, totalPlayers);
       }

@@ -6,7 +6,10 @@ exports.createBot = (playerIndex) => ({
     const board = state.boards && state.boards[playerIndex];
     const slot = state.slots && state.slots[playerIndex];
     if (!board || !slot) return { pass: true };
+    if (state.phase !== 'playing') return { pass: true };
     if (state.eliminated && state.eliminated[playerIndex]) return { pass: true };
+    // Reset currentPlayer to 0 after bot move so human can play again
+    state.currentPlayer = 0;
 
     // Find unblocked tiles
     const unblocked = board.filter(t => !t.removed && !isBlockedSimple(t, board));
