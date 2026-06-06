@@ -30,6 +30,7 @@
     flightchess: { name: '飞行棋', icon: '✈️' },
     chinesechess: { name: '中国象棋', icon: '♟️' },
     go9: { name: '围棋9路', icon: '⚫' },
+    drawguess: { name: '你画我猜', icon: '🎨' },
   };
 
   let roomOptions = {};
@@ -64,6 +65,7 @@
       if (msg.type === 'room_joined' || msg.type === 'room_created') {
         state = msg.state || state;
         players = msg.players || players;
+        window._players = players;
         roomPhase = msg.phase || 'lobby';
         updateWaitingRoom();
         if (roomPhase === 'playing') {
@@ -83,6 +85,7 @@
         }
         state = msg.state || state;
         players = msg.players || players;
+        window._players = players;
         roomPhase = 'playing';
         showGame();
         updatePlayerBar();
@@ -93,6 +96,7 @@
       if (msg.type === 'game_started') {
         state = msg.state;
         players = msg.players;
+        window._players = players;
         roomPhase = 'playing';
         showGame();
         updatePlayerBar();
