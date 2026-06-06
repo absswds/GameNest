@@ -30,6 +30,7 @@
     flightchess: { name: '飞行棋', icon: '✈️' },
     chinesechess: { name: '中国象棋', icon: '♟️' },
     go9: { name: '围棋9路', icon: '⚫' },
+    sheeptile: { name: '羊了个羊', icon: '🐑' },
     drawguess: { name: '你画我猜', icon: '🎨' },
   };
 
