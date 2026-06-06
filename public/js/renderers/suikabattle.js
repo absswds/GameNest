@@ -33,7 +33,7 @@
   var DANGER_Y = 60; // overflow line
 
   function wsSend(data) {
-    window._ws && window._ws.send(JSON.stringify({ type: 'game_move', data: data }));
+    window.sendMove && window.sendMove(data);
   }
 
   function waitForMatter(cb) {

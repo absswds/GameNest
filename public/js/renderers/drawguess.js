@@ -17,7 +17,7 @@
   var COLORS = ['#1a1a1a','#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#ffffff','#95a5a6'];
 
   function wsSend(data) {
-    window._ws && window._ws.send(JSON.stringify({ type: 'game_move', data: data }));
+    window.sendMove && window.sendMove(data);
   }
 
   function setupCanvas(container) {
@@ -215,10 +215,9 @@
     wordLabel.style.cssText = 'font-size:17px;font-weight:700;color:var(--accent);margin-bottom:6px;text-align:center;';
     wrap.appendChild(wordLabel);
 
-    startTimer(wrap, 90);
-
     resizeCanvas();
     wrap.appendChild(canvas);
+    startTimer(wrap, 90);
     buildToolbar(wrap);
 
     buildSubmitBtn(wrap, '提交画作 ✓', function () {

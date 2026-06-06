@@ -289,7 +289,7 @@
   }
 
   function wsSend(data) {
-    window._ws && window._ws.send(JSON.stringify({ type: 'game_move', data: data }));
+    window.sendMove && window.sendMove(data);
   }
 
   window.gameRenderers.set('monopoly', {
