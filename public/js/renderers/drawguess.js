@@ -184,7 +184,9 @@
   }
 
   // ---- Timer ----
-  function startTimer(container, seconds) {
+  // 服务端权威倒计时：读 state.stepDeadline（绝对时间戳，0=不限时）。
+  // onExpire: 剩余 ≤1s 时触发一次（自动提交当前内容，抢在服务端 onTimeout 的 2s 缓冲之前）
+  function startTimer(container, deadline, onExpire) {
     clearInterval(timerInterval);
     var timerEl = document.getElementById('dg-timer');
     if (!timerEl) {
@@ -198,10 +200,17 @@
         container.appendChild(timerEl);
       }
     }
-    var end = Date.now() + seconds * 1000;
+    if (!deadline || deadline <= 0) { timerEl.textContent = '不限时'; return; }
+    var expired = false;
     timerInterval = setInterval(function () {
-      var rem = Math.ceil((end - Date.now()) / 1000);
-      if (rem <= 0) { clearInterval(timerInterval); timerEl.textContent = '时间到！'; return; }
+      var rem = Math.ceil((deadline - Date.now()) / 1000);
+      if (rem <= 1 && !expired) {
+        expired = true;
+        clearInterval(timerInterval);
+        timerEl.textContent = '时间到！';
+        if (onExpire) onExpire();
+        return;
+      }
       timerEl.textContent = '剩余 ' + rem + ' 秒';
       timerEl.style.color = rem <= 10 ? '#e74c3c' : 'var(--text-muted)';
     }, 500);
@@ -222,15 +231,18 @@
 
     resizeCanvas();
     wrap.appendChild(canvas);
-    startTimer(wrap, 90);
-    buildToolbar(wrap);
-
-    buildSubmitBtn(wrap, '提交画作 ✓', function () {
-      if (localStrokes.length === 0) { alert('请先画一下再提交'); return; }
+    function doSubmitDraw() {
       wsSend({ type: 'submit', content: localStrokes });
       clearInterval(timerInterval);
       localStrokes = [];
       renderWaiting(container, '画作已提交，等待其他玩家…');
+    }
+    startTimer(wrap, state && state.stepDeadline, doSubmitDraw);
+    buildToolbar(wrap);
+
+    buildSubmitBtn(wrap, '提交画作 ✓', function () {
+      if (localStrokes.length === 0) { alert('请先画一下再提交'); return; }
+      doSubmitDraw();
     });
   }
 
@@ -246,7 +258,11 @@
     lbl.style.cssText = 'font-size:14px;color:var(--text-muted);margin-bottom:6px;';
     wrap.appendChild(lbl);
 
-    startTimer(wrap, 45);
+    startTimer(wrap, state && state.stepDeadline, function () {
+      var val = (input && input.value.trim()) || '（超时）';
+      wsSend({ type: 'submit', content: val });
+      renderWaiting(container, '猜词已提交，等待其他玩家…');
+    });
 
     // Draw the previous strokes on canvas
     resizeCanvas();
@@ -284,6 +300,39 @@
     submitBtn.onclick = doSubmit;
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSubmit(); });
     setTimeout(function () { input.focus(); }, 100);
+  }
+
+  // ---- Render word choosing (first drawer picks 1 of N) ----
+  function renderChooseWord(container, task) {
+    container.innerHTML = '';
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;padding:30px 16px;max-width:420px;margin:0 auto;';
+    container.appendChild(wrap);
+
+    var title = document.createElement('div');
+    title.textContent = '🎨 选一个词来画';
+    title.style.cssText = 'font-size:19px;font-weight:800;margin-bottom:6px;';
+    wrap.appendChild(title);
+
+    startTimer(wrap, state && state.stepDeadline, null);
+
+    (task.options || []).forEach(function (w, i) {
+      var btn = document.createElement('button');
+      btn.textContent = w;
+      btn.style.cssText = 'width:100%;margin-top:12px;padding:16px;border-radius:14px;border:2px solid var(--border);background:#fff;font-size:18px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06);';
+      btn.onmouseenter = function () { btn.style.borderColor = '#c8a45c'; };
+      btn.onmouseleave = function () { btn.style.borderColor = 'var(--border)'; };
+      btn.onclick = function () {
+        wsSend({ type: 'choose_word', index: i });
+        renderWaiting(container, '已选词，准备开画…');
+      };
+      wrap.appendChild(btn);
+    });
+
+    var hint = document.createElement('div');
+    hint.textContent = '超时将自动选择第一个词';
+    hint.style.cssText = 'margin-top:14px;font-size:12px;color:var(--text-muted);';
+    wrap.appendChild(hint);
   }
 
   // ---- Render waiting ----
@@ -378,8 +427,8 @@
         stepArea.appendChild(guessEl);
       }
 
-      // Vote button
-      if (!st.winner) {
+      // Vote button (winner 可能是 0，不能用 truthy 判断)
+      if (st.winner === null || st.winner === undefined) {
         var myVote = st.votes && st.votes[playerIndex];
         var voteBtn = document.createElement('button');
         voteBtn.style.cssText = 'display:block;margin:12px auto 0;padding:8px 20px;border-radius:20px;border:2px solid ' + (myVote === revealStep ? '#c8a45c' : '#ccc') + ';background:' + (myVote === revealStep ? '#fff9ee' : '#fff') + ';cursor:pointer;font-size:13px;';
@@ -422,6 +471,19 @@
 
       if (winner !== null && winner !== undefined && st.phase !== 'reveal') {
         renderWaiting(container, '游戏结束！');
+        return;
+      }
+
+      if (st.phase !== 'reveal') revealStep = 0; // 新一局重置揭示页
+
+      if (st.phase === 'choosing') {
+        if (st.myTask && st.myTask.type === 'choose') {
+          renderChooseWord(container, st.myTask);
+        } else {
+          var chooser = st.chain && st.chain[0] ? st.chain[0].playerIndex : 0;
+          var cname = (window._players && window._players[chooser]) ? window._players[chooser].name : ('玩家' + (chooser + 1));
+          renderWaiting(container, cname + ' 正在选词…');
+        }
         return;
       }
 

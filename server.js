@@ -198,6 +198,50 @@ function scheduleTwentyFourTimer(room) {
   }, ms);
 }
 
+// drawguess: per-player filtered broadcast (never broadcast the raw state — it contains the word)
+function sendDrawguessViews(room) {
+  const gameMod = gameRegistry['drawguess'];
+  for (const [client, info] of room.players) {
+    if (client.readyState === 1) {
+      const viewState = gameMod.playerView(room.state, info.index);
+      client.send(JSON.stringify({ type: 'game_state', state: viewState, players: roomPlayersList(room) }));
+    }
+  }
+}
+
+// drawguess: server-side step timer — auto-advances when a player stalls
+function scheduleDrawguessTimer(room) {
+  clearTimeout(room._dgTimer);
+  const state = room.state;
+  if (!state) return;
+  let seconds = 0;
+  if (state.phase === 'choosing') {
+    seconds = 15;
+  } else if (state.phase === 'playing') {
+    const step = state.chain[state.currentStep];
+    if (!step) return;
+    seconds = step.type === 'draw' ? state.drawTime : state.guessTime;
+  } else {
+    state.stepDeadline = 0;
+    return;
+  }
+  if (!seconds || seconds <= 0) { state.stepDeadline = 0; return; } // 不限时
+  const ms = seconds * 1000 + 2000; // 2s 网络缓冲，前端先到先得
+  state.stepDeadline = Date.now() + ms;
+  room._dgTimer = setTimeout(() => {
+    if (!rooms.has(room._roomId)) return;
+    if (room.state !== state) return; // game_restart 已换 state，旧 timer 作废
+    const gameMod = gameRegistry['drawguess'];
+    if (!gameMod.onTimeout(state)) return;
+    if (state.phase === 'choosing' || state.phase === 'playing') {
+      scheduleDrawguessTimer(room); // 先更新 deadline 再广播
+    } else {
+      state.stepDeadline = 0;
+    }
+    sendDrawguessViews(room);
+  }, ms);
+}
+
 function scheduleBotMove(room) {
   if (!room || !room.state) return;
   const state = room.state;
@@ -462,6 +506,7 @@ wss.on('connection', (ws) => {
       if (gameMod && gameMod.initGame) {
         gameMod.initGame(currentRoom.state, totalPlayers);
       }
+      if (currentRoom.game === 'drawguess') scheduleDrawguessTimer(currentRoom); // 在广播前写入 stepDeadline
 
       // Minesweeper: each player gets their own board view (independent reveal/flag state)
       if (currentRoom.game === 'minesweeper' && gameMod.playerBoardView) {
@@ -623,6 +668,9 @@ wss.on('connection', (ws) => {
         clearTimeout(currentRoom._tfTimer);
       }
 
+      // drawguess: reset the step timer after every successful move (updates stepDeadline before broadcast)
+      if (currentRoom.game === 'drawguess') scheduleDrawguessTimer(currentRoom);
+
       // Minesweeper: each player gets their own board view (independent reveal/flag state)
       if (currentRoom.game === 'minesweeper' && gameMod.playerBoardView) {
         const basePayload = { type: 'game_state', state: currentRoom.state, players: roomPlayersList(currentRoom) };
@@ -687,6 +735,7 @@ wss.on('connection', (ws) => {
       if (gameMod && gameMod.initGame) {
         gameMod.initGame(currentRoom.state, totalPlayers);
       }
+      if (currentRoom.game === 'drawguess') scheduleDrawguessTimer(currentRoom);
       currentRoom.phase = 'playing';
 
       // Minesweeper: per-player board views on restart too
@@ -740,6 +789,7 @@ wss.on('connection', (ws) => {
       currentRoom.readyPlayers = new Set();
       currentRoom.state = null;
       clearTimeout(currentRoom._tfTimer);
+      clearTimeout(currentRoom._dgTimer);
       broadcastRoom(currentRoom, {
         type: 'room_update',
         phase: 'lobby',
@@ -800,6 +850,7 @@ wss.on('connection', (ws) => {
       if (currentRoom.players.size === 0) {
         if (currentRoom._botTimer) clearTimeout(currentRoom._botTimer);
         if (currentRoom._tfTimer) clearTimeout(currentRoom._tfTimer);
+        if (currentRoom._dgTimer) clearTimeout(currentRoom._dgTimer);
         if (currentRoom._cleanupTimer) clearTimeout(currentRoom._cleanupTimer);
         currentRoom._cleanupTimer = setTimeout(() => {
           rooms.delete(currentRoomId);

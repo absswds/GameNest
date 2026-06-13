@@ -365,6 +365,49 @@
         optionsEl.innerHTML =
           '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">游戏设置</div>' +
           '<div style="font-size:13px;color:var(--text-muted)">破冰: ' + (breakOn2 ? '需要 ≥30分' : '关闭') + '</div>';
+      } else if (game === 'drawguess') {
+        optionsEl.style.display = 'block';
+        var dgCats = [['animal','动物'],['food','食物'],['daily','日常物品'],['action','动作'],['place','场景'],['idiom','成语俗语'],['movie','影视动漫游戏'],['internet','网络热词']];
+        var selCats = Array.isArray(roomOptions.categories) && roomOptions.categories.length > 0
+          ? roomOptions.categories : dgCats.map(function(c){ return c[0]; });
+        var dgDraw = roomOptions.drawTime !== undefined ? roomOptions.drawTime : 90;
+        var dgGuess = roomOptions.guessTime !== undefined ? roomOptions.guessTime : 45;
+        var dgChoices = roomOptions.wordChoices !== undefined ? roomOptions.wordChoices : 3;
+        if (isHost) {
+          var catHtml = '';
+          dgCats.forEach(function(c) {
+            var on = selCats.indexOf(c[0]) >= 0;
+            catHtml += '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;margin:2px 8px 2px 0;">' +
+              '<input type="checkbox" class="dg-cat" value="' + c[0] + '"' + (on ? ' checked' : '') + ' onchange="window._dgCollectCats()">' + c[1] + '</label>';
+          });
+          var selStyle = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
+          function dgSel(id, key, values, labels, cur) {
+            var h = '<select id="' + id + '" onchange="window._setGameOption(\'' + key + '\', parseInt(this.value))" style="' + selStyle + '">';
+            values.forEach(function(v, i) { h += '<option value="' + v + '"' + (cur === v ? ' selected' : '') + '>' + labels[i] + '</option>'; });
+            return h + '</select>';
+          }
+          var customVal = (roomOptions.customWords || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">游戏设置</div>' +
+            '<div style="font-size:13px;margin-bottom:6px;">词库分类：<br>' + catHtml + '</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:14px;margin-bottom:6px;">' +
+              '<label style="display:flex;align-items:center;gap:6px;">画画限时 ' + dgSel('optDgDraw', 'drawTime', [45,60,90,120,0], ['45秒','60秒','90秒','120秒','不限时'], dgDraw) + '</label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">猜词限时 ' + dgSel('optDgGuess', 'guessTime', [30,45,60,90,0], ['30秒','45秒','60秒','90秒','不限时'], dgGuess) + '</label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">候选词数 ' + dgSel('optDgChoices', 'wordChoices', [1,2,3,5], ['1个(直接给词)','2个','3个','5个'], dgChoices) + '</label>' +
+            '</div>' +
+            '<div style="font-size:13px;">自定义词（逗号或换行分隔，会并入词库）：<br>' +
+              '<textarea id="optDgCustom" rows="2" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="例：螺蛳粉, 显眼包, 公司团建">' + customVal + '</textarea>' +
+              '<button class="btn" style="margin-top:4px;padding:4px 14px;font-size:13px;" onclick="window._setGameOption(\'customWords\', document.getElementById(\'optDgCustom\').value)">保存自定义词</button>' +
+            '</div>';
+        } else {
+          var catNames = dgCats.filter(function(c){ return selCats.indexOf(c[0]) >= 0; }).map(function(c){ return c[1]; }).join('、');
+          var customCount = (roomOptions.customWords || '').split(/[,，\n\s]+/).filter(function(w){ return w.trim(); }).length;
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">游戏设置</div>' +
+            '<div style="font-size:13px;color:var(--text-muted)">词库: ' + catNames +
+            '・画 ' + (dgDraw === 0 ? '不限时' : dgDraw + '秒') + '・猜 ' + (dgGuess === 0 ? '不限时' : dgGuess + '秒') +
+            '・候选 ' + dgChoices + ' 词' + (customCount > 0 ? '・自定义词 ' + customCount + ' 个' : '') + '</div>';
+        }
       } else {
         optionsEl.style.display = 'none';
       }
@@ -559,6 +602,13 @@
   window._setGameOption = function(key, value) {
     roomOptions[key] = value;
     ws.send(JSON.stringify({ type: 'set_option', data: { key, value } }));
+  };
+
+  // drawguess: 收集勾选的词库分类（数组直接作为 option value 保存）
+  window._dgCollectCats = function() {
+    var arr = [];
+    document.querySelectorAll('.dg-cat:checked').forEach(function(cb) { arr.push(cb.value); });
+    window._setGameOption('categories', arr);
   };
 
   // ---- Init ----
