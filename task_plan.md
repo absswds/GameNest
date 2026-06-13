@@ -1,5 +1,13 @@
 # 游戏扩展计划
 
+## 第 6 阶段（2026-06-13）：三款游戏重做 — 详细方案见 C:\Users\binbi\.claude\plans\1-nested-cosmos.md
+
+1. **drawguess** — 保留传话链；300+词分类词库(games/drawguess-words.js，贴近网络热词)、首画家3选1、房间设置(分类/时限/候选数/自定义词)、服务端计时兜底(_dgTimer)。Status: in_progress
+2. **monopoly** — 视觉重做：board 下发 state.board、28格重排(角21=入狱,监狱10→7)、骰子滚动+逐格移动动画(animQueue+displayState双轨)、AI建房。Status: complete
+3. **sheeptile** — 三件套推翻重写：关卡制(1易2难)、金字塔+暗牌队列布局、剥洋葱可解性生成、道具限次、fly/merge动画、sameBoard 房间设置。Status: in_progress
+
+每款独立 commit + sim 脚本验证 + Playwright 实测。
+
 ## 目标
 在现有 8 款游戏基础上，新增 12 款游戏。按复杂度分为 5 个阶段，每阶段完成一批游戏。
 

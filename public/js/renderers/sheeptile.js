@@ -1,279 +1,352 @@
-// public/js/renderers/sheeptile.js — 羊了个羊
+// public/js/renderers/sheeptile.js — 羊了个羊（关卡制堆叠三消，重做）
+// 读 state.layout 几何 + 自己的 removed/patterns。白底圆角卡牌、暗牌牌背、飞入槽位 + 三连消除动画。
 (function () {
   window.gameRenderers = window.gameRenderers || new Map();
 
-  var PATTERNS = ['🍎','🍊','🍋','🍇','🍓','🫐','🍑','🍒','🥝','🍍','🥥','🌸','⭐','💎','🔔','🔑','❄','🔥'];
-  var PAT_BG = ['#ffe0e0','#ffe8cc','#fff9cc','#f0d8ff','#ffd8e4','#dce8ff','#ffd8cc','#ffe0ec',
-                '#d8ffe4','#fff0cc','#f0f0f0','#ffd8f0','#fffacc','#d4f0ff','#fff0d4','#e8d4ff','#d8f8ff','#ffd4d4'];
+  var EMOJIS = ['🐑', '🍉', '🥕', '🌽', '🍅', '🍆', '🌶️', '🧅', '🥔', '🍄', '🌰', '🌻', '🍇', '🥦'];
+  var EMOJI_BG = ['#fef3f2', '#fef8e7', '#fff1e6', '#f0fbe9', '#fdecec', '#f3edfb', '#fdeee6', '#fdf6e3', '#fbf0e0', '#fbeef0', '#f4ede0', '#fffbe6', '#f6edfb', '#edf7ee'];
 
-  var canvas, ctx, state, playerIndex;
-  var W, H, tW, tH;
-  var COLS = 8, ROWS = 8, LAYERS = 3;
-  var SLOT_SIZE = 7;
-  var hoverTile = -1;
+  var canvas, ctx, panel, oppBar;
+  var W, H, TS, boardBottom, slotY, slotCS, slotPad;
+  var state, playerIndex, winnerIdx = null;
+  var rects = {};      // tileId -> {x,y,s,z} 屏幕矩形（当前关卡）
+  var curBounds = null;
+  // 动画
+  var prevSlotLen = 0, prevLevel = 1;
+  var anim = { rafId: null, flies: [], merges: [], running: false };
 
-  function measure() {
-    var avW = window.innerWidth - 16;
-    var avH = window.innerHeight - 200;
-    W = Math.min(avW, avH, 480);
-    W = Math.max(W, 260);
-    H = W;
-    var dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(dpr, dpr);
-    tW = (W - 8) / COLS;
-    tH = tW;
+  function wsSend(d) { window.makeGameMove && window.makeGameMove(d); }
+  function me() { return state.players[playerIndex]; }
+
+  function myPat(tile) {
+    var p = state.players[playerIndex];
+    if (p.shuffleOverride && p.shuffleOverride[tile.id] !== undefined) return p.shuffleOverride[tile.id];
+    var b = state.sameBoard ? 0 : playerIndex;
+    return state.patterns[b][tile.id];
   }
-
-  function tileRect(tile) {
-    var offX = tile.layer * tW * 0.45;
-    var offY = tile.layer * tH * 0.45;
-    return {
-      x: tile.col * tW + offX + 4,
-      y: tile.row * tH + offY + 4,
-      w: tW - 2,
-      h: tH - 2,
-    };
+  function curLevelTiles() {
+    var lv = me().level;
+    return state.layout.filter(function (t) { return t.level === lv; });
   }
-
-  function isBlocked(tile, board) {
-    for (var i = 0; i < board.length; i++) {
-      var t = board[i];
-      if (t.removed || t.layer <= tile.layer) continue;
-      var dr = Math.abs(t.row - tile.row + 0.45 * (t.layer - tile.layer));
-      var dc = Math.abs(t.col - tile.col + 0.45 * (t.layer - tile.layer));
-      if (dr < 1 && dc < 1) return true;
+  function isBlocked(tile, tiles, removed) {
+    for (var i = 0; i < tiles.length; i++) {
+      var t = tiles[i];
+      if (t === tile || removed[t.id]) continue;
+      if (t.z > tile.z && Math.abs(t.x - tile.x) < 1 && Math.abs(t.y - tile.y) < 1) return true;
     }
     return false;
   }
 
+  // ---------- 尺寸 / 布局 ----------
+  function computeSize() {
+    W = Math.max(300, Math.min(window.innerWidth - 12, 560));
+    H = Math.max(360, Math.min(window.innerHeight - 210, 720));
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(dpr, dpr);
+    layoutBoard();
+  }
+
+  function layoutBoard() {
+    if (!state) return;
+    var tiles = curLevelTiles();
+    var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    tiles.forEach(function (t) {
+      if (t.x < minX) minX = t.x; if (t.x > maxX) maxX = t.x;
+      if (t.y < minY) minY = t.y; if (t.y > maxY) maxY = t.y;
+    });
+    curBounds = { minX: minX, maxX: maxX, minY: minY, maxY: maxY };
+    // 槽位条
+    slotCS = Math.min((W - 16) / 7, 56);
+    slotPad = 8;
+    var slotH = slotCS + slotPad * 2;
+    boardBottom = H - slotH - 8;
+    slotY = boardBottom + 8 + slotPad;
+    // 棋盘缩放（顶部留 30px 关卡标题）
+    var topPad = 30, padX = 10;
+    var spanX = (maxX - minX) + 1, spanY = (maxY - minY) + 1;
+    var availW = W - padX * 2, availH = boardBottom - topPad - 8;
+    TS = Math.min(availW / spanX, availH / spanY, 64);
+    var boardW = spanX * TS, boardH = spanY * TS;
+    var offX = (W - boardW) / 2, offY = topPad + (availH - boardH) / 2;
+    rects = {};
+    tiles.forEach(function (t) {
+      rects[t.id] = {
+        x: offX + (t.x - minX) * TS,
+        y: offY + (t.y - minY) * TS - t.z * TS * 0.04,
+        s: TS, z: t.z, tile: t
+      };
+    });
+  }
+
+  // ---------- 绘制 ----------
+  function drawBoard() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#cfe8d6'; ctx.fillRect(0, 0, W, H);
+
+    // 关卡标题 + 剩余
+    var lv = me().level;
+    var tiles = curLevelTiles();
+    var remain = tiles.filter(function (t) { return !me().removed[t.id]; }).length;
+    ctx.fillStyle = '#2e6b46'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText('第 ' + lv + ' 关　剩余 ' + remain, W / 2, 16);
+
+    // 卡牌：低 z 先画
+    var ids = tiles.map(function (t) { return t.id; }).filter(function (id) { return !me().removed[id]; });
+    ids.sort(function (a, b) { return rects[a].z - rects[b].z; });
+    ids.forEach(function (id) {
+      var blocked = isBlocked(rects[id].tile, tiles, me().removed);
+      drawTile(rects[id], myPat(rects[id].tile), blocked, rects[id].tile.faceDown);
+    });
+
+    drawSlot();
+    drawFlies();
+  }
+
+  function drawTile(r, pat, blocked, faceDown) {
+    var x = r.x, y = r.y, s = r.s, pad = s * 0.06;
+    // 阴影
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    roundRect(x + pad + 1, y + pad + 3, s - 2 * pad, s - 2 * pad, s * 0.18); ctx.fill();
+    if (faceDown && blocked) {
+      // 暗牌牌背
+      ctx.fillStyle = '#e6d8b8';
+      roundRect(x + pad, y + pad, s - 2 * pad, s - 2 * pad, s * 0.18); ctx.fill();
+      ctx.strokeStyle = '#c9b78a'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = '#bfa878'; ctx.font = Math.floor(s * 0.4) + 'px serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('❔', x + s / 2, y + s / 2);
+    } else {
+      ctx.fillStyle = blocked ? '#dfe3df' : (EMOJI_BG[pat % EMOJI_BG.length] || '#fff');
+      roundRect(x + pad, y + pad, s - 2 * pad, s - 2 * pad, s * 0.18); ctx.fill();
+      // 底部立体边
+      ctx.fillStyle = 'rgba(0,0,0,0.08)';
+      roundRect(x + pad, y + s - pad - s * 0.1, s - 2 * pad, s * 0.1, s * 0.06); ctx.fill();
+      ctx.strokeStyle = blocked ? '#c4ccc4' : '#e3d9c2'; ctx.lineWidth = 1.5;
+      roundRect(x + pad, y + pad, s - 2 * pad, s - 2 * pad, s * 0.18); ctx.stroke();
+      ctx.save();
+      if (blocked) ctx.globalAlpha = 0.5;
+      ctx.font = Math.floor(s * 0.5) + 'px serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(EMOJIS[pat % EMOJIS.length], x + s / 2, y + s / 2);
+      ctx.restore();
+      if (blocked) {
+        ctx.fillStyle = 'rgba(40,44,40,0.26)';
+        roundRect(x + pad, y + pad, s - 2 * pad, s - 2 * pad, s * 0.18); ctx.fill();
+      }
+    }
+  }
+
+  function drawSlot() {
+    var slot = me().slot;
+    var totalW = 7 * slotCS;
+    var startX = (W - totalW) / 2;
+    // 槽位托盘
+    ctx.fillStyle = '#b9986a';
+    roundRect(startX - 6, slotY - 6, totalW + 12, slotCS + 12, 12); ctx.fill();
+    for (var i = 0; i < 7; i++) {
+      var cx = startX + i * slotCS;
+      ctx.fillStyle = '#a6855a';
+      roundRect(cx + 2, slotY + 2, slotCS - 4, slotCS - 4, 8); ctx.fill();
+      var cell = slot[i];
+      if (cell) {
+        ctx.fillStyle = EMOJI_BG[cell.pattern % EMOJI_BG.length] || '#fff';
+        roundRect(cx + 3, slotY + 3, slotCS - 6, slotCS - 6, 8); ctx.fill();
+        ctx.font = Math.floor(slotCS * 0.55) + 'px serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(EMOJIS[cell.pattern % EMOJIS.length], cx + slotCS / 2, slotY + slotCS / 2);
+      }
+    }
+    // 合并闪光
+    var now = Date.now();
+    anim.merges = anim.merges.filter(function (m) { return now - m.start < 320; });
+    anim.merges.forEach(function (m) {
+      var p = (now - m.start) / 320;
+      ctx.save(); ctx.globalAlpha = 1 - p;
+      ctx.fillStyle = '#fff6c8';
+      var cx = startX + m.idx * slotCS;
+      roundRect(cx + 3 - p * 6, slotY + 3 - p * 6, slotCS - 6 + p * 12, slotCS - 6 + p * 12, 8); ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  function drawFlies() {
+    var now = Date.now();
+    anim.flies = anim.flies.filter(function (f) { return now - f.start < f.dur; });
+    anim.flies.forEach(function (f) {
+      var p = Math.min((now - f.start) / f.dur, 1);
+      var e = 1 - Math.pow(1 - p, 3); // ease-out
+      var x = f.x0 + (f.x1 - f.x0) * e, y = f.y0 + (f.y1 - f.y0) * e;
+      var s = f.s * (1 - 0.25 * e);
+      ctx.fillStyle = EMOJI_BG[f.pattern % EMOJI_BG.length] || '#fff';
+      roundRect(x, y, s, s, s * 0.18); ctx.fill();
+      ctx.strokeStyle = '#e3d9c2'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.font = Math.floor(s * 0.55) + 'px serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(EMOJIS[f.pattern % EMOJIS.length], x + s / 2, y + s / 2);
+    });
+  }
+
   function roundRect(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
     ctx.beginPath();
     ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r);
-    ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-    ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r);
-    ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
     ctx.closePath();
   }
 
-  function drawBoard(board, slot) {
-    ctx.clearRect(0, 0, W, H);
-    // Background
-    ctx.fillStyle = '#f5ede0';
-    ctx.fillRect(0, 0, W, H);
+  // ---------- 动画循环 ----------
+  function ensureLoop() {
+    if (anim.running) return;
+    anim.running = true;
+    tick();
+  }
+  function tick() {
+    drawBoard();
+    if (anim.flies.length > 0 || anim.merges.length > 0) {
+      anim.rafId = requestAnimationFrame(tick);
+    } else {
+      anim.running = false;
+    }
+  }
 
-    // Draw tiles layer by layer (bottom up)
-    for (var layer = 0; layer < LAYERS; layer++) {
-      for (var i = 0; i < board.length; i++) {
-        var tile = board[i];
-        if (tile.removed || tile.layer !== layer) continue;
-        var r = tileRect(tile);
-        var blocked = isBlocked(tile, board);
-        var pat = tile.pattern;
-        var bg = PAT_BG[pat % PAT_BG.length];
-        var emoji = PATTERNS[pat % PATTERNS.length];
-
-        // Shadow for higher layers
-        if (layer > 0) {
-          ctx.fillStyle = 'rgba(0,0,0,0.15)';
-          roundRect(r.x + 3, r.y + 3, r.w, r.h, 6);
-          ctx.fill();
-        }
-
-        // Tile body
-        var grad = ctx.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
-        grad.addColorStop(0, blocked ? '#d0d0d0' : '#fff');
-        grad.addColorStop(0.2, blocked ? '#b8b8b8' : bg);
-        grad.addColorStop(1, blocked ? '#aaa' : bg);
-        ctx.fillStyle = grad;
-        roundRect(r.x, r.y, r.w, r.h, 6);
-        ctx.fill();
-
-        // Border
-        ctx.strokeStyle = blocked ? '#999' : 'rgba(0,0,0,0.15)';
-        ctx.lineWidth = tile.id === hoverTile && !blocked ? 2.5 : 1;
-        if (tile.id === hoverTile && !blocked) ctx.strokeStyle = '#c8a45c';
-        roundRect(r.x, r.y, r.w, r.h, 6);
-        ctx.stroke();
-
-        // Blocked overlay
-        if (blocked) {
-          ctx.fillStyle = 'rgba(120,120,120,0.3)';
-          roundRect(r.x, r.y, r.w, r.h, 6);
-          ctx.fill();
-        }
-
-        // Emoji
-        var fs = Math.max(10, tW * 0.55);
-        ctx.font = fs + 'px serif';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.globalAlpha = blocked ? 0.4 : 1;
-        ctx.fillText(emoji, r.x + r.w / 2, r.y + r.h / 2);
-        ctx.globalAlpha = 1;
+  // ---------- 交互 ----------
+  function onClick(e) {
+    if (!state || state.phase !== 'playing' || me().eliminated) return;
+    if (winnerIdx !== null) return;
+    var r = canvas.getBoundingClientRect();
+    var mx = (e.clientX - r.left) * (W / r.width);
+    var my = (e.clientY - r.top) * (H / r.height);
+    var tiles = curLevelTiles();
+    // 从最高 z 往下找命中的可点牌
+    var cand = tiles.filter(function (t) { return !me().removed[t.id]; })
+      .sort(function (a, b) { return rects[b.id].z - rects[a.id].z; });
+    for (var i = 0; i < cand.length; i++) {
+      var rc = rects[cand[i].id];
+      if (mx >= rc.x && mx <= rc.x + rc.s && my >= rc.y && my <= rc.y + rc.s) {
+        if (isBlocked(cand[i], tiles, me().removed)) return; // 被遮挡
+        startFly(cand[i]);
+        wsSend({ type: 'pick', tileId: cand[i].id });
+        return;
       }
     }
   }
 
-  function drawSlot(slot, container) {
-    var slotDiv = document.getElementById('sheep-slot');
-    if (!slotDiv) return;
-    slotDiv.innerHTML = '';
-    for (var i = 0; i < SLOT_SIZE; i++) {
-      var cell = document.createElement('div');
-      cell.style.cssText = 'width:' + Math.floor(W / SLOT_SIZE - 4) + 'px;height:' + Math.floor(W / SLOT_SIZE - 4) + 'px;border-radius:6px;border:1.5px solid #ddd;background:#fff;display:flex;align-items:center;justify-content:center;font-size:' + Math.floor(W / SLOT_SIZE * 0.5) + 'px;flex-shrink:0;';
-      if (slot[i]) {
-        var bg2 = PAT_BG[slot[i].pattern % PAT_BG.length];
-        cell.style.background = bg2;
-        cell.style.borderColor = 'rgba(0,0,0,0.15)';
-        cell.textContent = PATTERNS[slot[i].pattern % PATTERNS.length];
-      }
-      slotDiv.appendChild(cell);
+  function startFly(tile) {
+    var rc = rects[tile.id];
+    if (!rc) return;
+    var slotLen = me().slot.length;
+    var totalW = 7 * slotCS, startX = (W - totalW) / 2;
+    anim.flies.push({
+      x0: rc.x, y0: rc.y, x1: startX + slotLen * slotCS, y1: slotY,
+      s: rc.s, pattern: myPat(tile), start: Date.now(), dur: 240
+    });
+    ensureLoop();
+  }
+
+  // ---------- DOM 面板 ----------
+  function buildPanel() {
+    if (!panel) return;
+    panel.innerHTML = '';
+    var p = me();
+    var powers = [
+      { k: 'power_undo', label: '↩ 撤回', n: p.powers.undo },
+      { k: 'power_shuffle', label: '🔀 洗牌', n: p.powers.shuffle },
+      { k: 'power_pop3', label: '⏏ 移出3张', n: p.powers.pop3 },
+    ];
+    powers.forEach(function (pw) {
+      var b = document.createElement('button');
+      b.className = 'btn';
+      b.style.cssText = 'font-size:13px;padding:6px 12px;' + (pw.n <= 0 ? 'opacity:.4;' : '');
+      b.textContent = pw.label + ' ×' + pw.n;
+      b.disabled = pw.n <= 0 || p.eliminated || winnerIdx !== null;
+      b.onclick = function () { if (pw.n > 0) wsSend({ type: pw.k }); };
+      panel.appendChild(b);
+    });
+  }
+
+  function buildOppBar() {
+    if (!oppBar) return;
+    oppBar.innerHTML = '';
+    for (var i = 0; i < state._playerCount; i++) {
+      if (i === playerIndex) continue;
+      var op = state.players[i];
+      var lvT = state.layout.filter(function (t) { return t.level === op.level; });
+      var remain = lvT.filter(function (t) { return !op.removed[t.id]; }).length;
+      var chip = document.createElement('div');
+      chip.style.cssText = 'padding:4px 10px;border-radius:12px;font-size:12px;background:#fff;border:1px solid var(--border);' + (op.eliminated ? 'opacity:.45;text-decoration:line-through;' : '');
+      var nm = (window._players && window._players[i]) ? window._players[i].name : '玩家' + (i + 1);
+      chip.textContent = nm + '：第' + op.level + '关·剩' + remain + (op.eliminated ? '·爆槽' : '·槽' + op.slot.length + '/7');
+      oppBar.appendChild(chip);
     }
   }
 
-  function getTileAt(mx, my, board) {
-    // Check top layers first (higher layer = on top)
-    for (var layer = LAYERS - 1; layer >= 0; layer--) {
-      for (var i = 0; i < board.length; i++) {
-        var tile = board[i];
-        if (tile.removed || tile.layer !== layer) continue;
-        var r = tileRect(tile);
-        if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
-          return tile;
-        }
-      }
-    }
-    return null;
-  }
-
-  function getCanvasPos(e) {
-    var rect = canvas.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left) * (W / rect.width),
-      y: (e.clientY - rect.top) * (H / rect.height),
-    };
-  }
-
-  function wsSend(data) {
-    window.makeGameMove && window.makeGameMove(data);
-  }
-
+  // ---------- 渲染入口 ----------
   window.gameRenderers.set('sheeptile', {
     init: function (container) {
       container.innerHTML = '';
+      state = null; prevSlotLen = 0; prevLevel = 1;
+      anim.flies = []; anim.merges = []; anim.running = false;
       var wrap = document.createElement('div');
       wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;padding:6px;';
       container.appendChild(wrap);
-
-      // Opponent scores bar
-      var oppBar = document.createElement('div');
-      oppBar.id = 'sheep-opp';
-      oppBar.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;justify-content:center;';
-      wrap.appendChild(oppBar);
-
       canvas = document.createElement('canvas');
-      canvas.style.cssText = 'border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.12);cursor:pointer;touch-action:none;';
+      canvas.style.cssText = 'border-radius:12px;box-shadow:0 4px 18px rgba(46,107,70,.2);touch-action:manipulation;';
       wrap.appendChild(canvas);
       ctx = canvas.getContext('2d');
-      measure();
-      window.addEventListener('resize', function () { measure(); if (state) drawBoard(state.boards[playerIndex], state.slots[playerIndex]); });
+      canvas.addEventListener('click', onClick);
+      canvas.addEventListener('touchstart', function (e) { e.preventDefault(); if (e.touches[0]) onClick(e.touches[0]); }, { passive: false });
+      computeSize();
+      window.addEventListener('resize', function () { computeSize(); if (state) drawBoard(); });
 
-      // Slot bar
-      var slotLabel = document.createElement('div');
-      slotLabel.style.cssText = 'font-size:12px;color:var(--text-muted);margin:8px 0 4px;';
-      slotLabel.textContent = '槽位（满7张出局）';
-      wrap.appendChild(slotLabel);
+      oppBar = document.createElement('div');
+      oppBar.id = 'sheep-opp';
+      oppBar.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px;';
+      wrap.appendChild(oppBar);
 
-      var slotDiv = document.createElement('div');
-      slotDiv.id = 'sheep-slot';
-      slotDiv.style.cssText = 'display:flex;gap:3px;';
-      wrap.appendChild(slotDiv);
-
-      // Power buttons
-      var pwrDiv = document.createElement('div');
-      pwrDiv.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
-      wrap.appendChild(pwrDiv);
-
-      var undoBtn = document.createElement('button');
-      undoBtn.className = 'btn';
-      undoBtn.textContent = '↩ 撤回';
-      undoBtn.onclick = function () { wsSend({ type: 'power_undo' }); };
-      pwrDiv.appendChild(undoBtn);
-
-      var shufBtn = document.createElement('button');
-      shufBtn.className = 'btn';
-      shufBtn.textContent = '🔀 洗牌';
-      shufBtn.onclick = function () { wsSend({ type: 'power_shuffle' }); };
-      pwrDiv.appendChild(shufBtn);
-
-      // Canvas events
-      canvas.addEventListener('mousemove', function (e) {
-        if (!state || !state.boards) return;
-        var pos = getCanvasPos(e);
-        var tile = getTileAt(pos.x, pos.y, state.boards[playerIndex] || []);
-        var newHover = tile && !isBlocked(tile, state.boards[playerIndex]) ? tile.id : -1;
-        if (newHover !== hoverTile) { hoverTile = newHover; drawBoard(state.boards[playerIndex], state.slots[playerIndex]); }
-      });
-      canvas.addEventListener('mouseleave', function () { hoverTile = -1; if (state) drawBoard(state.boards[playerIndex], state.slots[playerIndex]); });
-      canvas.addEventListener('click', function (e) {
-        if (!state || !state.boards) return;
-        var pos = getCanvasPos(e);
-        var board = state.boards[playerIndex] || [];
-        var tile = getTileAt(pos.x, pos.y, board);
-        if (tile && !isBlocked(tile, board)) wsSend({ type: 'pick', tileId: tile.id });
-      });
-      canvas.addEventListener('touchend', function (e) {
-        e.preventDefault();
-        var touch = e.changedTouches[0];
-        var pos = getCanvasPos(touch);
-        var board = state && state.boards && state.boards[playerIndex] || [];
-        var tile = getTileAt(pos.x, pos.y, board);
-        if (tile && !isBlocked(tile, board)) wsSend({ type: 'pick', tileId: tile.id });
-      });
+      panel = document.createElement('div');
+      panel.id = 'sheep-panel';
+      panel.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px;';
+      wrap.appendChild(panel);
     },
 
     render: function (st, container, pi, winner) {
-      state = st;
-      playerIndex = pi;
-      if (!st || !st.boards || !st.boards[pi]) return;
+      var newGame = !state || (st.layout && state.layout !== st.layout);
+      state = st; playerIndex = pi;
+      winnerIdx = (winner === null || winner === undefined) ? null : winner;
+      if (!st || !st.players || !st.players[pi]) return;
 
-      var board = st.boards[pi];
-      var slot = st.slots[pi] || [];
-      drawBoard(board, slot);
-      drawSlot(slot, container);
+      if (newGame) { prevSlotLen = 0; prevLevel = me().level; layoutBoard(); }
 
-      // Opponent bar
-      var oppBar = document.getElementById('sheep-opp');
-      if (oppBar) {
-        oppBar.innerHTML = '';
-        var players = window._players || [];
-        for (var i = 0; i < (st._playerCount || 0); i++) {
-          if (i === pi) continue;
-          var pname = players[i] ? players[i].name : ('玩家' + (i + 1));
-          var chip = document.createElement('div');
-          var elim = st.eliminated && st.eliminated[i];
-          var remaining = st.boards[i] ? st.boards[i].filter(function(t){return !t.removed;}).length : '?';
-          chip.style.cssText = 'padding:4px 10px;border-radius:20px;font-size:12px;background:' + (elim ? '#fee' : '#f0f9f0') + ';color:' + (elim ? '#c00' : '#333') + ';border:1px solid ' + (elim ? '#fcc' : '#c0e8c0') + ';';
-          chip.textContent = pname + ': ' + (elim ? '❌出局' : remaining + '张剩余');
-          oppBar.appendChild(chip);
-        }
+      // 关卡切换 → 重算布局
+      if (me().level !== prevLevel) { prevLevel = me().level; prevSlotLen = 0; layoutBoard(); }
+
+      // 检测三连消除（slot 减少）→ 合并动画
+      var curSlot = me().slot.length;
+      if (curSlot < prevSlotLen) {
+        for (var k = 0; k < 3; k++) anim.merges.push({ idx: k, start: Date.now() });
+        ensureLoop();
       }
+      prevSlotLen = curSlot;
 
-      // Status
+      drawBoard();
+      buildPanel();
+      buildOppBar();
+      ensureLoop();
+
       var statusEl = document.getElementById('status');
       if (statusEl) {
         if (winner !== null && winner !== undefined) {
-          var wname = (window._players && window._players[winner]) ? window._players[winner].name : ('玩家' + (winner + 1));
-          statusEl.textContent = winner === pi ? '🎉 你赢了！' : wname + ' 获胜！';
-        } else if (st.eliminated && st.eliminated[pi]) {
-          statusEl.textContent = '💀 槽位已满，你出局了';
-        } else {
-          var rem = board.filter(function(t){return !t.removed;}).length;
-          statusEl.textContent = rem + ' 张牌剩余 · 槽位 ' + slot.length + '/' + SLOT_SIZE;
-        }
+          var wn = (window._players && window._players[winner]) ? window._players[winner].name : '玩家' + (winner + 1);
+          statusEl.textContent = winner === pi ? '🎉 你赢了！' : wn + ' 通关获胜！';
+        } else if (me().eliminated) {
+          statusEl.textContent = '💥 你爆槽了，观战中…';
+        } else { statusEl.textContent = ''; }
       }
     },
   });

@@ -365,6 +365,22 @@
         optionsEl.innerHTML =
           '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">游戏设置</div>' +
           '<div style="font-size:13px;color:var(--text-muted)">破冰: ' + (breakOn2 ? '需要 ≥30分' : '关闭') + '</div>';
+      } else if (game === 'sheeptile') {
+        optionsEl.style.display = 'block';
+        var sameBoard = roomOptions.sameBoard !== false; // 默认同一张棋盘
+        if (isHost) {
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">游戏设置</div>' +
+            '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">' +
+              '<input type="checkbox" id="optSameBoard" ' + (sameBoard ? 'checked' : '') + ' onchange="window._setGameOption(\'sameBoard\', this.checked)">' +
+              '所有人同一张棋盘（公平竞速）' +
+            '</label>' +
+            '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">关闭则每人随机各自的棋盘</div>';
+        } else {
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">游戏设置</div>' +
+            '<div style="font-size:13px;color:var(--text-muted)">棋盘: ' + (sameBoard ? '同一张（公平竞速）' : '各自随机') + '</div>';
+        }
       } else if (game === 'drawguess') {
         optionsEl.style.display = 'block';
         var dgCats = [['animal','动物'],['food','食物'],['daily','日常物品'],['action','动作'],['place','场景'],['idiom','成语俗语'],['movie','影视动漫游戏'],['internet','网络热词']];
