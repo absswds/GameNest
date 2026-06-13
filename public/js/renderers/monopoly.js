@@ -1,356 +1,584 @@
-// public/js/renderers/monopoly.js — 大富翁
+// public/js/renderers/monopoly.js — 大富翁（视觉重做 + 动画）
+// 棋盘元数据从 state.board 读取（不再镜像常量）。动画：骰子滚动/棋子逐格移动/收租飘字/机会卡。
 (function () {
   window.gameRenderers = window.gameRenderers || new Map();
 
-  var BOARD_SIZE = 28;
-  var BOARD_META = buildBoardMeta();
   var PLAYER_COLORS = ['#E74C3C','#3498DB','#2ECC71','#F39C12','#9B59B6','#1ABC9C'];
   var PLAYER_EMOJIS = ['🔴','🔵','🟢','🟡','🟣','🩵'];
+  var DICE_FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
 
-  function buildBoardMeta() {
-    // Minimal board metadata for rendering (matches server BOARD)
-    var spaces = [
-      { type: 'go',          name: 'GO\n出发', color: '#2ECC71' },
-      { type: 'property',    name: '廉租房',   color: '#8B4513' },
-      { type: 'chance',      name: '机会',      color: '#F1C40F' },
-      { type: 'property',    name: '旧街道',   color: '#8B4513' },
-      { type: 'tax',         name: '所得税',   color: '#E74C3C' },
-      { type: 'railroad',    name: '北站',      color: '#555' },
-      { type: 'property',    name: '东方路',   color: '#82C2FF' },
-      { type: 'chance',      name: '机会',      color: '#F1C40F' },
-      { type: 'property',    name: '南京路',   color: '#82C2FF' },
-      { type: 'property',    name: '淮海路',   color: '#82C2FF' },
-      { type: 'jail_visit',  name: '监狱\n探视', color: '#aaa' },
-      { type: 'property',    name: '龙华寺',   color: '#FF69B4' },
-      { type: 'utility',     name: '电力\n公司', color: '#aaa' },
-      { type: 'property',    name: '新天地',   color: '#FF69B4' },
-      { type: 'property',    name: '外滩',      color: '#FF69B4' },
-      { type: 'railroad',    name: '南站',      color: '#555' },
-      { type: 'property',    name: '豫园',      color: '#FFA500' },
-      { type: 'chance',      name: '机会',      color: '#F1C40F' },
-      { type: 'property',    name: '城隍庙',   color: '#FFA500' },
-      { type: 'property',    name: '人民\n广场', color: '#FFA500' },
-      { type: 'free_parking',name: '免费\n停车', color: '#27AE60' },
-      { type: 'property',    name: '环球港',   color: '#FF0000' },
-      { type: 'chance',      name: '机会',      color: '#F1C40F' },
-      { type: 'property',    name: '徐汇\n滨江', color: '#FF0000' },
-      { type: 'property',    name: '陆家嘴',   color: '#FF0000' },
-      { type: 'railroad',    name: '西站',      color: '#555' },
-      { type: 'property',    name: '浦东\n机场', color: '#FFDD00' },
-      { type: 'property',    name: '迪士尼',   color: '#FFDD00' },
-    ];
-    return spaces;
-  }
+  var canvas, ctx, playerIndex, winnerIdx = null;
+  var W, H, CS, CO;        // 画布尺寸、边格短边、角格边长
+  var cells = [];          // 28 个格子的几何
+  var latestState = null;  // 最新服务端 state
+  var displayState = null;  // 当前展示用 state（动画期间滞后于 latest）
+  var prevSnap = null;     // {lastMove, lastCard, lastRent, dice}
+  var eventLog = [];       // 中央事件 log（最近 3 条）
 
-  // Layout: 28 spaces around a rectangle
-  // Bottom row (left→right): 0-7 (8 spaces)
-  // Right col (bottom→top): 8-13 (6 spaces)
-  // Top row (right→left): 14-21 (8 spaces)
-  // Left col (top→bottom): 22-27 (6 spaces)
-  function spaceLayout(W, H, cellSize) {
-    var positions = [];
-    var cols = Math.floor(W / cellSize);
-    var rows = Math.floor(H / cellSize);
-    // Bottom: 0..cols-1
-    for (var c = 0; c < cols; c++) positions.push({ x: c * cellSize, y: H - cellSize, idx: positions.length });
-    // Right: cols..cols+rows-2
-    for (var r = rows - 2; r >= 1; r--) positions.push({ x: W - cellSize, y: r * cellSize, idx: positions.length });
-    // Top: right→left
-    for (var c2 = cols - 1; c2 >= 0; c2--) positions.push({ x: c2 * cellSize, y: 0, idx: positions.length });
-    // Left: 0→rows-2
-    for (var r2 = 1; r2 < rows - 1; r2++) positions.push({ x: 0, y: r2 * cellSize, idx: positions.length });
-    return positions;
-  }
+  // 动画状态机
+  var anim = { running: false, rafId: null, queue: [], cur: null, startTime: 0, moving: null, floats: [], dice: null };
 
-  var canvas, ctx, state, playerIndex;
-  var W, H, CS; // canvas dims and cell size
-  var positions = [];
+  function wsSend(data) { window.makeGameMove && window.makeGameMove(data); }
+  function nameOf(i) { return (window._players && window._players[i]) ? window._players[i].name : '玩家' + (i + 1); }
 
-  function resize(container) {
-    var avW = Math.min(window.innerWidth - 12, 480);
-    var avH = Math.min(window.innerHeight - 180, avW);
-    // Make square
-    W = Math.max(avW, 260);
+  // ---------- 布局 ----------
+  function computeSize() {
+    var availW = Math.min(window.innerWidth - 12, window.innerHeight - 200, 680);
+    W = Math.max(300, availW);
+    CS = W / 8.6;            // 6 边格 + 2 角格(1.3) = 6 + 2.6 = 8.6
+    CO = CS * 1.3;
+    W = Math.round(CO * 2 + CS * 6);
     H = W;
-    CS = Math.floor(W / 8);
-    W = CS * 8; H = CS * 8; // ensure exact fit
     var dpr = window.devicePixelRatio || 1;
     canvas.width = W * dpr; canvas.height = H * dpr;
     canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
-    positions = spaceLayout(W, H, CS);
+    cells = layoutCells();
   }
 
-  function drawBoard(st) {
+  // 角: 0(右下) 7(左下) 14(左上) 21(右上)
+  function layoutCells() {
+    var c = [];
+    function put(i, x, y, w, h, side, corner) { c[i] = { x: x, y: y, w: w, h: h, side: side, corner: !!corner }; }
+    put(0, W - CO, H - CO, CO, CO, 'corner', true);                       // GO 右下
+    for (var k = 1; k <= 6; k++) put(k, W - CO - k * CS, H - CO, CS, CO, 'bottom'); // 底边 右→左
+    put(7, 0, H - CO, CO, CO, 'corner', true);                            // 左下
+    for (var k2 = 8; k2 <= 13; k2++) put(k2, 0, H - CO - (k2 - 7) * CS, CO, CS, 'left'); // 左边 下→上
+    put(14, 0, 0, CO, CO, 'corner', true);                               // 左上
+    for (var k3 = 15; k3 <= 20; k3++) put(k3, CO + (k3 - 15) * CS, 0, CS, CO, 'top'); // 顶边 左→右
+    put(21, W - CO, 0, CO, CO, 'corner', true);                          // 右上
+    for (var k4 = 22; k4 <= 27; k4++) put(k4, W - CO, CO + (k4 - 22) * CS, CO, CS, 'right'); // 右边 上→下
+    return c;
+  }
+
+  function cellCenter(i) { var g = cells[i]; return { x: g.x + g.w / 2, y: g.y + g.h / 2 }; }
+
+  // ---------- 绘制 ----------
+  function drawFrame(st) {
+    if (!st) return;
+    var board = st.board || [];
     ctx.clearRect(0, 0, W, H);
-    // Background
-    ctx.fillStyle = '#E8F5E9';
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#efe7d8'; ctx.fillRect(0, 0, W, H);
 
-    // Center area
-    ctx.fillStyle = '#C8E6C9';
-    ctx.fillRect(CS, CS, W - 2 * CS, H - 2 * CS);
-    ctx.font = 'bold ' + Math.floor(CS * 0.38) + 'px sans-serif';
-    ctx.fillStyle = '#2E7D32'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('大 富 翁', W / 2, H / 2 - CS * 0.2);
-    ctx.font = Math.floor(CS * 0.25) + 'px sans-serif';
-    ctx.fillStyle = '#555';
-    var curName = (window._players && window._players[st.currentPlayer]) ? window._players[st.currentPlayer].name : '玩家' + (st.currentPlayer + 1);
-    ctx.fillText('当前：' + curName, W / 2, H / 2 + CS * 0.2);
+    drawCenter(st);
+    for (var i = 0; i < 28; i++) drawCell(st, board, i);
+    drawTokens(st);
+    drawFloats();
+  }
 
-    // Draw spaces
-    for (var i = 0; i < Math.min(positions.length, BOARD_SIZE); i++) {
-      var pos = positions[i];
-      var meta = BOARD_META[i];
-      if (!meta) continue;
-      drawSpace(pos.x, pos.y, CS, i, meta, st);
+  function drawCenter(st) {
+    var x = CO, y = CO, w = W - 2 * CO, h = H - 2 * CO;
+    // 中央底板
+    ctx.fillStyle = '#fbf7ee';
+    roundRect(x + 4, y + 4, w - 8, h - 8, 10); ctx.fill();
+    ctx.strokeStyle = '#d8cbb0'; ctx.lineWidth = 1; ctx.stroke();
+
+    // 斜向标题缎带
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.rotate(-Math.PI / 9);
+    ctx.fillStyle = '#c8a45c';
+    ctx.font = 'bold ' + Math.floor(CO * 0.62) + 'px "Ma Shan Zheng", serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('大 富 翁', 0, -h * 0.18);
+    ctx.restore();
+
+    // 骰子
+    var dice = anim.dice ? anim.dice.faces : st.dice;
+    if (dice && (dice[0] || dice[1])) {
+      var ds = CO * 0.62, gap = CO * 0.2;
+      var dx = W / 2 - ds - gap / 2, dy = H / 2 - ds * 0.2;
+      drawDie(dx, dy, ds, dice[0]);
+      drawDie(dx + ds + gap, dy, ds, dice[1]);
     }
 
-    // Draw player tokens
-    var players = window._players || [];
-    for (var p = 0; p < (st._playerCount || 0); p++) {
-      if (st.eliminated && st.eliminated[p]) continue;
-      var ppos = st.positions[p];
-      if (ppos === undefined || ppos >= positions.length) continue;
-      var spos = positions[ppos];
-      var offset = p * 6;
-      var tx = spos.x + CS / 2 + (p % 2 === 0 ? -CS * 0.18 : CS * 0.18);
-      var ty = spos.y + CS / 2 + (p < 2 ? -CS * 0.18 : CS * 0.18);
-      ctx.font = Math.floor(CS * 0.35) + 'px serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(PLAYER_EMOJIS[p] || '🔴', tx, ty);
+    // 当前玩家
+    ctx.fillStyle = '#5a4a32';
+    ctx.font = Math.floor(CS * 0.3) + 'px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (winnerIdx === null || winnerIdx === undefined) {
+      ctx.fillText('轮到 ' + nameOf(st.currentPlayer), W / 2, H / 2 + h * 0.16);
+    }
+
+    // 事件 log
+    ctx.font = Math.floor(CS * 0.24) + 'px sans-serif';
+    ctx.fillStyle = '#8a7a5e';
+    for (var i = 0; i < eventLog.length; i++) {
+      ctx.fillText(eventLog[i], W / 2, H / 2 + h * 0.27 + i * (CS * 0.3));
     }
   }
 
-  function drawSpace(x, y, size, idx, meta, st) {
-    // Background
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(x, y, size, size);
-    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 0.5;
-    ctx.strokeRect(x, y, size, size);
+  function drawDie(x, y, s, val) {
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#c8a45c'; ctx.lineWidth = 2;
+    roundRect(x, y, s, s, s * 0.18); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#333';
+    var v = Math.max(1, Math.min(6, val || 1));
+    var r = s * 0.09, q = s * 0.26;
+    var pips = {
+      1: [[0.5, 0.5]], 2: [[0.3, 0.3], [0.7, 0.7]],
+      3: [[0.28, 0.28], [0.5, 0.5], [0.72, 0.72]],
+      4: [[0.3, 0.3], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7]],
+      5: [[0.3, 0.3], [0.7, 0.3], [0.5, 0.5], [0.3, 0.7], [0.7, 0.7]],
+      6: [[0.3, 0.28], [0.7, 0.28], [0.3, 0.5], [0.7, 0.5], [0.3, 0.72], [0.7, 0.72]]
+    }[v];
+    pips.forEach(function (p) { ctx.beginPath(); ctx.arc(x + p[0] * s, y + p[1] * s, r, 0, Math.PI * 2); ctx.fill(); });
+  }
 
-    // Color bar (top for top row, bottom for bottom, left/right for sides)
-    var onBottom = y >= H - size - 1;
-    var onTop = y <= 1;
-    var onLeft = x <= 1;
-    var onRight = x >= W - size - 1;
-    var barSize = size * 0.22;
-    ctx.fillStyle = meta.color || '#ccc';
-    if (onBottom) ctx.fillRect(x, y + size - barSize, size, barSize);
-    else if (onTop) ctx.fillRect(x, y, size, barSize);
-    else if (onLeft) ctx.fillRect(x, y, barSize, size);
-    else ctx.fillRect(x + size - barSize, y, barSize, size);
+  function drawCell(st, board, idx) {
+    var g = cells[idx]; if (!g) return;
+    var sp = board[idx] || {};
+    ctx.fillStyle = '#fffdf8';
+    ctx.fillRect(g.x, g.y, g.w, g.h);
+    ctx.strokeStyle = '#cbbfa6'; ctx.lineWidth = 1;
+    ctx.strokeRect(g.x, g.y, g.w, g.h);
 
-    // Name text
-    var fs = Math.max(8, Math.floor(size * 0.17));
-    ctx.fillStyle = '#333'; ctx.font = fs + 'px sans-serif';
+    if (g.corner) { drawCorner(g, sp, idx); return; }
+
+    // 色带（内缘）
+    var bar = (g.side === 'bottom' || g.side === 'top') ? g.w : g.h;
+    var bt = Math.min(g.w, g.h) * 0.26;
+    if (sp.type === 'property' && sp.color) {
+      ctx.fillStyle = sp.color;
+      if (g.side === 'bottom') ctx.fillRect(g.x, g.y, g.w, bt);
+      else if (g.side === 'top') ctx.fillRect(g.x, g.y + g.h - bt, g.w, bt);
+      else if (g.side === 'left') ctx.fillRect(g.x + g.w - bt, g.y, bt, g.h);
+      else ctx.fillRect(g.x, g.y, bt, g.h);
+    }
+
+    // 类型图标 + 名称 + 价格
+    var cx = g.x + g.w / 2, cy = g.y + g.h / 2;
+    var icon = typeIcon(sp);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    var lines = meta.name.split('\n');
-    if (lines.length === 1) {
-      ctx.fillText(meta.name, x + size / 2, y + size / 2);
-    } else {
-      lines.forEach(function (line, li) {
-        ctx.fillText(line, x + size / 2, y + size / 2 + (li - (lines.length - 1) / 2) * (fs + 1));
+    if (icon) {
+      ctx.font = Math.floor(Math.min(g.w, g.h) * 0.34) + 'px serif';
+      ctx.fillText(icon, cx, g.y + g.h * 0.42);
+    }
+    ctx.fillStyle = '#3a3020';
+    var fs = Math.max(9, Math.floor(Math.min(g.w, g.h) * 0.2));
+    ctx.font = fs + 'px sans-serif';
+    var label = sp.name || (sp.type === 'chance' ? '机会' : '');
+    if (label) {
+      var lines = wrapLabel(label, 4);
+      lines.forEach(function (ln, li) {
+        ctx.fillText(ln, cx, g.y + g.h * (icon ? 0.7 : 0.42) + (li - (lines.length - 1) / 2) * (fs + 1));
       });
     }
+    if (sp.price) {
+      ctx.fillStyle = '#9a8a6a'; ctx.font = Math.floor(fs * 0.85) + 'px sans-serif';
+      ctx.fillText('$' + sp.price, cx, g.y + g.h * 0.9);
+    }
 
-    // Property ownership indicator
+    // 所有权 + 房子
     var prop = st.properties && st.properties[idx];
     if (prop) {
       var oc = PLAYER_COLORS[prop.owner % PLAYER_COLORS.length];
+      // 内缘 owner 条
       ctx.fillStyle = oc;
-      ctx.beginPath(); ctx.arc(x + size * 0.78, y + size * 0.25, size * 0.1, 0, Math.PI * 2); ctx.fill();
-      // Houses
-      for (var h = 0; h < (prop.houses || 0); h++) {
-        ctx.fillStyle = '#27ae60';
-        ctx.fillRect(x + size * 0.12 + h * size * 0.14, y + size * 0.35, size * 0.1, size * 0.12);
+      var ob = bt * 0.45;
+      if (g.side === 'bottom') ctx.fillRect(g.x, g.y + bt, g.w, ob);
+      else if (g.side === 'top') ctx.fillRect(g.x, g.y + g.h - bt - ob, g.w, ob);
+      else if (g.side === 'left') ctx.fillRect(g.x + g.w - bt - ob, g.y, ob, g.h);
+      else ctx.fillRect(g.x + bt, g.y, ob, g.h);
+      // 房子/旅馆
+      var houses = prop.houses || 0;
+      if (houses > 0) {
+        var hy = g.y + g.h * 0.5;
+        if (houses >= 5) {
+          ctx.font = Math.floor(Math.min(g.w, g.h) * 0.3) + 'px serif';
+          ctx.fillText('🏨', cx, hy);
+        } else {
+          ctx.font = Math.floor(Math.min(g.w, g.h) * 0.2) + 'px serif';
+          var s = '';
+          for (var h = 0; h < houses; h++) s += '🏠';
+          ctx.fillText(s, cx, hy);
+        }
       }
     }
   }
 
-  function buildActionPanel(container, st) {
+  function drawCorner(g, sp, idx) {
+    var cx = g.x + g.w / 2, cy = g.y + g.h / 2;
+    var bg = { go: '#d6f0d8', jail_visit: '#e8e8e8', free_parking: '#dff3df', go_to_jail: '#f6dcdc' }[sp.type] || '#f0ece0';
+    ctx.fillStyle = bg; ctx.fillRect(g.x + 1, g.y + 1, g.w - 2, g.h - 2);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = Math.floor(g.w * 0.36) + 'px serif';
+    var icon = { go: '▶', jail_visit: '👮', free_parking: '🅿️', go_to_jail: '🚓' }[sp.type] || '';
+    ctx.fillText(icon, cx, cy - g.h * 0.12);
+    ctx.fillStyle = '#5a4a32'; ctx.font = 'bold ' + Math.floor(g.w * 0.17) + 'px sans-serif';
+    var label = { go: '起点 +200', jail_visit: '监狱探视', free_parking: '免费停车', go_to_jail: '入狱！' }[sp.type] || '';
+    ctx.fillText(label, cx, cy + g.h * 0.26);
+  }
+
+  function typeIcon(sp) {
+    return { railroad: '🚂', utility: '⚡', chance: '❓', tax: '💰' }[sp.type] || '';
+  }
+
+  function wrapLabel(s, per) {
+    if (s.length <= per) return [s];
+    return [s.slice(0, per), s.slice(per, per * 2)];
+  }
+
+  function drawTokens(st) {
+    var n = st._playerCount || 0;
+    for (var p = 0; p < n; p++) {
+      if (st.eliminated && st.eliminated[p]) continue;
+      if (anim.moving && anim.moving.player === p) continue; // 移动中的棋子由 overlay 画
+      var pos = st.positions[p];
+      if (pos === undefined || !cells[pos]) continue;
+      var ctr = cellCenter(pos);
+      drawToken(ctr.x + tokenOffX(p), ctr.y + tokenOffY(p), p, st.currentPlayer === p && (winnerIdx === null || winnerIdx === undefined));
+    }
+    // 移动中的棋子
+    if (anim.moving) {
+      var m = anim.moving;
+      drawToken(m.x, m.y, m.player, false, m.alpha);
+    }
+  }
+
+  function tokenOffX(p) { return (p % 2 === 0 ? -1 : 1) * CS * 0.16; }
+  function tokenOffY(p) { return (p < 2 ? -1 : (p < 4 ? 1 : 0)) * CS * 0.16; }
+
+  function drawToken(x, y, p, pulse, alpha) {
+    var r = CS * 0.2;
+    ctx.save();
+    if (alpha !== undefined) ctx.globalAlpha = alpha;
+    if (pulse) {
+      var t = (Date.now() % 1000) / 1000;
+      ctx.beginPath(); ctx.arc(x, y, r + 3 + Math.sin(t * Math.PI * 2) * 2, 0, Math.PI * 2);
+      ctx.fillStyle = PLAYER_COLORS[p % 6] + '44'; ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = PLAYER_COLORS[p % 6]; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.floor(r * 1.1) + 'px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('' + (p + 1), x, y);
+    ctx.restore();
+  }
+
+  function drawFloats() {
+    var now = Date.now();
+    for (var i = 0; i < anim.floats.length; i++) {
+      var f = anim.floats[i];
+      var prog = (now - f.start) / f.dur;
+      if (prog >= 1) continue;
+      ctx.save();
+      ctx.globalAlpha = 1 - prog;
+      ctx.fillStyle = f.color;
+      ctx.font = 'bold ' + Math.floor(CS * 0.34) + 'px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(f.text, f.x, f.y - prog * CS * 1.2);
+      ctx.restore();
+    }
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ---------- 动画运行 ----------
+  function startAnim() {
+    if (anim.running) return;
+    anim.running = true;
+    tick();
+  }
+  function stopAnim() {
+    anim.running = false;
+    if (anim.rafId) cancelAnimationFrame(anim.rafId);
+    anim.rafId = null;
+    anim.cur = null; anim.moving = null; anim.dice = null;
+  }
+
+  function tick() {
+    var now = Date.now();
+    // 清理过期 float
+    anim.floats = anim.floats.filter(function (f) { return now - f.start < f.dur; });
+
+    if (!anim.cur) {
+      if (anim.queue.length === 0) {
+        // 动画全部完成 → 对齐到最新 state
+        if (anim.floats.length === 0) {
+          anim.running = false;
+          displayState = latestState;
+          drawFrame(displayState);
+          buildPanel(displayState);
+          return;
+        }
+        drawFrame(displayState);
+        anim.rafId = requestAnimationFrame(tick);
+        return;
+      }
+      anim.cur = anim.queue.shift();
+      anim.cur.startTime = now;
+      beginEvent(anim.cur);
+    }
+
+    var ev = anim.cur;
+    var elapsed = now - ev.startTime;
+    var p = Math.min(elapsed / ev.dur, 1);
+
+    if (ev.type === 'dice') {
+      anim.dice = { faces: p < 1 ? [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)] : ev.final };
+    } else if (ev.type === 'move') {
+      updateMove(ev, p);
+    }
+
+    drawFrame(displayState);
+
+    if (p >= 1) {
+      finishEvent(ev);
+      anim.cur = null;
+    }
+    anim.rafId = requestAnimationFrame(tick);
+  }
+
+  function beginEvent(ev) {
+    if (ev.type === 'move' && ev.kind !== 'teleport') {
+      // 构造路径
+      var path = [ev.from];
+      var hops = ev.steps >= 0 ? ev.steps : ev.steps; // steps 已带符号
+      var dir = ev.steps >= 0 ? 1 : -1;
+      var n = Math.abs(ev.steps);
+      var cur = ev.from;
+      for (var k = 0; k < n; k++) { cur = (cur + dir + 28) % 28; path.push(cur); }
+      ev.path = path;
+      ev.dur = Math.max(400, n * 130);
+    }
+  }
+
+  function updateMove(ev, p) {
+    if (ev.kind === 'teleport') {
+      var ctr = cellCenter(p < 0.5 ? ev.from : ev.to);
+      anim.moving = { player: ev.player, x: ctr.x + tokenOffX(ev.player), y: ctr.y + tokenOffY(ev.player), alpha: Math.abs(p - 0.5) * 2 };
+      return;
+    }
+    var hops = ev.path.length - 1;
+    var fp = p * hops;
+    var seg = Math.min(Math.floor(fp), hops - 1);
+    var lt = fp - seg;
+    var a = cellCenter(ev.path[seg]), b = cellCenter(ev.path[seg + 1]);
+    var arc = -Math.sin(lt * Math.PI) * CS * 0.3;
+    anim.moving = {
+      player: ev.player,
+      x: a.x + (b.x - a.x) * lt + tokenOffX(ev.player),
+      y: a.y + (b.y - a.y) * lt + tokenOffY(ev.player) + arc
+    };
+  }
+
+  function finishEvent(ev) {
+    if (ev.type === 'move') {
+      anim.moving = null;
+      // 移动结束后，把展示 state 的该玩家位置推进到终点（其余仍为旧值）
+      if (displayState && displayState.positions) displayState.positions[ev.player] = ev.to;
+      if (ev.passedGo) spawnFloat(cellCenter(0), '+200', '#27ae60');
+    } else if (ev.type === 'dice') {
+      anim.dice = { faces: ev.final };
+    } else if (ev.type === 'rent') {
+      var c = cellCenter(ev.space);
+      spawnFloat(c, '-' + ev.amount, '#e74c3c');
+    }
+  }
+
+  function spawnFloat(ctr, text, color) {
+    anim.floats.push({ x: ctr.x, y: ctr.y, text: text, color: color, start: Date.now(), dur: 1000 });
+  }
+
+  // ---------- diff → 事件 ----------
+  function buildEvents(st) {
+    var evs = [];
+    if (st.lastMove && st.lastMove !== (prevSnap && prevSnap.lastMove)) {
+      var dchanged = !prevSnap || st.dice[0] !== prevSnap.dice[0] || st.dice[1] !== prevSnap.dice[1];
+      if (dchanged && st.lastMove.kind === 'walk' && st.lastMove.steps === (st.dice[0] + st.dice[1])) {
+        evs.push({ type: 'dice', dur: 700, final: [st.dice[0], st.dice[1]] });
+      }
+      evs.push({ type: 'move', player: st.lastMove.player, from: st.lastMove.from, to: st.lastMove.to, steps: st.lastMove.steps, kind: st.lastMove.kind, passedGo: st.lastMove.passedGo, dur: 600 });
+    }
+    if (st.lastRent && st.lastRent !== (prevSnap && prevSnap.lastRent) && st.lastRent.amount > 0) {
+      evs.push({ type: 'rent', space: st.lastRent.space, amount: st.lastRent.amount, owner: st.lastRent.owner, dur: 300 });
+      pushLog(nameOf(st.lastRent.payer) + ' 付租 $' + st.lastRent.amount + ' 给 ' + nameOf(st.lastRent.owner));
+    }
+    if (st.lastCard && st.lastCard !== (prevSnap && prevSnap.lastCard)) {
+      pushLog('🎴 ' + st.lastCard.text);
+    }
+    return evs;
+  }
+
+  function pushLog(s) { eventLog.push(s); if (eventLog.length > 3) eventLog.shift(); }
+
+  function snapOf(st) {
+    return { lastMove: st.lastMove, lastCard: st.lastCard, lastRent: st.lastRent, dice: st.dice ? [st.dice[0], st.dice[1]] : [0, 0] };
+  }
+
+  function cloneForDisplay(st) {
+    // 仅克隆动画会改写的字段，其余引用共享
+    var c = Object.assign({}, st);
+    c.positions = st.positions ? st.positions.slice() : [];
+    return c;
+  }
+
+  // ---------- 操作面板 ----------
+  function buildPanel(st) {
     var panel = document.getElementById('mono-panel');
-    if (!panel) return;
+    if (!panel || !st) return;
     panel.innerHTML = '';
-
     var pi = playerIndex;
-    var isMyTurn = st.currentPlayer === pi;
-    var cash = st.cash && st.cash[pi] !== undefined ? st.cash[pi] : 0;
+    var board = st.board || [];
+    var isMyTurn = st.currentPlayer === pi && (winnerIdx === null || winnerIdx === undefined);
+    var animating = anim.running;
+    var cash = (st.cash && st.cash[pi] !== undefined) ? st.cash[pi] : 0;
 
-    // Cash display
     var cashEl = document.createElement('div');
-    cashEl.style.cssText = 'font-size:14px;font-weight:700;';
+    cashEl.style.cssText = 'font-size:15px;font-weight:800;color:#5a4a32;';
     cashEl.textContent = '💰 ' + cash + ' 元';
     panel.appendChild(cashEl);
 
-    if (st.lastCard) {
-      var cardEl = document.createElement('div');
-      cardEl.style.cssText = 'font-size:12px;color:var(--accent);background:#fff9ee;padding:4px 10px;border-radius:8px;border:1px solid #f0d890;max-width:280px;text-align:center;';
-      cardEl.textContent = '📋 ' + st.lastCard.text;
-      panel.appendChild(cardEl);
-    }
-
     if (!isMyTurn) {
-      var waitEl = document.createElement('div');
-      waitEl.style.cssText = 'color:var(--text-muted);font-size:13px;';
-      var name = (window._players && window._players[st.currentPlayer]) ? window._players[st.currentPlayer].name : '对方';
-      waitEl.textContent = '等待 ' + name + ' 操作…';
-      panel.appendChild(waitEl);
+      var w = document.createElement('div');
+      w.style.cssText = 'color:var(--text-muted);font-size:13px;';
+      w.textContent = animating ? '…' : '等待 ' + nameOf(st.currentPlayer) + ' 操作…';
+      panel.appendChild(w);
       return;
     }
+    if (animating) { var d = document.createElement('div'); d.style.cssText = 'color:var(--text-muted);font-size:13px;'; d.textContent = '…'; panel.appendChild(d); return; }
 
     if (st.inJail && st.inJail[pi]) {
-      var jailEl = document.createElement('div');
-      jailEl.style.cssText = 'font-size:12px;color:#e74c3c;';
-      jailEl.textContent = '🔒 在监狱（' + (st.jailTurns[pi] || 0) + '/3回合）— 掷双数出狱';
-      panel.appendChild(jailEl);
+      var jl = document.createElement('div');
+      jl.style.cssText = 'font-size:12px;color:#e74c3c;width:100%;text-align:center;';
+      jl.textContent = '🔒 监狱中（' + (st.jailTurns[pi] || 0) + '/3）— 掷出双数出狱';
+      panel.appendChild(jl);
     }
 
     if (st.phase === 'waiting') {
-      var rollBtn = document.createElement('button');
-      rollBtn.className = 'btn btn-primary';
-      rollBtn.textContent = '🎲 掷骰子';
-      rollBtn.onclick = function () { wsSend({ type: 'roll' }); };
-      panel.appendChild(rollBtn);
-    }
-
-    if (st.phase === 'landed' && st.pendingAction === 'can_buy') {
-      var pos2 = st.positions[pi];
-      var space2 = BOARD_META[pos2];
-      var buyBtn = document.createElement('button');
-      buyBtn.className = 'btn btn-primary';
-      buyBtn.textContent = '🏠 购买 ' + (space2 ? space2.name.replace('\n', '') : '') + ' (' + (getBoardPrice(pos2)) + '元)';
-      buyBtn.onclick = function () { wsSend({ type: 'buy' }); };
-      panel.appendChild(buyBtn);
-
-      var skipBtn = document.createElement('button');
-      skipBtn.className = 'btn';
-      skipBtn.textContent = '跳过';
-      skipBtn.onclick = function () { wsSend({ type: 'skip_buy' }); };
-      panel.appendChild(skipBtn);
-    }
-
-    if (st.phase === 'end_turn') {
-      // Build house buttons for owned monopoly groups
-      var myProps = Object.entries(st.properties || {}).filter(function (e) { return e[1].owner === pi; });
-      var buildable = myProps.filter(function (e) {
-        var idx2 = parseInt(e[0]);
-        var sp = BOARD_META[idx2];
-        if (!sp || sp.type !== 'property') return false;
-        // Check monopoly
-        var grp = getBoardGroup(idx2);
-        if (grp === -1) return false;
-        var allOwned = getBoardGroupSpaces(grp).every(function (gi) { return st.properties[gi] && st.properties[gi].owner === pi; });
-        return allOwned && (e[1].houses || 0) < 5;
-      });
-      if (buildable.length > 0) {
-        var buildDiv = document.createElement('div');
-        buildDiv.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;';
-        buildable.forEach(function (e) {
-          var idx3 = parseInt(e[0]);
-          var sp = BOARD_META[idx3];
-          var btn = document.createElement('button');
-          btn.className = 'btn';
-          btn.style.fontSize = '11px';
-          btn.textContent = '🏠 ' + (sp ? sp.name.replace('\n','') : idx3) + ' (+' + (e[1].houses || 0) + ')';
-          btn.onclick = function () { wsSend({ type: 'build', spaceIndex: idx3 }); };
-          buildDiv.appendChild(btn);
-        });
-        panel.appendChild(buildDiv);
+      addBtn(panel, '🎲 掷骰子', 'btn-primary', function () { wsSend({ type: 'roll' }); });
+    } else if (st.phase === 'landed' && st.pendingAction === 'can_buy') {
+      var sp = board[st.positions[pi]] || {};
+      addBtn(panel, '🏠 购买 ' + (sp.name || '') + ' ($' + (sp.price || 0) + ')', 'btn-primary', function () { wsSend({ type: 'buy' }); });
+      addBtn(panel, '跳过', '', function () { wsSend({ type: 'skip_buy' }); });
+    } else if (st.phase === 'end_turn') {
+      // 可建房的垄断地产
+      var buildable = [];
+      for (var i = 0; i < board.length; i++) {
+        var s = board[i]; if (!s || s.type !== 'property') continue;
+        var prop = st.properties[i];
+        if (!prop || prop.owner !== pi || (prop.houses || 0) >= 5) continue;
+        var grp = s.group;
+        var gs = []; board.forEach(function (b, j) { if (b && b.group === grp) gs.push(j); });
+        if (gs.every(function (j) { return st.properties[j] && st.properties[j].owner === pi; })) buildable.push(i);
       }
-
-      var endBtn = document.createElement('button');
-      endBtn.className = 'btn btn-primary';
-      endBtn.textContent = '结束回合 →';
-      endBtn.onclick = function () { wsSend({ type: 'end_turn' }); };
-      panel.appendChild(endBtn);
-    }
-
-    // Dice result
-    if (st.dice && (st.dice[0] || st.dice[1])) {
-      var diceEl = document.createElement('div');
-      diceEl.style.cssText = 'font-size:18px;letter-spacing:4px;';
-      var faces = ['⚀','⚁','⚂','⚃','⚄','⚅'];
-      diceEl.textContent = (faces[st.dice[0]-1]||'?') + ' ' + (faces[st.dice[1]-1]||'?');
-      panel.appendChild(diceEl);
+      buildable.forEach(function (i) {
+        var s = board[i];
+        addBtn(panel, '🏗 ' + s.name + ' (' + (st.properties[i].houses || 0) + '→' + ((st.properties[i].houses || 0) + 1) + ') $' + (s.price / 2), '', function () { wsSend({ type: 'build', spaceIndex: i }); }, '11px');
+      });
+      addBtn(panel, '结束回合 →', 'btn-primary', function () { wsSend({ type: 'end_turn' }); });
     }
   }
 
-  // Helper: get price from server BOARD (mirrored here for display)
-  var BOARD_PRICES = [0,60,0,60,200,200,100,0,100,120,0,140,150,140,160,200,180,0,180,200,0,220,0,220,240,200,260,280];
-  var BOARD_GROUPS = [-1,0,-1,0,-1,-1,1,-1,1,1,-1,2,-1,2,2,-1,3,-1,3,3,-1,4,-1,4,4,-1,5,5];
-  function getBoardPrice(idx) { return BOARD_PRICES[idx] || 0; }
-  function getBoardGroup(idx) { return BOARD_GROUPS[idx] !== undefined ? BOARD_GROUPS[idx] : -1; }
-  function getBoardGroupSpaces(grp) {
-    var result = [];
-    BOARD_GROUPS.forEach(function(g, i) { if (g === grp) result.push(i); });
-    return result;
+  function addBtn(panel, text, cls, onclick, fontSize) {
+    var b = document.createElement('button');
+    b.className = 'btn ' + (cls || '');
+    b.textContent = text;
+    if (fontSize) b.style.fontSize = fontSize;
+    b.onclick = onclick;
+    panel.appendChild(b);
   }
 
-  function wsSend(data) {
-    window.makeGameMove && window.makeGameMove(data);
+  function buildLegend(st) {
+    var legend = document.getElementById('mono-legend');
+    if (!legend || !st) return;
+    legend.innerHTML = '';
+    for (var p = 0; p < (st._playerCount || 0); p++) {
+      var chip = document.createElement('div');
+      var elim = st.eliminated && st.eliminated[p];
+      chip.style.cssText = 'padding:3px 10px;border-radius:12px;background:' + PLAYER_COLORS[p] + '22;border:1px solid ' + PLAYER_COLORS[p] + ';color:#333;' + (elim ? 'opacity:0.4;text-decoration:line-through;' : '');
+      chip.textContent = (p + 1) + '·' + nameOf(p) + ' $' + (st.cash[p] || 0);
+      if (p === playerIndex) chip.style.fontWeight = '700';
+      legend.appendChild(chip);
+    }
   }
 
+  // ---------- 渲染入口 ----------
   window.gameRenderers.set('monopoly', {
     init: function (container) {
       container.innerHTML = '';
+      latestState = displayState = prevSnap = null; eventLog = [];
+      stopAnim(); anim.queue = []; anim.floats = [];
       var wrap = document.createElement('div');
       wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;padding:6px;';
       container.appendChild(wrap);
-
       canvas = document.createElement('canvas');
-      canvas.style.cssText = 'border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.1);';
+      canvas.style.cssText = 'border-radius:10px;box-shadow:0 4px 20px rgba(90,74,50,.18);';
       wrap.appendChild(canvas);
       ctx = canvas.getContext('2d');
-      resize(container);
-      window.addEventListener('resize', function () { resize(container); if (state) drawBoard(state); });
-
+      computeSize();
+      window.addEventListener('resize', function () { computeSize(); if (displayState) drawFrame(displayState); });
       var panel = document.createElement('div');
       panel.id = 'mono-panel';
       panel.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;max-width:' + W + 'px;justify-content:center;';
       wrap.appendChild(panel);
-
-      // Player legend
       var legend = document.createElement('div');
       legend.id = 'mono-legend';
-      legend.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:12px;';
+      legend.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:12px;justify-content:center;max-width:' + W + 'px;';
       wrap.appendChild(legend);
     },
 
     render: function (st, container, pi, winner) {
-      state = st;
       playerIndex = pi;
+      winnerIdx = (winner === null || winner === undefined) ? null : winner;
       if (!st || !st.positions) return;
 
-      drawBoard(st);
-      buildActionPanel(container, st);
+      var firstOrNewGame = !displayState || !prevSnap;
+      latestState = st;
 
-      // Legend
-      var legend = document.getElementById('mono-legend');
-      if (legend) {
-        legend.innerHTML = '';
-        var players = window._players || [];
-        for (var p = 0; p < (st._playerCount || 0); p++) {
-          var chip = document.createElement('div');
-          var elim = st.eliminated && st.eliminated[p];
-          chip.style.cssText = 'padding:3px 10px;border-radius:12px;background:' + PLAYER_COLORS[p] + '22;border:1px solid ' + PLAYER_COLORS[p] + ';color:#333;' + (elim ? 'opacity:0.4;text-decoration:line-through;' : '');
-          var pname = players[p] ? players[p].name : '玩家' + (p + 1);
-          chip.textContent = PLAYER_EMOJIS[p] + ' ' + pname + ' ' + (st.cash[p] || 0) + '元';
-          if (p === pi) chip.style.fontWeight = '700';
-          legend.appendChild(chip);
-        }
+      if (firstOrNewGame) {
+        displayState = cloneForDisplay(st);
+        prevSnap = snapOf(st);
+        eventLog = [];
+        drawFrame(displayState);
+        buildPanel(displayState);
+        buildLegend(st);
+        updateStatus(st, winner);
+        return;
       }
 
-      var statusEl = document.getElementById('status');
-      if (statusEl) {
-        if (winner !== null && winner !== undefined) {
-          var wname = (window._players && window._players[winner]) ? window._players[winner].name : '玩家' + (winner + 1);
-          statusEl.textContent = winner === pi ? '🎉 你赢了！' : wname + ' 获胜！';
+      var evs = buildEvents(st);
+      prevSnap = snapOf(st);
+
+      if (evs.length > 0) {
+        // 队列过长则快进
+        if (anim.queue.length > 3) {
+          anim.queue = []; stopAnim();
+          displayState = cloneForDisplay(st);
+          drawFrame(displayState); buildPanel(displayState);
         } else {
-          statusEl.textContent = '';
+          // 把当前 displayState 作为动画起点（其 positions 仍是动画前的旧值）
+          for (var i = 0; i < evs.length; i++) anim.queue.push(evs[i]);
+          buildPanel(displayState); // 动画中禁用按钮
+          startAnim();
         }
+      } else {
+        displayState = cloneForDisplay(st);
+        drawFrame(displayState);
+        buildPanel(displayState);
       }
+      buildLegend(st);
+      updateStatus(st, winner);
     },
   });
+
+  function updateStatus(st, winner) {
+    var statusEl = document.getElementById('status');
+    if (!statusEl) return;
+    if (winner !== null && winner !== undefined) {
+      statusEl.textContent = winner === playerIndex ? '🎉 你赢了！' : nameOf(winner) + ' 获胜！';
+    } else {
+      statusEl.textContent = '';
+    }
+  }
 })();

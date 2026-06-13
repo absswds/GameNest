@@ -3,50 +3,42 @@
 exports.name = 'monopoly';
 exports.maxPlayers = 6;
 
+const JAIL_INDEX = 7; // 监狱探视格（go_to_jail 把玩家送到这里）
 const BOARD = buildBoard();
 
 function buildBoard() {
-  // 28 spaces: 0=GO, 1-27=mix of property/chance/tax/jail/parking
-  // Color groups: red(2), orange(2), yellow(2), green(2), blue(2), purple(2), brown(2)
-  const props = [
-    null, // 0: GO
-    { type: 'property', name: '廉租房', price: 60, rent: [2,10,30,90,160,250], color: '#8B4513', group: 0 },
-    { type: 'chance' },
-    { type: 'property', name: '旧街道', price: 60, rent: [4,20,60,180,320,450], color: '#8B4513', group: 0 },
-    { type: 'tax', name: '所得税', amount: 200 },
-    { type: 'railroad', name: '北站', price: 200 },
-    { type: 'property', name: '东方路', price: 100, rent: [6,30,90,270,400,550], color: '#82C2FF', group: 1 },
-    { type: 'chance' },
-    { type: 'property', name: '南京路', price: 100, rent: [6,30,90,270,400,550], color: '#82C2FF', group: 1 },
-    { type: 'property', name: '淮海路', price: 120, rent: [8,40,100,300,450,600], color: '#82C2FF', group: 1 },
-    { type: 'jail_visit' }, // 10: Just Visiting
-    { type: 'property', name: '龙华寺', price: 140, rent: [10,50,150,450,625,750], color: '#FF69B4', group: 2 },
-    { type: 'utility', name: '电力公司', price: 150 },
-    { type: 'property', name: '新天地', price: 140, rent: [10,50,150,450,625,750], color: '#FF69B4', group: 2 },
-    { type: 'property', name: '外滩', price: 160, rent: [12,60,180,500,700,900], color: '#FF69B4', group: 2 },
-    { type: 'railroad', name: '南站' , price: 200 },
-    { type: 'property', name: '豫园', price: 180, rent: [14,70,200,550,750,950], color: '#FFA500', group: 3 },
-    { type: 'chance' },
-    { type: 'property', name: '城隍庙', price: 180, rent: [14,70,200,550,750,950], color: '#FFA500', group: 3 },
-    { type: 'property', name: '人民广场', price: 200, rent: [16,80,220,600,800,1000], color: '#FFA500', group: 3 },
-    { type: 'free_parking' }, // 20
-    { type: 'property', name: '环球港', price: 220, rent: [18,90,250,700,875,1050], color: '#FF0000', group: 4 },
-    { type: 'chance' },
-    { type: 'property', name: '徐汇滨江', price: 220, rent: [18,90,250,700,875,1050], color: '#FF0000', group: 4 },
-    { type: 'property', name: '陆家嘴', price: 240, rent: [20,100,300,750,925,1100], color: '#FF0000', group: 4 },
-    { type: 'railroad', name: '西站', price: 200 },
-    { type: 'property', name: '浦东机场', price: 260, rent: [22,110,330,800,975,1150], color: '#FFFF00', group: 5 },
-    { type: 'property', name: '迪士尼', price: 280, rent: [24,120,360,850,1025,1200], color: '#FFFF00', group: 5 },
-    // 28: goto jail handled specially — wrap back to 0 with 28 spaces? Let's do space 28 = go to jail
-    // Actually we only defined 28 positions (0-27), but let's make it 28 total
-    // Nah let's recount: 0-27 = 28 spaces. Space 0 = GO.
+  // 28 格对称棋盘：4 个角 (0=GO, 7=监狱探视, 14=免费停车, 21=入狱) + 每边 6 格
+  // 色组 group 0-5，长度 2/3/3/3/3/2 = 16 块地产；4 铁路；1 电力；2 机会；1 税
+  return [
+    { type: 'go' },                                                                                  // 0  角：起点
+    { type: 'property', name: '廉租房',  price: 60,  rent: [2,10,30,90,160,250],    color: '#8B5A2B', group: 0 }, // 1
+    { type: 'chance' },                                                                               // 2
+    { type: 'property', name: '旧街道',  price: 60,  rent: [4,20,60,180,320,450],   color: '#8B5A2B', group: 0 }, // 3
+    { type: 'tax', name: '所得税', amount: 200 },                                                     // 4
+    { type: 'railroad', name: '北站', price: 200 },                                                   // 5
+    { type: 'property', name: '东方路',  price: 100, rent: [6,30,90,270,400,550],   color: '#5DADE2', group: 1 }, // 6
+    { type: 'jail_visit' },                                                                           // 7  角：监狱探视
+    { type: 'property', name: '南京路',  price: 100, rent: [6,30,90,270,400,550],   color: '#5DADE2', group: 1 }, // 8
+    { type: 'property', name: '淮海路',  price: 120, rent: [8,40,100,300,450,600],  color: '#5DADE2', group: 1 }, // 9
+    { type: 'utility', name: '电力公司', price: 150 },                                                // 10
+    { type: 'property', name: '龙华寺',  price: 140, rent: [10,50,150,450,625,750], color: '#E91E8C', group: 2 }, // 11
+    { type: 'railroad', name: '南站', price: 200 },                                                   // 12
+    { type: 'property', name: '新天地',  price: 140, rent: [10,50,150,450,625,750], color: '#E91E8C', group: 2 }, // 13
+    { type: 'free_parking' },                                                                         // 14 角：免费停车
+    { type: 'property', name: '外滩',    price: 160, rent: [12,60,180,500,700,900], color: '#E91E8C', group: 2 }, // 15
+    { type: 'property', name: '豫园',    price: 180, rent: [14,70,200,550,750,950], color: '#F39C12', group: 3 }, // 16
+    { type: 'chance' },                                                                               // 17
+    { type: 'property', name: '城隍庙',  price: 180, rent: [14,70,200,550,750,950], color: '#F39C12', group: 3 }, // 18
+    { type: 'property', name: '人民广场',price: 200, rent: [16,80,220,600,800,1000],color: '#F39C12', group: 3 }, // 19
+    { type: 'railroad', name: '西站', price: 200 },                                                   // 20
+    { type: 'go_to_jail' },                                                                           // 21 角：入狱！
+    { type: 'property', name: '环球港',  price: 220, rent: [18,90,250,700,875,1050],color: '#E74C3C', group: 4 }, // 22
+    { type: 'property', name: '徐汇滨江',price: 220, rent: [18,90,250,700,875,1050],color: '#E74C3C', group: 4 }, // 23
+    { type: 'property', name: '陆家嘴',  price: 240, rent: [20,100,300,750,925,1100],color: '#E74C3C', group: 4 }, // 24
+    { type: 'railroad', name: '东站', price: 200 },                                                   // 25
+    { type: 'property', name: '浦东机场',price: 260, rent: [22,110,330,800,975,1150],color: '#F1C40F', group: 5 }, // 26
+    { type: 'property', name: '迪士尼',  price: 280, rent: [24,120,360,850,1025,1200],color: '#F1C40F', group: 5 }, // 27
   ];
-  // We need exactly 28, add GO TO JAIL at the end
-  // Actually let me trim to 28 proper:
-  // The array above has indices 0-27 = 28 items
-  const extra = { type: 'go_to_jail' }; // not used since array is 28 items already... let's check
-  // Array has items at 0..27 = 28 items total. Good.
-  return props;
 }
 
 const CHANCE_CARDS = [
@@ -89,6 +81,9 @@ exports.createState = () => ({
   _playerCount: 0,
   pendingAction: null, // 'can_buy', null
   freeRentCards: [], // boolean per player
+  board: BOARD,        // 下发给前端，渲染器读这份（避免常量双份同步）
+  lastMove: null,      // {player, from, to, steps, passedGo, kind:'walk'|'teleport'} 供动画
+  lastRent: null,      // {payer, owner, amount, space} 供动画
 });
 
 exports.initGame = (state, playerCount) => {
@@ -105,6 +100,9 @@ exports.initGame = (state, playerCount) => {
   state.winner = null;
   state.pendingAction = null;
   state.freeRentCards = Array(playerCount).fill(false);
+  state.board = BOARD;
+  state.lastMove = null;
+  state.lastRent = null;
 };
 
 function rollDice() {
@@ -142,6 +140,8 @@ function nextPlayer(state) {
   state.phase = 'waiting';
   state.pendingAction = null;
   state.lastCard = null;
+  state.lastMove = null;
+  state.lastRent = null;
 }
 
 function applyLanding(state, playerIndex) {
@@ -150,8 +150,8 @@ function applyLanding(state, playerIndex) {
   if (!space) { state.phase = 'end_turn'; return; }
 
   if (space.type === 'go_to_jail') {
-    // Find jail space (index 10)
-    state.positions[playerIndex] = 10;
+    state.lastMove = { player: playerIndex, from: pos, to: JAIL_INDEX, steps: 0, passedGo: false, kind: 'teleport' };
+    state.positions[playerIndex] = JAIL_INDEX;
     state.inJail[playerIndex] = true;
     state.jailTurns[playerIndex] = 0;
     state.phase = 'end_turn';
@@ -177,9 +177,11 @@ function applyLanding(state, playerIndex) {
       if (state.freeRentCards[playerIndex]) {
         state.freeRentCards[playerIndex] = false;
         state.lastCard = { text: '使用免租卡，本次免租！' };
+        state.lastRent = { payer: playerIndex, owner: prop.owner, amount: 0, space: pos };
       } else {
         state.cash[playerIndex] -= rent;
         state.cash[prop.owner] += rent;
+        state.lastRent = { payer: playerIndex, owner: prop.owner, amount: rent, space: pos };
       }
       checkBankruptcy(state);
       if (state.phase !== 'gameover') state.phase = 'end_turn';
@@ -199,6 +201,7 @@ function applyLanding(state, playerIndex) {
       const rent = [25, 50, 100, 200][rrCount - 1] || 25;
       state.cash[playerIndex] -= rent;
       state.cash[prop.owner] += rent;
+      state.lastRent = { payer: playerIndex, owner: prop.owner, amount: rent, space: pos };
       checkBankruptcy(state);
       if (state.phase !== 'gameover') state.phase = 'end_turn';
     } else {
@@ -217,6 +220,7 @@ function applyLanding(state, playerIndex) {
       const rent = (state.dice[0] + state.dice[1]) * mult;
       state.cash[playerIndex] -= rent;
       state.cash[prop.owner] += rent;
+      state.lastRent = { payer: playerIndex, owner: prop.owner, amount: rent, space: pos };
       checkBankruptcy(state);
       if (state.phase !== 'gameover') state.phase = 'end_turn';
     } else {
@@ -236,15 +240,22 @@ function applyLanding(state, playerIndex) {
         }
       }
     } else if (card.type === 'goto') {
-      if (state.positions[playerIndex] > card.target) state.cash[playerIndex] += 200;
+      const passed = state.positions[playerIndex] > card.target;
+      if (passed) state.cash[playerIndex] += 200;
+      const fwd = ((card.target - pos) + BOARD_SIZE) % BOARD_SIZE;
+      state.lastMove = { player: playerIndex, from: pos, to: card.target, steps: fwd, passedGo: passed, kind: 'walk' };
       state.positions[playerIndex] = card.target;
     } else if (card.type === 'jail') {
-      state.positions[playerIndex] = 10;
+      state.lastMove = { player: playerIndex, from: pos, to: JAIL_INDEX, steps: 0, passedGo: false, kind: 'teleport' };
+      state.positions[playerIndex] = JAIL_INDEX;
       state.inJail[playerIndex] = true;
       state.jailTurns[playerIndex] = 0;
     } else if (card.type === 'advance') {
-      state.positions[playerIndex] = ((state.positions[playerIndex] + card.steps) + BOARD_SIZE) % BOARD_SIZE;
-      if (card.steps > 0 && state.positions[playerIndex] < pos) state.cash[playerIndex] += 200;
+      const np = ((state.positions[playerIndex] + card.steps) + BOARD_SIZE) % BOARD_SIZE;
+      const passedGo = card.steps > 0 && np < pos;
+      if (passedGo) state.cash[playerIndex] += 200;
+      state.lastMove = { player: playerIndex, from: pos, to: np, steps: card.steps, passedGo: passedGo, kind: 'walk' };
+      state.positions[playerIndex] = np;
     } else if (card.type === 'free_rent') {
       state.freeRentCards[playerIndex] = true;
     } else if (card.amount) {
@@ -294,7 +305,10 @@ exports.handleMove = (data, state, playerIndex) => {
 
     const oldPos = state.positions[playerIndex];
     const newPos = (oldPos + steps) % BOARD_SIZE;
-    if (newPos < oldPos || newPos === 0) state.cash[playerIndex] += 200; // passed GO
+    const passedGo = newPos < oldPos || newPos === 0;
+    if (passedGo) state.cash[playerIndex] += 200; // passed GO
+    state.lastRent = null;
+    state.lastMove = { player: playerIndex, from: oldPos, to: newPos, steps: steps, passedGo: passedGo, kind: 'walk' };
     state.positions[playerIndex] = newPos;
     applyLanding(state, playerIndex);
     return null;
