@@ -4,7 +4,8 @@
   window.gameRenderers = window.gameRenderers || new Map();
 
   var EMOJIS = ['🐑', '🍉', '🥕', '🌽', '🍅', '🍆', '🌶️', '🧅', '🥔', '🍄', '🌰', '🌻', '🍇', '🥦'];
-  var EMOJI_BG = ['#fef3f2', '#fef8e7', '#fff1e6', '#f0fbe9', '#fdecec', '#f3edfb', '#fdeee6', '#fdf6e3', '#fbf0e0', '#fbeef0', '#f4ede0', '#fffbe6', '#f6edfb', '#edf7ee'];
+  // 高对比牌面：不能再使用接近白色的色块，否则 Windows emoji 会像半透明。
+  var EMOJI_BG = ['#ffd6d2', '#ffe39b', '#ffd0a8', '#c9f0a8', '#ffc9c9', '#ddcbff', '#ffd0b5', '#ffe3a8', '#f8c6bd', '#ffc9d7', '#e8d19b', '#fff0a8', '#e4c6ff', '#bfeecb'];
 
   var canvas, ctx, panel, oppBar;
   var W, H, TS, boardBottom, slotY, slotCS, slotPad;
@@ -125,11 +126,11 @@
       // 底部立体边
       ctx.fillStyle = 'rgba(0,0,0,0.08)';
       roundRect(x + pad, y + s - pad - s * 0.1, s - 2 * pad, s * 0.1, s * 0.06); ctx.fill();
-      ctx.strokeStyle = blocked ? '#c4ccc4' : '#e3d9c2'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = blocked ? '#88998a' : '#8b6d45'; ctx.lineWidth = 2;
       roundRect(x + pad, y + pad, s - 2 * pad, s - 2 * pad, s * 0.18); ctx.stroke();
       ctx.save();
       if (blocked) ctx.globalAlpha = 1;
-      ctx.font = Math.floor(s * 0.5) + 'px serif';
+      ctx.font = Math.floor(s * 0.62) + 'px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(EMOJIS[pat % EMOJIS.length], x + s / 2, y + s / 2);
       ctx.restore();
