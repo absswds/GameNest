@@ -393,7 +393,7 @@
   // ---------- diff → 事件 ----------
   function buildEvents(st) {
     var evs = [];
-    if (st.lastMove && st.lastMove !== (prevSnap && prevSnap.lastMove)) {
+    if (st.lastMove && moveSignature(st.lastMove) !== (prevSnap && prevSnap.lastMove)) {
       var dchanged = !prevSnap || st.dice[0] !== prevSnap.dice[0] || st.dice[1] !== prevSnap.dice[1];
       if (dchanged && st.lastMove.kind === 'walk' && st.lastMove.steps === (st.dice[0] + st.dice[1])) {
         evs.push({ type: 'dice', dur: 700, final: [st.dice[0], st.dice[1]] });
@@ -413,7 +413,11 @@
   function pushLog(s) { eventLog.push(s); if (eventLog.length > 3) eventLog.shift(); }
 
   function snapOf(st) {
-    return { lastMove: st.lastMove, lastCard: st.lastCard, lastRent: st.lastRent, dice: st.dice ? [st.dice[0], st.dice[1]] : [0, 0] };
+    return { lastMove: moveSignature(st.lastMove), lastCard: st.lastCard, lastRent: st.lastRent, dice: st.dice ? [st.dice[0], st.dice[1]] : [0, 0] };
+  }
+
+  function moveSignature(move) {
+    return move ? [move.player, move.from, move.to, move.steps, move.kind, move.passedGo ? 1 : 0].join('|') : '';
   }
 
   function cloneForDisplay(st) {

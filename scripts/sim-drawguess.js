@@ -9,7 +9,7 @@ function assert(cond, msg) {
 
 function newGame(playerCount, options) {
   const state = game.createState();
-  state._options = options || {};
+  state._options = Object.assign({ mode: 'whisper' }, options || {});
   game.initGame(state, playerCount);
   return state;
 }
@@ -94,6 +94,31 @@ for (let trial = 0; trial < 200; trial++) {
   assert(s.drawTime === 60 && s.guessTime === 30, '时限选项应生效');
   const s2 = newGame(2, { drawTime: 0 });
   assert(s2.drawTime === 0, '0=不限时应保留');
+}
+
+// --- 6. 舞台猜词：一人实时画，其他人同时反复猜 ---
+{
+  const stage = newGame(3, { mode: 'stage', wordChoices: 1, categories: ['animal'], drawTime: 60 });
+  assert(stage.mode === 'stage', '舞台模式应保留 mode=stage');
+  assert(stage.drawerIndex === 0, '第一轮应由玩家 0 作画');
+  assert(Array.isArray(stage.scores) && stage.scores.length === 3, '舞台模式应初始化三人的积分');
+
+  const word = stage.word;
+  const stroke = { color: '#000', width: 4, pts: [{ x: 10, y: 10 }, { x: 20, y: 20 }] };
+  assert(game.handleMove({ type: 'stage_stroke', stroke }, stage, 0) === null, '画手笔画应被接受');
+  assert(stage.strokes && stage.strokes.length === 1, '笔画应同步到舞台状态');
+
+  const guesserView = game.playerView(stage, 1);
+  assert(!JSON.stringify(guesserView).includes(word), '猜词玩家视图不能泄露答案');
+  assert(guesserView.myTask && guesserView.myTask.strokes.length === 1, '猜词玩家应看到实时笔画');
+
+  assert(game.handleMove({ type: 'stage_guess', text: '错误答案' }, stage, 1) !== null, '错误答案应允许继续猜而不结束回合');
+  assert(game.handleMove({ type: 'stage_guess', text: word }, stage, 1) === null, '正确答案应被接受');
+  assert(stage.correct && stage.scores && stage.correct[1] === true && stage.scores[1] > 0, '猜中者应锁定并获得积分');
+  assert(game.handleMove({ type: 'stage_guess', text: word }, stage, 2) === null, '第二名猜中应被接受');
+  assert(stage.phase === 'round_result', '所有猜词玩家猜中后应进入本轮结算');
+  assert(game.onTimeout(stage) === true, '结算超时应安全进入下一轮');
+  assert(stage.drawerIndex === 1 && stage.round === 2, '下一轮应轮换画手');
 }
 
 if (failures === 0) {

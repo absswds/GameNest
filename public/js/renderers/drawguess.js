@@ -83,7 +83,10 @@
   function onPointerUp() {
     if (!isDrawing || !currentStroke) return;
     isDrawing = false;
-    if (currentStroke.pts.length > 1) localStrokes.push(currentStroke);
+    if (currentStroke.pts.length > 1) {
+      localStrokes.push(currentStroke);
+      if (state && state.mode === 'stage') wsSend({ type: 'stage_stroke', stroke: currentStroke });
+    }
     currentStroke = null;
     redrawCanvas();
   }
@@ -91,7 +94,7 @@
   function onTouchMove(e) { e.preventDefault(); onPointerMove(e.touches[0]); }
 
   function isMyDrawTurn() {
-    return state && state.phase === 'playing' && state.myTask && state.myTask.type === 'draw';
+    return state && state.phase === 'playing' && state.myTask && (state.myTask.type === 'draw' || (state.myTask.type === 'stage' && state.myTask.canDraw));
   }
 
   function redrawCanvas() {
@@ -100,9 +103,10 @@
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, W, H);
 
-    var strokes = state && state.myTask && state.myTask.type === 'draw' && state.phase === 'playing'
-      ? localStrokes
-      : (state && state.myTask && state.myTask.prevContent ? state.myTask.prevContent : []);
+    var strokes = state && state.mode === 'stage' && state.myTask
+      ? (state.myTask.strokes || [])
+      : (state && state.myTask && state.myTask.type === 'draw' && state.phase === 'playing'
+        ? localStrokes : (state && state.myTask && state.myTask.prevContent ? state.myTask.prevContent : []));
 
     drawStrokes(strokes);
     if (currentStroke) drawOneStroke(currentStroke);
@@ -340,6 +344,37 @@
     container.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted);font-size:15px;">' + (msg || '等待其他玩家完成当前步骤…') + '</div>';
   }
 
+  function renderStage(container, task) {
+    container.innerHTML = '';
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;padding:8px;';
+    container.appendChild(wrap);
+    var header = document.createElement('div');
+    var drawer = (window._players && window._players[state.drawerIndex]) ? window._players[state.drawerIndex].name : ('玩家' + (state.drawerIndex + 1));
+    header.style.cssText = 'font-size:16px;font-weight:800;text-align:center;margin-bottom:6px;';
+    header.textContent = task.canDraw ? ('第 ' + state.round + ' 轮：画 ' + task.word) : ('第 ' + state.round + ' 轮 · ' + drawer + ' 在画 · ' + (task.correct ? '你已猜中 ✓' : task.wordMask));
+    wrap.appendChild(header);
+    resizeCanvas();
+    drawStrokes(task.strokes || []);
+    wrap.appendChild(canvas);
+    startTimer(wrap, state.stepDeadline, null);
+    if (task.canDraw) { localStrokes = task.strokes || []; buildToolbar(wrap); return; }
+    if (task.correct) return;
+    var row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;margin-top:10px;width:min(100%,500px);'; wrap.appendChild(row);
+    var input = document.createElement('input'); input.placeholder = '输入答案，随时再猜'; input.maxLength = 20; input.style.cssText = 'flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;'; row.appendChild(input);
+    var btn = document.createElement('button'); btn.className = 'btn btn-primary'; btn.textContent = '猜'; row.appendChild(btn);
+    function guess() { var text = input.value.trim(); if (!text) return; wsSend({ type: 'stage_guess', text: text }); input.select(); }
+    btn.onclick = guess; input.onkeydown = function(e) { if (e.key === 'Enter') guess(); }; setTimeout(function(){ input.focus(); }, 50);
+  }
+
+  function renderStageResult(container, st) {
+    clearInterval(timerInterval); container.innerHTML = '';
+    var box = document.createElement('div'); box.style.cssText = 'margin:32px auto;padding:24px;max-width:420px;text-align:center;background:#fff9ee;border-radius:16px;font-size:16px;';
+    var scores = (st.scores || []).map(function(s, i) { var n = window._players && window._players[i] ? window._players[i].name : ('玩家' + (i + 1)); return n + ' ' + s + '分'; }).join(' · ');
+    box.innerHTML = '<div style="font-size:22px;font-weight:800">答案：' + (st.word || '') + '</div><div style="margin-top:12px;color:var(--text-muted)">' + scores + '</div><div style="margin-top:12px">下一轮马上开始…</div>';
+    container.appendChild(box);
+  }
+
   // ---- Render reveal ----
   function renderReveal(container, st, players) {
     container.innerHTML = '';
@@ -427,37 +462,24 @@
         stepArea.appendChild(guessEl);
       }
 
-      // Vote button (winner 可能是 0，不能用 truthy 判断)
-      if (st.winner === null || st.winner === undefined) {
-        var myVote = st.votes && st.votes[playerIndex];
-        var voteBtn = document.createElement('button');
-        voteBtn.style.cssText = 'display:block;margin:12px auto 0;padding:8px 20px;border-radius:20px;border:2px solid ' + (myVote === revealStep ? '#c8a45c' : '#ccc') + ';background:' + (myVote === revealStep ? '#fff9ee' : '#fff') + ';cursor:pointer;font-size:13px;';
-        voteBtn.textContent = myVote === revealStep ? '✓ 已投票此步' : '👍 投票为最有趣的一步';
-        voteBtn.onclick = function () { wsSend({ type: 'vote', stepIndex: revealStep }); };
-        stepArea.appendChild(voteBtn);
-
-        var voteInfo = document.createElement('div');
-        voteInfo.style.cssText = 'text-align:center;font-size:12px;color:var(--text-muted);margin-top:6px;';
-        var vc = 0;
-        if (st.votes) Object.values(st.votes).forEach(function (v) { if (v === revealStep) vc++; });
-        voteInfo.textContent = vc + ' 票';
-        stepArea.appendChild(voteInfo);
-      }
     }
 
     prevBtn.onclick = function () { showStep(revealStep - 1); };
     nextBtn.onclick = function () { showStep(revealStep + 1); };
     showStep(revealStep);
 
-    // Winner banner
-    if (st.winner !== null && st.winner !== undefined) {
-      var wEl = document.createElement('div');
-      wEl.style.cssText = 'margin-top:16px;padding:12px 20px;background:#fff9ee;border-radius:12px;text-align:center;font-size:14px;font-weight:600;color:#c8a45c;';
-      var wname = players && players[st.winner] ? players[st.winner].name : ('玩家' + (st.winner + 1));
-      wEl.textContent = '🏆 最有趣的一步属于：' + wname;
-      wrap.appendChild(wEl);
+    var lastGuess = '';
+    for (var gi = chain.length - 1; gi >= 0; gi--) {
+      if (chain[gi].type === 'guess' && chain[gi].content) { lastGuess = chain[gi].content; break; }
     }
+    var resultEl = document.createElement('div');
+    var transmitted = normalizeText(lastGuess) === normalizeText(st.word);
+    resultEl.style.cssText = 'margin-top:16px;padding:14px 20px;background:' + (transmitted ? '#ecf9ef' : '#fff5f2') + ';border-radius:12px;text-align:center;font-size:15px;font-weight:700;color:' + (transmitted ? '#23864a' : '#c95f3c') + ';';
+    resultEl.textContent = transmitted ? '🎯 传话成功！原词和最后猜词一致：' + st.word : '🌀 传话跑偏：原词「' + st.word + '」→ 最后猜词「' + (lastGuess || '无答案') + '」';
+    wrap.appendChild(resultEl);
   }
+
+  function normalizeText(v) { return String(v || '').trim().replace(/\s+/g, '').toLowerCase(); }
 
   // ---- Main render ----
   window.gameRenderers.set('drawguess', {
@@ -468,6 +490,20 @@
     render: function (st, container, pi, winner) {
       state = st;
       playerIndex = pi;
+
+      if (st.mode === 'stage') {
+        if (st.phase === 'choosing') {
+          if (st.myTask && st.myTask.type === 'choose') renderChooseWord(container, st.myTask);
+          else renderWaiting(container, '等待画手选词…');
+        } else if (st.phase === 'playing' && st.myTask) {
+          renderStage(container, st.myTask);
+        } else if (st.phase === 'round_result') {
+          renderStageResult(container, st);
+        } else if (st.phase === 'gameover') {
+          renderStageResult(container, st);
+        }
+        return;
+      }
 
       if (winner !== null && winner !== undefined && st.phase !== 'reveal') {
         renderWaiting(container, '游戏结束！');

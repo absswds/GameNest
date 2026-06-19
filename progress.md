@@ -1,5 +1,16 @@
 # Progress Log
 
+## 2026-06-20 — Investigation in progress
+- Reproduced by source tracing: Monopoly's purchase state triggers a duplicate move event because `lastMove` is compared by reference after a JSON state refresh.
+- Reproduced by source tracing: Sheep Tile intentionally dims blocked tiles to 50% alpha plus a dark overlay, matching the reported low-visibility symptom.
+- Two browser research attempts for the Steam reference returned Cloudflare 403; switched to a direct public Steam request, which successfully found the DrawGuess result.
+
+## 2026-06-20 — DrawGuess Stage implementation
+- Added switchable `stage` (default) and `whisper` modes. Stage is server-authoritative: private word selection, live validated strokes, simultaneous repeat guesses, score order, five-second round result, drawer rotation, and winner after every player has drawn.
+- Added Stage mode picker to the existing room settings and live canvas / guess / result rendering while retaining the Whisper renderer flow.
+- Fixed Monopoly's duplicate move animation by snapshotting a stable move signature; covered Sheep tiles now keep 90% icon opacity with a lighter overlay.
+- Verification: `node --check` on changed JS files plus all three game simulations passed.
+
 ## 2026-06-04 — 飞行棋重做 + 魔力桥重组 + 人机健壮性
 
 ### 飞行棋（重大重做）

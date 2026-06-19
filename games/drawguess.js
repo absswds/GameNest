@@ -38,6 +38,7 @@ function pickWords(pool, n) {
 }
 
 exports.createState = () => ({
+  mode: 'stage',
   phase: 'playing',       // 'choosing' | 'playing' | 'reveal'
   word: null,
   wordOptions: [],        // choosing 阶段的候选词（仅首位画家可见）
@@ -50,10 +51,61 @@ exports.createState = () => ({
   drawTime: DEFAULTS.drawTime,
   guessTime: DEFAULTS.guessTime,
   _playerCount: 0,
+  drawerIndex: 0,
+  round: 1,
+  scores: [],
+  strokes: [],
+  correct: {},
+  roundResults: null,
+  _wordPool: [],
 });
+
+function normalizeWord(value) {
+  return String(value || '').trim().replace(/\s+/g, '').toLowerCase();
+}
+
+function scoreForGuess(state) {
+  if (!state.stepDeadline) return 10;
+  return Math.max(2, Math.ceil((state.stepDeadline - Date.now()) / 10000));
+}
+
+function allGuessersCorrect(state) {
+  for (let i = 0; i < state._playerCount; i++) {
+    if (i !== state.drawerIndex && !state.correct[i]) return false;
+  }
+  return true;
+}
+
+function finishStageRound(state) {
+  state.phase = 'round_result';
+  state.roundResults = {
+    word: state.word,
+    drawerIndex: state.drawerIndex,
+    correct: Object.assign({}, state.correct),
+  };
+  state.stepDeadline = 0;
+}
+
+function startStageRound(state) {
+  state.strokes = [];
+  state.correct = {};
+  state.roundResults = null;
+  const choices = Math.max(1, state.wordChoices || DEFAULTS.wordChoices);
+  if (choices <= 1) {
+    state.word = pickWords(state._wordPool, 1)[0];
+    state.wordOptions = [];
+    state.phase = 'playing';
+  } else {
+    state.word = null;
+    state.wordOptions = pickWords(state._wordPool, choices);
+    state.phase = 'choosing';
+  }
+  state.stepStartTime = Date.now();
+}
 
 exports.initGame = (state, playerCount) => {
   const options = state._options || {};
+  state.mode = options.mode === 'whisper' ? 'whisper' : 'stage';
   state._playerCount = playerCount;
   state.drawTime = options.drawTime !== undefined ? parseInt(options.drawTime, 10) : DEFAULTS.drawTime;
   state.guessTime = options.guessTime !== undefined ? parseInt(options.guessTime, 10) : DEFAULTS.guessTime;
@@ -62,6 +114,23 @@ exports.initGame = (state, playerCount) => {
 
   const wordChoices = Math.max(1, parseInt(options.wordChoices, 10) || DEFAULTS.wordChoices);
   const pool = buildWordPool(options);
+  state.wordChoices = wordChoices;
+
+  if (state.mode === 'stage') {
+    state.drawerIndex = 0;
+    state.round = 1;
+    state.scores = Array(playerCount).fill(0);
+    state.strokes = [];
+    state.correct = {};
+    state.roundResults = null;
+    state._wordPool = pool;
+    state.chain = [];
+    state.votes = {};
+    state.winner = null;
+    state.stepDeadline = 0;
+    startStageRound(state);
+    return;
+  }
 
   state.chain = [];
   for (let i = 0; i < playerCount; i++) {
@@ -99,6 +168,38 @@ function advanceStep(state) {
 }
 
 exports.handleMove = (data, state, playerIndex) => {
+  if (state.mode === 'stage') {
+    if (state.phase === 'choosing') {
+      if (playerIndex !== state.drawerIndex || data.type !== 'choose_word') return '现在不能选词';
+      const idx = parseInt(data.index, 10);
+      if (isNaN(idx) || idx < 0 || idx >= state.wordOptions.length) return '无效选择';
+      state.word = state.wordOptions[idx];
+      state.wordOptions = [];
+      state.phase = 'playing';
+      state.stepStartTime = Date.now();
+      return null;
+    }
+    if (state.phase === 'playing') {
+      if (data.type === 'stage_stroke') {
+        if (playerIndex !== state.drawerIndex || !data.stroke || !Array.isArray(data.stroke.pts) || data.stroke.pts.length < 2) return '现在不能画';
+        state.strokes.push(data.stroke);
+        return null;
+      }
+      if (data.type === 'stage_guess') {
+        if (playerIndex === state.drawerIndex || state.correct[playerIndex]) return '不能重复猜词';
+        if (normalizeWord(data.text) !== normalizeWord(state.word)) return '不对，再试试';
+        state.correct[playerIndex] = true;
+        state.scores[playerIndex] += scoreForGuess(state);
+        state.scores[state.drawerIndex] += 1;
+        if (allGuessersCorrect(state)) finishStageRound(state);
+        return null;
+      }
+      return '未知操作';
+    }
+    if (state.phase === 'round_result') return '本轮已结束';
+    return '游戏已结束';
+  }
+
   if (state.phase === 'choosing') {
     if (data.type !== 'choose_word') return '请先选词';
     if (!state.chain[0] || state.chain[0].playerIndex !== playerIndex) return '不是你选词';
@@ -149,6 +250,33 @@ exports.handleMove = (data, state, playerIndex) => {
 
 // 服务端计时兜底：超时自动推进，防止一人挂机卡死整局
 exports.onTimeout = (state) => {
+  if (state.mode === 'stage') {
+    if (state.phase === 'choosing') {
+      state.word = state.wordOptions[0];
+      state.wordOptions = [];
+      state.phase = 'playing';
+      state.stepStartTime = Date.now();
+      return true;
+    }
+    if (state.phase === 'playing') {
+      finishStageRound(state);
+      return true;
+    }
+    if (state.phase === 'round_result') {
+      if (state.round >= state._playerCount) {
+        let best = 0;
+        for (let i = 1; i < state.scores.length; i++) if (state.scores[i] > state.scores[best]) best = i;
+        state.winner = best;
+        state.phase = 'gameover';
+        return true;
+      }
+      state.drawerIndex = (state.drawerIndex + 1) % state._playerCount;
+      state.round++;
+      startStageRound(state);
+      return true;
+    }
+    return false;
+  }
   if (state.phase === 'choosing') {
     state.word = state.wordOptions[0];
     state.wordOptions = [];
@@ -170,6 +298,34 @@ exports.onTimeout = (state) => {
 // Per-player view: hide the word and pending contents from everyone who shouldn't see them
 exports.playerView = (state, playerIndex) => {
   const view = Object.assign({}, state, { votes: Object.assign({}, state.votes) });
+  if (state.mode === 'stage') {
+    delete view._options;
+    delete view._wordPool;
+    view.word = null;
+    view.wordOptions = [];
+    if (state.phase === 'choosing') {
+      view.myTask = playerIndex === state.drawerIndex ? { type: 'choose', options: state.wordOptions.slice(), mode: 'stage' } : null;
+      return view;
+    }
+    if (state.phase === 'playing') {
+      const isDrawer = playerIndex === state.drawerIndex;
+      view.myTask = {
+        type: 'stage',
+        canDraw: isDrawer,
+        word: isDrawer ? state.word : null,
+        wordMask: isDrawer ? null : Array.from(String(state.word || '')).map(() => '＿').join(' '),
+        strokes: state.strokes.slice(),
+        correct: !!state.correct[playerIndex],
+      };
+      return view;
+    }
+    if (state.phase === 'round_result' || state.phase === 'gameover') {
+      view.word = state.word;
+      view.roundResults = state.roundResults && Object.assign({}, state.roundResults);
+    }
+    view.myTask = null;
+    return view;
+  }
   // _options 含 customWords —— 选中的词可能正是自定义词，进行中阶段必须隐藏
   if (state.phase !== 'reveal') delete view._options;
 

@@ -218,9 +218,15 @@ function scheduleDrawguessTimer(room) {
   if (state.phase === 'choosing') {
     seconds = 15;
   } else if (state.phase === 'playing') {
-    const step = state.chain[state.currentStep];
-    if (!step) return;
-    seconds = step.type === 'draw' ? state.drawTime : state.guessTime;
+    if (state.mode === 'stage') {
+      seconds = state.drawTime;
+    } else {
+      const step = state.chain[state.currentStep];
+      if (!step) return;
+      seconds = step.type === 'draw' ? state.drawTime : state.guessTime;
+    }
+  } else if (state.mode === 'stage' && state.phase === 'round_result') {
+    seconds = 5;
   } else {
     state.stepDeadline = 0;
     return;
@@ -233,7 +239,7 @@ function scheduleDrawguessTimer(room) {
     if (room.state !== state) return; // game_restart 已换 state，旧 timer 作废
     const gameMod = gameRegistry['drawguess'];
     if (!gameMod.onTimeout(state)) return;
-    if (state.phase === 'choosing' || state.phase === 'playing') {
+    if (state.phase === 'choosing' || state.phase === 'playing' || (state.mode === 'stage' && state.phase === 'round_result')) {
       scheduleDrawguessTimer(room); // 先更新 deadline 再广播
     } else {
       state.stepDeadline = 0;
@@ -669,7 +675,8 @@ wss.on('connection', (ws) => {
       }
 
       // drawguess: reset the step timer after every successful move (updates stepDeadline before broadcast)
-      if (currentRoom.game === 'drawguess') scheduleDrawguessTimer(currentRoom);
+      const isStageLiveAction = currentRoom.game === 'drawguess' && (data.type === 'stage_stroke' || data.type === 'stage_guess');
+      if (currentRoom.game === 'drawguess' && !isStageLiveAction) scheduleDrawguessTimer(currentRoom);
 
       // Minesweeper: each player gets their own board view (independent reveal/flag state)
       if (currentRoom.game === 'minesweeper' && gameMod.playerBoardView) {

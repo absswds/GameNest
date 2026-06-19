@@ -119,7 +119,8 @@
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('❔', x + s / 2, y + s / 2);
     } else {
-      ctx.fillStyle = blocked ? '#dfe3df' : (EMOJI_BG[pat % EMOJI_BG.length] || '#fff');
+      // 被遮挡只代表暂时不能点，不应该把牌面画成半透明灰块。
+      ctx.fillStyle = EMOJI_BG[pat % EMOJI_BG.length] || '#fff';
       roundRect(x + pad, y + pad, s - 2 * pad, s - 2 * pad, s * 0.18); ctx.fill();
       // 底部立体边
       ctx.fillStyle = 'rgba(0,0,0,0.08)';
@@ -127,13 +128,13 @@
       ctx.strokeStyle = blocked ? '#c4ccc4' : '#e3d9c2'; ctx.lineWidth = 1.5;
       roundRect(x + pad, y + pad, s - 2 * pad, s - 2 * pad, s * 0.18); ctx.stroke();
       ctx.save();
-      if (blocked) ctx.globalAlpha = 0.5;
+      if (blocked) ctx.globalAlpha = 1;
       ctx.font = Math.floor(s * 0.5) + 'px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(EMOJIS[pat % EMOJIS.length], x + s / 2, y + s / 2);
       ctx.restore();
       if (blocked) {
-        ctx.fillStyle = 'rgba(40,44,40,0.26)';
+        ctx.fillStyle = 'rgba(40,44,40,0.035)';
         roundRect(x + pad, y + pad, s - 2 * pad, s - 2 * pad, s * 0.18); ctx.fill();
       }
     }

@@ -389,6 +389,7 @@
         var dgDraw = roomOptions.drawTime !== undefined ? roomOptions.drawTime : 90;
         var dgGuess = roomOptions.guessTime !== undefined ? roomOptions.guessTime : 45;
         var dgChoices = roomOptions.wordChoices !== undefined ? roomOptions.wordChoices : 3;
+        var dgMode = roomOptions.mode || 'stage';
         if (isHost) {
           var catHtml = '';
           dgCats.forEach(function(c) {
@@ -405,6 +406,7 @@
           var customVal = (roomOptions.customWords || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
           optionsEl.innerHTML =
             '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">游戏设置</div>' +
+            '<div style="font-size:13px;margin-bottom:8px;">玩法 <select onchange="window._setGameOption(\'mode\', this.value)" style="' + selStyle + '"><option value="stage"' + (dgMode === 'stage' ? ' selected' : '') + '>舞台猜词（实时）</option><option value="whisper"' + (dgMode === 'whisper' ? ' selected' : '') + '>悄悄话传画</option></select></div>' +
             '<div style="font-size:13px;margin-bottom:6px;">词库分类：<br>' + catHtml + '</div>' +
             '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:14px;margin-bottom:6px;">' +
               '<label style="display:flex;align-items:center;gap:6px;">画画限时 ' + dgSel('optDgDraw', 'drawTime', [45,60,90,120,0], ['45秒','60秒','90秒','120秒','不限时'], dgDraw) + '</label>' +
@@ -420,7 +422,7 @@
           var customCount = (roomOptions.customWords || '').split(/[,，\n\s]+/).filter(function(w){ return w.trim(); }).length;
           optionsEl.innerHTML =
             '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">游戏设置</div>' +
-            '<div style="font-size:13px;color:var(--text-muted)">词库: ' + catNames +
+            '<div style="font-size:13px;color:var(--text-muted)">玩法: ' + (dgMode === 'stage' ? '舞台猜词（实时）' : '悄悄话传画') + ' · 词库: ' + catNames +
             '・画 ' + (dgDraw === 0 ? '不限时' : dgDraw + '秒') + '・猜 ' + (dgGuess === 0 ? '不限时' : dgGuess + '秒') +
             '・候选 ' + dgChoices + ' 词' + (customCount > 0 ? '・自定义词 ' + customCount + ' 个' : '') + '</div>';
         }
