@@ -130,6 +130,8 @@
       roundRect(x + pad, y + pad, s - 2 * pad, s - 2 * pad, s * 0.18); ctx.stroke();
       ctx.save();
       if (blocked) ctx.globalAlpha = 1;
+      // Windows 的彩色 emoji 本身偏淡；只增强图标层，不影响清晰的牌底。
+      ctx.filter = 'contrast(1.6) saturate(2.2)';
       ctx.font = Math.floor(s * 0.62) + 'px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(EMOJIS[pat % EMOJIS.length], x + s / 2, y + s / 2);
