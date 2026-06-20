@@ -62,10 +62,8 @@
     '.rk-tile-blue{background:linear-gradient(145deg,#2980b9,#1a5276);color:#fff;}' +
     '.rk-tile-red{background:linear-gradient(145deg,#e74c3c,#922b21);color:#fff;}' +
     '.rk-tile-orange{background:linear-gradient(145deg,#e67e22,#935116);color:#fff;}' +
-    '.rk-hand-wrap{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding:4px 2px;margin:0 -4px;}' +
-    '.rk-hand-wrap::-webkit-scrollbar{height:3px;}' +
-    '.rk-hand-wrap::-webkit-scrollbar-thumb{background:#ddd;border-radius:4px;}' +
-    '.rk-hand{display:flex;gap:5px;min-height:70px;padding:4px;}' +
+    '.rk-hand-wrap{overflow:visible;padding:4px 2px;margin:0 -4px;}' +
+    '.rk-hand{display:flex;flex-wrap:wrap;gap:5px;min-height:70px;padding:4px;}' +
     '.rk-info{display:flex;justify-content:space-between;align-items:center;padding:4px 0;}' +
     '.rk-info .rk-break{font-size:12px;font-weight:600;padding:4px 12px;border-radius:12px;}' +
     '.rk-info .rk-break.done{background:var(--accent-dim);color:var(--accent);}' +
@@ -118,7 +116,6 @@
           '</div>' +
           '<div class="rk-table-area" id="rkTable"><div style="color:var(--text-muted);font-size:13px;padding:8px;">桌面牌组区域</div></div>' +
           '<div class="rk-hand-wrap" id="rkHandWrap"><div class="rk-hand" id="rkHand"></div></div>' +
-          '<div id="rkScrollHint" style="display:none;text-align:center;font-size:11px;color:var(--text-muted);padding:2px 0;">👈 左右滑动查看全部牌 →</div>' +
           '<div class="rk-actions" id="rkActions">' +
             '<button class="btn btn-primary btn-sm" id="rkPlayBtn">出牌</button>' +
             '<button class="btn btn-accent btn-sm" id="rkManipBtn" style="display:none">🔀 重组牌桌（拿桌面牌）</button>' +
@@ -411,23 +408,6 @@
       }
     }
 
-    var hintEl = document.getElementById('rkScrollHint');
-    var handWrap = document.getElementById('rkHandWrap');
-    if (hintEl && handWrap) {
-      if (hand.length > 8 && isMyTurn) {
-        hintEl.style.display = '';
-        if (!handWrap.dataset.scrollWatched) {
-          handWrap.dataset.scrollWatched = '1';
-          handWrap.addEventListener('scroll', function() {
-            hintEl.style.opacity = '0';
-            hintEl.style.transition = 'opacity 0.5s';
-            setTimeout(function() { hintEl.style.display = 'none'; }, 500);
-          }, { once: true });
-        }
-      } else {
-        hintEl.style.display = 'none';
-      }
-    }
   }
 
   // ---- ACTIONS ----
