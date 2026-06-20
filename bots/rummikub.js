@@ -4,6 +4,7 @@ exports.name = 'rummikub';
 exports.createBot = (playerIndex) => ({
   name: `电脑${playerIndex + 1}`,
   getMove(state) {
+    if (state.playedThisTurn[playerIndex]) return { endTurn: true };
     const hand = state.hands[playerIndex];
     if (!hand || hand.length === 0) return { pass: true };
 

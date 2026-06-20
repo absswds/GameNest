@@ -4,6 +4,7 @@
   const roomId = sessionStorage.getItem('roomId');
   const playerIndex = parseInt(sessionStorage.getItem('playerIndex'));
   const resumeToken = sessionStorage.getItem('resumeToken');
+  const NO_AI_GAMES = new Set(['drawguess', 'minesweeper', 'suikabattle']);
 
   let ws, state, players, currentRenderer;
   let roomPhase = 'lobby';   // 'lobby' | 'ready' | 'playing'
@@ -480,7 +481,8 @@
 
     // Add bot button (host only)
     if (addBotBtn) {
-      addBotBtn.style.display = isHost ? '' : 'none';
+      const supportsAI = !NO_AI_GAMES.has(game);
+      addBotBtn.style.display = isHost && supportsAI ? '' : 'none';
       const totalOccupied = players ? players.length : 0;
       const roomFull = totalOccupied >= maxSlots;
       addBotBtn.disabled = roomFull;
