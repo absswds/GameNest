@@ -3,6 +3,7 @@
   const game = sessionStorage.getItem('game');
   const roomId = sessionStorage.getItem('roomId');
   const playerIndex = parseInt(sessionStorage.getItem('playerIndex'));
+  const resumeToken = sessionStorage.getItem('resumeToken');
 
   let ws, state, players, currentRenderer;
   let roomPhase = 'lobby';   // 'lobby' | 'ready' | 'playing'
@@ -60,7 +61,7 @@
   function connect() {
     if (ws) { try { ws.close(); } catch(e) {} }
     ws = new WebSocket(`ws://${location.host}`);
-    ws.onopen = () => ws.send(JSON.stringify({ type: 'join_room', data: { roomId } }));
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'join_room', data: { roomId, resumeToken } }));
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
 
@@ -71,6 +72,7 @@
         window._players = players;
         roomPhase = msg.phase || 'lobby';
         if (msg.options) roomOptions = msg.options;
+        if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
         updateWaitingRoom();
         if (roomPhase === 'playing') {
           showGame();

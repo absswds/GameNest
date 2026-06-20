@@ -4,6 +4,7 @@ const { WebSocketServer } = require('ws');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const PORT = parseInt(process.env.PORT) || 3000;
 const MAX_PORT_RETRIES = 5;
@@ -93,7 +94,7 @@ function createRoom(ws, gameType) {
     readyPlayers: new Set(),   // Set of player indices that are ready
     options: {},               // Game-specific options (e.g. requireBreak)
   };
-  room.players.set(ws, { name: '玩家 1', index: 0, avatar: '😊' });
+  room.players.set(ws, { name: '玩家 1', index: 0, avatar: '😊', resumeToken: crypto.randomUUID(), disconnectedAt: null });
   rooms.set(roomId, room);
   return { roomId, room };
 }
@@ -326,6 +327,7 @@ wss.on('connection', (ws) => {
         players: roomPlayersList(currentRoom),
         phase: currentRoom.phase,
         options: currentRoom.options,
+        resumeToken: currentRoom.players.get(ws).resumeToken,
       }));
       return;
     }
@@ -371,10 +373,29 @@ wss.on('connection', (ws) => {
 
     // --- join_room ---
     if (type === 'join_room') {
-      const { roomId } = data || {};
+      const { roomId, resumeToken } = data || {};
       const room = rooms.get(roomId);
       if (!room) {
         ws.send(JSON.stringify({ type: 'error', message: '房间不存在' }));
+        return;
+      }
+      // Resume an existing seat after returning to the lobby / temporary disconnect.
+      const resumable = resumeToken && Array.from(room.players.entries())
+        .find(([, info]) => info.resumeToken === resumeToken);
+      if (resumable) {
+        const oldWs = resumable[0];
+        const info = resumable[1];
+        if (info._disconnectTimer) clearTimeout(info._disconnectTimer);
+        info._disconnectTimer = null;
+        info.disconnectedAt = null;
+        room.players.delete(oldWs);
+        room.players.set(ws, info);
+        if (room.hostWS === oldWs) room.hostWS = ws;
+        currentRoomId = roomId;
+        currentRoom = room;
+        ws.send(JSON.stringify({ type: 'room_joined', roomId, game: room.game, maxPlayers: room.maxPlayers,
+          playerIndex: info.index, players: roomPlayersList(room), state: room.state, phase: room.phase,
+          options: room.options, resumeToken: info.resumeToken }));
         return;
       }
       // Check if already in this room (reconnect)
@@ -397,7 +418,7 @@ wss.on('connection', (ws) => {
       }
       // Clean up stale connections (WS closed but close event hasn't fired yet)
       for (const [w, info] of room.players) {
-        if (w.readyState !== 1) {
+        if (w.readyState !== 1 && (!info.disconnectedAt || Date.now() - info.disconnectedAt > 300000)) {
           room.players.delete(w);
           room.readyPlayers.delete(info.index);
         }
@@ -427,7 +448,7 @@ wss.on('connection', (ws) => {
         ws.send(JSON.stringify({ type: 'error', message: '房间已满' }));
         return;
       }
-      room.players.set(ws, { name: `玩家 ${idx + 1}`, index: idx, avatar: '😊' });
+      room.players.set(ws, { name: `玩家 ${idx + 1}`, index: idx, avatar: '😊', resumeToken: crypto.randomUUID(), disconnectedAt: null });
       if (room.players.size === 1) room.hostWS = ws;
       currentRoomId = roomId;
       currentRoom = room;
@@ -444,6 +465,7 @@ wss.on('connection', (ws) => {
         state: room.state,
         phase: room.phase,
         options: room.options,
+        resumeToken: room.players.get(ws).resumeToken,
       }));
       sendToRoom(room, {
         type: 'player_joined',
@@ -845,36 +867,18 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     if (currentRoom && currentRoomId) {
-      currentRoom.players.delete(ws);
-      // Clean up ready state for departed player
-      const remainingIndices = new Set(
-        Array.from(currentRoom.players.values()).map(p => p.index)
-      );
-      for (const idx of currentRoom.readyPlayers) {
-        if (!remainingIndices.has(idx)) currentRoom.readyPlayers.delete(idx);
-      }
-      // Transfer host if needed
-      if (ws === currentRoom.hostWS && currentRoom.players.size > 0) {
-        currentRoom.hostWS = currentRoom.players.keys().next().value;
-      }
-      if (currentRoom.players.size === 0) {
-        if (currentRoom._botTimer) clearTimeout(currentRoom._botTimer);
-        if (currentRoom._tfTimer) clearTimeout(currentRoom._tfTimer);
-        if (currentRoom._dgTimer) clearTimeout(currentRoom._dgTimer);
-        if (currentRoom._cleanupTimer) clearTimeout(currentRoom._cleanupTimer);
-        currentRoom._cleanupTimer = setTimeout(() => {
-          rooms.delete(currentRoomId);
-        }, 60000);
-      } else {
-        currentRoom.state = gameRegistry[currentRoom.game].createState();
-        currentRoom.readyPlayers.clear();
-        currentRoom.phase = 'lobby';
-        broadcastRoom(currentRoom, {
-          type: 'player_left',
-          players: roomPlayersList(currentRoom),
-          phase: currentRoom.phase,
-        });
-      }
+      const info = currentRoom.players.get(ws);
+      if (!info) return;
+      info.disconnectedAt = Date.now();
+      if (info._disconnectTimer) clearTimeout(info._disconnectTimer);
+      info._disconnectTimer = setTimeout(() => {
+        if (info.disconnectedAt && currentRoom.players.get(ws) === info) {
+          currentRoom.players.delete(ws);
+          currentRoom.readyPlayers.delete(info.index);
+          if (currentRoom.players.size === 0) rooms.delete(currentRoomId);
+        }
+      }, 300000);
+      broadcastRoom(currentRoom, { type: 'player_left', players: roomPlayersList(currentRoom), phase: currentRoom.phase });
     }
   });
 });

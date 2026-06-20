@@ -14,6 +14,15 @@
 - **Accepted design:** each Whisper round begins with the next player choosing a fresh word and drawing. The chain alternates draw/guess through all players, then everyone votes whether the final guess still matches the original. A majority match awards the round's initiating drawer 3 points. After every player has initiated one chain, highest score wins; seat order resolves ties.
 - **Mode-sync repair:** `room_created` and both `room_joined` packets now carry `options`; the initial client handler stores them before rendering the lobby. This eliminates the missing-options fallback to Stage mode for joining players.
 
+## 2026-06-20 — New multi-area investigation
+- **DrawGuess mobile timer candidate root cause:** the renderer calculates remaining time from `serverAbsoluteDeadline - device Date.now()`. The server and each phone/PC need not have matching clocks, so a phone whose clock is ahead sees an already elapsed deadline even while a PC works. Need replace client clock comparison with a server-provided remaining duration or synchronized offset.
+- **Rejoin root cause:** on WebSocket close, `server.js` immediately removes the player. If anyone remains it resets the game state to a fresh lobby, so the current room cannot be resumed after using the back-to-lobby button. A resume identity plus disconnect grace period is needed.
+- **Rummikub scope:** the game already has a server-side `manipulate` workspace intended to combine table tiles with the current player's hand. The next diagnostic step is to compare its renderer messages and submit validation with an actual table-rearrangement simulation before proposing a rebuild.
+- **Homepage scope:** category ordering is visual/information architecture work and should be designed separately from runtime bug fixes, then applied to the game-card data/order in the lobby.
+
+## 2026-06-20 — Rummikub renderer root cause
+- **Confirmed interaction failure:** in manipulation mode, every tile click calls `stopPropagation()`. Clicking a filled target group therefore toggles that target tile instead of reaching the group-level drop handler. The only drop area is a tiny blank margin, often unavailable, so selected table tiles cannot practically be moved into another existing group. The fix is to treat a click on any unselected tile in a different group as a drop target while a selection exists.
+
 ## Architecture Patterns (from existing code)
 - Games export: { name, maxPlayers, createState(), handleMove(data, state, playerIndex) }
 - Game modules may also export: { initGame(state, playerCount) }

@@ -234,6 +234,14 @@
           (function(el, id) {
             el.addEventListener('click', function(e) {
               e.stopPropagation();
+              var targetBox = el.closest('.rk-box');
+              if (Object.keys(_sel).length > 0 && !_sel[id] && targetBox) {
+                var target = targetBox.dataset.hand ? 'hand' : parseInt(targetBox.dataset.box, 10);
+                if (target === 'hand' || !isNaN(target)) {
+                  if (moveSelectedTo(target)) renderManipulate(state, selfIdx);
+                  return;
+                }
+              }
               if (_sel[id]) delete _sel[id]; else _sel[id] = true;
               renderManipulate(state, selfIdx);
             });
@@ -423,7 +431,28 @@
   }
 
   // ---- ACTIONS ----
+  function ensureActionButtons() {
+    var actions = document.getElementById('rkActions');
+    if (!actions || document.getElementById('rkPlayBtn')) return;
+    actions.innerHTML =
+      '<button class="btn btn-primary btn-sm" id="rkPlayBtn">出牌</button>' +
+      '<button class="btn btn-accent btn-sm" id="rkManipBtn">🔀 重组牌桌</button>' +
+      '<button class="btn btn-outline btn-sm" id="rkEndTurnBtn">结束回合</button>' +
+      '<button class="btn btn-outline btn-sm" id="rkDrawBtn">摸牌并结束</button>';
+    document.getElementById('rkPlayBtn').addEventListener('click', function() {
+      var ids = Object.keys(selectedTiles);
+      if (ids.length === 0) { showToast('请先选择牌'); return; }
+      var data = { tileIds: ids };
+      if (ids.length === 1 && _targetSet !== null) data.targetSet = _targetSet;
+      selectedTiles = {}; _targetSet = null; window.makeGameMove(data);
+    });
+    document.getElementById('rkManipBtn').addEventListener('click', function() { window.makeGameMove({ action: 'start_manipulate' }); });
+    document.getElementById('rkEndTurnBtn').addEventListener('click', function() { window.makeGameMove({ endTurn: true }); });
+    document.getElementById('rkDrawBtn').addEventListener('click', function() { selectedTiles = {}; _targetSet = null; window.makeGameMove({ pass: true }); });
+  }
+
   function renderActions(state, selfIdx) {
+    ensureActionButtons();
     var playBtn = document.getElementById('rkPlayBtn');
     var manipBtn = document.getElementById('rkManipBtn');
     var endBtn = document.getElementById('rkEndTurnBtn');
@@ -436,7 +465,7 @@
     if (playBtn) playBtn.style.display = isMyTurn ? '' : 'none';
     if (manipBtn) manipBtn.style.display = (isMyTurn && hasTable) ? '' : 'none';
     if (endBtn) endBtn.style.display = (isMyTurn && hasPlayed) ? '' : 'none';
-    if (drawBtn) drawBtn.style.display = isMyTurn ? '' : 'none';
+    if (drawBtn) drawBtn.style.display = (isMyTurn && !hasPlayed) ? '' : 'none';
 
     if (drawBtn && isMyTurn) {
       drawBtn.textContent = hasPlayed ? '摸牌并结束' : '摸牌并结束';

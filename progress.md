@@ -17,6 +17,13 @@
 - Added a failing message-shape guard for initial room options, then added `options` to initial server packets and saved them in the initial client handler.
 - Verification: `node scripts/sim-drawguess.js` and `node --check` for game, renderer, client, and server passed.
 
+## 2026-06-20 — Next request triage
+- Started evidence gathering for mobile timer, resumable rooms, Rummikub manipulation, and homepage categorization.
+- No production changes made in this phase yet.
+- Confirmed the Rummikub manipulation failure at the renderer event boundary: tile click propagation prevents full target groups from receiving a selected-tile drop.
+- DrawGuess timer now receives `stepRemainingMs` from the server-side player view and starts from receipt time; its simulation passes.
+- Added `scripts/sim-rummikub-ui.js` red/green guard and changed manipulation clicks so an existing target group accepts selected tiles.
+
 ## 2026-06-20 — DrawGuess Stage implementation
 - Added switchable `stage` (default) and `whisper` modes. Stage is server-authoritative: private word selection, live validated strokes, simultaneous repeat guesses, score order, five-second round result, drawer rotation, and winner after every player has drawn.
 - Added Stage mode picker to the existing room settings and live canvas / guess / result rendering while retaining the Whisper renderer flow.

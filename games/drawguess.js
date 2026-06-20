@@ -346,6 +346,7 @@ exports.onTimeout = (state) => {
 // Per-player view: hide the word and pending contents from everyone who shouldn't see them
 exports.playerView = (state, playerIndex) => {
   const view = Object.assign({}, state, { votes: Object.assign({}, state.votes) });
+  view.stepRemainingMs = state.stepDeadline ? Math.max(0, state.stepDeadline - Date.now()) : 0;
   delete view._wordPool;
   if (state.mode === 'stage') {
     delete view._options;

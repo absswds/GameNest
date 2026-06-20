@@ -190,7 +190,7 @@
   // ---- Timer ----
   // 服务端权威倒计时：读 state.stepDeadline（绝对时间戳，0=不限时）。
   // onExpire: 剩余 ≤1s 时触发一次（自动提交当前内容，抢在服务端 onTimeout 的 2s 缓冲之前）
-  function startTimer(container, deadline, onExpire) {
+  function startTimer(container, remainingMs, onExpire) {
     clearInterval(timerInterval);
     var timerEl = document.getElementById('dg-timer');
     if (!timerEl) {
@@ -204,10 +204,11 @@
         container.appendChild(timerEl);
       }
     }
-    if (!deadline || deadline <= 0) { timerEl.textContent = '不限时'; return; }
+    if (!remainingMs || remainingMs <= 0) { timerEl.textContent = '不限时'; return; }
+    var localDeadline = Date.now() + remainingMs;
     var expired = false;
-    timerInterval = setInterval(function () {
-      var rem = Math.ceil((deadline - Date.now()) / 1000);
+    function tick() {
+      var rem = Math.ceil((localDeadline - Date.now()) / 1000);
       if (rem <= 1 && !expired) {
         expired = true;
         clearInterval(timerInterval);
@@ -217,7 +218,9 @@
       }
       timerEl.textContent = '剩余 ' + rem + ' 秒';
       timerEl.style.color = rem <= 10 ? '#e74c3c' : 'var(--text-muted)';
-    }, 500);
+    }
+    tick();
+    timerInterval = setInterval(tick, 500);
   }
 
   // ---- Render drawing turn ----
@@ -241,7 +244,7 @@
       localStrokes = [];
       renderWaiting(container, '画作已提交，等待其他玩家…');
     }
-    startTimer(wrap, state && state.stepDeadline, doSubmitDraw);
+    startTimer(wrap, state && state.stepRemainingMs, doSubmitDraw);
     buildToolbar(wrap);
 
     buildSubmitBtn(wrap, '提交画作 ✓', function () {
@@ -262,7 +265,7 @@
     lbl.style.cssText = 'font-size:14px;color:var(--text-muted);margin-bottom:6px;';
     wrap.appendChild(lbl);
 
-    startTimer(wrap, state && state.stepDeadline, function () {
+    startTimer(wrap, state && state.stepRemainingMs, function () {
       var val = (input && input.value.trim()) || '（超时）';
       wsSend({ type: 'submit', content: val });
       renderWaiting(container, '猜词已提交，等待其他玩家…');
@@ -318,7 +321,7 @@
     title.style.cssText = 'font-size:19px;font-weight:800;margin-bottom:6px;';
     wrap.appendChild(title);
 
-    startTimer(wrap, state && state.stepDeadline, null);
+    startTimer(wrap, state && state.stepRemainingMs, null);
 
     (task.options || []).forEach(function (w, i) {
       var btn = document.createElement('button');
@@ -357,7 +360,7 @@
     resizeCanvas();
     drawStrokes(task.strokes || []);
     wrap.appendChild(canvas);
-    startTimer(wrap, state.stepDeadline, null);
+    startTimer(wrap, state.stepRemainingMs, null);
     if (task.canDraw) { localStrokes = task.strokes || []; buildToolbar(wrap); return; }
     if (task.correct) return;
     var row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;margin-top:10px;width:min(100%,500px);'; wrap.appendChild(row);
@@ -544,7 +547,7 @@
         (matched ? '🎯 传话成功' : '🌀 传话跑偏') + ' · ' + starterName + ' +' + gained + ' 分</div>' +
         '<div style="text-align:left;margin-top:10px">' + rows + '</div>' +
         '<div style="margin-top:16px;color:var(--text-muted);font-size:13px">下一轮由 ' + nextName + ' 选词并开始画</div>';
-      startTimer(box, st.stepDeadline, null);
+      startTimer(box, st.stepRemainingMs, null);
     }
     container.appendChild(box);
   }

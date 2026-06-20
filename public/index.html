@@ -10,6 +10,10 @@
   <div class="lobby-container">
     <h1 class="page-title">联 机 桌 游</h1>
     <div class="title-divider"></div>
+    <div class="lobby-section" id="resumeSection" style="display:none">
+      <h3>继续对局</h3>
+      <button class="btn btn-primary" id="resumeBtn">返回进行中的对局</button>
+    </div>
     <p class="subtitle">打开浏览器 · 加入房间 · 开始游戏</p>
 
     <!-- Create -->
@@ -241,6 +245,7 @@ document.getElementById('createBtn').addEventListener('click', () => {
       sessionStorage.setItem('roomId', msg.roomId);
       sessionStorage.setItem('playerIndex', msg.playerIndex);
       sessionStorage.setItem('game', msg.game);
+      if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
       ws.close();
       location.href = '/game.html';
     } else if (msg.type === 'error') {
@@ -263,6 +268,7 @@ document.getElementById('joinBtn').addEventListener('click', () => {
       sessionStorage.setItem('roomId', msg.roomId);
       sessionStorage.setItem('playerIndex', msg.playerIndex);
       sessionStorage.setItem('game', msg.game);
+      if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
       ws.close();
       location.href = '/game.html';
     } else if (msg.type === 'error') {
@@ -275,6 +281,15 @@ document.getElementById('joinBtn').addEventListener('click', () => {
 document.getElementById('roomCodeInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('joinBtn').click();
 });
+
+if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
+  var savedGame = sessionStorage.getItem('game');
+  var savedOption = document.querySelector('.game-option[data-game="' + savedGame + '"] .name');
+  var savedName = savedOption ? savedOption.textContent.trim() : (savedGame || '对局');
+  document.getElementById('resumeBtn').textContent = '继续：' + savedName + '（房间 ' + sessionStorage.getItem('roomId') + '）';
+  document.getElementById('resumeSection').style.display = '';
+  document.getElementById('resumeBtn').onclick = () => { location.href = '/game.html'; };
+}
 
 // Auto-join from QR code scan (?room=XXXXXX)
 (function() {
@@ -293,6 +308,7 @@ document.getElementById('roomCodeInput').addEventListener('keydown', (e) => {
         sessionStorage.setItem('roomId', msg.roomId);
         sessionStorage.setItem('playerIndex', msg.playerIndex);
         sessionStorage.setItem('game', msg.game);
+        if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
         ws.close();
         location.href = '/game.html';
       } else if (msg.type === 'error') {

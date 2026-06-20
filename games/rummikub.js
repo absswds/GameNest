@@ -289,6 +289,7 @@ exports.handleMove = (data, state, playerIndex) => {
     }
 
     if (pass) {
+      if (state.playedThisTurn[playerIndex]) return '本回合已经出过牌，只能继续出牌、重组或结束回合';
       // Draw a tile
       if (state.pool.length > 0) {
         hand.push(state.pool.pop());

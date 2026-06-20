@@ -161,6 +161,15 @@ for (let trial = 0; trial < 200; trial++) {
   assert(clientInitialHandler.includes('if (msg.options) roomOptions = msg.options'), '客户端收到初始房间消息应保存房间设置');
 }
 
+// --- 9. 倒计时必须由服务器计算剩余时间，不能依赖客户端设备时钟 ---
+{
+  const timed = newGame(2, { mode: 'whisper', wordChoices: 1 });
+  timed.stepDeadline = Date.now() + 5000;
+  const view = game.playerView(timed, 0);
+  assert(view.stepRemainingMs > 4000 && view.stepRemainingMs <= 5000,
+    '玩家视图应收到服务器计算的剩余毫秒数');
+}
+
 if (failures === 0) {
   console.log('sim-drawguess: 全部通过 ✓');
 } else {
