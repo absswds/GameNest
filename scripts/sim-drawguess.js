@@ -1,6 +1,8 @@
 // scripts/sim-drawguess.js — 你画我猜逻辑验证
 // 验证：选词流程、传话链推进、投票结算、onTimeout 各阶段、playerView 不泄漏词语
 const game = require('../games/drawguess');
+const fs = require('fs');
+const path = require('path');
 
 let failures = 0;
 function assert(cond, msg) {
@@ -119,6 +121,44 @@ for (let trial = 0; trial < 200; trial++) {
   assert(stage.phase === 'round_result', '所有猜词玩家猜中后应进入本轮结算');
   assert(game.onTimeout(stage) === true, '结算超时应安全进入下一轮');
   assert(stage.drawerIndex === 1 && stage.round === 2, '下一轮应轮换画手');
+}
+
+// --- 7. 悄悄话接力：每人依次开一条链，投票成功才给本轮起点积分 ---
+{
+  const relay = newGame(3, { mode: 'whisper', wordChoices: 1, categories: ['animal'] });
+  assert(relay.round === 1 && relay.drawerIndex === 0, '第一条接力链应由玩家0发起');
+  assert(Array.isArray(relay.scores) && relay.scores.length === 3, '悄悄话接力应初始化全员积分');
+
+  while (relay.phase === 'playing') {
+    const step = relay.chain[relay.currentStep];
+    const content = step.type === 'draw'
+      ? [{ color: '#000', width: 4, pts: [{ x: 0, y: 0 }, { x: 1, y: 1 }] }]
+      : '接力猜词';
+    assert(game.handleMove({ type: 'submit', content }, relay, step.playerIndex) === null, '接力链步骤应能提交');
+  }
+  assert(relay.phase === 'reveal', '接力链传完应进入投票结算');
+  for (let p = 0; p < 3; p++) {
+    assert(game.handleMove({ type: 'vote_match', value: 'match' }, relay, p) === null, '投票应被接收');
+  }
+  assert(relay.transmissionResult === 'match', '多数符合原词应判定传话成功');
+  assert(relay.scores[0] === 3, '传话成功应给本轮起点玩家3分');
+  assert(relay.phase === 'round_result', '投票完成后应进入本轮积分结算');
+  assert(game.onTimeout(relay) === true, '结算时间到应进入下一条接力链');
+  assert(relay.drawerIndex === 1 && relay.round === 2, '下一条接力链应轮到下一位玩家发起');
+}
+
+// --- 8. 房间初始消息必须携带玩法设置，后来加入者才能显示正确模式 ---
+{
+  const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const clientSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'room-client.js'), 'utf8');
+  const createdAt = serverSource.indexOf("type: 'room_created'");
+  const createdPacket = serverSource.slice(createdAt, serverSource.indexOf('return;', createdAt));
+  assert(createdPacket.includes('options: currentRoom.options'), 'room_created 初始消息应携带房间设置');
+  const joinedPackets = serverSource.match(/type: 'room_joined'[\s\S]{0,500}?options: room\.options/g) || [];
+  assert(joinedPackets.length >= 2, '两种 room_joined 初始消息都应携带房间设置');
+  const clientAt = clientSource.indexOf("msg.type === 'room_joined' || msg.type === 'room_created'");
+  const clientInitialHandler = clientSource.slice(clientAt, clientSource.indexOf('// game_state', clientAt));
+  assert(clientInitialHandler.includes('if (msg.options) roomOptions = msg.options'), '客户端收到初始房间消息应保存房间设置');
 }
 
 if (failures === 0) {

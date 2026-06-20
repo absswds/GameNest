@@ -70,6 +70,7 @@
         players = msg.players || players;
         window._players = players;
         roomPhase = msg.phase || 'lobby';
+        if (msg.options) roomOptions = msg.options;
         updateWaitingRoom();
         if (roomPhase === 'playing') {
           showGame();

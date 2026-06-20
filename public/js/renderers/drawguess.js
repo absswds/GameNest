@@ -398,15 +398,17 @@
 
     // Navigation
     var nav = document.createElement('div');
-    nav.style.cssText = 'display:flex;gap:10px;align-items:center;margin-bottom:10px;';
+    nav.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:10px;width:100%;flex-wrap:nowrap;';
     var prevBtn = document.createElement('button');
     prevBtn.className = 'btn';
     prevBtn.textContent = '← 上一步';
+    prevBtn.style.cssText = 'white-space:nowrap;flex:0 0 132px;width:132px;padding:10px 0;';
     var nextBtn = document.createElement('button');
     nextBtn.className = 'btn btn-primary';
     nextBtn.textContent = '下一步 →';
+    nextBtn.style.cssText = 'white-space:nowrap;flex:0 0 132px;width:132px;padding:10px 0;';
     var stepLabel = document.createElement('span');
-    stepLabel.style.cssText = 'font-size:13px;color:var(--text-muted);';
+    stepLabel.style.cssText = 'font-size:13px;color:var(--text-muted);white-space:nowrap;flex:0 0 auto;min-width:30px;text-align:center;';
     nav.appendChild(prevBtn);
     nav.appendChild(stepLabel);
     nav.appendChild(nextBtn);
@@ -421,6 +423,7 @@
       revealStep = Math.max(0, Math.min(idx, chain.length - 1));
       prevBtn.disabled = revealStep === 0;
       nextBtn.disabled = revealStep === chain.length - 1;
+      nextBtn.textContent = revealStep === chain.length - 1 ? '回放结束' : '下一步 →';
       stepLabel.textContent = (revealStep + 1) + ' / ' + chain.length;
 
       var step = chain[revealStep];
@@ -473,13 +476,78 @@
       if (chain[gi].type === 'guess' && chain[gi].content) { lastGuess = chain[gi].content; break; }
     }
     var resultEl = document.createElement('div');
-    var transmitted = normalizeText(lastGuess) === normalizeText(st.word);
-    resultEl.style.cssText = 'margin-top:16px;padding:14px 20px;background:' + (transmitted ? '#ecf9ef' : '#fff5f2') + ';border-radius:12px;text-align:center;font-size:15px;font-weight:700;color:' + (transmitted ? '#23864a' : '#c95f3c') + ';';
-    resultEl.textContent = transmitted ? '🎯 传话成功！原词和最后猜词一致：' + st.word : '🌀 传话跑偏：原词「' + st.word + '」→ 最后猜词「' + (lastGuess || '无答案') + '」';
+    resultEl.style.cssText = 'margin-top:16px;padding:14px 20px;background:#f8f9fa;border-radius:12px;text-align:center;font-size:15px;font-weight:700;color:#5a4a32;';
+    resultEl.textContent = '原词「' + st.word + '」→ 最后猜词「' + (lastGuess || '无答案') + '」';
     wrap.appendChild(resultEl);
+
+    if (st.transmissionResult) {
+      var verdict = document.createElement('div');
+      var matched = st.transmissionResult === 'match';
+      verdict.style.cssText = 'margin-top:12px;padding:12px;border-radius:12px;text-align:center;font-weight:800;background:' + (matched ? '#ecf9ef' : '#fff5f2') + ';color:' + (matched ? '#23864a' : '#c95f3c') + ';';
+      verdict.textContent = matched ? '🎯 全员投票：传话仍然符合原词' : '🌀 全员投票：传话已经跑偏';
+      wrap.appendChild(verdict);
+      var matchVotes = st.votes ? Object.values(st.votes).filter(function(v) { return v === 'match'; }).length : 0;
+      var driftVotes = st.votes ? Object.values(st.votes).filter(function(v) { return v === 'drift'; }).length : 0;
+      var tally = document.createElement('div');
+      tally.style.cssText = 'margin-top:8px;font-size:13px;color:var(--text-muted);text-align:center;';
+      tally.textContent = '符合原词 ' + matchVotes + ' 票 · 已跑偏 ' + driftVotes + ' 票';
+      wrap.appendChild(tally);
+      var restartBtn = document.createElement('button');
+      restartBtn.className = 'btn btn-primary'; restartBtn.textContent = '再来一局';
+      restartBtn.style.cssText = 'margin-top:14px;white-space:nowrap;';
+      restartBtn.onclick = function () { if (window.doRestart) window.doRestart(); };
+      wrap.appendChild(restartBtn);
+      return;
+    }
+
+    var voteBox = document.createElement('div');
+    voteBox.style.cssText = 'margin-top:12px;text-align:center;';
+    var myVote = st.votes && st.votes[playerIndex];
+    var agreeBtn = document.createElement('button');
+    var driftBtn = document.createElement('button');
+    agreeBtn.className = 'btn'; driftBtn.className = 'btn';
+    agreeBtn.textContent = myVote === 'match' ? '✓ 符合原词' : '符合原词';
+    driftBtn.textContent = myVote === 'drift' ? '✓ 已跑偏' : '已经跑偏';
+    agreeBtn.style.cssText = 'margin:0 5px;white-space:nowrap;'; driftBtn.style.cssText = 'margin:0 5px;white-space:nowrap;';
+    agreeBtn.onclick = function () { wsSend({ type: 'vote_match', value: 'match' }); };
+    driftBtn.onclick = function () { wsSend({ type: 'vote_match', value: 'drift' }); };
+    voteBox.appendChild(agreeBtn); voteBox.appendChild(driftBtn);
+    var count = st.votes ? Object.keys(st.votes).length : 0;
+    var note = document.createElement('div'); note.style.cssText = 'font-size:12px;color:var(--text-muted);margin-top:8px;'; note.textContent = '请投票决定最后猜词是否仍符合原词（' + count + '/' + (players ? players.length : 0) + '）'; voteBox.appendChild(note);
+    wrap.appendChild(voteBox);
   }
 
   function normalizeText(v) { return String(v || '').trim().replace(/\s+/g, '').toLowerCase(); }
+
+  function renderWhisperResult(container, st, isFinal) {
+    clearInterval(timerInterval);
+    container.innerHTML = '';
+    var box = document.createElement('div');
+    box.style.cssText = 'margin:28px auto;padding:24px;max-width:440px;text-align:center;background:#fff9ee;border-radius:16px;box-shadow:0 4px 18px rgba(115,82,31,.10);';
+    var result = st.roundResults || {};
+    var starter = result.drawerIndex === undefined ? 0 : result.drawerIndex;
+    var starterName = window._players && window._players[starter] ? window._players[starter].name : ('玩家' + (starter + 1));
+    var rows = (st.scores || []).map(function(score, index) {
+      var name = window._players && window._players[index] ? window._players[index].name : ('玩家' + (index + 1));
+      return '<div style="display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px solid rgba(200,164,92,.18);"><span>' + name + '</span><strong>' + score + ' 分</strong></div>';
+    }).join('');
+    if (isFinal) {
+      var winnerName = window._players && window._players[st.winner] ? window._players[st.winner].name : ('玩家' + ((st.winner || 0) + 1));
+      box.innerHTML = '<div style="font-size:24px;font-weight:800">🏆 ' + winnerName + ' 获胜</div><div style="margin:8px 0 16px;color:var(--text-muted)">所有接力链已结算，最终积分如下</div>' + rows;
+    } else {
+      var gained = result.scoreAwarded || 0;
+      var matched = st.transmissionResult === 'match';
+      var nextIndex = (starter + 1) % (st.scores || [0]).length;
+      var nextName = window._players && window._players[nextIndex] ? window._players[nextIndex].name : ('玩家' + (nextIndex + 1));
+      box.innerHTML = '<div style="font-size:21px;font-weight:800">第 ' + st.round + ' 轮结算</div>' +
+        '<div style="margin:10px 0;padding:10px;border-radius:10px;background:' + (matched ? '#ecf9ef' : '#fff5f2') + ';color:' + (matched ? '#23864a' : '#c95f3c') + ';font-weight:700">' +
+        (matched ? '🎯 传话成功' : '🌀 传话跑偏') + ' · ' + starterName + ' +' + gained + ' 分</div>' +
+        '<div style="text-align:left;margin-top:10px">' + rows + '</div>' +
+        '<div style="margin-top:16px;color:var(--text-muted);font-size:13px">下一轮由 ' + nextName + ' 选词并开始画</div>';
+      startTimer(box, st.stepDeadline, null);
+    }
+    container.appendChild(box);
+  }
 
   // ---- Main render ----
   window.gameRenderers.set('drawguess', {
@@ -502,6 +570,15 @@
         } else if (st.phase === 'gameover') {
           renderStageResult(container, st);
         }
+        return;
+      }
+
+      if (st.phase === 'round_result') {
+        renderWhisperResult(container, st, false);
+        return;
+      }
+      if (st.phase === 'gameover') {
+        renderWhisperResult(container, st, true);
         return;
       }
 

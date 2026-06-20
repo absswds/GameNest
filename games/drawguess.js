@@ -45,6 +45,7 @@ exports.createState = () => ({
   chain: [],
   currentStep: 0,
   votes: {},
+  transmissionResult: null,
   winner: null,
   stepStartTime: 0,
   stepDeadline: 0,        // 服务端写入的绝对时间戳，0 = 不限时
@@ -103,6 +104,41 @@ function startStageRound(state) {
   state.stepStartTime = Date.now();
 }
 
+function startWhisperRound(state) {
+  state.chain = [];
+  for (let offset = 0; offset < state._playerCount; offset++) {
+    state.chain.push({
+      playerIndex: (state.drawerIndex + offset) % state._playerCount,
+      type: offset % 2 === 0 ? 'draw' : 'guess',
+      content: null,
+      done: false,
+    });
+  }
+  state.currentStep = 0;
+  state.votes = {};
+  state.transmissionResult = null;
+  state.roundResults = null;
+  if (state.wordChoices <= 1) {
+    state.word = pickWords(state._wordPool, 1)[0];
+    state.wordOptions = [];
+    state.phase = 'playing';
+  } else {
+    state.word = null;
+    state.wordOptions = pickWords(state._wordPool, state.wordChoices);
+    state.phase = 'choosing';
+  }
+  state.stepStartTime = Date.now();
+  state.stepDeadline = 0;
+}
+
+function highestScoreIndex(scores) {
+  let best = 0;
+  for (let i = 1; i < scores.length; i++) {
+    if (scores[i] > scores[best]) best = i;
+  }
+  return best;
+}
+
 exports.initGame = (state, playerCount) => {
   const options = state._options || {};
   state.mode = options.mode === 'whisper' ? 'whisper' : 'stage';
@@ -132,30 +168,12 @@ exports.initGame = (state, playerCount) => {
     return;
   }
 
-  state.chain = [];
-  for (let i = 0; i < playerCount; i++) {
-    state.chain.push({
-      playerIndex: i,
-      type: i % 2 === 0 ? 'draw' : 'guess',
-      content: null,
-      done: false,
-    });
-  }
-  state.currentStep = 0;
-  state.votes = {};
+  state.drawerIndex = 0;
+  state.round = 1;
+  state.scores = Array(playerCount).fill(0);
+  state._wordPool = pool;
   state.winner = null;
-  state.stepStartTime = Date.now();
-  state.stepDeadline = 0;
-
-  if (wordChoices <= 1) {
-    state.word = pickWords(pool, 1)[0];
-    state.wordOptions = [];
-    state.phase = 'playing';
-  } else {
-    state.word = null;
-    state.wordOptions = pickWords(pool, wordChoices);
-    state.phase = 'choosing';
-  }
+  startWhisperRound(state);
 };
 
 function advanceStep(state) {
@@ -226,6 +244,24 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   if (state.phase === 'reveal') {
+    if (data.type === 'vote_match') {
+      if (data.value !== 'match' && data.value !== 'drift') return '无效投票';
+      state.votes[playerIndex] = data.value;
+      if (Object.keys(state.votes).length >= state._playerCount) {
+        const matchCount = Object.values(state.votes).filter(v => v === 'match').length;
+        state.transmissionResult = matchCount * 2 >= state._playerCount ? 'match' : 'drift';
+        const scoreAwarded = state.transmissionResult === 'match' ? 3 : 0;
+        state.scores[state.drawerIndex] += scoreAwarded;
+        state.roundResults = {
+          drawerIndex: state.drawerIndex,
+          scoreAwarded,
+          word: state.word,
+        };
+        state.phase = 'round_result';
+        state.stepDeadline = 0;
+      }
+      return null;
+    }
     if (data.type === 'vote') {
       const si = parseInt(data.stepIndex);
       if (isNaN(si) || si < 0 || si >= state.chain.length) return '无效投票';
@@ -277,6 +313,18 @@ exports.onTimeout = (state) => {
     }
     return false;
   }
+  if (state.phase === 'round_result') {
+    if (state.round >= state._playerCount) {
+      state.winner = highestScoreIndex(state.scores);
+      state.phase = 'gameover';
+      state.stepDeadline = 0;
+      return true;
+    }
+    state.drawerIndex = (state.drawerIndex + 1) % state._playerCount;
+    state.round++;
+    startWhisperRound(state);
+    return true;
+  }
   if (state.phase === 'choosing') {
     state.word = state.wordOptions[0];
     state.wordOptions = [];
@@ -298,9 +346,9 @@ exports.onTimeout = (state) => {
 // Per-player view: hide the word and pending contents from everyone who shouldn't see them
 exports.playerView = (state, playerIndex) => {
   const view = Object.assign({}, state, { votes: Object.assign({}, state.votes) });
+  delete view._wordPool;
   if (state.mode === 'stage') {
     delete view._options;
-    delete view._wordPool;
     view.word = null;
     view.wordOptions = [];
     if (state.phase === 'choosing') {

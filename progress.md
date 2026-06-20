@@ -5,6 +5,18 @@
 - Reproduced by source tracing: Sheep Tile intentionally dims blocked tiles to 50% alpha plus a dark overlay, matching the reported low-visibility symptom.
 - Two browser research attempts for the Steam reference returned Cloudflare 403; switched to a direct public Steam request, which successfully found the DrawGuess result.
 
+## 2026-06-20 — New DrawGuess request
+- Investigated the requested round-based Whisper flow and the lobby mode-label bug before implementation.
+- Confirmed the label bug is reproducible from the message shapes: initial room messages omit `options`, while the client defaults missing `mode` to `stage`.
+- No production code changed yet; awaiting the user's confirmation of the round/scoring design.
+
+## 2026-06-20 — DrawGuess scored relay completed
+- Added a failing simulation for Whisper round scoring and verified it failed with five expected missing behaviors.
+- Implemented round-local chain construction, starter rotation, majority-vote score award, timed result transition, final winner selection, and result score rendering.
+- A first green run found that `_wordPool` leaked words through Whisper player views. The existing secrecy test caught it; fixed by deleting `_wordPool` from every player view.
+- Added a failing message-shape guard for initial room options, then added `options` to initial server packets and saved them in the initial client handler.
+- Verification: `node scripts/sim-drawguess.js` and `node --check` for game, renderer, client, and server passed.
+
 ## 2026-06-20 — DrawGuess Stage implementation
 - Added switchable `stage` (default) and `whisper` modes. Stage is server-authoritative: private word selection, live validated strokes, simultaneous repeat guesses, score order, five-second round result, drawer rotation, and winner after every player has drawn.
 - Added Stage mode picker to the existing room settings and live canvas / guess / result rendering while retaining the Whisper renderer flow.

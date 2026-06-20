@@ -225,7 +225,7 @@ function scheduleDrawguessTimer(room) {
       if (!step) return;
       seconds = step.type === 'draw' ? state.drawTime : state.guessTime;
     }
-  } else if (state.mode === 'stage' && state.phase === 'round_result') {
+  } else if (state.phase === 'round_result') {
     seconds = 5;
   } else {
     state.stepDeadline = 0;
@@ -239,7 +239,7 @@ function scheduleDrawguessTimer(room) {
     if (room.state !== state) return; // game_restart 已换 state，旧 timer 作废
     const gameMod = gameRegistry['drawguess'];
     if (!gameMod.onTimeout(state)) return;
-    if (state.phase === 'choosing' || state.phase === 'playing' || (state.mode === 'stage' && state.phase === 'round_result')) {
+    if (state.phase === 'choosing' || state.phase === 'playing' || state.phase === 'round_result') {
       scheduleDrawguessTimer(room); // 先更新 deadline 再广播
     } else {
       state.stepDeadline = 0;
@@ -325,6 +325,7 @@ wss.on('connection', (ws) => {
         playerIndex: 0,
         players: roomPlayersList(currentRoom),
         phase: currentRoom.phase,
+        options: currentRoom.options,
       }));
       return;
     }
@@ -390,6 +391,7 @@ wss.on('connection', (ws) => {
           players: roomPlayersList(room),
           state: room.state,
           phase: room.phase,
+          options: room.options,
         }));
         return;
       }
@@ -441,6 +443,7 @@ wss.on('connection', (ws) => {
         players: roomPlayersList(room),
         state: room.state,
         phase: room.phase,
+        options: room.options,
       }));
       sendToRoom(room, {
         type: 'player_joined',
