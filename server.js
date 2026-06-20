@@ -8,6 +8,7 @@ const crypto = require('crypto');
 
 const PORT = parseInt(process.env.PORT) || 3000;
 const MAX_PORT_RETRIES = 5;
+const DISCONNECT_GRACE_MS = 30000;
 
 // Load game registry
 const gameRegistry = Object.create(null);
@@ -139,6 +140,52 @@ function roomPlayersList(room) {
   }
   list.sort((a, b) => a.index - b.index);
   return list;
+}
+
+function skipDisconnectedTurn(room) {
+  const state = room && room.state;
+  const turnKey = state && state.phase === 'shooting' && Number.isInteger(state.currentShooter)
+    ? 'currentShooter'
+    : 'currentPlayer';
+  if (!state || !Number.isInteger(state[turnKey])) return false;
+
+  const active = new Set();
+  for (const [ws, info] of room.players) {
+    if (ws.readyState === 1 && !info.disconnectedAt) active.add(info.index);
+  }
+  for (const index of room.bots.keys()) active.add(index);
+  if (active.has(state[turnKey]) || active.size === 0) return false;
+
+  const seatCount = Array.isArray(state.hands) && state.hands.length
+    ? state.hands.length
+    : Math.max(1, room.maxPlayers || 0, ...active);
+  for (let offset = 1; offset <= seatCount; offset++) {
+    const candidate = (state[turnKey] + offset) % seatCount;
+    if (active.has(candidate)) {
+      state[turnKey] = candidate;
+      return true;
+    }
+  }
+  return false;
+}
+
+function broadcastGameState(room) {
+  const gameMod = gameRegistry[room.game];
+  const players = roomPlayersList(room);
+  if (room.game === 'minesweeper' && gameMod.playerBoardView) {
+    for (const [client, info] of room.players) {
+      if (client.readyState === 1) {
+        const viewState = Object.assign({}, room.state, { board: gameMod.playerBoardView(room.state, info.index) });
+        client.send(JSON.stringify({ type: 'game_state', state: viewState, players }));
+      }
+    }
+  } else if (['texas', 'chinesechess', 'drawguess'].includes(room.game) && gameMod.playerView) {
+    for (const [client, info] of room.players) {
+      if (client.readyState === 1) client.send(JSON.stringify({ type: 'game_state', state: gameMod.playerView(room.state, info.index), players }));
+    }
+  } else {
+    broadcastRoom(room, { type: 'game_state', state: room.state, players });
+  }
 }
 
 function scheduleTwentyFourBots(room) {
@@ -286,6 +333,7 @@ function scheduleBotMove(room) {
         const fb = gameMod.handleMove({ pass: true }, room.state, cp);
         if (fb) gameMod.handleMove({}, room.state, cp); // last resort: empty move (most games draw + advance)
       }
+      skipDisconnectedTurn(room);
       broadcastRoom(room, { type: 'game_state', state: room.state, players: roomPlayersList(room) });
       scheduleBotMove(room);
     } catch(e) { console.error('Bot exception:', e.message); }
@@ -694,6 +742,8 @@ wss.on('connection', (ws) => {
       const err = gameMod.handleMove(data, currentRoom.state, playerInfo.index);
       if (err) { ws.send(JSON.stringify({ type: 'error', message: err })); return; }
 
+      skipDisconnectedTurn(currentRoom);
+
       // Clear 24-point round timer when a round ends via player submission
       if (currentRoom.game === 'twentyfour' && currentRoom.state.phase === 'round_end') {
         clearTimeout(currentRoom._tfTimer);
@@ -875,9 +925,19 @@ wss.on('connection', (ws) => {
         if (info.disconnectedAt && currentRoom.players.get(ws) === info) {
           currentRoom.players.delete(ws);
           currentRoom.readyPlayers.delete(info.index);
-          if (currentRoom.players.size === 0) rooms.delete(currentRoomId);
+          if (currentRoom.hostWS === ws) {
+            currentRoom.hostWS = Array.from(currentRoom.players.keys()).find(client => client.readyState === 1) || null;
+          }
+          const skipped = skipDisconnectedTurn(currentRoom);
+          if (currentRoom.players.size === 0) {
+            rooms.delete(currentRoomId);
+            return;
+          }
+          broadcastRoom(currentRoom, { type: 'player_left', players: roomPlayersList(currentRoom), phase: currentRoom.phase });
+          if (currentRoom.phase === 'playing' && currentRoom.state && skipped) broadcastGameState(currentRoom);
+          scheduleBotMove(currentRoom);
         }
-      }, 300000);
+      }, DISCONNECT_GRACE_MS);
       broadcastRoom(currentRoom, { type: 'player_left', players: roomPlayersList(currentRoom), phase: currentRoom.phase });
     }
   });
