@@ -1,6 +1,7 @@
 const fs = require('fs');
 
 const source = fs.readFileSync('public/js/renderers/rummikub.js', 'utf8');
+const androidAsset = 'android/app/src/main/assets/nodejs-project/public/js/renderers/rummikub.js';
 const required = [
   '.rk-table-area{background:var(--bg);border-radius:16px;padding:12px;min-height:60px;display:flex;flex-direction:column;',
   '.rk-table-set{display:flex;gap:3px;padding:6px;background:var(--surface);width:100%;box-sizing:border-box;',
@@ -15,4 +16,9 @@ for (const fragment of required) {
   }
 }
 
-console.log('sim-rummikub-layout: 牌组按行向下排列 ✓');
+if (!fs.existsSync(androidAsset) || fs.readFileSync(androidAsset, 'utf8') !== source) {
+  console.error('FAIL: Android 打包资源不是最新的魔力桥渲染器，请先运行 android/copy-nodejs-project.ps1');
+  process.exit(1);
+}
+
+console.log('sim-rummikub-layout: 牌组按行向下排列，Android 资源已同步 ✓');
