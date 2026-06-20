@@ -52,7 +52,7 @@
     '.rk-table-set:hover{border-color:var(--accent);}' +
     '.rk-table-set.target{border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,164,92,0.3);}' +
     '.rk-table-set.set-invalid{border-color:#e74c3c;}' +
-    '.rk-tile{width:44px;height:62px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;box-shadow:0 2px 5px rgba(0,0,0,.12);flex-shrink:0;cursor:pointer;transition:transform .12s,box-shadow .12s;position:relative;}' +
+    '.rk-tile{width:38px;height:54px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;box-shadow:0 2px 5px rgba(0,0,0,.12);flex-shrink:0;cursor:pointer;transition:transform .12s,box-shadow .12s;position:relative;}' +
     '.rk-tile:active{transform:scale(.93);}' +
     '.rk-tile.selected{transform:translateY(-10px);box-shadow:0 6px 14px rgba(0,0,0,.25);}' +
     '.rk-tile .rk-num{font-size:22px;line-height:1;}' +
@@ -88,9 +88,9 @@
     '.rk-box-tag{position:absolute;top:-9px;left:6px;background:var(--text-muted);color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;font-weight:600;}' +
     '.rk-box.ok .rk-box-tag{background:#5a9e6f;}' +
     '.rk-box.bad .rk-box-tag{background:#e74c3c;}' +
-    '@media(max-width:400px){.rk-table-area{padding:8px;gap:8px;}.rk-table-set{padding:5px;}.rk-tile{width:38px;height:54px;}.rk-tile .rk-num{font-size:18px;}}' +
-    '@media(max-width:360px){.rk-tile{width:34px;height:48px;}.rk-tile .rk-num{font-size:16px;}}' +
-    '@media(max-width:320px){.rk-tile{width:30px;height:44px;}.rk-tile .rk-num{font-size:14px;}}';
+    '@media(max-width:400px){.rk-table-area{padding:8px;gap:8px;}.rk-table-set{padding:5px;}.rk-tile{width:34px;height:48px;}.rk-tile .rk-num{font-size:17px;}}' +
+    '@media(max-width:360px){.rk-tile{width:30px;height:44px;}.rk-tile .rk-num{font-size:15px;}}' +
+    '@media(max-width:320px){.rk-tile{width:28px;height:40px;}.rk-tile .rk-num{font-size:14px;}}';
 
   var COLOR_CSS = {
     black: 'rk-tile-black', blue: 'rk-tile-blue',
