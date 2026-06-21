@@ -1,5 +1,6 @@
 (function () {
-  var canvas, ctx, containerEl, swipeStart;
+  var canvas, ctx, containerEl, swipeStart, previousSnapshot, targetSnapshot, animationStart, rafId;
+  var ANIMATION_MS = 125;
   var COLORS = ['#ef5350', '#42a5f5', '#66bb6a', '#ffb300', '#ab47bc', '#26a69a'];
   var KEY_TO_DIRECTION = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' };
 
@@ -19,7 +20,7 @@
     canvas.width = width * dpr; canvas.height = height * dpr;
     canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw(state, window._sbPlayerIndex);
+    drawAnimationFrame(performance.now());
   }
 
   function draw(state, playerIndex) {
@@ -55,6 +56,39 @@
     }
   }
 
+  function snapshot(state) {
+    return {
+      width: state.width, height: state.height, food: state.food && { x: state.food.x, y: state.food.y }, winner: state.winner,
+      snakes: state.snakes.map(function (snake) { return { player: snake.player, alive: snake.alive, score: snake.score, body: snake.body.map(function (cell) { return { x: cell.x, y: cell.y }; }) }; }),
+    };
+  }
+
+  function interpolateBody(previous, target, progress) {
+    if (!previous || !previous.alive || !target.alive || previous.body.length !== target.body.length) return target.body;
+    return target.body.map(function (cell, index) {
+      var old = previous.body[index];
+      return { x: old.x + (cell.x - old.x) * progress, y: old.y + (cell.y - old.y) * progress };
+    });
+  }
+
+  function interpolatedState(progress) {
+    if (!previousSnapshot) return targetSnapshot;
+    return {
+      width: targetSnapshot.width, height: targetSnapshot.height, food: targetSnapshot.food, winner: targetSnapshot.winner,
+      snakes: targetSnapshot.snakes.map(function (snake, index) {
+        return { player: snake.player, alive: snake.alive, score: snake.score, body: interpolateBody(previousSnapshot.snakes[index], snake, progress) };
+      }),
+    };
+  }
+
+  function drawAnimationFrame(now) {
+    if (!targetSnapshot) return;
+    var progress = previousSnapshot ? Math.min(1, (now - animationStart) / ANIMATION_MS) : 1;
+    draw(interpolatedState(progress), window._sbPlayerIndex);
+    if (progress < 1) rafId = requestAnimationFrame(drawAnimationFrame);
+    else rafId = null;
+  }
+
   function updateInfo(state, playerIndex) {
     var status = document.getElementById('sbStatus'), players = document.getElementById('sbPlayers');
     if (players) players.innerHTML = state.snakes.map(function (snake, index) {
@@ -77,6 +111,8 @@
   window.gameRenderers.set('snakebattle', {
     init: function (container) {
       containerEl = container; installStyles();
+      previousSnapshot = null; targetSnapshot = null; animationStart = 0;
+      if (rafId) cancelAnimationFrame(rafId);
       container.innerHTML = '<div class="sb-shell"><div id="sbPlayers" class="sb-players"></div><canvas id="sbCanvas" class="sb-canvas"></canvas><div id="sbStatus" class="sb-status"></div><div class="sb-pad"><button class="sb-up" data-direction="up">▲</button><button class="sb-left" data-direction="left">◀</button><button class="sb-down" data-direction="down">▼</button><button class="sb-right" data-direction="right">▶</button></div></div>';
       canvas = document.getElementById('sbCanvas'); ctx = canvas.getContext('2d');
       container.querySelectorAll('[data-direction]').forEach(function (button) { button.addEventListener('click', function () { sendDirection(button.dataset.direction); }); });
@@ -92,7 +128,13 @@
     },
     render: function (state, container, playerIndex) {
       window._sbState = state; window._sbPlayerIndex = playerIndex;
-      if (!canvas) return; if (!canvas.style.width) resize(); draw(state, playerIndex); updateInfo(state, playerIndex);
+      if (!canvas) return;
+      if (targetSnapshot && state.tick !== targetSnapshot.tick) previousSnapshot = targetSnapshot;
+      targetSnapshot = snapshot(state);
+      animationStart = performance.now();
+      if (rafId) cancelAnimationFrame(rafId);
+      if (!canvas.style.width) resize(); else drawAnimationFrame(animationStart);
+      updateInfo(state, playerIndex);
     },
   });
 })();
