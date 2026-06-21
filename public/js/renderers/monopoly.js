@@ -19,6 +19,12 @@
   var anim = { running: false, rafId: null, queue: [], cur: null, startTime: 0, moving: null, floats: [], dice: null };
 
   function wsSend(data) { window.makeGameMove && window.makeGameMove(data); }
+  function priceTextColor(color) {
+    var hex = (color || '').replace('#', '');
+    if (hex.length !== 6) return '#2d2114';
+    var r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+    return (r * 0.299 + g * 0.587 + b * 0.114) > 156 ? '#2d2114' : '#fffdf7';
+  }
   function nameOf(i) { return (window._players && window._players[i]) ? window._players[i].name : '玩家' + (i + 1); }
 
   // ---------- 布局 ----------
@@ -165,7 +171,8 @@
       });
     }
     if (sp.price) {
-      ctx.fillStyle = '#9a8a6a'; ctx.font = Math.floor(fs * 0.85) + 'px sans-serif';
+      ctx.fillStyle = g.side === 'top' ? priceTextColor(sp.color) : '#6b5537';
+      ctx.font = '700 ' + Math.floor(fs * 0.9) + 'px sans-serif';
       ctx.fillText('$' + sp.price, cx, g.y + g.h * 0.9);
     }
 

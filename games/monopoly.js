@@ -16,10 +16,10 @@ function buildBoard() {
     { type: 'property', name: '旧街道',  price: 60,  rent: [4,20,60,180,320,450],   color: '#8B5A2B', group: 0 }, // 3
     { type: 'tax', name: '所得税', amount: 200 },                                                     // 4
     { type: 'railroad', name: '北站', price: 200 },                                                   // 5
-    { type: 'property', name: '东方路',  price: 100, rent: [6,30,90,270,400,550],   color: '#5DADE2', group: 1 }, // 6
+    { type: 'property', name: '东方路',  price: 100, rent: [6,30,90,270,400,550],   color: '#3F51B5', group: 1 }, // 6
     { type: 'jail_visit' },                                                                           // 7  角：监狱探视
-    { type: 'property', name: '南京路',  price: 100, rent: [6,30,90,270,400,550],   color: '#5DADE2', group: 1 }, // 8
-    { type: 'property', name: '淮海路',  price: 120, rent: [8,40,100,300,450,600],  color: '#5DADE2', group: 1 }, // 9
+    { type: 'property', name: '南京路',  price: 100, rent: [6,30,90,270,400,550],   color: '#3F51B5', group: 1 }, // 8
+    { type: 'property', name: '淮海路',  price: 120, rent: [8,40,100,300,450,600],  color: '#3F51B5', group: 1 }, // 9
     { type: 'utility', name: '电力公司', price: 150 },                                                // 10
     { type: 'property', name: '龙华寺',  price: 140, rent: [10,50,150,450,625,750], color: '#E91E8C', group: 2 }, // 11
     { type: 'railroad', name: '南站', price: 200 },                                                   // 12
@@ -65,6 +65,17 @@ const CHANCE_CARDS = [
 ];
 
 const BOARD_SIZE = BOARD.length; // 28
+const BASE_RENT_MULTIPLIER = 3;
+const BUILT_RENT_MULTIPLIER = 1.5;
+
+function calculatePropertyRent(space, houses, monopoly) {
+  const multiplier = houses === 0 ? BASE_RENT_MULTIPLIER : BUILT_RENT_MULTIPLIER;
+  let rent = Math.round(space.rent[houses] * multiplier);
+  if (monopoly && houses === 0) rent *= 2;
+  return rent;
+}
+
+exports.calculatePropertyRent = calculatePropertyRent;
 
 exports.createState = () => ({
   phase: 'waiting', // waiting → rolling → landed → buying → end_turn
@@ -169,11 +180,10 @@ function applyLanding(state, playerIndex) {
     } else {
       // Pay rent
       const houses = prop.houses || 0;
-      let rent = space.rent[houses];
       // Check monopoly (all in group owned by same person)
       const groupSpaces = BOARD.map((s, i) => ({ s, i })).filter(x => x.s && x.s.group === space.group);
       const monopoly = groupSpaces.every(x => state.properties[x.i] && state.properties[x.i].owner === prop.owner);
-      if (monopoly && houses === 0) rent *= 2;
+      const rent = calculatePropertyRent(space, houses, monopoly);
       if (state.freeRentCards[playerIndex]) {
         state.freeRentCards[playerIndex] = false;
         state.lastCard = { text: '使用免租卡，本次免租！' };
@@ -198,7 +208,7 @@ function applyLanding(state, playerIndex) {
       // Count railroads owned
       let rrCount = 0;
       BOARD.forEach((s, i) => { if (s && s.type === 'railroad' && state.properties[i] && state.properties[i].owner === prop.owner) rrCount++; });
-      const rent = [25, 50, 100, 200][rrCount - 1] || 25;
+      const rent = [60, 120, 240, 420][rrCount - 1] || 60;
       state.cash[playerIndex] -= rent;
       state.cash[prop.owner] += rent;
       state.lastRent = { payer: playerIndex, owner: prop.owner, amount: rent, space: pos };
@@ -216,7 +226,7 @@ function applyLanding(state, playerIndex) {
       state.pendingAction = 'can_buy';
       state.phase = 'landed';
     } else if (prop.owner !== playerIndex) {
-      const mult = 4; // simplified
+      const mult = 10; // simplified, tuned for faster games
       const rent = (state.dice[0] + state.dice[1]) * mult;
       state.cash[playerIndex] -= rent;
       state.cash[prop.owner] += rent;
