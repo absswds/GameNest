@@ -90,6 +90,7 @@ function createRoom(ws, gameType) {
     _roomId: roomId,
     _cleanupTimer: null,
     _botTimer: null,
+    _realtimeTimer: null,
     // Lobby phase system
     phase: 'lobby',            // 'lobby' | 'ready' | 'playing'
     readyPlayers: new Set(),   // Set of player indices that are ready
@@ -296,10 +297,44 @@ function scheduleDrawguessTimer(room) {
   }, ms);
 }
 
+function stopRealtimeGame(room) {
+  if (!room) return;
+  if (room._realtimeTimer) clearInterval(room._realtimeTimer);
+  room._realtimeTimer = null;
+}
+
+function scheduleRealtimeGame(room) {
+  const gameMod = room && gameRegistry[room.game];
+  if (!gameMod || !gameMod.realtime || typeof gameMod.tick !== 'function') return;
+  stopRealtimeGame(room);
+  room._realtimeTimer = setInterval(() => {
+    if (!rooms.has(room._roomId) || room.phase !== 'playing' || room.state.winner !== null) {
+      stopRealtimeGame(room);
+      return;
+    }
+    try {
+      for (const [index, bot] of room.bots) {
+        const move = bot.getMove(room.state);
+        gameMod.handleMove(move, room.state, index);
+      }
+      gameMod.tick(room.state);
+      broadcastRoom(room, { type: 'game_state', state: room.state, players: roomPlayersList(room) });
+      if (room.state.winner !== null) stopRealtimeGame(room);
+    } catch (e) {
+      console.error('Realtime game exception:', e.message);
+      stopRealtimeGame(room);
+    }
+  }, gameMod.tickMs || 120);
+}
+
 function scheduleBotMove(room) {
   if (!room || !room.state) return;
   const state = room.state;
   if (state.winner !== null && state.winner !== undefined) return;
+
+  const gameMod = gameRegistry[room.game];
+  if (!gameMod) return;
+  if (gameMod.realtime) return;
 
   // 24 game: all bots race simultaneously, no turn order
   if (room.game === 'twentyfour') {
@@ -316,9 +351,6 @@ function scheduleBotMove(room) {
   }
   const bot = room.bots.get(cp);
   if (!bot) return;
-
-  const gameMod = gameRegistry[room.game];
-  if (!gameMod) return;
 
   const delay = 800 + Math.random() * 1200;
   clearTimeout(room._botTimer);
@@ -628,6 +660,7 @@ wss.on('connection', (ws) => {
         });
       }
       if (currentRoom.game === 'twentyfour') scheduleTwentyFourTimer(currentRoom);
+      scheduleRealtimeGame(currentRoom);
       scheduleBotMove(currentRoom);
       return;
     }
@@ -860,6 +893,7 @@ wss.on('connection', (ws) => {
         });
       }
       if (currentRoom.game === 'twentyfour') scheduleTwentyFourTimer(currentRoom);
+      scheduleRealtimeGame(currentRoom);
       scheduleBotMove(currentRoom);
       return;
     }
@@ -872,6 +906,7 @@ wss.on('connection', (ws) => {
       currentRoom.state = null;
       clearTimeout(currentRoom._tfTimer);
       clearTimeout(currentRoom._dgTimer);
+      stopRealtimeGame(currentRoom);
       broadcastRoom(currentRoom, {
         type: 'room_update',
         phase: 'lobby',
@@ -930,6 +965,7 @@ wss.on('connection', (ws) => {
           }
           const skipped = skipDisconnectedTurn(currentRoom);
           if (currentRoom.players.size === 0) {
+            stopRealtimeGame(currentRoom);
             rooms.delete(currentRoomId);
             return;
           }

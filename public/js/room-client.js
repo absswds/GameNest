@@ -30,6 +30,7 @@
     bigtwo: { name: '大老二', icon: '🂡' },
     texas: { name: '德州扑克', icon: '🎰' },
     flightchess: { name: '飞行棋', icon: '✈️' },
+    snakebattle: { name: '贪吃蛇大乱斗', icon: '🐍' },
     chinesechess: { name: '中国象棋', icon: '♟️' },
     go9: { name: '围棋9路', icon: '⚫' },
     monopoly: { name: '大富翁', icon: '🏦' },
