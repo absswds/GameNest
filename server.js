@@ -456,7 +456,7 @@ wss.on('connection', (ws) => {
       const { roomId, resumeToken } = data || {};
       const room = rooms.get(roomId);
       if (!room) {
-        ws.send(JSON.stringify({ type: 'error', message: '房间不存在' }));
+        ws.send(JSON.stringify({ type: 'error', code: 'ROOM_NOT_FOUND', message: '房间不存在或已结束' }));
         return;
       }
       // Resume an existing seat after returning to the lobby / temporary disconnect.

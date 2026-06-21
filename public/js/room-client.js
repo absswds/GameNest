@@ -10,6 +10,7 @@
   let roomPhase = 'lobby';   // 'lobby' | 'ready' | 'playing'
   let isHost = false;
   let myReady = false;
+  let terminalRoomError = false;
 
   document.getElementById('roomBadge').textContent = roomId;
 
@@ -52,6 +53,13 @@
     bar._timer = setTimeout(function() {
       bar.style.transform = 'translateY(-100%)';
     }, 2500);
+  }
+
+  function clearExpiredRoomAndReturn() {
+    terminalRoomError = true;
+    ['roomId', 'playerIndex', 'game', 'resumeToken'].forEach(function(key) { sessionStorage.removeItem(key); });
+    if (ws) { try { ws.close(); } catch (e) {} }
+    window.location.replace('/?roomExpired=1');
   }
 
   function getSlotColor(index) {
@@ -153,6 +161,10 @@
 
       // Error
       if (msg.type === 'error') {
+        if (msg.code === 'ROOM_NOT_FOUND' || (!state && /房间不存在|房间已结束/.test(msg.message || ''))) {
+          clearExpiredRoomAndReturn();
+          return;
+        }
         const ws2 = document.getElementById('waitingStatus');
         if (ws2) {
           ws2.textContent = msg.message;
@@ -165,7 +177,9 @@
         if (typeof window._gameErrorHandler === 'function') window._gameErrorHandler(msg.message);
       }
     };
-    ws.onclose = () => setTimeout(connect, 1500);
+    ws.onclose = () => {
+      if (!terminalRoomError) setTimeout(connect, 1500);
+    };
     ws.onerror = () => {};
   }
 
@@ -636,7 +650,8 @@
   };
 
   // ---- Init ----
-  connect();
+  if (!roomId || !game) clearExpiredRoomAndReturn();
+  else connect();
 
   // Show lobby initially (will update when room_joined arrives)
   showLobby();
