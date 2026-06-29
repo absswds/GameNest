@@ -28,3 +28,10 @@ test('truthdare has waiting-room options and disables AI', () => {
   assert.match(roomClient, /game === 'truthdare'/);
   assert.match(roomClient, /_tdCollectDecks/);
 });
+
+test('truthdare has a tutorial entry for the game rules button', () => {
+  const tutorials = read('public/js/tutorials.js');
+  assert.match(tutorials, /truthdare:\s*\{/);
+  assert.match(tutorials, /场外剪刀石头布/);
+  assert.match(tutorials, /自定义牌库/);
+});
