@@ -1,0 +1,30 @@
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+
+const root = path.join(__dirname, '..');
+const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+
+function test(name, fn) {
+  try {
+    fn();
+    console.log('ok - ' + name);
+  } catch (err) {
+    console.error('not ok - ' + name);
+    throw err;
+  }
+}
+
+test('truthdare is registered in lobby and game shell', () => {
+  assert.match(read('public/index.html'), /data-game="truthdare"/);
+  assert.match(read('public/game.html'), /\/js\/renderers\/truthdare\.js/);
+  assert.ok(fs.existsSync(path.join(root, 'public/js/renderers/truthdare.js')));
+});
+
+test('truthdare has waiting-room options and disables AI', () => {
+  const roomClient = read('public/js/room-client.js');
+  assert.match(roomClient, /truthdare:\s*\{/);
+  assert.match(roomClient, /NO_AI_GAMES = new Set\(\[[^\]]*'truthdare'/);
+  assert.match(roomClient, /game === 'truthdare'/);
+  assert.match(roomClient, /_tdCollectDecks/);
+});
