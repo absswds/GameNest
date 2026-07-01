@@ -92,6 +92,7 @@ exports.createState = () => ({
   _playerCount: 0,
   pendingAction: null, // 'can_buy', null
   freeRentCards: [], // boolean per player
+  lastCardEffect: null,
   board: BOARD,        // 下发给前端，渲染器读这份（避免常量双份同步）
   lastMove: null,      // {player, from, to, steps, passedGo, kind:'walk'|'teleport'} 供动画
   lastRent: null,      // {payer, owner, amount, space} 供动画
@@ -111,6 +112,7 @@ exports.initGame = (state, playerCount) => {
   state.winner = null;
   state.pendingAction = null;
   state.freeRentCards = Array(playerCount).fill(false);
+  state.lastCardEffect = null;
   state.board = BOARD;
   state.lastMove = null;
   state.lastRent = null;
@@ -151,8 +153,30 @@ function nextPlayer(state) {
   state.phase = 'waiting';
   state.pendingAction = null;
   state.lastCard = null;
+  state.lastCardEffect = null;
   state.lastMove = null;
   state.lastRent = null;
+}
+
+function getGroupSpaces(group) {
+  return BOARD.map((s, i) => ({ s, i })).filter(x => x.s && x.s.group === group);
+}
+
+function canBuildOnSpace(state, playerIndex, pos) {
+  const space = BOARD[pos];
+  if (!space || space.type !== 'property') return false;
+  const prop = state.properties[pos];
+  if (!prop || prop.owner !== playerIndex || prop.houses >= 5) return false;
+  return getGroupSpaces(space.group).every(x => state.properties[x.i] && state.properties[x.i].owner === playerIndex);
+}
+
+function setLastCardEffect(state, playerIndex, extra) {
+  state.lastCardEffect = Object.assign({
+    player: playerIndex,
+    tone: 'neutral',
+    delta: 0,
+    summary: state.lastCard ? state.lastCard.text : '',
+  }, extra);
 }
 
 function applyLanding(state, playerIndex) {
@@ -176,12 +200,17 @@ function applyLanding(state, playerIndex) {
       state.pendingAction = 'can_buy';
       state.phase = 'landed';
     } else if (prop.owner === playerIndex) {
-      state.phase = 'end_turn';
+      if (canBuildOnSpace(state, playerIndex, pos)) {
+        state.pendingAction = 'can_build';
+        state.phase = 'landed';
+      } else {
+        state.phase = 'end_turn';
+      }
     } else {
       // Pay rent
       const houses = prop.houses || 0;
       // Check monopoly (all in group owned by same person)
-      const groupSpaces = BOARD.map((s, i) => ({ s, i })).filter(x => x.s && x.s.group === space.group);
+      const groupSpaces = getGroupSpaces(space.group);
       const monopoly = groupSpaces.every(x => state.properties[x.i] && state.properties[x.i].owner === prop.owner);
       const rent = calculatePropertyRent(space, houses, monopoly);
       if (state.freeRentCards[playerIndex]) {
@@ -242,34 +271,65 @@ function applyLanding(state, playerIndex) {
   if (space.type === 'chance') {
     const card = CHANCE_CARDS[Math.floor(Math.random() * CHANCE_CARDS.length)];
     state.lastCard = card;
+    state.lastCardEffect = null;
     if (card.type === 'birthday') {
+      let total = 0;
       for (let i = 0; i < state._playerCount; i++) {
         if (i !== playerIndex && !state.eliminated[i]) {
           state.cash[i] -= card.amount;
           state.cash[playerIndex] += card.amount;
+          total += card.amount;
         }
       }
+      setLastCardEffect(state, playerIndex, {
+        tone: total > 0 ? 'gain' : 'neutral',
+        delta: total,
+        summary: (total > 0 ? '+' : '') + total + ' · ' + card.text,
+      });
     } else if (card.type === 'goto') {
       const passed = state.positions[playerIndex] > card.target;
       if (passed) state.cash[playerIndex] += 200;
       const fwd = ((card.target - pos) + BOARD_SIZE) % BOARD_SIZE;
       state.lastMove = { player: playerIndex, from: pos, to: card.target, steps: fwd, passedGo: passed, kind: 'walk' };
       state.positions[playerIndex] = card.target;
+      setLastCardEffect(state, playerIndex, {
+        tone: passed ? 'gain' : 'neutral',
+        delta: passed ? 200 : 0,
+        summary: (passed ? '+200 · ' : '') + card.text,
+      });
     } else if (card.type === 'jail') {
       state.lastMove = { player: playerIndex, from: pos, to: JAIL_INDEX, steps: 0, passedGo: false, kind: 'teleport' };
       state.positions[playerIndex] = JAIL_INDEX;
       state.inJail[playerIndex] = true;
       state.jailTurns[playerIndex] = 0;
+      setLastCardEffect(state, playerIndex, {
+        tone: 'loss',
+        summary: '入狱 · ' + card.text,
+      });
     } else if (card.type === 'advance') {
       const np = ((state.positions[playerIndex] + card.steps) + BOARD_SIZE) % BOARD_SIZE;
       const passedGo = card.steps > 0 && np < pos;
       if (passedGo) state.cash[playerIndex] += 200;
       state.lastMove = { player: playerIndex, from: pos, to: np, steps: card.steps, passedGo: passedGo, kind: 'walk' };
       state.positions[playerIndex] = np;
+      setLastCardEffect(state, playerIndex, {
+        tone: passedGo ? 'gain' : 'neutral',
+        delta: passedGo ? 200 : 0,
+        summary: (passedGo ? '+200 · ' : '') + card.text,
+      });
     } else if (card.type === 'free_rent') {
       state.freeRentCards[playerIndex] = true;
+      setLastCardEffect(state, playerIndex, {
+        tone: 'gain',
+        summary: '获得免租卡 · ' + card.text,
+      });
     } else if (card.amount) {
       state.cash[playerIndex] += card.amount;
+      setLastCardEffect(state, playerIndex, {
+        tone: card.amount > 0 ? 'gain' : 'loss',
+        delta: card.amount,
+        summary: (card.amount > 0 ? '+' : '') + card.amount + ' · ' + card.text,
+      });
     }
     checkBankruptcy(state);
     if (state.phase !== 'gameover') state.phase = 'end_turn';
@@ -318,6 +378,7 @@ exports.handleMove = (data, state, playerIndex) => {
     const passedGo = newPos < oldPos || newPos === 0;
     if (passedGo) state.cash[playerIndex] += 200; // passed GO
     state.lastRent = null;
+    state.lastCardEffect = null;
     state.lastMove = { player: playerIndex, from: oldPos, to: newPos, steps: steps, passedGo: passedGo, kind: 'walk' };
     state.positions[playerIndex] = newPos;
     applyLanding(state, playerIndex);
@@ -346,7 +407,7 @@ exports.handleMove = (data, state, playerIndex) => {
 
   if (data.type === 'build') {
     // Build a house on owned property
-    const pos = data.spaceIndex;
+    const pos = data.spaceIndex !== undefined ? data.spaceIndex : state.positions[playerIndex];
     if (pos === undefined) return '未指定地产';
     const space = BOARD[pos];
     if (!space || space.type !== 'property') return '不是地产';
@@ -354,12 +415,16 @@ exports.handleMove = (data, state, playerIndex) => {
     if (!prop || prop.owner !== playerIndex) return '你不拥有此地产';
     if (prop.houses >= 5) return '已建满（含旅馆）';
     // Must own all in color group
-    const groupSpaces = BOARD.map((s, i) => ({ s, i })).filter(x => x.s && x.s.group === space.group);
+    const groupSpaces = getGroupSpaces(space.group);
     if (!groupSpaces.every(x => state.properties[x.i] && state.properties[x.i].owner === playerIndex)) return '需垄断整个色组才能盖房';
     const houseCost = space.price / 2;
     if (state.cash[playerIndex] < houseCost) return '余额不足';
     state.cash[playerIndex] -= houseCost;
     prop.houses++;
+    if (state.phase === 'landed' && state.pendingAction === 'can_build' && pos === state.positions[playerIndex]) {
+      state.pendingAction = null;
+      state.phase = 'end_turn';
+    }
     return null;
   }
 
