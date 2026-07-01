@@ -3,64 +3,104 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>游戏</title>
+<title>游戏房间</title>
 <link rel="stylesheet" href="/style.css">
 <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
 <style>
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3);
-    display: flex; align-items: center; justify-content: center; z-index: 50; }
-  .overlay-card { background: var(--surface); border-radius: var(--radius);
-    padding: 32px 28px; text-align: center; max-width: 300px; width: 90%; }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.34); display: flex; align-items: center; justify-content: center; z-index: 50; }
+  .overlay-card { background: var(--surface); border-radius: var(--radius); padding: 32px 28px; text-align: center; max-width: 320px; width: 90%; }
   .overlay-card .result { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
   .overlay-card .sub { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
 </style>
 </head>
 <body>
-  <div id="notifyBar" style="position:fixed;top:0;left:0;right:0;background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:14px 20px;text-align:center;font-size:15px;font-weight:600;z-index:60;transform:translateY(-100%);transition:transform .3s ease;box-shadow:0 2px 12px rgba(0,0,0,.08);"></div>
-  <div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:0 12px;">
-    <button class="back-btn" onclick="location.href='/'">← 大厅</button>
-    <div class="room-id-badge" id="roomBadge">---</div>
-  </div>
+  <div id="notifyBar" style="position:fixed;top:0;left:0;right:0;background:rgba(255,255,255,0.92);border-bottom:1px solid var(--border);padding:14px 20px;text-align:center;font-size:15px;font-weight:600;z-index:60;transform:translateY(-100%);transition:transform .3s ease;box-shadow:0 2px 12px rgba(0,0,0,.08);"></div>
 
-  <!-- Waiting Room (visible before game starts) -->
-  <div id="waitingRoom" class="waiting-room" style="display:none">
-    <div class="waiting-header">
-      <span class="waiting-game-name" id="waitingGameName"></span>
-    </div>
-    <div class="waiting-slots" id="waitingSlots"></div>
-    <div id="profileEdit" style="display:flex;align-items:center;gap:12px;padding:10px 0;">
-      <span id="avatarDisplay" onclick="window.openAvatarDrawer&&window.openAvatarDrawer()" style="font-size:32px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:var(--bg);border-radius:50%;border:2px solid var(--border);transition:border-color .2s;cursor:pointer;position:relative;"><span id="avatarEmoji">😊</span><span style="position:absolute;bottom:-2px;right:-2px;font-size:11px;background:var(--accent);color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface);">✎</span></span>
-      <input id="nameInput" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:10px 14px;font-size:14px;font-weight:600;text-align:center;max-width:160px;transition:border-color .2s,box-shadow .2s;outline:none;" maxlength="8" placeholder="你的名字" onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px rgba(200,164,92,0.25)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
-    </div>
-    <!-- Avatar drawer (bottom sheet) -->
-    <div id="avatarDrawer" class="avatar-drawer-backdrop" style="display:none" onclick="if(event.target===this)window.closeAvatarDrawer()">
-      <div class="avatar-drawer-sheet">
-        <div class="avatar-drawer-handle"></div>
-        <div class="avatar-drawer-title">选择头像</div>
-        <div id="emojiRow" class="emoji-grid"></div>
+  <main class="game-page-shell">
+    <header class="game-topbar">
+      <div class="game-topbar-main">
+        <button class="back-btn" onclick="location.href='/'">返回大厅</button>
+        <div class="game-title-stack">
+          <strong id="activeGameName">房间</strong>
+          <span id="activeGameSubtitle">等待玩家加入</span>
+        </div>
       </div>
-    </div>
-    <div id="gameOptions" style="display:none;background:var(--bg);border-radius:14px;padding:12px;"></div>
-    <div class="waiting-actions">
-      <button class="btn btn-outline btn-sm" id="readyBtn">准备</button>
-      <button class="btn btn-outline btn-sm" id="addBotBtn" style="display:none">+ 添加AI</button>
-      <button class="btn btn-accent btn-sm" id="startGameBtn" style="display:none">开始游戏</button>
-    </div>
-    <button class="btn btn-outline btn-sm" id="tutorialBtn" style="width:100%;" onclick="var g=sessionStorage.getItem('game');if(typeof showGameTutorial==='function')showGameTutorial(g);">📖 游戏规则</button>
-    <div class="qr-card" id="qrArea">
-      <img id="qrImage" src="" alt="QR">
-      <div class="qr-room-code" id="qrRoomCode"></div>
-      <div class="qr-hint">扫码或输入房间号加入</div>
-    </div>
-    <div class="waiting-status" id="waitingStatus">等待所有玩家准备...</div>
-  </div>
+      <div class="room-id-badge" id="roomBadge">----</div>
+    </header>
 
-  <div class="player-bar" id="playerBar" style="display:none"></div>
-  <div class="game-status" id="status" style="display:none">等待玩家加入...</div>
-  <div class="board-wrap"><div id="boardArea"></div></div>
-  <div class="game-actions-fixed" id="gameActions" style="display:none">
-    <button class="btn btn-outline btn-sm" onclick="window.doRestart()">重新开始</button>
-  </div>
+    <section class="room-stage">
+      <div id="waitingRoom" class="waiting-room refresh" style="display:none">
+        <div class="waiting-layout">
+          <section class="surface-panel waiting-main-panel">
+            <div class="waiting-headline">
+              <div class="waiting-headline-copy">
+                <p class="eyebrow">ROOM SETUP</p>
+                <h2 id="waitingGameName">游戏房间</h2>
+                <p id="waitingGameSubtitle">等待房主安排座位并准备开始。</p>
+              </div>
+              <div class="waiting-meta-row" id="waitingMeta"></div>
+            </div>
+
+            <div class="waiting-profile" id="profileEdit">
+              <span id="avatarDisplay" onclick="window.openAvatarDrawer&&window.openAvatarDrawer()" style="font-size:32px;width:54px;height:54px;display:flex;align-items:center;justify-content:center;background:var(--bg);border-radius:50%;border:2px solid var(--border);transition:border-color .2s;cursor:pointer;position:relative;">
+                <span id="avatarEmoji">🙂</span>
+                <span style="position:absolute;bottom:-2px;right:-2px;font-size:11px;background:var(--accent);color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface);">✎</span>
+              </span>
+              <input id="nameInput" style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:14px;font-weight:600;max-width:220px;transition:border-color .2s,box-shadow .2s;outline:none;" maxlength="8" placeholder="你的名字" onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px rgba(200,164,92,0.25)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+            </div>
+
+            <div id="avatarDrawer" class="avatar-drawer-backdrop" style="display:none" onclick="if(event.target===this)window.closeAvatarDrawer()">
+              <div class="avatar-drawer-sheet">
+                <div class="avatar-drawer-handle"></div>
+                <div class="avatar-drawer-title">选择头像</div>
+                <div id="emojiRow" class="emoji-grid"></div>
+              </div>
+            </div>
+
+            <div class="waiting-slots" id="waitingSlots"></div>
+            <div id="gameOptions" style="display:none;background:var(--bg);border-radius:14px;padding:12px;"></div>
+            <div class="waiting-actions">
+              <button class="btn btn-outline btn-sm" id="readyBtn">准备</button>
+              <button class="btn btn-outline btn-sm" id="addBotBtn" style="display:none">添加 AI</button>
+              <button class="btn btn-accent btn-sm" id="startGameBtn" style="display:none">开始游戏</button>
+            </div>
+            <div class="waiting-status" id="waitingStatus">等待所有玩家准备...</div>
+          </section>
+
+          <aside class="surface-panel waiting-side-panel">
+            <div class="waiting-cover-card" id="waitingCoverCard">
+              <img id="waitingCoverImage" src="" alt="游戏封面" style="display:none">
+              <div class="waiting-cover-fallback" id="waitingCoverFallback">?</div>
+            </div>
+            <div class="room-facts" id="waitingFacts"></div>
+            <button class="btn btn-outline btn-sm rules-btn" id="tutorialBtn" onclick="var g=sessionStorage.getItem('game');if(typeof showGameTutorial==='function')showGameTutorial(g);">查看规则</button>
+            <div class="qr-card" id="qrArea">
+              <img id="qrImage" src="" alt="QR">
+              <div class="qr-room-code" id="qrRoomCode"></div>
+              <div class="qr-hint">扫码或输入房间号加入</div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <section class="surface-panel game-stage-panel" id="gameStage" style="display:none">
+        <div class="game-stage-header">
+          <div class="game-title-stack">
+            <strong id="stageGameName">游戏中</strong>
+            <span id="stageRoomFacts">等待同步状态</span>
+          </div>
+          <div class="room-facts" id="stageMeta"></div>
+        </div>
+        <div class="player-bar" id="playerBar" style="display:none"></div>
+        <div class="game-status" id="status" style="display:none">等待玩家加入...</div>
+        <div class="board-wrap stage-board"><div id="boardArea"></div></div>
+        <div class="game-actions-fixed refresh" id="gameActions" style="display:none">
+          <button class="btn btn-outline btn-sm" onclick="window.doRestart()">重新开始</button>
+        </div>
+      </section>
+    </section>
+  </main>
+
   <div class="overlay" id="overlay" style="display:none">
     <div class="overlay-card">
       <div class="result" id="resultText"></div>
@@ -70,6 +110,7 @@
       <button class="btn btn-outline btn-sm" onclick="window.doLeaveRoom()" style="margin-top:10px;">返回大厅</button>
     </div>
   </div>
+
   <script src="/js/tutorials.js"></script>
   <script src="/js/renderers/tictactoe.js"></script>
   <script src="/js/renderers/gomoku.js"></script>
@@ -93,6 +134,7 @@
   <script src="/js/renderers/suikabattle.js"></script>
   <script src="/js/renderers/sheeptile.js"></script>
   <script src="/js/renderers/drawguess.js"></script>
+  <script src="/js/game-catalog.js"></script>
   <script src="/js/room-client.js"></script>
 </body>
 </html>

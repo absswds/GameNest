@@ -42,7 +42,9 @@
 
   let roomOptions = {};
   let prevPlayerCount = 0;
-  const gameInfo = gameNames[game] || { name: game, icon: '?' };
+  const gameInfo = (window.gameCatalog && window.gameCatalog.byId(game))
+    || gameNames[game]
+    || { name: game, icon: '?', subtitle: '', description: '', players: '', duration: '', category: '', tags: [], cover: '', maxPlayers: 4, supportsAI: !NO_AI_GAMES.has(game) };
 
   function notify(msg) {
     const bar = document.getElementById('notifyBar');
@@ -65,6 +67,59 @@
   function getSlotColor(index) {
     const colors = ['#1a1a1a', '#c8a45c', '#d4695a', '#5a9e6f'];
     return colors[index % colors.length];
+  }
+
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value || '';
+  }
+
+  function renderFacts(id, values) {
+    const root = document.getElementById(id);
+    if (!root) return;
+    root.innerHTML = values.filter(Boolean).map(function(value) {
+      return '<span>' + value + '</span>';
+    }).join('');
+  }
+
+  function renderMetaPills(id, values) {
+    const root = document.getElementById(id);
+    if (!root) return;
+    root.innerHTML = values.filter(Boolean).map(function(value) {
+      return '<span class="meta-pill">' + value + '</span>';
+    }).join('');
+  }
+
+  function renderCover() {
+    const img = document.getElementById('waitingCoverImage');
+    const fallback = document.getElementById('waitingCoverFallback');
+    if (!img || !fallback) return;
+    fallback.textContent = gameInfo.icon || '?';
+    if (!gameInfo.cover) {
+      img.style.display = 'none';
+      fallback.style.display = 'flex';
+      return;
+    }
+    img.onerror = function() {
+      img.style.display = 'none';
+      fallback.style.display = 'flex';
+    };
+    img.src = gameInfo.cover;
+    img.style.display = '';
+    fallback.style.display = 'none';
+  }
+
+  function updateSharedShell() {
+    setText('activeGameName', gameInfo.name);
+    setText('activeGameSubtitle', gameInfo.subtitle || '等待玩家加入');
+    setText('stageGameName', gameInfo.name);
+    setText('waitingGameName', gameInfo.name);
+    setText('waitingGameSubtitle', gameInfo.description || gameInfo.subtitle || '');
+    setText('stageRoomFacts', '房间 ' + roomId + ' · ' + (gameInfo.supportsAI ? '可加 AI' : '纯玩家对战'));
+    renderMetaPills('waitingMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
+    renderFacts('waitingFacts', [gameInfo.players, gameInfo.duration, gameInfo.supportsAI ? '支持 AI' : '纯 PvP']);
+    renderFacts('stageMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
+    renderCover();
   }
 
   // ---- WebSocket ----
@@ -188,9 +243,9 @@
     document.getElementById('waitingRoom').style.display = 'none';
     document.getElementById('profileEdit').style.display = 'none';
     document.getElementById('emojiRow').style.display = 'none';
+    document.getElementById('gameStage').style.display = '';
     document.getElementById('playerBar').style.display = '';
     document.getElementById('status').style.display = '';
-    document.querySelector('.board-wrap').style.display = '';
     document.getElementById('gameActions').style.display = '';
   }
 
@@ -198,6 +253,7 @@
     document.getElementById('waitingRoom').style.display = '';
     document.getElementById('profileEdit').style.display = 'flex';
     document.getElementById('emojiRow').style.display = '';
+    document.getElementById('gameStage').style.display = 'none';
     // Generate QR code via server endpoint (server uses LAN IP)
     var qrImg = document.getElementById('qrImage');
     if (qrImg && roomId) {
@@ -207,7 +263,6 @@
     if (qrCode && roomId) qrCode.textContent = roomId;
     document.getElementById('playerBar').style.display = 'none';
     document.getElementById('status').style.display = 'none';
-    document.querySelector('.board-wrap').style.display = 'none';
     document.getElementById('gameActions').style.display = 'none';
     document.getElementById('overlay').style.display = 'none';
   }
@@ -220,8 +275,8 @@
     }
     showLobby();
 
-    // Update header
-    document.getElementById('waitingGameName').textContent = gameInfo.icon + ' ' + gameInfo.name;
+    // Update shared shell copy
+    updateSharedShell();
 
     // Check host status
     const myInfo = players ? players.find(p => p.index === playerIndex && !p.isBot) : null;
@@ -276,9 +331,10 @@
     }
 
     // Determine max slots
+    const defaultSlots = gameInfo.maxPlayers || (game === 'doudizhu' ? 3 : game === 'tictactoe' || game === 'gomoku' || game === 'chinesechess' || game === 'go9' ? 2 : game === 'twentyfour' ? 6 : 4);
     const maxSlots = players && players.length > 0
-      ? Math.max(players.length, game === 'doudizhu' ? 3 : game === 'tictactoe' || game === 'gomoku' || game === 'chinesechess' || game === 'go9' ? 2 : game === 'twentyfour' ? 6 : 4)
-      : (game === 'doudizhu' ? 3 : game === 'tictactoe' || game === 'gomoku' || game === 'chinesechess' || game === 'go9' ? 2 : game === 'twentyfour' ? 6 : 4);
+      ? Math.max(players.length, defaultSlots)
+      : defaultSlots;
 
     // Build slots
     const slots = document.getElementById('waitingSlots');
@@ -496,7 +552,7 @@
 
     // Add bot button (host only)
     if (addBotBtn) {
-      const supportsAI = !NO_AI_GAMES.has(game);
+      const supportsAI = gameInfo.supportsAI !== undefined ? gameInfo.supportsAI : !NO_AI_GAMES.has(game);
       addBotBtn.style.display = isHost && supportsAI ? '' : 'none';
       const totalOccupied = players ? players.length : 0;
       const roomFull = totalOccupied >= maxSlots;
