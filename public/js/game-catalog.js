@@ -332,6 +332,10 @@
     }
   };
 
+  Object.keys(catalog).forEach(function(id) {
+    catalog[id].cover = '/assets/game-covers/' + id + '.svg';
+  });
+
   const order = [
     'monopoly',
     'flightchess',

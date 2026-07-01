@@ -920,6 +920,17 @@ body.lobby-page {
   padding: 22px;
 }
 
+.hero-panel {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+#resumeBtn {
+  width: 100%;
+  line-height: 1.35;
+}
+
 .panel-heading,
 .discovery-hint,
 .wifi-note {
@@ -1113,6 +1124,48 @@ body.lobby-page {
 .browse-empty,
 .wifi-note {
   text-align: center;
+}
+
+.network-callout {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(200, 164, 92, 0.18);
+}
+
+.network-callout strong {
+  font-size: 14px;
+}
+
+.network-callout p {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.network-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.network-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.96);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  color: #342a1f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.network-link.muted {
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .wifi-note {
@@ -1336,6 +1389,17 @@ body.lobby-page {
   .browse-grid {
     grid-template-columns: 1fr 1fr;
   }
+  .featured-strip {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(220px, 72vw);
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scroll-snap-type: x proximity;
+  }
+  .featured-card {
+    scroll-snap-align: start;
+  }
   .browser-tools {
     min-width: 0;
     align-items: stretch;
@@ -1346,10 +1410,23 @@ body.lobby-page {
 }
 
 @media (max-width: 560px) {
-  .hero-stats,
-  .featured-strip,
+  body.lobby-page {
+    padding: 14px 10px 28px;
+  }
+  .lobby-shell {
+    gap: 12px;
+    padding-bottom: 84px;
+  }
+  .hero-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
   .browse-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .featured-strip {
+    grid-auto-columns: minmax(210px, 78vw);
   }
   .lobby-hero,
   .hero-panel,
@@ -1363,9 +1440,52 @@ body.lobby-page {
   .hero-title {
     font-size: 42px;
   }
+  .hero-subtitle {
+    font-size: 15px;
+  }
+  .hero-stat {
+    padding: 12px 10px;
+    gap: 4px;
+  }
+  .hero-stat strong {
+    font-size: 18px;
+  }
+  .hero-stat span {
+    font-size: 12px;
+    line-height: 1.35;
+  }
   .waiting-headline-copy h2,
   .browser-toolbar h2,
   .discovery-header h2 {
     font-size: 24px;
+  }
+  .browse-card-media {
+    aspect-ratio: 4 / 3;
+  }
+  .browse-card-body {
+    padding: 12px;
+    gap: 6px;
+  }
+  .featured-content h3,
+  .browse-card-body h3 {
+    font-size: 16px;
+  }
+  .browse-card-body p {
+    display: none;
+  }
+  .quick-create-btn {
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: calc(12px + var(--safe-bottom));
+    padding: 14px 18px;
+    border-radius: 16px;
+    font-size: 15px;
+  }
+  .network-links {
+    flex-direction: column;
+  }
+  .network-link {
+    width: 100%;
+    justify-content: center;
   }
 }

@@ -5,10 +5,12 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { getNextPort, isRecoverablePortError } = require('./startup-port');
 
 const PORT = parseInt(process.env.PORT) || 3000;
 const MAX_PORT_RETRIES = 5;
 const DISCONNECT_GRACE_MS = 30000;
+let activePort = PORT;
 
 // Load game registry
 const gameRegistry = Object.create(null);
@@ -50,9 +52,9 @@ app.get('/qr', async (req, res) => {
     const room = req.query.room;
     if (!room) { res.status(400).send('missing room'); return; }
     // Use LAN IP instead of localhost
-    const ips = getLanIPs();
+    const ips = getShareableLanIPs();
     const lanIP = ips.length > 0 ? ips[0].ip : req.hostname;
-    const url = `http://${lanIP}:${PORT}/?room=${room}`;
+    const url = `http://${lanIP}:${activePort}/?room=${room}`;
     const png = await QRCode.toBuffer(url, { width: 256, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
     res.set('Content-Type', 'image/png');
     res.send(png);
@@ -61,8 +63,25 @@ app.get('/qr', async (req, res) => {
   }
 });
 
+app.get('/network-info', (req, res) => {
+  const lanURLs = getShareableLanIPs().map(({ name, ip }) => ({
+    name,
+    ip,
+    url: `http://${ip}:${activePort}/`,
+  }));
+  res.json({
+    port: activePort,
+    localURL: `http://localhost:${activePort}/`,
+    lanURLs,
+  });
+});
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
+wss.on('error', (err) => {
+  if (isRecoverablePortError(err)) return;
+  console.error('WebSocket server error:', err.message);
+});
 
 // ---- Room & Game Management ----
 const rooms = new Map();
@@ -1003,18 +1022,30 @@ function getLanIPs() {
   return ips;
 }
 
+function getShareableLanIPs() {
+  const privatePattern = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/;
+  const noisyNamePattern = /(wireguard|vpn|vethernet|virtual|hyper-v|loopback)/i;
+  const preferred = getLanIPs().filter(({ name, ip }) => privatePattern.test(ip) && !noisyNamePattern.test(name));
+  if (preferred.length) return preferred;
+
+  const privateOnly = getLanIPs().filter(({ ip }) => privatePattern.test(ip));
+  return privateOnly.length ? privateOnly : getLanIPs();
+}
+
 function startServer(port, attempt = 0) {
   server.once('error', (err) => {
-    if (err.code === 'EADDRINUSE' && attempt < MAX_PORT_RETRIES) {
-      console.log(`Port ${port} in use, trying ${port + 1}...`);
-      setTimeout(() => startServer(port + 1, attempt + 1), 200);
-    } else {
-      console.error('Server error:', err.message);
+    const nextPort = getNextPort(err.code, port);
+    if (nextPort && attempt < MAX_PORT_RETRIES) {
+      console.log(`Port ${port} unavailable (${err.code}), trying ${nextPort}...`);
+      setTimeout(() => startServer(nextPort, attempt + 1), 200);
+      return;
     }
+    console.error('Server error:', err.message);
   });
 
   server.listen(port, '0.0.0.0', () => {
-    const lanIPs = getLanIPs();
+    activePort = port;
+    const lanIPs = getShareableLanIPs();
 
     console.log('');
     console.log('  ╔══════════════════════════════════════╗');
