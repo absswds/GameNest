@@ -109,6 +109,11 @@
     fallback.style.display = 'none';
   }
 
+  function getSocketURL() {
+    const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+    return protocol + location.host;
+  }
+
   function updateSharedShell() {
     setText('activeGameName', gameInfo.name);
     setText('activeGameSubtitle', gameInfo.subtitle || '等待玩家加入');
@@ -125,7 +130,7 @@
   // ---- WebSocket ----
   function connect() {
     if (ws) { try { ws.close(); } catch(e) {} }
-    ws = new WebSocket(`ws://${location.host}`);
+    ws = new WebSocket(getSocketURL());
     ws.onopen = () => ws.send(JSON.stringify({ type: 'join_room', data: { roomId, resumeToken } }));
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
