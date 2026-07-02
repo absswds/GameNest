@@ -1,224 +1,285 @@
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
-const outDir = path.join(__dirname, '..', 'public', 'assets', 'game-covers');
+const rootDir = path.join(__dirname, '..');
+const outDir = path.join(rootDir, 'public', 'assets', 'game-covers');
+const tempDir = path.join(rootDir, 'tmp', 'cover-scenes');
 
-const covers = [
-  { id: 'tictactoe', title: 'Tic-Tac-Toe', subtitle: 'Quick duel', badge: 'XO', category: 'Classic', palette: ['#f6efe3', '#e8c39a', '#c67c4b', '#2b2118'], motif: 'grid' },
-  { id: 'gomoku', title: 'Gomoku', subtitle: 'Five in a row', badge: '5', category: 'Classic', palette: ['#f3efe7', '#c6ab7a', '#8a5a2a', '#21170f'], motif: 'stones' },
-  { id: 'davinci', title: 'Davinci Code', subtitle: 'Logic and hidden tiles', badge: 'DC', category: 'Puzzle', palette: ['#f7f2ea', '#6fa6b9', '#315c73', '#1a2430'], motif: 'tiles' },
-  { id: 'uno', title: 'UNO', subtitle: 'Color match', badge: 'UNO', category: 'Party', palette: ['#f9efe8', '#ef5a45', '#f2b441', '#271510'], motif: 'cards' },
-  { id: 'doudizhu', title: 'Landlord', subtitle: 'Three player poker', badge: 'L3', category: 'Cards', palette: ['#f7f0e6', '#b94f43', '#d0a35f', '#261712'], motif: 'fan' },
-  { id: 'exploding-kittens', title: 'Exploding Kittens', subtitle: 'Risky draw', badge: 'EK', category: 'Party', palette: ['#f8efe7', '#ff8d5c', '#5d3a32', '#271311'], motif: 'burst' },
-  { id: 'rummikub', title: 'Rummikub', subtitle: 'Rebuild the table', badge: 'RK', category: 'Strategy', palette: ['#f6f0e5', '#7ba9a0', '#d2573d', '#1c2a2e'], motif: 'racks' },
-  { id: 'twentyfour', title: '24 Points', subtitle: 'Math race', badge: '24', category: 'Brain', palette: ['#f6f1e8', '#4d8ec6', '#f2c84b', '#182432'], motif: 'numbers' },
-  { id: 'minesweeper', title: 'Minesweeper', subtitle: 'Same map sprint', badge: 'MS', category: 'Brain', palette: ['#eef4f0', '#7a9c87', '#2f5446', '#18231f'], motif: 'mines' },
-  { id: 'numberbomb', title: 'Number Bomb', subtitle: 'Narrow the range', badge: 'NB', category: 'Party', palette: ['#f8efe5', '#ef8651', '#b83f34', '#261714'], motif: 'range' },
-  { id: 'oldmaid', title: 'Old Maid', subtitle: 'Avoid the odd card', badge: 'OM', category: 'Cards', palette: ['#f6edf1', '#b57bb0', '#70406f', '#261724'], motif: 'rings' },
-  { id: 'liarsbar', title: "Liar's Bar", subtitle: 'Bluff and challenge', badge: 'LB', category: 'Mind Game', palette: ['#f4efe8', '#6b513f', '#c8a45c', '#1f1712'], motif: 'glasses' },
-  { id: 'bigtwo', title: 'Big Two', subtitle: 'Fast hand control', badge: 'B2', category: 'Cards', palette: ['#f6f0e6', '#4c82b2', '#1d3958', '#121c28'], motif: 'stack' },
-  { id: 'texas', title: "Texas Hold'em", subtitle: 'Read the table', badge: 'A', category: 'Cards', palette: ['#f4eee7', '#2f6f5b', '#d8b168', '#13211d'], motif: 'chips' },
-  { id: 'flightchess', title: 'Flight Chess', subtitle: 'Race home', badge: 'FC', category: 'Family', palette: ['#f7efe6', '#62a7cf', '#efc34a', '#1d3550'], motif: 'planes' },
-  { id: 'snakebattle', title: 'Snake Battle', subtitle: 'Realtime arena', badge: 'SB', category: 'Arcade', palette: ['#eef5ec', '#65a15e', '#29553e', '#14211a'], motif: 'snake' },
-  { id: 'chinesechess', title: 'Chinese Chess', subtitle: 'Board tactics', badge: 'CC', category: 'Classic', palette: ['#f5ede3', '#c26d53', '#8d4532', '#281511'], motif: 'cross' },
-  { id: 'go9', title: 'Go 9x9', subtitle: 'Compact territory', badge: 'GO', category: 'Classic', palette: ['#f2eee7', '#a78658', '#3a2a17', '#15100b'], motif: 'go' },
-  { id: 'monopoly', title: 'Monopoly', subtitle: 'Build the city', badge: 'M', category: 'Strategy', palette: ['#f7f1e5', '#d4b070', '#4d7e8b', '#1d2228'], motif: 'city' },
-  { id: 'suikabattle', title: 'Fruit Merge', subtitle: 'Drop and combine', badge: 'FM', category: 'Arcade', palette: ['#f8f1e6', '#e39b4e', '#c84f45', '#23160f'], motif: 'fruit' },
-  { id: 'sheeptile', title: 'Sheep Tile', subtitle: 'Layered triple match', badge: 'ST', category: 'Puzzle', palette: ['#f0f2e8', '#86a56d', '#52754f', '#182017'], motif: 'sheep' },
-  { id: 'drawguess', title: 'Draw Guess', subtitle: 'Sketch and laugh', badge: 'DG', category: 'Party', palette: ['#f7f0ea', '#c27a57', '#8c5474', '#24181d'], motif: 'sketch' },
+const browserPathCandidates = [
+  'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+  'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
 ];
 
-function esc(value) {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+const covers = [
+  { id: 'tictactoe', palette: ['#f4efe7', '#d4b186', '#7a4f2e', '#241810'], motif: 'tictactoe' },
+  { id: 'gomoku', palette: ['#f1ece4', '#d8b98c', '#8a6036', '#1d140f'], motif: 'gomoku' },
+  { id: 'davinci', palette: ['#f2eee9', '#cfd6dc', '#5f7886', '#182129'], motif: 'davinci' },
+  { id: 'uno', palette: ['#f8f2ec', '#ed6d54', '#f2b544', '#2b1710'], motif: 'uno' },
+  { id: 'doudizhu', palette: ['#f5efe7', '#d8b07b', '#9a4538', '#1f1410'], motif: 'doudizhu' },
+  { id: 'exploding-kittens', palette: ['#f8efe9', '#f29a62', '#c54c3f', '#23140f'], motif: 'exploding-kittens' },
+  { id: 'rummikub', palette: ['#f1ede5', '#c3d4d1', '#66958d', '#1b2724'], motif: 'rummikub' },
+  { id: 'twentyfour', palette: ['#f3f0ea', '#d3dae7', '#6389bc', '#18212d'], motif: 'twentyfour' },
+  { id: 'minesweeper', palette: ['#eef3ef', '#c4d3c8', '#6e8f7a', '#18211c'], motif: 'minesweeper' },
+  { id: 'numberbomb', palette: ['#f7f0e8', '#e7c196', '#d66e47', '#2a1711'], motif: 'numberbomb' },
+  { id: 'oldmaid', palette: ['#f5edf2', '#d7c3d4', '#8f6288', '#22161f'], motif: 'oldmaid' },
+  { id: 'liarsbar', palette: ['#f2ece4', '#d4bea0', '#8a6246', '#1c140f'], motif: 'liarsbar' },
+  { id: 'bigtwo', palette: ['#f2ede5', '#c6cfde', '#607fa9', '#18212d'], motif: 'bigtwo' },
+  { id: 'texas', palette: ['#f0ebe2', '#c9d5c8', '#3c6f5a', '#15211b'], motif: 'texas' },
+  { id: 'flightchess', palette: ['#f4eee4', '#d1d9e4', '#678db8', '#192637'], motif: 'flightchess' },
+  { id: 'snakebattle', palette: ['#edf3ed', '#c6d7c7', '#6f9b68', '#152018'], motif: 'snakebattle' },
+  { id: 'chinesechess', palette: ['#f3ebe1', '#e0c7a8', '#b76c53', '#261611'], motif: 'chinesechess' },
+  { id: 'go9', palette: ['#eee8dd', '#d4bc95', '#967145', '#1d140e'], motif: 'go9' },
+  { id: 'monopoly', palette: ['#f5f0e5', '#d2c7b4', '#90aab4', '#1c2228'], motif: 'monopoly' },
+  { id: 'suikabattle', palette: ['#f8f1e6', '#f0d39f', '#de874d', '#27170f'], motif: 'suikabattle' },
+  { id: 'sheeptile', palette: ['#eef1e7', '#d9dfc7', '#89a36d', '#182015'], motif: 'sheeptile' },
+  { id: 'drawguess', palette: ['#f6efe9', '#ddd0c2', '#c8856a', '#231816'], motif: 'drawguess' },
+];
+
+function ensureDir(dirPath) {
+  fs.mkdirSync(dirPath, { recursive: true });
 }
 
-function patternFor(cover) {
+function findBrowser() {
+  return browserPathCandidates.find((candidate) => fs.existsSync(candidate));
+}
+
+function fileUrl(filePath) {
+  return `file:///${filePath.replace(/\\/g, '/')}`;
+}
+
+function block(x, y, w, h, r, fill, opacity = 1) {
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${fill}" opacity="${opacity}"/>`;
+}
+
+function circle(cx, cy, r, fill, opacity = 1) {
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" opacity="${opacity}"/>`;
+}
+
+function line(x1, y1, x2, y2, stroke, width, opacity = 1) {
+  return `<path d="M${x1} ${y1}L${x2} ${y2}" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round" opacity="${opacity}" fill="none"/>`;
+}
+
+function motifSvg(cover) {
   const accent = cover.palette[2];
   const dark = cover.palette[3];
 
   switch (cover.motif) {
-    case 'grid':
+    case 'tictactoe':
       return `
-        <g opacity="0.9">
-          <path d="M1040 292h240M1040 412h240M1120 212v280M1200 212v280" stroke="${accent}" stroke-width="28" stroke-linecap="round"/>
-          <path d="M1100 730l120 120M1220 730l-120 120" stroke="${dark}" stroke-width="28" stroke-linecap="round"/>
-          <circle cx="1040" cy="790" r="76" fill="none" stroke="${accent}" stroke-width="26"/>
-        </g>`;
-    case 'stones':
+        ${block(910, 250, 480, 480, 42, '#f9f4eb')}
+        ${line(1070, 305, 1070, 675, accent, 24)}
+        ${line(1230, 305, 1230, 675, accent, 24)}
+        ${line(965, 410, 1335, 410, accent, 24)}
+        ${line(965, 570, 1335, 570, accent, 24)}
+        ${circle(1008, 348, 52, 'none')}
+        <circle cx="1008" cy="348" r="52" stroke="${dark}" stroke-width="18" fill="none"/>
+        ${line(1176, 520, 1288, 632, dark, 18)}
+        ${line(1288, 520, 1176, 632, dark, 18)}
+        ${circle(1250, 350, 52, 'none')}
+        <circle cx="1250" cy="350" r="52" stroke="${dark}" stroke-width="18" fill="none"/>
+      `;
+    case 'gomoku':
       return `
-        <g opacity="0.95">
-          <path d="M1010 280c120 0 250 95 310 220" stroke="${accent}" stroke-width="24" stroke-linecap="round" fill="none"/>
-          <path d="M1080 250c90 0 190 70 240 170" stroke="${dark}" stroke-width="18" stroke-linecap="round" fill="none" opacity="0.45"/>
-          <circle cx="1050" cy="760" r="68" fill="${dark}"/>
-          <circle cx="1175" cy="640" r="68" fill="#fff8ef" stroke="${accent}" stroke-width="16"/>
-          <circle cx="1290" cy="840" r="68" fill="${dark}"/>
-        </g>`;
-    case 'tiles':
+        ${block(900, 215, 520, 520, 34, '#dcc094')}
+        ${Array.from({ length: 9 }, (_, i) => line(965 + i * 55, 275, 965 + i * 55, 675, dark, 6, 0.35)).join('')}
+        ${Array.from({ length: 9 }, (_, i) => line(965, 275 + i * 55, 1365, 275 + i * 55, dark, 6, 0.35)).join('')}
+        ${circle(1080, 440, 24, dark)}
+        ${circle(1135, 495, 24, dark)}
+        ${circle(1190, 550, 24, dark)}
+        ${circle(1245, 605, 24, dark)}
+        ${circle(1300, 660, 24, dark)}
+        <circle cx="1025" cy="330" r="24" fill="#fff7ec" stroke="${accent}" stroke-width="8"/>
+        <circle cx="1080" cy="330" r="24" fill="#fff7ec" stroke="${accent}" stroke-width="8"/>
+      `;
+    case 'davinci':
       return `
-        <g opacity="0.95">
-          <rect x="1025" y="285" width="130" height="190" rx="24" fill="#fff8ef" stroke="${accent}" stroke-width="12"/>
-          <rect x="1168" y="350" width="130" height="190" rx="24" fill="${accent}" opacity="0.88"/>
-          <rect x="1085" y="535" width="130" height="190" rx="24" fill="${dark}" opacity="0.92"/>
-          <rect x="1230" y="595" width="130" height="190" rx="24" fill="#fff8ef" stroke="${dark}" stroke-width="12"/>
-        </g>`;
-    case 'cards':
+        ${block(945, 250, 150, 230, 24, '#fff8ef')}
+        ${block(1110, 310, 150, 230, 24, '#f5efe7')}
+        ${block(1275, 370, 150, 230, 24, '#223340')}
+        ${block(1020, 570, 150, 230, 24, '#7aa4b4')}
+        ${block(1185, 630, 150, 230, 24, '#fff8ef')}
+        ${Array.from({ length: 4 }, (_, i) => circle(1010 + i * 150, 890, 16, accent, 0.45)).join('')}
+      `;
+    case 'uno':
       return `
-        <g opacity="0.96">
-          <rect x="1015" y="315" width="160" height="240" rx="24" fill="#ef5a45"/>
-          <rect x="1115" y="265" width="160" height="240" rx="24" fill="#f2b441"/>
-          <rect x="1215" y="315" width="160" height="240" rx="24" fill="#3c79d6"/>
-          <rect x="1115" y="555" width="160" height="240" rx="24" fill="#59a76b"/>
-        </g>`;
-    case 'fan':
+        <g transform="rotate(-18 1130 520)">${block(980, 290, 210, 320, 28, '#ef5a45')}</g>
+        <g transform="rotate(-6 1190 470)">${block(1080, 220, 210, 320, 28, '#f2b441')}</g>
+        <g transform="rotate(9 1250 520)">${block(1180, 290, 210, 320, 28, '#467fd8')}</g>
+        <g transform="rotate(21 1190 670)">${block(1088, 560, 210, 320, 28, '#55a86b')}</g>
+        ${circle(1150, 540, 72, '#fff7ef', 0.92)}
+      `;
+    case 'doudizhu':
       return `
-        <g opacity="0.96">
-          <rect x="1060" y="270" width="120" height="220" rx="20" fill="#fff9ef" transform="rotate(-18 1120 380)"/>
-          <rect x="1130" y="260" width="120" height="220" rx="20" fill="#fff9ef" transform="rotate(-6 1190 370)"/>
-          <rect x="1200" y="275" width="120" height="220" rx="20" fill="#fff9ef" transform="rotate(8 1260 385)"/>
-          <rect x="1270" y="320" width="120" height="220" rx="20" fill="#fff9ef" transform="rotate(20 1330 430)"/>
-          <circle cx="1130" cy="380" r="22" fill="${accent}"/>
-          <circle cx="1250" cy="370" r="22" fill="${dark}"/>
-        </g>`;
-    case 'burst':
+        <g transform="rotate(-16 1130 420)">${block(1010, 255, 130, 220, 22, '#fff8ef')}</g>
+        <g transform="rotate(-6 1195 395)">${block(1090, 230, 130, 220, 22, '#fff8ef')}</g>
+        <g transform="rotate(6 1260 395)">${block(1170, 230, 130, 220, 22, '#fff8ef')}</g>
+        <g transform="rotate(18 1330 430)">${block(1250, 265, 130, 220, 22, '#fff8ef')}</g>
+        ${circle(1115, 700, 42, accent)}
+        ${circle(1215, 760, 42, '#c9a15a')}
+        ${circle(1310, 705, 42, dark, 0.85)}
+      `;
+    case 'exploding-kittens':
       return `
-        <g opacity="0.96">
-          <path d="M1180 235l42 106 113 18-84 77 21 112-92-51-92 51 21-112-84-77 113-18z" fill="${accent}"/>
-          <circle cx="1180" cy="640" r="110" fill="#fff7ee" stroke="${dark}" stroke-width="18"/>
-          <path d="M1100 640h160M1180 560v160" stroke="${dark}" stroke-width="22" stroke-linecap="round"/>
-        </g>`;
-    case 'racks':
+        <path d="M1178 248l54 120 132 18-98 90 26 132-114-64-114 64 26-132-98-90 132-18z" fill="${accent}" opacity="0.94"/>
+        ${circle(1160, 730, 90, '#fff8ef')}
+        ${circle(1270, 640, 70, '#fff8ef')}
+        ${line(1110, 705, 1210, 705, dark, 14)}
+        ${line(1240, 620, 1300, 620, dark, 14)}
+      `;
+    case 'rummikub':
       return `
-        <g opacity="0.96">
-          <rect x="1010" y="640" width="360" height="28" rx="14" fill="${dark}"/>
-          <rect x="1040" y="530" width="74" height="96" rx="14" fill="#4f87c6"/>
-          <rect x="1124" y="480" width="74" height="146" rx="14" fill="#d0573f"/>
-          <rect x="1208" y="430" width="74" height="196" rx="14" fill="#e0bc50"/>
-          <rect x="1292" y="510" width="74" height="116" rx="14" fill="#60a376"/>
-        </g>`;
-    case 'numbers':
+        ${block(980, 690, 390, 34, 17, dark)}
+        ${block(1015, 555, 78, 110, 18, '#4d8cc7')}
+        ${block(1110, 500, 78, 165, 18, '#d56446')}
+        ${block(1205, 445, 78, 220, 18, '#e3bf54')}
+        ${block(1300, 530, 78, 135, 18, '#66a57a')}
+        ${Array.from({ length: 4 }, (_, i) => block(1025 + i * 96, 280 + i * 18, 80, 110, 18, '#fff8ef', 0.88)).join('')}
+      `;
+    case 'twentyfour':
       return `
-        <g opacity="0.96">
-          <text x="1000" y="520" font-size="188" font-weight="800" fill="${accent}" font-family="Arial, sans-serif">3 + 5</text>
-          <text x="1070" y="735" font-size="232" font-weight="800" fill="${dark}" font-family="Arial, sans-serif">24</text>
-          <circle cx="1300" cy="360" r="48" fill="#fff8ee" stroke="${accent}" stroke-width="14"/>
-        </g>`;
-    case 'mines':
+        ${block(960, 300, 140, 180, 20, '#fff8ef')}
+        ${block(1110, 300, 140, 180, 20, '#fff8ef')}
+        ${block(1260, 300, 140, 180, 20, '#fff8ef')}
+        ${block(1110, 505, 140, 180, 20, '#fff8ef')}
+        ${circle(1180, 790, 96, '#fff8ef')}
+        ${line(1090, 790, 1270, 790, accent, 18)}
+        ${line(1180, 700, 1180, 880, dark, 18)}
+      `;
+    case 'minesweeper':
       return `
-        <g opacity="0.96">
-          <rect x="1015" y="280" width="330" height="330" rx="30" fill="#f8fcf8" stroke="${accent}" stroke-width="16"/>
-          <path d="M1125 280v330M1235 280v330M1015 390h330M1015 500h330" stroke="${accent}" stroke-width="10" opacity="0.5"/>
-          <circle cx="1180" cy="445" r="60" fill="${dark}"/>
-          <path d="M1180 350v190M1085 445h190M1118 383l124 124M1242 383l-124 124" stroke="#fff" stroke-width="14" stroke-linecap="round"/>
-        </g>`;
-    case 'range':
+        ${block(970, 250, 380, 380, 26, '#f7fbf8')}
+        ${Array.from({ length: 4 }, (_, i) => line(1060 + i * 80, 270, 1060 + i * 80, 610, accent, 8, 0.35)).join('')}
+        ${Array.from({ length: 4 }, (_, i) => line(990, 340 + i * 80, 1330, 340 + i * 80, accent, 8, 0.35)).join('')}
+        ${circle(1170, 430, 62, dark)}
+        ${line(1170, 340, 1170, 520, '#fff', 12)}
+        ${line(1080, 430, 1260, 430, '#fff', 12)}
+        ${line(1105, 365, 1235, 495, '#fff', 12)}
+        ${line(1235, 365, 1105, 495, '#fff', 12)}
+      `;
+    case 'numberbomb':
       return `
-        <g opacity="0.96">
-          <rect x="1020" y="340" width="340" height="28" rx="14" fill="${accent}" opacity="0.35"/>
-          <rect x="1090" y="340" width="190" height="28" rx="14" fill="${accent}"/>
-          <circle cx="1090" cy="354" r="26" fill="#fff8ef" stroke="${dark}" stroke-width="10"/>
-          <circle cx="1280" cy="354" r="26" fill="#fff8ef" stroke="${dark}" stroke-width="10"/>
-          <path d="M1180 530l40 96 102 12-76 69 20 102-86-48-86 48 20-102-76-69 102-12z" fill="${dark}"/>
-        </g>`;
-    case 'rings':
+        ${block(970, 308, 390, 36, 18, accent, 0.28)}
+        ${block(1050, 308, 230, 36, 18, accent)}
+        ${circle(1050, 326, 30, '#fff8ef')}
+        ${circle(1280, 326, 30, '#fff8ef')}
+        <circle cx="1050" cy="326" r="30" stroke="${dark}" stroke-width="10" fill="none"/>
+        <circle cx="1280" cy="326" r="30" stroke="${dark}" stroke-width="10" fill="none"/>
+        <path d="M1180 535l46 106 112 12-84 74 23 108-97-54-97 54 23-108-84-74 112-12z" fill="${dark}" opacity="0.92"/>
+      `;
+    case 'oldmaid':
       return `
-        <g opacity="0.96">
-          <circle cx="1125" cy="420" r="92" fill="none" stroke="${accent}" stroke-width="24"/>
-          <circle cx="1260" cy="570" r="92" fill="none" stroke="${dark}" stroke-width="24"/>
-          <circle cx="1100" cy="760" r="92" fill="none" stroke="#fff8ef" stroke-width="24"/>
-        </g>`;
-    case 'glasses':
+        ${circle(1100, 410, 95, 'none')}
+        ${circle(1260, 560, 95, 'none')}
+        ${circle(1125, 760, 95, 'none')}
+        <circle cx="1100" cy="410" r="95" stroke="${accent}" stroke-width="28" fill="none"/>
+        <circle cx="1260" cy="560" r="95" stroke="${dark}" stroke-width="28" fill="none"/>
+        <circle cx="1125" cy="760" r="95" stroke="#fff7ef" stroke-width="28" fill="none"/>
+        ${block(1280, 285, 90, 140, 18, '#fff8ef')}
+      `;
+    case 'liarsbar':
       return `
-        <g opacity="0.96">
-          <rect x="1040" y="300" width="96" height="190" rx="28" fill="#fff7eb" stroke="${accent}" stroke-width="12"/>
-          <rect x="1170" y="250" width="96" height="240" rx="28" fill="#fff7eb" stroke="${accent}" stroke-width="12"/>
-          <rect x="1300" y="330" width="96" height="160" rx="28" fill="#fff7eb" stroke="${accent}" stroke-width="12"/>
-          <path d="M1005 625c80-42 166-42 246 0M1170 625c82-42 168-42 250 0" stroke="${dark}" stroke-width="18" stroke-linecap="round" fill="none"/>
-        </g>`;
-    case 'stack':
+        ${block(1030, 305, 102, 210, 28, '#fff7eb')}
+        ${block(1160, 250, 102, 265, 28, '#fff7eb')}
+        ${block(1290, 335, 102, 180, 28, '#fff7eb')}
+        ${line(1005, 645, 1245, 645, dark, 18)}
+        ${line(1175, 645, 1425, 645, dark, 18)}
+        ${block(1045, 710, 155, 120, 22, accent, 0.22)}
+      `;
+    case 'bigtwo':
       return `
-        <g opacity="0.96">
-          <rect x="1040" y="290" width="240" height="150" rx="28" fill="#fff8ef" stroke="${accent}" stroke-width="14"/>
-          <rect x="1080" y="470" width="240" height="150" rx="28" fill="#fff8ef" stroke="${accent}" stroke-width="14"/>
-          <rect x="1120" y="650" width="240" height="150" rx="28" fill="#fff8ef" stroke="${accent}" stroke-width="14"/>
-        </g>`;
-    case 'chips':
+        ${block(1025, 290, 255, 155, 28, '#fff8ef')}
+        ${block(1070, 480, 255, 155, 28, '#fff8ef')}
+        ${block(1115, 670, 255, 155, 28, '#fff8ef')}
+        ${circle(1250, 385, 30, accent)}
+        ${circle(1205, 575, 30, dark)}
+      `;
+    case 'texas':
       return `
-        <g opacity="0.96">
-          <circle cx="1090" cy="380" r="82" fill="#fff8ef" stroke="${accent}" stroke-width="24"/>
-          <circle cx="1240" cy="520" r="82" fill="#fff8ef" stroke="${dark}" stroke-width="24"/>
-          <circle cx="1140" cy="690" r="82" fill="#fff8ef" stroke="${accent}" stroke-width="24"/>
-          <path d="M1010 770h330" stroke="${dark}" stroke-width="22" stroke-linecap="round"/>
-        </g>`;
-    case 'planes':
+        ${circle(1080, 390, 86, '#fff8ef')}
+        ${circle(1240, 545, 86, '#fff8ef')}
+        ${circle(1110, 715, 86, '#fff8ef')}
+        <circle cx="1080" cy="390" r="86" stroke="${accent}" stroke-width="24" fill="none"/>
+        <circle cx="1240" cy="545" r="86" stroke="${dark}" stroke-width="24" fill="none"/>
+        <circle cx="1110" cy="715" r="86" stroke="${accent}" stroke-width="24" fill="none"/>
+        ${block(1285, 285, 105, 150, 20, '#fff8ef')}
+        ${block(1160, 310, 105, 150, 20, '#fff8ef')}
+      `;
+    case 'flightchess':
       return `
-        <g opacity="0.96">
-          <circle cx="1080" cy="355" r="48" fill="#4aa3ff"/>
-          <circle cx="1245" cy="355" r="48" fill="#efc34a"/>
-          <circle cx="1080" cy="520" r="48" fill="#ef6d5f"/>
-          <circle cx="1245" cy="520" r="48" fill="#55b26f"/>
-          <path d="M1162 262v344M990 434h344" stroke="${dark}" stroke-width="16" stroke-linecap="round"/>
-          <path d="M1110 650l70-90 70 90-70 120z" fill="#fff8ef" stroke="${dark}" stroke-width="14"/>
-        </g>`;
-    case 'snake':
+        ${circle(1080, 360, 58, '#4aa3ff')}
+        ${circle(1250, 360, 58, '#efc34a')}
+        ${circle(1080, 530, 58, '#ee6d5e')}
+        ${circle(1250, 530, 58, '#5cb274')}
+        ${line(1165, 255, 1165, 648, dark, 18)}
+        ${line(970, 448, 1360, 448, dark, 18)}
+        <path d="M1118 715l62-84 62 84-62 116z" fill="#fff8ef" stroke="${dark}" stroke-width="14"/>
+      `;
+    case 'snakebattle':
       return `
-        <g opacity="0.96">
-          <path d="M1010 675c60-152 246-196 334-112 64 62 40 160-62 160-72 0-110-58-110-96 0-42 34-76 74-76 38 0 62 26 62 56" stroke="${accent}" stroke-width="38" stroke-linecap="round" fill="none"/>
-          <circle cx="1345" cy="556" r="24" fill="${dark}"/>
-          <circle cx="1350" cy="548" r="6" fill="#fff"/>
-        </g>`;
-    case 'cross':
+        <path d="M1000 685c68-165 270-212 367-120 66 64 47 166-55 176-76 8-124-46-124-98 0-43 34-78 74-78 40 0 65 24 65 54" stroke="${accent}" stroke-width="42" stroke-linecap="round" fill="none"/>
+        ${circle(1372, 565, 24, dark)}
+        ${circle(1376, 558, 5, '#fff')}
+        ${block(1050, 290, 250, 120, 28, '#f8fbf7')}
+      `;
+    case 'chinesechess':
       return `
-        <g opacity="0.96">
-          <path d="M1015 305h330M1015 805h330M1015 305v500M1345 305v500" stroke="${accent}" stroke-width="12"/>
-          <path d="M1015 555h330M1180 305v500" stroke="${accent}" stroke-width="12" opacity="0.45"/>
-          <path d="M1080 390l200 330M1280 390l-200 330" stroke="${dark}" stroke-width="20" stroke-linecap="round"/>
-        </g>`;
-    case 'go':
+        ${block(955, 260, 410, 420, 34, '#ecd3aa')}
+        ${Array.from({ length: 5 }, (_, i) => line(1020 + i * 85, 285, 1020 + i * 85, 655, dark, 8, 0.45)).join('')}
+        ${Array.from({ length: 5 }, (_, i) => line(980, 335 + i * 75, 1340, 335 + i * 75, dark, 8, 0.45)).join('')}
+        ${line(1040, 360, 1280, 590, accent, 16)}
+        ${line(1280, 360, 1040, 590, accent, 16)}
+        ${circle(1075, 720, 64, '#fff7ef')}
+        ${circle(1240, 720, 64, '#fff7ef')}
+      `;
+    case 'go9':
       return `
-        <g opacity="0.96">
-          <rect x="1015" y="280" width="330" height="330" rx="30" fill="#e6c98e" stroke="${accent}" stroke-width="16"/>
-          <path d="M1080 280v330M1145 280v330M1210 280v330M1275 280v330M1015 345h330M1015 410h330M1015 475h330M1015 540h330" stroke="${dark}" stroke-width="8" opacity="0.55"/>
-          <circle cx="1110" cy="375" r="28" fill="${dark}"/>
-          <circle cx="1245" cy="510" r="28" fill="#fff8ef" stroke="${accent}" stroke-width="10"/>
-          <circle cx="1180" cy="445" r="28" fill="${dark}"/>
-        </g>`;
-    case 'city':
+        ${block(965, 260, 400, 400, 28, '#e3c889')}
+        ${Array.from({ length: 5 }, (_, i) => line(1035 + i * 74, 290, 1035 + i * 74, 630, dark, 7, 0.48)).join('')}
+        ${Array.from({ length: 5 }, (_, i) => line(995, 330 + i * 74, 1335, 330 + i * 74, dark, 7, 0.48)).join('')}
+        ${circle(1085, 405, 30, dark)}
+        ${circle(1230, 550, 30, '#fff8ef')}
+        <circle cx="1230" cy="550" r="30" stroke="${accent}" stroke-width="10" fill="none"/>
+        ${circle(1160, 475, 30, dark)}
+      `;
+    case 'monopoly':
       return `
-        <g opacity="0.96">
-          <rect x="1030" y="700" width="320" height="120" rx="26" fill="${dark}" opacity="0.88"/>
-          <rect x="1055" y="520" width="78" height="180" rx="18" fill="${accent}"/>
-          <rect x="1160" y="430" width="92" height="270" rx="18" fill="#7bb0bd"/>
-          <rect x="1278" y="575" width="58" height="125" rx="16" fill="#f2d395"/>
-          <path d="M1095 520v-96h-32v96M1208 430v-126h-34v126" stroke="${dark}" stroke-width="14" stroke-linecap="round"/>
-        </g>`;
-    case 'fruit':
+        ${block(960, 300, 390, 390, 34, '#f7f3eb')}
+        ${block(996, 336, 318, 318, 26, '#dfd3bc')}
+        ${block(1020, 360, 85, 85, 18, accent, 0.85)}
+        ${block(1200, 360, 85, 85, 18, '#96aeb7', 0.9)}
+        ${block(1020, 540, 85, 85, 18, '#b2a48d', 0.9)}
+        ${block(1200, 540, 85, 85, 18, dark, 0.78)}
+        ${block(1128, 462, 60, 180, 18, '#dbc27c')}
+        ${line(1088, 515, 1228, 515, '#fff7ef', 14)}
+      `;
+    case 'suikabattle':
       return `
-        <g opacity="0.96">
-          <circle cx="1085" cy="640" r="72" fill="#ef6d5f"/>
-          <circle cx="1235" cy="540" r="92" fill="#f2c24d"/>
-          <circle cx="1290" cy="735" r="68" fill="#87c96b"/>
-          <path d="M1235 448c22-34 54-52 92-52" stroke="${dark}" stroke-width="14" stroke-linecap="round"/>
-        </g>`;
-    case 'sheep':
+        ${circle(1085, 645, 80, '#ef715c')}
+        ${circle(1235, 540, 102, '#f1c44c')}
+        ${circle(1310, 740, 74, '#89cb70')}
+        ${circle(1015, 780, 52, '#f6a24d')}
+        ${line(1242, 438, 1312, 390, dark, 14)}
+      `;
+    case 'sheeptile':
       return `
-        <g opacity="0.96">
-          <rect x="1035" y="330" width="120" height="120" rx="24" fill="#fff8ef" stroke="${accent}" stroke-width="12"/>
-          <rect x="1165" y="435" width="120" height="120" rx="24" fill="#fff8ef" stroke="${accent}" stroke-width="12"/>
-          <rect x="1095" y="585" width="120" height="120" rx="24" fill="#fff8ef" stroke="${accent}" stroke-width="12"/>
-          <circle cx="1320" cy="760" r="64" fill="#f7faf2" stroke="${accent}" stroke-width="12"/>
-          <circle cx="1360" cy="745" r="24" fill="${dark}"/>
-        </g>`;
-    case 'sketch':
+        ${block(1015, 345, 128, 128, 22, '#fff8ef')}
+        ${block(1155, 450, 128, 128, 22, '#fff8ef')}
+        ${block(1085, 605, 128, 128, 22, '#fff8ef')}
+        ${circle(1330, 760, 66, '#f7faf2')}
+        ${circle(1372, 745, 24, dark)}
+        ${circle(1326, 768, 10, dark, 0.65)}
+      `;
+    case 'drawguess':
       return `
-        <g opacity="0.96">
-          <rect x="1035" y="300" width="300" height="420" rx="30" fill="#fff9ef" stroke="${accent}" stroke-width="14"/>
-          <path d="M1085 395c42-48 118-54 164-8M1090 515c58-26 126-12 180 30M1098 600c44 6 82 24 124 56" stroke="${dark}" stroke-width="16" stroke-linecap="round" fill="none"/>
-          <path d="M1295 785l-42-102 42-28 54 86z" fill="${accent}"/>
-        </g>`;
+        ${block(1000, 280, 335, 445, 32, '#fff9ef')}
+        ${line(1072, 385, 1236, 365, dark, 16)}
+        ${line(1085, 500, 1275, 560, dark, 16)}
+        ${line(1098, 602, 1225, 655, dark, 16)}
+        <path d="M1288 815l-40-118 42-24 56 100z" fill="${accent}"/>
+        ${block(920, 790, 210, 100, 22, accent, 0.16)}
+      `;
     default:
       return '';
   }
@@ -226,48 +287,72 @@ function patternFor(cover) {
 
 function coverSvg(cover) {
   const [bgA, bgB, accent, dark] = cover.palette;
-  const title = esc(cover.title);
-  const subtitle = esc(cover.subtitle);
-  const category = esc(cover.category.toUpperCase());
-  const badge = esc(cover.badge);
-
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" role="img" aria-label="${title}">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" role="img" aria-label="${cover.id}">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="${bgA}"/>
       <stop offset="100%" stop-color="${bgB}"/>
     </linearGradient>
-    <linearGradient id="panel" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="rgba(255,255,255,0.95)"/>
-      <stop offset="100%" stop-color="rgba(255,255,255,0.72)"/>
+    <radialGradient id="glow" cx="72%" cy="32%" r="50%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.8)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+    <linearGradient id="table" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.42)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.16)"/>
     </linearGradient>
   </defs>
   <rect width="1600" height="1200" rx="56" fill="url(#bg)"/>
-  <circle cx="1240" cy="485" r="322" fill="rgba(255,255,255,0.28)"/>
-  <circle cx="1240" cy="485" r="252" fill="rgba(255,255,255,0.52)"/>
-  <path d="M0 940c220-110 450-134 686-70 138 38 269 48 404 28 130-18 300-83 510-193v495H0z" fill="rgba(255,255,255,0.52)"/>
-  <rect x="86" y="86" width="1428" height="1028" rx="40" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.38)" stroke-width="2"/>
-  <text x="118" y="162" fill="${dark}" font-family="Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="8">${category}</text>
-  <text x="118" y="860" fill="${dark}" font-family="Arial, sans-serif" font-size="116" font-weight="800">${title}</text>
-  <text x="118" y="936" fill="${dark}" opacity="0.74" font-family="Arial, sans-serif" font-size="48" font-weight="500">${subtitle}</text>
-  <g>
-    <rect x="118" y="990" width="220" height="78" rx="24" fill="rgba(255,255,255,0.8)"/>
-    <text x="148" y="1044" fill="${dark}" font-family="Arial, sans-serif" font-size="34" font-weight="700">LAN PARTY</text>
-  </g>
-  <g>
-    <circle cx="1240" cy="485" r="180" fill="${dark}" opacity="0.08"/>
-    <text x="1240" y="525" text-anchor="middle" fill="${dark}" font-family="Arial, sans-serif" font-size="164" font-weight="800">${badge}</text>
-  </g>
-  ${patternFor(cover)}
+  <rect width="1600" height="1200" rx="56" fill="url(#glow)"/>
+  <path d="M0 946c246-92 500-115 760-68 110 20 240 36 390 10 152-26 294-82 450-176v488H0z" fill="rgba(255,255,255,0.34)"/>
+  <rect x="84" y="84" width="1432" height="1032" rx="46" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.28)" stroke-width="2"/>
+  <rect x="128" y="152" width="1344" height="896" rx="40" fill="url(#table)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+  <ellipse cx="1188" cy="905" rx="270" ry="58" fill="${dark}" opacity="0.12"/>
+  <ellipse cx="1188" cy="905" rx="204" ry="38" fill="${dark}" opacity="0.08"/>
+  ${motifSvg(cover)}
+  ${block(138, 188, 120, 12, 6, accent, 0.7)}
+  ${block(138, 210, 82, 10, 5, dark, 0.18)}
 </svg>`;
 }
 
-fs.mkdirSync(outDir, { recursive: true });
+function writeSvgAndRenderPng(cover, browserPath) {
+  const svgPath = path.join(tempDir, `${cover.id}.svg`);
+  const pngPath = path.join(outDir, `${cover.id}.png`);
+  fs.writeFileSync(svgPath, coverSvg(cover), 'utf8');
 
-for (const cover of covers) {
-  const filePath = path.join(outDir, `${cover.id}.svg`);
-  fs.writeFileSync(filePath, coverSvg(cover), 'utf8');
+  const result = spawnSync(browserPath, [
+    '--headless',
+    '--disable-gpu',
+    '--hide-scrollbars',
+    '--force-device-scale-factor=1',
+    '--window-size=1600,1200',
+    `--screenshot=${pngPath}`,
+    fileUrl(svgPath),
+  ], {
+    stdio: 'pipe',
+    encoding: 'utf8',
+  });
+
+  if (result.status !== 0) {
+    throw new Error(`Failed to render ${cover.id}: ${result.stderr || result.stdout || 'unknown browser error'}`);
+  }
 }
 
-console.log(`Generated ${covers.length} cover assets in ${outDir}`);
+function main() {
+  const browserPath = findBrowser();
+  if (!browserPath) {
+    throw new Error('No supported browser found for PNG cover rendering.');
+  }
+
+  ensureDir(outDir);
+  ensureDir(tempDir);
+
+  for (const cover of covers) {
+    writeSvgAndRenderPng(cover, browserPath);
+  }
+
+  console.log(`Generated ${covers.length} bitmap cover assets in ${outDir}`);
+}
+
+main();

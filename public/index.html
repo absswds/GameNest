@@ -43,6 +43,13 @@
       </div>
     </section>
 
+    <p class="wifi-note">确保所有设备连接到同一个 Wi-Fi 或手机热点。</p>
+    <div class="network-callout" id="networkCallout" hidden>
+      <strong id="networkCalloutTitle"></strong>
+      <p id="networkCalloutHint"></p>
+      <div class="network-links" id="networkLinks"></div>
+    </div>
+
     <section class="lobby-discovery">
       <div class="discovery-header">
         <div>
@@ -69,12 +76,6 @@
       <p class="browse-empty" id="emptyState" style="display:none">没有找到匹配的游戏，换个关键词试试。</p>
     </section>
 
-    <p class="wifi-note">确保所有设备连接到同一个 Wi-Fi 或手机热点。</p>
-    <div class="network-callout" id="networkCallout" hidden>
-      <strong id="networkCalloutTitle"></strong>
-      <p id="networkCalloutHint"></p>
-      <div class="network-links" id="networkLinks"></div>
-    </div>
   </main>
 
   <div class="toast" id="toast"></div>
@@ -110,6 +111,11 @@ function getGameInfo(id) {
     tags: [],
     cover: ''
   };
+}
+
+function getSocketURL() {
+  const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+  return protocol + location.host;
 }
 
 function buildCover(game, compact) {
@@ -174,7 +180,7 @@ function renderNetworkInfo(info) {
   }
 
   title.textContent = '\u624b\u673a\u8bf7\u8bbf\u95ee\u4e0b\u9762\u4efb\u4e00\u5730\u5740';
-  hint.textContent = '\u624b\u673a\u4e0a\u4e0d\u80fd\u7528 127.0.0.1\uff0c\u8981\u7528\u7535\u8111\u7684 Wi-Fi \u5c40\u57df\u7f51\u5730\u5740\u3002';
+  hint.textContent = '\u5982\u679c\u7535\u8111\u6d4f\u89c8\u5668\u91cc\u662f 127.0.0.1 \u6216 localhost\uff0c\u90a3\u53ea\u80fd\u7535\u8111\u81ea\u5df1\u7528\uff0c\u624b\u673a\u9700\u8981\u6539\u7528\u4e0b\u9762\u7684 Wi-Fi \u5c40\u57df\u7f51\u5730\u5740\u3002';
   root.innerHTML = lanURLs.map(function(url) {
     return '<span class="network-link">' + escapeHtml(url) + '</span>';
   }).join('');
@@ -238,7 +244,7 @@ function toast(msg) {
 }
 
 function createRoom() {
-  const ws = new WebSocket('ws://' + location.host);
+  const ws = new WebSocket(getSocketURL());
   ws.onopen = function() {
     ws.send(JSON.stringify({ type: 'create_room', data: { game: selectedGame } }));
   };
@@ -270,7 +276,7 @@ document.getElementById('joinBtn').addEventListener('click', function() {
     toast('\u8bf7\u8f93\u5165\u623f\u95f4\u53f7');
     return;
   }
-  const ws = new WebSocket('ws://' + location.host);
+  const ws = new WebSocket(getSocketURL());
   ws.onopen = function() {
     ws.send(JSON.stringify({ type: 'join_room', data: { roomId: code } }));
   };

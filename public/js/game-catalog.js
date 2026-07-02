@@ -333,7 +333,9 @@
   };
 
   Object.keys(catalog).forEach(function(id) {
-    catalog[id].cover = '/assets/game-covers/' + id + '.svg';
+    if (!catalog[id].cover) {
+      catalog[id].cover = '/assets/game-covers/' + id + '.png';
+    }
   });
 
   const order = [

@@ -21,6 +21,15 @@ test('every game in the lobby catalog has a cover asset', () => {
   assert.deepEqual(missing, []);
 });
 
+test('every game in the lobby catalog points to a bitmap cover asset', () => {
+  const catalog = Array.from(loadCatalog());
+  const nonBitmap = catalog
+    .filter((game) => !/\.(png|jpe?g|webp)$/i.test(game.cover || ''))
+    .map((game) => ({ id: game.id, cover: game.cover }));
+
+  assert.deepEqual(nonBitmap, []);
+});
+
 test('every configured cover file exists on disk', () => {
   const catalog = Array.from(loadCatalog());
   const missingFiles = catalog
