@@ -13,8 +13,8 @@
   var rects = {};      // tileId -> {x,y,s,z} 屏幕矩形（当前关卡）
   var curBounds = null;
   // 动画
-  var prevSlotLen = 0, prevLevel = 1;
-  var anim = { rafId: null, flies: [], merges: [], running: false };
+  var prevSlotLen = 0, prevLevel = 1, prevEliminated = false;
+  var anim = { rafId: null, flies: [], merges: [], banners: [], running: false };
 
   function wsSend(d) { window.makeGameMove && window.makeGameMove(d); }
   function me() { return state.players[playerIndex]; }
@@ -104,6 +104,7 @@
 
     drawSlot();
     drawFlies();
+    drawBanners();
   }
 
   function drawTile(r, pat, blocked, faceDown) {
@@ -194,6 +195,26 @@
     });
   }
 
+  function drawBanners() {
+    var now = Date.now();
+    anim.banners = anim.banners.filter(function (b) { return now - b.start < b.dur; });
+    anim.banners.forEach(function (b) {
+      var p = Math.min((now - b.start) / b.dur, 1);
+      var alpha = p < 0.18 ? p / 0.18 : (p > 0.82 ? (1 - p) / 0.18 : 1);
+      var y = H * 0.2 - (1 - alpha) * 20;
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.96;
+      ctx.fillStyle = b.bg;
+      roundRect(W * 0.18, y, W * 0.64, 52, 22); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(b.text, W / 2, y + 26);
+      ctx.restore();
+    });
+  }
+
   function roundRect(x, y, w, h, r) {
     r = Math.min(r, w / 2, h / 2);
     ctx.beginPath();
@@ -210,6 +231,11 @@
     if (anim.running) return;
     anim.running = true;
     tick();
+  }
+
+  function pushBanner(text, bg, dur) {
+    anim.banners.push({ text: text, bg: bg, dur: dur || 900, start: Date.now() });
+    ensureLoop();
   }
   function tick() {
     drawBoard();
@@ -295,8 +321,8 @@
   window.gameRenderers.set('sheeptile', {
     init: function (container) {
       container.innerHTML = '';
-      state = null; prevSlotLen = 0; prevLevel = 1;
-      anim.flies = []; anim.merges = []; anim.running = false;
+      state = null; prevSlotLen = 0; prevLevel = 1; prevEliminated = false;
+      anim.flies = []; anim.merges = []; anim.banners = []; anim.running = false;
       var wrap = document.createElement('div');
       wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;padding:6px;';
       container.appendChild(wrap);
@@ -329,15 +355,26 @@
       if (newGame) { prevSlotLen = 0; prevLevel = me().level; layoutBoard(); }
 
       // 关卡切换 → 重算布局
-      if (me().level !== prevLevel) { prevLevel = me().level; prevSlotLen = 0; layoutBoard(); }
+      if (me().level !== prevLevel) {
+        pushBanner('过关，进入第 ' + me().level + ' 关', '#4c8f63', 1100);
+        prevLevel = me().level;
+        prevSlotLen = 0;
+        layoutBoard();
+      }
 
       // 检测三连消除（slot 减少）→ 合并动画
       var curSlot = me().slot.length;
       if (curSlot < prevSlotLen) {
         for (var k = 0; k < 3; k++) anim.merges.push({ idx: k, start: Date.now() });
+        pushBanner('三连消除', '#c8a45c', 720);
         ensureLoop();
       }
       prevSlotLen = curSlot;
+
+      if (me().eliminated && !prevEliminated && winner === null) {
+        pushBanner('爆槽出局', '#c45d52', 1100);
+      }
+      prevEliminated = !!me().eliminated;
 
       drawBoard();
       buildPanel();
