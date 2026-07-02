@@ -11,6 +11,7 @@
   let isHost = false;
   let myReady = false;
   let terminalRoomError = false;
+  let seatSwapFromIndex = null;
 
   document.getElementById('roomBadge').textContent = roomId;
 
@@ -107,6 +108,55 @@
     img.src = gameInfo.cover;
     img.style.display = '';
     fallback.style.display = 'none';
+  }
+
+  function seatSummary(index) {
+    const player = players ? players.find(function(p) { return p.index === index; }) : null;
+    if (!player) return { title: '空位', meta: '点这里换到这个位置' };
+    const meta = [];
+    if (player.isHost) meta.push('房主');
+    if (player.isBot) meta.push('AI');
+    if (!player.isBot) meta.push(player.ready ? '已准备' : '未准备');
+    return { title: player.name, meta: meta.join(' · ') };
+  }
+
+  function openSeatSwapModal(fromIndex, maxSlots) {
+    seatSwapFromIndex = fromIndex;
+    const modal = document.getElementById('seatSwapModal');
+    const grid = document.getElementById('seatSwapGrid');
+    const hint = document.getElementById('seatSwapHint');
+    if (!modal || !grid || !hint) return;
+
+    const origin = seatSummary(fromIndex);
+    hint.textContent = '把 ' + (fromIndex + 1) + ' 号位「' + origin.title + '」换到哪里？';
+    grid.innerHTML = '';
+
+    for (let i = 0; i < maxSlots; i++) {
+      const summary = seatSummary(i);
+      const btn = document.createElement('button');
+      btn.className = 'seat-swap-option' + (i === fromIndex ? ' current' : '');
+      btn.dataset.seatIndex = String(i);
+      btn.disabled = i === fromIndex;
+      btn.innerHTML =
+        '<div class="seat-swap-slot">位置 ' + (i + 1) + '</div>' +
+        '<div class="seat-swap-player">' + summary.title + '</div>' +
+        '<div class="seat-swap-tags">' + summary.meta + '</div>';
+      btn.addEventListener('click', function() {
+        const toIdx = parseInt(this.dataset.seatIndex, 10);
+        if (Number.isNaN(toIdx) || toIdx === seatSwapFromIndex) return;
+        ws.send(JSON.stringify({ type: 'swap_seat', data: { fromIndex: seatSwapFromIndex, toIndex: toIdx } }));
+        closeSeatSwapModal();
+      });
+      grid.appendChild(btn);
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closeSeatSwapModal() {
+    const modal = document.getElementById('seatSwapModal');
+    if (modal) modal.style.display = 'none';
+    seatSwapFromIndex = null;
   }
 
   function getSocketURL() {
@@ -385,13 +435,8 @@
     // Attach swap handlers
     slots.querySelectorAll('.waiting-slot-swap').forEach(btn => {
       btn.addEventListener('click', function() {
-        const from = parseInt(this.dataset.from);
-        // Find a target: ask which slot to swap with
-        const target = prompt('换到哪个位置？输入位置编号 (1-' + maxSlots + ')');
-        if (target === null) return;
-        const toIdx = parseInt(target) - 1;
-        if (isNaN(toIdx) || toIdx < 0 || toIdx >= maxSlots || toIdx === from) return;
-        ws.send(JSON.stringify({ type: 'swap_seat', data: { fromIndex: from, toIndex: toIdx } }));
+        const from = parseInt(this.dataset.from, 10);
+        openSeatSwapModal(from, maxSlots);
       });
     });
 
@@ -693,6 +738,7 @@
     var d = document.getElementById('avatarDrawer');
     if (d) d.style.display = 'none';
   };
+  window.closeSeatSwapModal = closeSeatSwapModal;
 
   window._sendNextRound = function() {
     ws.send(JSON.stringify({ type: 'next_round' }));

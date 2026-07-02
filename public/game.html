@@ -11,6 +11,19 @@
   .overlay-card { background: var(--surface); border-radius: var(--radius); padding: 32px 28px; text-align: center; max-width: 320px; width: 90%; }
   .overlay-card .result { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
   .overlay-card .sub { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
+  .seat-swap-backdrop { position: fixed; inset: 0; background: rgba(18, 16, 13, 0.34); display: none; align-items: center; justify-content: center; z-index: 55; padding: 18px; }
+  .seat-swap-card { width: min(460px, 100%); background: rgba(255,255,255,0.96); border: 1px solid rgba(0,0,0,0.06); border-radius: 24px; padding: 22px; box-shadow: 0 20px 50px rgba(24, 21, 17, 0.16); display: grid; gap: 14px; }
+  .seat-swap-head { display: grid; gap: 6px; }
+  .seat-swap-head strong { font-size: 20px; }
+  .seat-swap-head span { color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+  .seat-swap-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .seat-swap-option { border: 1px solid rgba(0,0,0,0.08); background: #fff; border-radius: 18px; padding: 12px; display: grid; gap: 8px; text-align: left; cursor: pointer; }
+  .seat-swap-option.current { border-color: rgba(200,164,92,0.45); background: #faf6ef; }
+  .seat-swap-option:disabled { opacity: 0.45; cursor: default; }
+  .seat-swap-slot { font-size: 12px; color: var(--text-muted); }
+  .seat-swap-player { font-size: 15px; font-weight: 700; }
+  .seat-swap-tags { font-size: 12px; color: #6a6257; }
+  .seat-swap-close { justify-self: end; }
 </style>
 </head>
 <body>
@@ -108,6 +121,17 @@
       <button class="btn btn-accent" onclick="window.doRestart()">再来一局</button>
       <button class="btn btn-outline btn-sm" onclick="window.doReturnToRoom()" style="margin-top:10px;">返回房间</button>
       <button class="btn btn-outline btn-sm" onclick="window.doLeaveRoom()" style="margin-top:10px;">返回大厅</button>
+    </div>
+  </div>
+
+  <div class="seat-swap-backdrop" id="seatSwapModal" onclick="if(event.target===this)window.closeSeatSwapModal&&window.closeSeatSwapModal()">
+    <div class="seat-swap-card">
+      <div class="seat-swap-head">
+        <strong>换座位</strong>
+        <span id="seatSwapHint">选择你想换去的位置。</span>
+      </div>
+      <div class="seat-swap-grid" id="seatSwapGrid"></div>
+      <button class="btn btn-outline btn-sm seat-swap-close" onclick="window.closeSeatSwapModal&&window.closeSeatSwapModal()">取消</button>
     </div>
   </div>
 
