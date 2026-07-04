@@ -69,7 +69,6 @@ html {
   user-select: none;
   -webkit-user-select: none;
   height: 100%;
-  overflow-x: hidden;
 }
 
 body {
@@ -79,6 +78,7 @@ body {
   flex-direction: column;
   align-items: center;
   max-width: 100vw;
+  overflow-x: hidden;
   padding: 28px 16px;
   padding-bottom: calc(28px + var(--safe-bottom));
 }

@@ -334,10 +334,9 @@ if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
   const roomCode = params.get('room');
   if (!roomCode) return;
   document.getElementById('roomCodeInput').value = roomCode.trim().toUpperCase();
-  // Instant feedback \u2014 button shows "..." while WebSocket connects
+  // Instant feedback \u2014 pre-fill and join immediately
   var joinBtn = document.getElementById('joinBtn');
   joinBtn.textContent = '...';
-  joinBtn.disabled = true;
   joinBtn.click();
 })();
 
