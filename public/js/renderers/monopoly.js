@@ -419,6 +419,50 @@
 
   function pushLog(s) { eventLog.push(s); if (eventLog.length > 3) eventLog.shift(); }
 
+  function getBuildableSpaces(st, pi) {
+    var board = st.board || [];
+    var buildable = [];
+    for (var i = 0; i < board.length; i++) {
+      var s = board[i];
+      if (!s || s.type !== 'property') continue;
+      var prop = st.properties[i];
+      if (!prop || prop.owner !== pi || (prop.houses || 0) >= 5) continue;
+      var grp = s.group;
+      var gs = [];
+      board.forEach(function (b, j) { if (b && b.group === grp) gs.push(j); });
+      if (gs.every(function (j) { return st.properties[j] && st.properties[j].owner === pi; })) buildable.push(i);
+    }
+    return buildable;
+  }
+
+  function cardEffectPalette(tone) {
+    if (tone === 'gain') return { bg: '#e8f6ee', border: '#43a36d', text: '#205f3d' };
+    if (tone === 'loss') return { bg: '#fbeaea', border: '#d76b6b', text: '#7a2727' };
+    return { bg: '#f6efe2', border: '#c8a45c', text: '#6b5537' };
+  }
+
+  function buildCardEffectBanner(st, pi) {
+    var effect = st.lastCardEffect;
+    if (!effect) return null;
+    var palette = cardEffectPalette(effect.tone);
+    var box = document.createElement('div');
+    var actorName = effect.player === pi ? '你' : nameOf(effect.player);
+    var prefix = effect.player === pi ? '你抽到机会卡' : actorName + ' 抽到机会卡';
+    box.style.cssText = 'width:100%;padding:10px 12px;border-radius:12px;border:1px solid ' + palette.border + ';background:' + palette.bg + ';color:' + palette.text + ';box-shadow:0 6px 18px rgba(90,74,50,.08);';
+
+    var title = document.createElement('div');
+    title.style.cssText = 'font-size:13px;font-weight:800;margin-bottom:4px;';
+    title.textContent = prefix;
+    box.appendChild(title);
+
+    var summary = document.createElement('div');
+    summary.style.cssText = 'font-size:12px;line-height:1.45;';
+    summary.textContent = effect.summary || (st.lastCard && st.lastCard.text) || '';
+    box.appendChild(summary);
+
+    return box;
+  }
+
   function snapOf(st) {
     return { lastMove: moveSignature(st.lastMove), lastCard: st.lastCard, lastRent: st.lastRent, dice: st.dice ? [st.dice[0], st.dice[1]] : [0, 0] };
   }
@@ -444,11 +488,14 @@
     var isMyTurn = st.currentPlayer === pi && (winnerIdx === null || winnerIdx === undefined);
     var animating = anim.running;
     var cash = (st.cash && st.cash[pi] !== undefined) ? st.cash[pi] : 0;
+    var effectBanner = buildCardEffectBanner(st, pi);
 
     var cashEl = document.createElement('div');
     cashEl.style.cssText = 'font-size:15px;font-weight:800;color:#5a4a32;';
     cashEl.textContent = '💰 ' + cash + ' 元';
     panel.appendChild(cashEl);
+
+    if (effectBanner) panel.appendChild(effectBanner);
 
     if (!isMyTurn) {
       var w = document.createElement('div');
@@ -472,17 +519,16 @@
       var sp = board[st.positions[pi]] || {};
       addBtn(panel, '🏠 购买 ' + (sp.name || '') + ' ($' + (sp.price || 0) + ')', 'btn-primary', function () { wsSend({ type: 'buy' }); });
       addBtn(panel, '跳过', '', function () { wsSend({ type: 'skip_buy' }); });
+    } else if (st.phase === 'landed' && st.pendingAction === 'can_build') {
+      var ownSpace = board[st.positions[pi]] || {};
+      var ownProp = st.properties[st.positions[pi]] || { houses: 0 };
+      addBtn(panel, '馃彈 升级 ' + (ownSpace.name || '') + ' (' + ownProp.houses + '→' + (ownProp.houses + 1) + ') $' + ((ownSpace.price || 0) / 2), 'btn-primary', function () {
+        wsSend({ type: 'build' });
+      });
+      addBtn(panel, '稍后再升', '', function () { wsSend({ type: 'skip_buy' }); });
     } else if (st.phase === 'end_turn') {
       // 可建房的垄断地产
-      var buildable = [];
-      for (var i = 0; i < board.length; i++) {
-        var s = board[i]; if (!s || s.type !== 'property') continue;
-        var prop = st.properties[i];
-        if (!prop || prop.owner !== pi || (prop.houses || 0) >= 5) continue;
-        var grp = s.group;
-        var gs = []; board.forEach(function (b, j) { if (b && b.group === grp) gs.push(j); });
-        if (gs.every(function (j) { return st.properties[j] && st.properties[j].owner === pi; })) buildable.push(i);
-      }
+      var buildable = getBuildableSpaces(st, pi);
       buildable.forEach(function (i) {
         var s = board[i];
         addBtn(panel, '🏗 ' + s.name + ' (' + (st.properties[i].houses || 0) + '→' + ((st.properties[i].houses || 0) + 1) + ') $' + (s.price / 2), '', function () { wsSend({ type: 'build', spaceIndex: i }); }, '11px');

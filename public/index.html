@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>联机桌游</title>
+<title>鑱旀満妗屾父</title>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="lobby-page">
@@ -11,17 +11,17 @@
     <section class="lobby-hero">
       <div class="hero-copy">
         <p class="eyebrow">LAN TABLETOP</p>
-        <h1 class="hero-title">联机桌游</h1>
-        <p class="hero-subtitle">同一 Wi-Fi 下，选一个游戏，几秒开房，直接开玩。</p>
+        <h1 class="hero-title">鑱旀満妗屾父</h1>
+        <p class="hero-subtitle">鍚屼竴 Wi-Fi 涓嬶紝閫変竴涓父鎴忥紝鍑犵寮€鎴匡紝鐩存帴寮€鐜┿€?/p>
       </div>
       <div class="hero-stats">
         <div class="hero-stat">
           <strong>22</strong>
-          <span>款游戏</span>
+          <span>娆炬父鎴?/span>
         </div>
         <div class="hero-stat">
           <strong>2-10</strong>
-          <span>支持人数</span>
+          <span>鏀寔浜烘暟</span>
         </div>
         <div class="hero-stat">
           <strong>本地</strong>
@@ -31,32 +31,32 @@
       <div class="hero-panels">
         <section class="hero-panel" id="resumeSection" style="display:none">
           <div class="room-banner">
-            <div class="room-banner-icon">🟢</div>
+            <div class="room-banner-icon">馃煝</div>
             <div class="room-banner-body">
-              <div class="room-banner-title" id="resumeRoomName">房间</div>
-              <div class="room-banner-meta" id="resumeRoomSub">你已在这间房中，点击返回</div>
+              <div class="room-banner-title" id="resumeRoomName">鎴块棿</div>
+              <div class="room-banner-meta" id="resumeRoomSub">浣犲凡鍦ㄨ繖闂存埧涓紝鐐瑰嚮杩斿洖</div>
             </div>
-            <button class="btn btn-primary btn-sm room-banner-btn" id="resumeBtn">返回房间</button>
+            <button class="btn btn-primary btn-sm room-banner-btn" id="resumeBtn">杩斿洖鎴块棿</button>
           </div>
         </section>
         <section class="hero-panel">
-          <div class="panel-heading">加入房间</div>
+          <div class="panel-heading">鍔犲叆鎴块棿</div>
           <div class="join-row">
-            <input class="input" id="roomCodeInput" type="text" maxlength="4" placeholder="输入房间号" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
-            <button class="btn btn-outline" id="joinBtn">加入</button>
+            <input class="input" id="roomCodeInput" type="text" maxlength="4" placeholder="杈撳叆鎴块棿鍙? autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+            <button class="btn btn-outline" id="joinBtn">鍔犲叆</button>
           </div>
         </section>
       </div>
     </section>
 
-    <p class="wifi-note">确保所有设备连接到同一个 Wi-Fi 或手机热点。</p>
+    <p class="wifi-note">纭繚鎵€鏈夎澶囪繛鎺ュ埌鍚屼竴涓?Wi-Fi 鎴栨墜鏈虹儹鐐广€?/p>
     <section class="lobby-discovery">
       <div class="discovery-header">
         <div>
-          <p class="eyebrow">精选推荐</p>
-          <h2>先从这些局开始</h2>
+          <p class="eyebrow">绮鹃€夋帹鑽?/p>
+          <h2>鍏堜粠杩欎簺灞€寮€濮?/h2>
         </div>
-        <p class="discovery-hint">先选中，再点底部创建。再次点中同一张卡也会直接开房。</p>
+        <p class="discovery-hint">鍏堥€変腑锛屽啀鐐瑰簳閮ㄥ垱寤恒€傚啀娆＄偣涓悓涓€寮犲崱涔熶細鐩存帴寮€鎴裤€?/p>
       </div>
       <div class="featured-strip" id="featuredStrip"></div>
     </section>
@@ -64,22 +64,22 @@
     <section class="lobby-browser">
       <div class="browser-toolbar">
         <div>
-          <p class="eyebrow">浏览全部</p>
-          <h2>按风格找局</h2>
+          <p class="eyebrow">娴忚鍏ㄩ儴</p>
+          <h2>鎸夐鏍兼壘灞€</h2>
         </div>
         <div class="browser-tools">
-          <input class="browser-search" id="gameSearch" type="search" placeholder="搜索游戏名、标签、类型">
+          <input class="browser-search" id="gameSearch" type="search" placeholder="鎼滅储娓告垙鍚嶃€佹爣绛俱€佺被鍨?>
           <div class="category-chips" id="categoryChips"></div>
         </div>
       </div>
       <div class="browse-grid" id="gameGrid"></div>
-      <p class="browse-empty" id="emptyState" style="display:none">没有找到匹配的游戏，换个关键词试试。</p>
+      <p class="browse-empty" id="emptyState" style="display:none">娌℃湁鎵惧埌鍖归厤鐨勬父鎴忥紝鎹釜鍏抽敭璇嶈瘯璇曘€?/p>
     </section>
 
   </main>
 
   <div class="toast" id="toast"></div>
-  <button id="quickCreate" class="quick-create-btn">创建房间</button>
+  <button id="quickCreate" class="quick-create-btn">鍒涘缓鎴块棿</button>
 
 <script src="/js/game-catalog.js"></script>
 <script>

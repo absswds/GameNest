@@ -4,7 +4,7 @@
   const roomId = sessionStorage.getItem('roomId');
   const playerIndex = parseInt(sessionStorage.getItem('playerIndex'));
   const resumeToken = sessionStorage.getItem('resumeToken');
-  const NO_AI_GAMES = new Set(['drawguess', 'minesweeper', 'suikabattle']);
+  const NO_AI_GAMES = new Set(['truthdare', 'drawguess', 'minesweeper', 'suikabattle']);
 
   let ws, state, players, currentRenderer;
   let roomPhase = 'lobby';   // 'lobby' | 'ready' | 'playing'
@@ -38,6 +38,7 @@
     monopoly: { name: '大富翁', icon: '🏦' },
     suikabattle: { name: '合成大西瓜', icon: '🍉' },
     sheeptile: { name: '羊了个羊', icon: '🐑' },
+    truthdare: { name: '真心话大冒险', icon: '🎭' },
     drawguess: { name: '你画我猜', icon: '🎨' },
   };
 
@@ -56,6 +57,12 @@
     bar._timer = setTimeout(function() {
       bar.style.transform = 'translateY(-100%)';
     }, 2500);
+  }
+
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, function(ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+    });
   }
 
   function clearExpiredRoomAndReturn() {
@@ -367,7 +374,7 @@
     }
 
     // Determine max slots
-    const defaultSlots = gameInfo.maxPlayers || (game === 'doudizhu' ? 3 : game === 'tictactoe' || game === 'gomoku' || game === 'chinesechess' || game === 'go9' ? 2 : game === 'twentyfour' ? 6 : 4);
+    const defaultSlots = gameInfo.maxPlayers || (game === 'doudizhu' ? 3 : game === 'tictactoe' || game === 'gomoku' || game === 'chinesechess' || game === 'go9' ? 2 : game === 'truthdare' ? 10 : game === 'twentyfour' ? 6 : 4);
     const maxSlots = players && players.length > 0
       ? Math.max(players.length, defaultSlots)
       : defaultSlots;
@@ -489,6 +496,44 @@
           optionsEl.innerHTML =
             '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">游戏设置</div>' +
             '<div style="font-size:13px;color:var(--text-muted)">棋盘: ' + (sameBoard ? '同一张（公平竞速）' : '各自随机') + '</div>';
+        }
+      } else if (game === 'truthdare') {
+        optionsEl.style.display = 'block';
+        var tdDecks = [
+          ['icebreaker', '轻松破冰'],
+          ['party', '朋友聚会'],
+          ['deep', '深度真心话'],
+          ['challenge', '大冒险挑战'],
+          ['custom', '自定义'],
+        ];
+        var tdEnabled = Array.isArray(roomOptions.enabledDecks) && roomOptions.enabledDecks.length > 0
+          ? roomOptions.enabledDecks : ['icebreaker', 'party', 'deep', 'challenge'];
+        var tdTruths = escapeHtml(roomOptions.customTruths || '');
+        var tdDares = escapeHtml(roomOptions.customDares || '');
+        if (isHost) {
+          var tdDeckHtml = '';
+          tdDecks.forEach(function(d) {
+            var checked = tdEnabled.indexOf(d[0]) >= 0;
+            tdDeckHtml += '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;margin:2px 10px 2px 0;">' +
+              '<input type="checkbox" class="td-deck" value="' + d[0] + '"' + (checked ? ' checked' : '') + ' onchange="window._tdCollectDecks()">' + d[1] + '</label>';
+          });
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">游戏设置</div>' +
+            '<div style="font-size:13px;margin-bottom:8px;">启用牌库：<br>' + tdDeckHtml + '</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">' +
+              '<label>自定义真心话（一行一条）<textarea id="optTdTruths" rows="3" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="例如：最近最开心的一件事？">' + tdTruths + '</textarea></label>' +
+              '<label>自定义大冒险（一行一条）<textarea id="optTdDares" rows="3" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="例如：夸右手边的人 15 秒">' + tdDares + '</textarea></label>' +
+            '</div>' +
+            '<button class="btn" style="margin-top:6px;padding:5px 14px;font-size:13px;" onclick="window._tdSaveCustom()">保存自定义牌库</button>' +
+            '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">场外剪刀石头布，输的人进房间抽卡。</div>';
+        } else {
+          var tdNames = tdDecks.filter(function(d) { return tdEnabled.indexOf(d[0]) >= 0; }).map(function(d) { return d[1]; }).join('、');
+          var truthCount = (roomOptions.customTruths || '').split(/\r?\n|[;；]/).filter(function(x) { return x.trim(); }).length;
+          var dareCount = (roomOptions.customDares || '').split(/\r?\n|[;；]/).filter(function(x) { return x.trim(); }).length;
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">游戏设置</div>' +
+            '<div style="font-size:13px;color:var(--text-muted)">牌库: ' + (tdNames || '默认牌库') +
+            (truthCount + dareCount > 0 ? ' · 自定义 ' + (truthCount + dareCount) + ' 张' : '') + '</div>';
         }
       } else if (game === 'drawguess') {
         optionsEl.style.display = 'block';
@@ -740,6 +785,21 @@
   window._setGameOption = function(key, value) {
     roomOptions[key] = value;
     ws.send(JSON.stringify({ type: 'set_option', data: { key, value } }));
+  };
+
+  window._tdCollectDecks = function() {
+    var arr = [];
+    document.querySelectorAll('.td-deck:checked').forEach(function(cb) { arr.push(cb.value); });
+    if (arr.length === 0) arr = ['icebreaker'];
+    window._setGameOption('enabledDecks', arr);
+  };
+
+  window._tdSaveCustom = function() {
+    var truths = document.getElementById('optTdTruths');
+    var dares = document.getElementById('optTdDares');
+    window._setGameOption('customTruths', truths ? truths.value : '');
+    window._setGameOption('customDares', dares ? dares.value : '');
+    if (document.querySelector('.td-deck[value="custom"]:checked')) window._tdCollectDecks();
   };
 
   // drawguess: 收集勾选的词库分类（数组直接作为 option value 保存）
