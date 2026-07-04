@@ -256,7 +256,7 @@ function createRoom() {
       sessionStorage.setItem('game', msg.game);
       if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
       ws.close();
-      location.href = '/game.html';
+      location.replace('/game.html');
     } else if (msg.type === 'error') {
       toast('\u9519\u8bef: ' + msg.message);
     }
@@ -288,7 +288,7 @@ document.getElementById('joinBtn').addEventListener('click', function() {
       sessionStorage.setItem('game', msg.game);
       if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
       ws.close();
-      location.href = '/game.html';
+      location.replace('/game.html');
     } else if (msg.type === 'error') {
       toast('\u9519\u8bef: ' + msg.message);
       if (msg.code === 'ROOM_NOT_FOUND') {
@@ -334,7 +334,11 @@ if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
   const roomCode = params.get('room');
   if (!roomCode) return;
   document.getElementById('roomCodeInput').value = roomCode.trim().toUpperCase();
-  document.getElementById('joinBtn').click();
+  // Instant feedback \u2014 button shows "..." while WebSocket connects
+  var joinBtn = document.getElementById('joinBtn');
+  joinBtn.textContent = '...';
+  joinBtn.disabled = true;
+  joinBtn.click();
 })();
 
 renderCatalog();

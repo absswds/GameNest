@@ -135,7 +135,7 @@ function broadcastRoom(room, data) {
 
 function roomPlayersList(room) {
   const list = [];
-  for (const [, info] of room.players) {
+  for (const [client, info] of room.players) {
     const isHost = room.players.get(room.hostWS) === info;
     list.push({
       name: info.name,
@@ -144,6 +144,7 @@ function roomPlayersList(room) {
       avatar: info.avatar || '😊',
       ready: room.readyPlayers.has(info.index),
       isHost,
+      connected: client.readyState === 1,
     });
   }
   if (room.bots) {

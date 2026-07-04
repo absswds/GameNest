@@ -175,6 +175,8 @@
     renderFacts('waitingFacts', [gameInfo.players, gameInfo.duration, gameInfo.supportsAI ? '支持 AI' : '纯 PvP']);
     renderFacts('stageMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
     renderCover();
+    // Show connecting status until first server response arrives
+    document.getElementById('waitingStatus').textContent = '正在连接房间...';
   }
 
   // ---- WebSocket ----
@@ -400,10 +402,13 @@
         const isMe = player.index === playerIndex && !player.isBot;
         const meClass = isMe ? ' me' : '';
         const botClass = player.isBot ? ' ai' : '';
+        const disconnected = !player.isBot && player.connected === false;
         let tagsHtml = '';
         if (player.isHost) tagsHtml += '<span class="waiting-slot-badge host">👑 房主</span>';
         if (player.isBot) {
           tagsHtml += '<span class="waiting-slot-badge ai">🤖 AI</span>';
+        } else if (disconnected) {
+          tagsHtml += '<span class="waiting-slot-badge" style="background:#fff3e0;color:#e67e22">📱 在大厅</span>';
         } else if (player.ready) {
           tagsHtml += '<span class="waiting-slot-badge ready">✓ 已准备</span>';
         } else {
@@ -759,6 +764,9 @@
   // ---- Init ----
   if (!roomId || !game) clearExpiredRoomAndReturn();
   else connect();
+
+  // Pre-populate shell from sessionStorage immediately (before WS connects)
+  updateSharedShell();
 
   // Show lobby initially (will update when room_joined arrives)
   showLobby();
