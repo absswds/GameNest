@@ -50,12 +50,6 @@
     </section>
 
     <p class="wifi-note">确保所有设备连接到同一个 Wi-Fi 或手机热点。</p>
-    <div class="network-callout" id="networkCallout" hidden>
-      <strong id="networkCalloutTitle"></strong>
-      <p id="networkCalloutHint"></p>
-      <div class="network-links" id="networkLinks"></div>
-    </div>
-
     <section class="lobby-discovery">
       <div class="discovery-header">
         <div>
@@ -161,35 +155,6 @@ function buildBrowseCard(game) {
 function updateQuickCreate() {
   const game = getGameInfo(selectedGame);
   document.getElementById('quickCreate').textContent = '\u521b\u5efa\u300a' + game.name + '\u300b\u623f\u95f4';
-}
-
-function renderNetworkInfo(info) {
-  const callout = document.getElementById('networkCallout');
-  const title = document.getElementById('networkCalloutTitle');
-  const hint = document.getElementById('networkCalloutHint');
-  const root = document.getElementById('networkLinks');
-  if (!callout || !title || !hint || !root) return;
-
-  const lanURLs = ((info && info.lanURLs) || []).map(function(item) {
-    return item && item.url ? item.url : '';
-  }).filter(Boolean);
-
-  callout.hidden = false;
-
-  if (!lanURLs.length) {
-    title.textContent = '\u5f53\u524d\u7aef\u53e3\uff1a' + ((info && info.port) || location.port || '3000');
-    hint.textContent = '\u624b\u673a\u9700\u8981\u548c\u7535\u8111\u5728\u540c\u4e00 Wi-Fi\uff0c\u5e76\u8bbf\u95ee\u7535\u8111\u7684\u5c40\u57df\u7f51 IP\uff0c\u4e0d\u8981\u7528 127.0.0.1\u3002';
-    root.innerHTML = info && info.localURL
-      ? '<span class="network-link muted">' + escapeHtml(info.localURL) + '</span>'
-      : '';
-    return;
-  }
-
-  title.textContent = '\u624b\u673a\u8bf7\u8bbf\u95ee\u4e0b\u9762\u4efb\u4e00\u5730\u5740';
-  hint.textContent = '\u5982\u679c\u7535\u8111\u6d4f\u89c8\u5668\u91cc\u662f 127.0.0.1 \u6216 localhost\uff0c\u90a3\u53ea\u80fd\u7535\u8111\u81ea\u5df1\u7528\uff0c\u624b\u673a\u9700\u8981\u6539\u7528\u4e0b\u9762\u7684 Wi-Fi \u5c40\u57df\u7f51\u5730\u5740\u3002';
-  root.innerHTML = lanURLs.map(function(url) {
-    return '<span class="network-link">' + escapeHtml(url) + '</span>';
-  }).join('');
 }
 
 function matches(game) {
@@ -354,15 +319,6 @@ if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
 
 renderCatalog();
 updateQuickCreate();
-fetch('/network-info')
-  .then(function(response) {
-    if (!response.ok) throw new Error('network');
-    return response.json();
-  })
-  .then(renderNetworkInfo)
-  .catch(function() {
-    renderNetworkInfo(null);
-  });
 </script>
 </body>
 </html>
