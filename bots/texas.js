@@ -1,34 +1,30 @@
-// bots/texas.js
 exports.name = 'texas';
 
 function rankVal(rank) {
-  return ['2','3','4','5','6','7','8','9','10','J','Q','K','A'].indexOf(rank);
+  return ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'].indexOf(rank);
 }
 
-// Simple hand strength estimation
 function handStrength(holeCards, communityCards) {
   const cards = [...holeCards, ...communityCards];
-  const rvals = cards.map(c => rankVal(c.rank)).sort((a,b) => b-a);
+  const rvals = cards.map((card) => rankVal(card.rank)).sort((a, b) => b - a);
 
-  // Count pairs
   const countMap = new Map();
-  for (const r of rvals) countMap.set(r, (countMap.get(r) || 0) + 1);
-  let pairs = 0, threes = 0, fours = 0;
-  for (const [r, c] of countMap) {
-    if (c === 4) fours++;
-    if (c === 3) threes++;
-    if (c === 2) pairs++;
+  for (const rank of rvals) countMap.set(rank, (countMap.get(rank) || 0) + 1);
+
+  let pairs = 0;
+  let threes = 0;
+  let fours = 0;
+  for (const count of countMap.values()) {
+    if (count === 4) fours++;
+    if (count === 3) threes++;
+    if (count === 2) pairs++;
   }
 
-  // Score: higher is better
   let score = fours * 1000 + threes * 300 + pairs * 100;
-  // High cards
   for (let i = 0; i < Math.min(3, rvals.length); i++) {
     score += rvals[i] * (5 - i);
   }
-  // Suited bonus
   if (holeCards.length >= 2 && holeCards[0].suit === holeCards[1].suit) score += 20;
-  // Connected bonus
   if (holeCards.length >= 2 && Math.abs(rankVal(holeCards[0].rank) - rankVal(holeCards[1].rank)) <= 2) score += 15;
 
   return score;
@@ -40,49 +36,55 @@ exports.createBot = function(playerIndex) {
     playerIndex: playerIndex,
     getMove: function(state) {
       const chips = state.chips[playerIndex];
-      const toCall = state.currentBet - (state.bets[playerIndex] || 0);
-      const pot = state.pot;
+      const currentBet = state.currentBet || 0;
+      const invested = (state.bets[playerIndex] || 0);
+      const toCall = currentBet - invested;
+      const pot = state.pot || 0;
+      const strength = handStrength(state.hands[playerIndex] || [], state.communityCards || []);
+      const potOdds = toCall > 0 ? toCall / (pot + toCall) : 0;
 
       if (toCall <= 0) {
-        // Can check — always check unless we have a strong hand
-        const strength = handStrength(state.hands[playerIndex] || [], state.communityCards || []);
-        if (strength > 200 && chips > 100) {
-          const raise = Math.min(chips, Math.floor(pot * 0.5));
-          return { action: 'raise', amount: state.currentBet + Math.max(10, raise) };
+        if (strength >= 220 && chips > 120) {
+          const raiseTo = currentBet + Math.max(20, Math.floor(Math.max(pot, 40) * 0.6));
+          return { action: 'raise', amount: Math.min(chips, raiseTo) };
+        }
+        if (strength >= 170 && chips > 90) {
+          const raiseTo = currentBet + Math.max(12, Math.floor(Math.max(pot, 30) * 0.35));
+          return { action: 'raise', amount: Math.min(chips, raiseTo) };
         }
         return { action: 'check' };
       }
 
-      // Need to call
-      const strength = handStrength(state.hands[playerIndex] || [], state.communityCards || []);
-      const potOdds = toCall / (pot + toCall);
-
-      // Fold weak hands with bad pot odds
-      if (strength < 50 && potOdds > 0.3) {
-        // Small chance to bluff
-        if (Math.random() < 0.1) {
-          const raise = Math.min(chips, Math.floor(pot * 0.75));
-          if (raise > toCall) return { action: 'raise', amount: state.currentBet + Math.max(10, raise) };
-        }
-        return { action: 'fold' };
-      }
-
-      if (strength < 100 && potOdds > 0.5) {
-        return { action: 'fold' };
-      }
-
-      if (toCall > chips * 0.5 && strength < 150) {
-        return { action: 'fold' };
-      }
-
-      // Call or raise
-      if (strength > 250 && chips > toCall * 2 && Math.random() < 0.3) {
-        const raise = Math.min(chips, Math.floor(pot * 0.75));
-        return { action: 'raise', amount: state.currentBet + Math.max(20, raise) };
-      }
-
       if (toCall >= chips) {
-        return { action: 'all_in' };
+        return strength >= 240 ? { action: 'all_in' } : { action: 'fold' };
+      }
+
+      // 10% bluff chance on weak hands — keeps the bot unpredictable
+      if (strength < 50 && Math.random() < 0.1 && chips > toCall + 40) {
+        const raiseTo = currentBet + Math.max(20, Math.floor(Math.max(pot, 35) * 0.55));
+        return { action: 'raise', amount: Math.min(chips, raiseTo) };
+      }
+
+      if (toCall > chips * 0.45 && strength < 180) {
+        return { action: 'fold' };
+      }
+
+      if (strength < 70 && potOdds > 0.28) {
+        return { action: 'fold' };
+      }
+
+      if (strength < 120 && potOdds > 0.42) {
+        return { action: 'fold' };
+      }
+
+      if (strength >= 260 && chips > toCall + 40) {
+        const raiseTo = currentBet + Math.max(24, Math.floor(Math.max(pot, 50) * 0.7));
+        return { action: 'raise', amount: Math.min(chips, raiseTo) };
+      }
+
+      if (strength >= 200 && toCall <= Math.max(30, Math.floor(chips * 0.2))) {
+        const raiseTo = currentBet + Math.max(18, Math.floor(Math.max(pot, 40) * 0.45));
+        return { action: 'raise', amount: Math.min(chips, raiseTo) };
       }
 
       return { action: 'call' };

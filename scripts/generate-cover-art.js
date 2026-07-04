@@ -316,6 +316,15 @@ function coverSvg(cover) {
 </svg>`;
 }
 
+const variantMap = {
+  texas: 'texas-table',
+  flightchess: 'flightchess-race',
+  monopoly: 'monopoly-golden-city',
+  suikabattle: 'suika-fruit-arena',
+  sheeptile: 'sheeptile-pasture',
+  drawguess: 'drawguess-party',
+};
+
 function writeSvgAndRenderPng(cover, browserPath) {
   const svgPath = path.join(tempDir, `${cover.id}.svg`);
   const pngPath = path.join(outDir, `${cover.id}.png`);
@@ -350,6 +359,15 @@ function main() {
 
   for (const cover of covers) {
     writeSvgAndRenderPng(cover, browserPath);
+    // Also write any custom variant filenames referenced by game-catalog.js
+    const variant = variantMap[cover.id];
+    if (variant) {
+      const srcPath = path.join(outDir, `${cover.id}.png`);
+      const dstPath = path.join(outDir, `${variant}.png`);
+      if (fs.existsSync(srcPath)) {
+        fs.copyFileSync(srcPath, dstPath);
+      }
+    }
   }
 
   console.log(`Generated ${covers.length} bitmap cover assets in ${outDir}`);

@@ -239,7 +239,7 @@
   }
   function tick() {
     drawBoard();
-    if (anim.flies.length > 0 || anim.merges.length > 0) {
+    if (anim.flies.length > 0 || anim.merges.length > 0 || anim.banners.length > 0) {
       anim.rafId = requestAnimationFrame(tick);
     } else {
       anim.running = false;

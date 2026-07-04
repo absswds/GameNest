@@ -14,6 +14,7 @@
   var COLOR_ORDER = ['red','blue','green','yellow'];
   var lastDiscardKey = null;
   var lastHandSignature = null;
+  var lastHandLen = 0;
 
   var STYLES = '' +
     '.uno-table{width:100%;display:flex;flex-direction:column;gap:5px;}' +
@@ -182,7 +183,8 @@
       var discardKey = topCard ? topCard.id + ':' + currentColor : null;
       var discardChanged = !!discardKey && lastDiscardKey !== null && discardKey !== lastDiscardKey;
       var handSignature = (hands[playerIndex] || []).map(function(card) { return card.id; }).join('|');
-      var drewCard = lastHandSignature !== null && handSignature !== lastHandSignature && (hands[playerIndex] || []).length > 0;
+      var currentLen = (hands[playerIndex] || []).length;
+      var drewCard = lastHandSignature !== null && handSignature !== lastHandSignature && currentLen > lastHandLen;
 
       renderOpponents(hands, currentPlayer, playerIndex, unoCalled);
       renderColorBadge(currentColor);
@@ -192,6 +194,7 @@
       renderButtons(hands[playerIndex] || [], drawStack, isMyTurn, unoCalled[playerIndex]);
       lastDiscardKey = discardKey;
       lastHandSignature = handSignature;
+      lastHandLen = currentLen;
 
       // Scroll hint for small screens with many cards
       var hand = hands[playerIndex] || [];

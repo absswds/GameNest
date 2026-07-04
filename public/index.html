@@ -291,6 +291,12 @@ document.getElementById('joinBtn').addEventListener('click', function() {
       location.href = '/game.html';
     } else if (msg.type === 'error') {
       toast('\u9519\u8bef: ' + msg.message);
+      if (msg.code === 'ROOM_NOT_FOUND') {
+        sessionStorage.removeItem('roomId');
+        sessionStorage.removeItem('playerIndex');
+        sessionStorage.removeItem('game');
+        sessionStorage.removeItem('resumeToken');
+      }
     }
   };
   ws.onerror = function() {

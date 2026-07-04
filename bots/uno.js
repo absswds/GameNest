@@ -115,7 +115,7 @@ function scoreCard(card, hand, top, nextHandSize) {
   }
 
   if (card.color === 'wild') score -= 36;
-  if (card.value === '+4' && hand.some((candidate) => candidate.id !== card.id && candidate.color !== 'wild' && canPlay(candidate, { discard: [top], currentColor: top && top.color }))) {
+  if (card.value === '+4' && hand.some((candidate) => candidate.id !== card.id && candidate.color !== 'wild' && canPlay(candidate, { discard: [top], currentColor: state.currentColor }))) {
     score -= 28;
   }
 
