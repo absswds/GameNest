@@ -918,6 +918,27 @@ wss.on('connection', (ws) => {
       return;
     }
 
+    // --- leave_room (explicitly leave, no grace period) ---
+    if (type === 'leave_room') {
+      if (!currentRoom) return;
+      if (info._disconnectTimer) clearTimeout(info._disconnectTimer);
+      currentRoom.players.delete(ws);
+      currentRoom.readyPlayers.delete(info.index);
+      if (currentRoom.hostWS === ws) {
+        currentRoom.hostWS = Array.from(currentRoom.players.keys()).find(client => client.readyState === 1) || null;
+      }
+      if (currentRoom.players.size === 0) {
+        stopRealtimeGame(currentRoom);
+        rooms.delete(currentRoomId);
+        broadcastRoom(currentRoom, { type: 'player_left', players: [], phase: currentRoom.phase });
+      } else {
+        broadcastRoom(currentRoom, { type: 'player_left', players: roomPlayersList(currentRoom), phase: currentRoom.phase });
+        scheduleBotMove(currentRoom);
+      }
+      ws.send(JSON.stringify({ type: 'left_room' }));
+      return;
+    }
+
     // --- return_to_room ---
     if (type === 'return_to_room') {
       if (!currentRoom) return;

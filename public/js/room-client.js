@@ -731,8 +731,17 @@
   };
 
   window.doLeaveRoom = function() {
-    window.location.href = '/';
+    sessionStorage.removeItem('roomId');
+    sessionStorage.removeItem('playerIndex');
+    sessionStorage.removeItem('game');
+    sessionStorage.removeItem('resumeToken');
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'leave_room' }));
+    }
+    window.location.replace('/');
   };
+
+  window._leaveRoom = window.doLeaveRoom;
 
   window.openAvatarDrawer = function() {
     var d = document.getElementById('avatarDrawer');

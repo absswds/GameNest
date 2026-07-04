@@ -30,8 +30,14 @@
       </div>
       <div class="hero-panels">
         <section class="hero-panel" id="resumeSection" style="display:none">
-          <div class="panel-heading">继续对局</div>
-          <button class="btn btn-primary" id="resumeBtn">返回进行中的对局</button>
+          <div class="room-banner">
+            <div class="room-banner-icon">🟢</div>
+            <div class="room-banner-body">
+              <div class="room-banner-title" id="resumeRoomName">房间</div>
+              <div class="room-banner-meta" id="resumeRoomSub">你已在这间房中，点击返回</div>
+            </div>
+            <button class="btn btn-primary btn-sm room-banner-btn" id="resumeBtn">返回房间</button>
+          </div>
         </section>
         <section class="hero-panel">
           <div class="panel-heading">加入房间</div>
@@ -318,7 +324,9 @@ document.getElementById('gameSearch').addEventListener('input', function() {
 if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
   const savedGame = sessionStorage.getItem('game');
   const game = getGameInfo(savedGame);
-  document.getElementById('resumeBtn').textContent = '\u7ee7\u7eed\u300a' + game.name + '\u300b \u623f\u95f4 ' + sessionStorage.getItem('roomId');
+  var roomId = sessionStorage.getItem('roomId');
+  document.getElementById('resumeRoomName').textContent = '\u300a' + game.name + '\u300b \u623f\u95f4 ' + roomId;
+  document.getElementById('resumeRoomSub').textContent = '\u4f60\u6b63\u5728\u8fd9\u95f4\u623f\u4e2d\uff0c\u70b9\u51fb\u8fd4\u56de\u7ee7\u7eed\u3002';
   document.getElementById('resumeSection').style.display = '';
   document.getElementById('resumeBtn').onclick = function() {
     location.href = '/game.html';
@@ -329,6 +337,10 @@ if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
   const params = new URLSearchParams(location.search);
   if (params.get('roomExpired') === '1') {
     toast('\u623f\u95f4\u5df2\u5931\u6548\uff0c\u8bf7\u91cd\u65b0\u521b\u5efa\u6216\u8f93\u5165\u623f\u95f4\u53f7\u52a0\u5165\u3002');
+    sessionStorage.removeItem('roomId');
+    sessionStorage.removeItem('playerIndex');
+    sessionStorage.removeItem('game');
+    sessionStorage.removeItem('resumeToken');
     history.replaceState(null, '', location.pathname);
   }
   const roomCode = params.get('room');
