@@ -6,245 +6,219 @@
 <title>联机桌游</title>
 <link rel="stylesheet" href="/style.css">
 </head>
-<body>
-  <div class="lobby-container">
-    <h1 class="page-title">联 机 桌 游</h1>
-    <div class="title-divider"></div>
-    <div class="lobby-section" id="resumeSection" style="display:none">
-      <h3>继续对局</h3>
-      <button class="btn btn-primary" id="resumeBtn">返回进行中的对局</button>
-    </div>
-    <p class="subtitle">打开浏览器 · 加入房间 · 开始游戏</p>
-
-    <!-- Join -->
-    <div class="lobby-section" id="joinSection" style="animation-delay:.15s">
-      <h3>加入房间</h3>
-      <div class="join-row">
-        <input class="input" id="roomCodeInput" type="text" maxlength="4" placeholder="输入房间号" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
-        <button class="btn btn-outline" id="joinBtn">加入</button>
+<body class="lobby-page">
+  <main class="lobby-shell">
+    <section class="lobby-hero">
+      <div class="hero-copy">
+        <p class="eyebrow">LAN TABLETOP</p>
+        <h1 class="hero-title">联机桌游</h1>
+        <p class="hero-subtitle">同一 Wi-Fi 下，选一个游戏，几秒开房，直接开玩。</p>
       </div>
-    </div>
-
-    <!-- Create -->
-    <div class="lobby-section">
-      <h3>选择游戏</h3>
-      <div id="gameOptions">
-        <div class="game-option selected" data-game="tictactoe">
-          <div class="game-option-icon">⚡</div>
-          <div class="game-option-info">
-            <div class="name">井字棋</div>
-            <div class="desc">三子连珠 · 简单有趣</div>
-            <div class="meta">2人 · 约5分钟</div>
-          </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <strong>22</strong>
+          <span>款游戏</span>
         </div>
-        <div class="game-option" data-game="gomoku">
-          <div class="game-option-icon">◉</div>
-          <div class="game-option-info">
-            <div class="name">五子棋</div>
-            <div class="desc">15×15 棋盘 · 五子连珠</div>
-            <div class="meta">2人 · 约15分钟</div>
-          </div>
+        <div class="hero-stat">
+          <strong>2-10</strong>
+          <span>支持人数</span>
         </div>
-        <div class="game-option" data-game="davinci">
-          <div class="game-option-icon">🔢</div>
-          <div class="game-option-info">
-            <div class="name">达芬奇密码</div>
-            <div class="desc">逻辑推理 · 猜对手隐藏数字</div>
-            <div class="meta">2-6人 · 约15分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="uno">
-          <div class="game-option-icon">🃏</div>
-          <div class="game-option-info">
-            <div class="name">UNO</div>
-            <div class="desc">经典卡牌 · 颜色数字匹配</div>
-            <div class="meta">2-6人 · 约20分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="doudizhu">
-          <div class="game-option-icon">🂡</div>
-          <div class="game-option-info">
-            <div class="name">斗地主</div>
-            <div class="desc">经典扑克 · 叫地主出牌</div>
-            <div class="meta">3人 · 约20分钟（可加AI）</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="exploding-kittens">
-          <div class="game-option-icon">💣</div>
-          <div class="game-option-info">
-            <div class="name">爆炸猫</div>
-            <div class="desc">俄罗斯轮盘卡牌 · 别抽到炸弹！</div>
-            <div class="meta">2-6人 · 约15分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="rummikub">
-          <div class="game-option-icon">🧩</div>
-          <div class="game-option-info">
-            <div class="name">魔力桥</div>
-            <div class="desc">以色列麻将 · 数字排列组合</div>
-            <div class="meta">2-4人 · 约25分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="twentyfour">
-          <div class="game-option-icon">🔢</div>
-          <div class="game-option-info">
-            <div class="name">24点</div>
-            <div class="desc">4个数字 · 加减乘除算24</div>
-            <div class="meta">2-6人 · 约5分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="minesweeper">
-          <div class="game-option-icon">💣</div>
-          <div class="game-option-info">
-            <div class="name">扫雷竞速</div>
-            <div class="desc">同翻一张图 · 翻到雷就出局</div>
-            <div class="meta">2-6人 · 约5分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="numberbomb">
-          <div class="game-option-icon">💣</div>
-          <div class="game-option-info">
-            <div class="name">数字炸弹</div>
-            <div class="desc">猜数字 · 范围缩小 · 别中弹</div>
-            <div class="meta">2-10人 · 约10分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="oldmaid">
-          <div class="game-option-icon">👻</div>
-          <div class="game-option-info">
-            <div class="name">抽鬼牌</div>
-            <div class="desc">抽下家牌 · 凑对丢掉 · 别拿鬼牌</div>
-            <div class="meta">2-6人 · 约15分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="liarsbar">
-          <div class="game-option-icon">🤥</div>
-          <div class="game-option-info">
-            <div class="name">骗子酒馆</div>
-            <div class="desc">JQK+万能+鬼牌 · 俄罗斯转盘</div>
-            <div class="meta">2-6人 · 约15分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="bigtwo">
-          <div class="game-option-icon">🂡</div>
-          <div class="game-option-info">
-            <div class="name">大老二</div>
-            <div class="desc">锄大地 · 花色比大小 · 出完为胜</div>
-            <div class="meta">2-4人 · 约20分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="texas">
-          <div class="game-option-icon">🎰</div>
-          <div class="game-option-info">
-            <div class="name">德州扑克</div>
-            <div class="desc">下注·加注·全下 · 摊牌比大小</div>
-            <div class="meta">2-8人 · 约20分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="flightchess">
-          <div class="game-option-icon">✈️</div>
-          <div class="game-option-info">
-            <div class="name">飞行棋</div>
-            <div class="desc">掷骰起飞 · 踩人回基地 · 竞速到家</div>
-            <div class="meta">2-4人 · 约20分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="snakebattle">
-          <div class="game-option-icon">🐍</div>
-          <div class="game-option-info">
-            <div class="name">贪吃蛇大乱斗</div>
-            <div class="desc">同图生存 · 撞到淘汰 · 最后一条蛇获胜</div>
-            <div class="meta">2-6 人 · 约 5 分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="chinesechess">
-          <div class="game-option-icon">♟️</div>
-          <div class="game-option-info">
-            <div class="name">中国象棋</div>
-            <div class="desc">九宫格 · 将死对方 · 经典博弈</div>
-            <div class="meta">2人 · 约30分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="go9">
-          <div class="game-option-icon">⚫</div>
-          <div class="game-option-info">
-            <div class="name">围棋9路</div>
-            <div class="desc">9×9棋盘 · 提子打劫 · 数子判胜</div>
-            <div class="meta">2人 · 约15分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="monopoly">
-          <div class="game-option-icon">🏦</div>
-          <div class="game-option-info">
-            <div class="name">大富翁</div>
-            <div class="desc">购地建房 · 收租 · 机会卡 · 最后一人胜</div>
-            <div class="meta">2-6人 · 约30分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="suikabattle">
-          <div class="game-option-icon">🍉</div>
-          <div class="game-option-info">
-            <div class="name">合成大西瓜</div>
-            <div class="desc">水果物理合成 · 大吃小 · 对战竞速</div>
-            <div class="meta">2-4人 · 约10分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="sheeptile">
-          <div class="game-option-icon">🐑</div>
-          <div class="game-option-info">
-            <div class="name">羊了个羊</div>
-            <div class="desc">堆叠三消 · 集齐3张消除 · 别让槽溢出</div>
-            <div class="meta">2-6人 · 约10分钟</div>
-          </div>
-        </div>
-        <div class="game-option" data-game="drawguess">
-          <div class="game-option-icon">🎨</div>
-          <div class="game-option-info">
-            <div class="name">你画我猜</div>
-            <div class="desc">画→猜→画→猜… 传话链越偏越好笑</div>
-            <div class="meta">2-8人 · 约15分钟</div>
-          </div>
+        <div class="hero-stat">
+          <strong>本地</strong>
+          <span>局域网直连</span>
         </div>
       </div>
-    </div>
+      <div class="hero-panels">
+        <section class="hero-panel" id="resumeSection" style="display:none">
+          <div class="room-banner">
+            <div class="room-banner-icon">🟢</div>
+            <div class="room-banner-body">
+              <div class="room-banner-title" id="resumeRoomName">房间</div>
+              <div class="room-banner-meta" id="resumeRoomSub">你已在这间房中，点击返回</div>
+            </div>
+            <button class="btn btn-primary btn-sm room-banner-btn" id="resumeBtn">返回房间</button>
+          </div>
+        </section>
+        <section class="hero-panel">
+          <div class="panel-heading">加入房间</div>
+          <div class="join-row">
+            <input class="input" id="roomCodeInput" type="text" maxlength="4" placeholder="输入房间号" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+            <button class="btn btn-outline" id="joinBtn">加入</button>
+          </div>
+        </section>
+      </div>
+    </section>
 
-    <p style="text-align:center;color:var(--text-muted);font-size:12px;animation:fadeInUp .5s ease .4s both">
-      📶 确保所有设备连到同一个 Wi-Fi 或热点
-    </p>
-  </div>
+    <p class="wifi-note">确保所有设备连接到同一个 Wi-Fi 或手机热点。</p>
+    <section class="lobby-discovery">
+      <div class="discovery-header">
+        <div>
+          <p class="eyebrow">精选推荐</p>
+          <h2>先从这些局开始</h2>
+        </div>
+        <p class="discovery-hint">先选中，再点底部创建。再次点中同一张卡也会直接开房。</p>
+      </div>
+      <div class="featured-strip" id="featuredStrip"></div>
+    </section>
+
+    <section class="lobby-browser">
+      <div class="browser-toolbar">
+        <div>
+          <p class="eyebrow">浏览全部</p>
+          <h2>按风格找局</h2>
+        </div>
+        <div class="browser-tools">
+          <input class="browser-search" id="gameSearch" type="search" placeholder="搜索游戏名、标签、类型">
+          <div class="category-chips" id="categoryChips"></div>
+        </div>
+      </div>
+      <div class="browse-grid" id="gameGrid"></div>
+      <p class="browse-empty" id="emptyState" style="display:none">没有找到匹配的游戏，换个关键词试试。</p>
+    </section>
+
+  </main>
 
   <div class="toast" id="toast"></div>
+  <button id="quickCreate" class="quick-create-btn">创建房间</button>
 
-  <button id="quickCreate" style="position:fixed;left:16px;right:16px;bottom:18px;z-index:40;border:0;border-radius:16px;padding:15px 18px;background:#1a1a1a;color:#fff;font-size:16px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.22);">创建《井字棋》房间</button>
-
+<script src="/js/game-catalog.js"></script>
 <script>
-let selectedGame = 'tictactoe';
+let selectedGame = 'monopoly';
+let activeCategory = '\u5168\u90e8';
+let searchText = '';
 
-document.querySelectorAll('.game-option').forEach(opt => {
-  opt.addEventListener('click', () => {
-    const wasSelected = opt.classList.contains('selected');
-    document.querySelectorAll('.game-option').forEach(o => o.classList.remove('selected'));
-    opt.classList.add('selected');
-    selectedGame = opt.dataset.game;
-    const gameName = opt.querySelector('.name').textContent.trim();
-    document.getElementById('quickCreate').textContent = '创建《' + gameName + '》房间';
-    if (wasSelected) createRoom();
+const catalog = window.gameCatalog.list();
+const featuredGames = window.gameCatalog.featured();
+
+function escapeHtml(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function getGameInfo(id) {
+  return window.gameCatalog.byId(id) || {
+    id: id,
+    name: id,
+    icon: '?',
+    subtitle: '',
+    description: '',
+    players: '',
+    duration: '',
+    category: '',
+    tags: [],
+    cover: ''
+  };
+}
+
+function getSocketURL() {
+  const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+  return protocol + location.host;
+}
+
+function buildCover(game, compact) {
+  if (game.cover) {
+    return '<img class="' + (compact ? 'featured-cover' : 'browse-cover') + '" src="' + game.cover + '" alt="' + escapeHtml(game.name) + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+      '<div class="' + (compact ? 'featured-fallback' : 'browse-fallback') + '" style="display:none">' + escapeHtml(game.icon) + '</div>';
+  }
+  return '<div class="' + (compact ? 'featured-fallback' : 'browse-fallback') + '">' + escapeHtml(game.icon) + '</div>';
+}
+
+function buildFeaturedCard(game) {
+  const selectedClass = game.id === selectedGame ? ' selected' : '';
+  return '<button class="featured-card' + selectedClass + '" data-game="' + game.id + '">' +
+    '<div class="featured-media">' + buildCover(game, true) + '</div>' +
+    '<div class="featured-content">' +
+      '<div class="featured-topline"><span>' + escapeHtml(game.category) + '</span><span>' + escapeHtml(game.players) + '</span></div>' +
+      '<h3>' + escapeHtml(game.name) + '</h3>' +
+      '<p>' + escapeHtml(game.subtitle) + '</p>' +
+    '</div>' +
+  '</button>';
+}
+
+function buildBrowseCard(game) {
+  const selectedClass = game.id === selectedGame ? ' selected' : '';
+  const ai = game.supportsAI ? '<span>\u53ef\u52a0 AI</span>' : '<span>\u7eaf PvP</span>';
+  return '<button class="browse-card' + selectedClass + '" data-game="' + game.id + '">' +
+    '<div class="browse-card-media">' + buildCover(game, false) + '</div>' +
+    '<div class="browse-card-body">' +
+      '<div class="browse-card-meta"><span>' + escapeHtml(game.category) + '</span><span>' + escapeHtml(game.duration) + '</span></div>' +
+      '<h3>' + escapeHtml(game.name) + '</h3>' +
+      '<p>' + escapeHtml(game.description) + '</p>' +
+      '<div class="browse-card-footer"><span>' + escapeHtml(game.players) + '</span>' + ai + '</div>' +
+    '</div>' +
+  '</button>';
+}
+
+function updateQuickCreate() {
+  document.getElementById('quickCreate').textContent = '\u521b\u5efa\u623f\u95f4';
+}
+
+function matches(game) {
+  const haystack = [
+    game.name,
+    game.subtitle,
+    game.description,
+    game.category,
+    (game.tags || []).join(' ')
+  ].join(' ').toLowerCase();
+  if (activeCategory !== '\u5168\u90e8' && game.category !== activeCategory) return false;
+  if (!searchText) return true;
+  return haystack.indexOf(searchText) >= 0;
+}
+
+function bindSelection(containerSelector) {
+  document.querySelectorAll(containerSelector).forEach(function(card) {
+    card.addEventListener('click', function() {
+      const wasSelected = this.classList.contains('selected');
+      selectedGame = this.dataset.game;
+      renderCatalog();
+      updateQuickCreate();
+      if (wasSelected) createRoom();
+    });
   });
-});
+}
+
+function renderCategories() {
+  const chips = ['\u5168\u90e8'].concat(window.gameCatalog.categories());
+  const root = document.getElementById('categoryChips');
+  root.innerHTML = chips.map(function(category) {
+    const selectedClass = category === activeCategory ? ' selected' : '';
+    return '<button class="category-chip' + selectedClass + '" data-category="' + escapeHtml(category) + '">' + escapeHtml(category) + '</button>';
+  }).join('');
+  root.querySelectorAll('.category-chip').forEach(function(chip) {
+    chip.addEventListener('click', function() {
+      activeCategory = this.dataset.category;
+      renderCatalog();
+    });
+  });
+}
+
+function renderCatalog() {
+  document.getElementById('featuredStrip').innerHTML = featuredGames.map(buildFeaturedCard).join('');
+  const filtered = catalog.filter(matches);
+  document.getElementById('gameGrid').innerHTML = filtered.map(buildBrowseCard).join('');
+  document.getElementById('emptyState').style.display = filtered.length ? 'none' : '';
+  bindSelection('.featured-card');
+  bindSelection('.browse-card');
+  renderCategories();
+}
 
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+  setTimeout(function() { t.classList.remove('show'); }, 2500);
 }
 
 function createRoom() {
-  const ws = new WebSocket(`ws://${location.host}`);
-  ws.onopen = () => {
+  const ws = new WebSocket(getSocketURL());
+  ws.onopen = function() {
     ws.send(JSON.stringify({ type: 'create_room', data: { game: selectedGame } }));
   };
-  ws.onmessage = (e) => {
+  ws.onmessage = function(e) {
     const msg = JSON.parse(e.data);
     if (msg.type === 'room_created') {
       sessionStorage.setItem('roomId', msg.roomId);
@@ -252,26 +226,31 @@ function createRoom() {
       sessionStorage.setItem('game', msg.game);
       if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
       ws.close();
-      location.href = '/game.html';
+      location.replace('/game.html');
     } else if (msg.type === 'error') {
-      toast('错误：' + msg.message);
+      toast('\u9519\u8bef: ' + msg.message);
     }
   };
-  ws.onerror = () => toast('连接失败，服务器是否已启动？');
+  ws.onerror = function() {
+    toast('\u8fde\u63a5\u5931\u8d25\uff0c\u670d\u52a1\u5668\u662f\u5426\u5df2\u542f\u52a8\uff1f');
+  };
 }
 
-document.getElementById('quickCreate').addEventListener('click', () => {
+document.getElementById('quickCreate').addEventListener('click', function() {
   createRoom();
 });
 
-document.getElementById('joinBtn').addEventListener('click', () => {
+document.getElementById('joinBtn').addEventListener('click', function() {
   const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
-  if (!code) { toast('请输入房间号'); return; }
-  const ws = new WebSocket(`ws://${location.host}`);
-  ws.onopen = () => {
+  if (!code) {
+    toast('\u8bf7\u8f93\u5165\u623f\u95f4\u53f7');
+    return;
+  }
+  const ws = new WebSocket(getSocketURL());
+  ws.onopen = function() {
     ws.send(JSON.stringify({ type: 'join_room', data: { roomId: code } }));
   };
-  ws.onmessage = (e) => {
+  ws.onmessage = function(e) {
     const msg = JSON.parse(e.data);
     if (msg.type === 'room_joined') {
       sessionStorage.setItem('roomId', msg.roomId);
@@ -279,62 +258,66 @@ document.getElementById('joinBtn').addEventListener('click', () => {
       sessionStorage.setItem('game', msg.game);
       if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
       ws.close();
-      location.href = '/game.html';
+      location.replace('/game.html');
     } else if (msg.type === 'error') {
-      toast('错误：' + msg.message);
+      toast('\u9519\u8bef: ' + msg.message);
+      if (msg.code === 'ROOM_NOT_FOUND') {
+        sessionStorage.removeItem('roomId');
+        sessionStorage.removeItem('playerIndex');
+        sessionStorage.removeItem('game');
+        sessionStorage.removeItem('resumeToken');
+      }
     }
   };
-  ws.onerror = () => toast('连接失败，服务器是否已启动？');
+  ws.onerror = function() {
+    toast('\u8fde\u63a5\u5931\u8d25\uff0c\u670d\u52a1\u5668\u662f\u5426\u5df2\u542f\u52a8\uff1f');
+  };
 });
 
-document.getElementById('roomCodeInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') document.getElementById('joinBtn').click();
+document.getElementById('roomCodeInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    document.getElementById('joinBtn').click();
+  }
+});
+
+document.getElementById('gameSearch').addEventListener('input', function() {
+  searchText = this.value.trim().toLowerCase();
+  renderCatalog();
 });
 
 if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
-  var savedGame = sessionStorage.getItem('game');
-  var savedOption = document.querySelector('.game-option[data-game="' + savedGame + '"] .name');
-  var savedName = savedOption ? savedOption.textContent.trim() : (savedGame || '对局');
-  document.getElementById('resumeBtn').textContent = '继续：' + savedName + '（房间 ' + sessionStorage.getItem('roomId') + '）';
+  const savedGame = sessionStorage.getItem('game');
+  const game = getGameInfo(savedGame);
+  var roomId = sessionStorage.getItem('roomId');
+  document.getElementById('resumeRoomName').textContent = '\u300a' + game.name + '\u300b \u623f\u95f4 ' + roomId;
+  document.getElementById('resumeRoomSub').textContent = '\u4f60\u6b63\u5728\u8fd9\u95f4\u623f\u4e2d\uff0c\u70b9\u51fb\u8fd4\u56de\u7ee7\u7eed\u3002';
   document.getElementById('resumeSection').style.display = '';
-  document.getElementById('resumeBtn').onclick = () => { location.href = '/game.html'; };
+  document.getElementById('resumeBtn').onclick = function() {
+    location.href = '/game.html';
+  };
 }
 
-// Auto-join from QR code scan (?room=XXXXXX)
 (function() {
-  var params = new URLSearchParams(location.search);
+  const params = new URLSearchParams(location.search);
   if (params.get('roomExpired') === '1') {
-    toast('房间已失效，请重新创建或输入房间号加入');
+    toast('\u623f\u95f4\u5df2\u5931\u6548\uff0c\u8bf7\u91cd\u65b0\u521b\u5efa\u6216\u8f93\u5165\u623f\u95f4\u53f7\u52a0\u5165\u3002');
+    sessionStorage.removeItem('roomId');
+    sessionStorage.removeItem('playerIndex');
+    sessionStorage.removeItem('game');
+    sessionStorage.removeItem('resumeToken');
     history.replaceState(null, '', location.pathname);
   }
-  var roomCode = params.get('room');
-  if (roomCode) {
-    roomCode = roomCode.trim().toUpperCase();
-    document.getElementById('roomCodeInput').value = roomCode;
-    var ws = new WebSocket('ws://' + location.host);
-    ws.onopen = function() {
-      ws.send(JSON.stringify({ type: 'join_room', data: { roomId: roomCode } }));
-    };
-    ws.onmessage = function(e) {
-      var msg = JSON.parse(e.data);
-      if (msg.type === 'room_joined') {
-        sessionStorage.setItem('roomId', msg.roomId);
-        sessionStorage.setItem('playerIndex', msg.playerIndex);
-        sessionStorage.setItem('game', msg.game);
-        if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
-        ws.close();
-        location.href = '/game.html';
-      } else if (msg.type === 'error') {
-        if (msg.code === 'ROOM_NOT_FOUND' && sessionStorage.getItem('roomId') === roomCode) {
-          ['roomId', 'playerIndex', 'game', 'resumeToken'].forEach(function(key) { sessionStorage.removeItem(key); });
-        }
-        toast('加入失败：' + msg.message);
-        ws.close();
-      }
-    };
-    ws.onerror = function() { toast('连接失败'); };
-  }
+  const roomCode = params.get('room');
+  if (!roomCode) return;
+  document.getElementById('roomCodeInput').value = roomCode.trim().toUpperCase();
+  // Instant feedback \u2014 pre-fill and join immediately
+  var joinBtn = document.getElementById('joinBtn');
+  joinBtn.textContent = '...';
+  joinBtn.click();
 })();
+
+renderCatalog();
+updateQuickCreate();
 </script>
 </body>
 </html>

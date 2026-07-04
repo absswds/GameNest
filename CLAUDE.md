@@ -42,25 +42,26 @@ rm -rf android/app/build
 局域网联机桌游平台。Node.js + Express 4 + ws（WebSocket），HTTP 和 WS 共用 3000 端口。同一 WiFi 下打开浏览器即玩。
 
 **目录结构：**
-- `server.js` — 全部服务端逻辑（房间管理、消息路由、AI 调度、24 点 / 扫雷 / 德州 per-player 分支）
+- `server.js` — 全部服务端逻辑（房间管理、消息路由、AI 调度、per-player 视图分支、drawguess 计时兜底）
 - `main.js` — nodejs-mobile 入口 wrapper（仅 Android 用）
-- `games/*.js` — 游戏模块（17 款）
-- `bots/*.js` — AI 机器人（16 款，扫雷纯 PvP 无需 AI）
+- `games/*.js` — 游戏模块（21 款，含 `drawguess-words.js` 词库数据文件不导出 name）
+- `bots/*.js` — AI 机器人（19 款，扫雷、你画我猜无需 AI）
+- `scripts/sim-*.js` — Node 模拟脚本（可解性验证/bot 对战/词泄漏断言，`node scripts/sim-xxx.js` 运行）
 - `public/index.html` — 大厅（选游戏、创建/加入房间）
 - `public/game.html` — 游戏壳（等待房间 + 棋盘容器 + 结束 overlay），新增渲染器要在此 `<script>` 引入
 - `public/js/room-client.js` — WebSocket 客户端核心（状态同步、渲染调度、游戏设置 UI、gameNames 映射、maxSlots 逻辑）
-- `public/js/renderers/*.js` — 各游戏前端渲染器（17 款）
+- `public/js/renderers/*.js` — 各游戏前端渲染器（21 款）
 - `public/js/tutorials.js` — 新手教程弹窗
 - `public/style.css` — 全局样式（Design C 极简轻奢）
 - `android/` — Android Studio 项目（详见 `android/SETUP.md`）
 
 **新增一款游戏要改 5-6 处：**
-1. `games/<name>.js` — 游戏逻辑
-2. `bots/<name>.js` — AI（纯 PvP 可跳过）
+1. `games/<name>.js` — 游戏逻辑（如需词库，参照 `drawguess-words.js` 单独数据文件）
+2. `bots/<name>.js` — AI（纯 PvP 如扫雷/你画我猜可跳过）
 3. `public/js/renderers/<name>.js` — 前端渲染器
 4. `public/game.html` — `<script>` 引入渲染器
-5. `public/index.html` + `public/js/room-client.js` — 注册名称映射、人数
-6. `server.js` — 如果需要 per-player 视图（隐藏信息/合法走法），三个位置各加一个 else-if 分支
+5. `public/js/room-client.js` — `gameNames` 映射 + 人数 + 房间设置 UI（如有 options）
+6. `server.js` — 如果需要 per-player 视图（隐藏信息/合法走法），三个广播位置各加 else-if；如需服务端计时兜底，加 `scheduleXxxTimer` + 清理逻辑
 
 教程加到 `tutorials.js`。
 
@@ -68,19 +69,23 @@ rm -rf android/app/build
 
 ```js
 exports.name = 'gamename';          // 唯一标识
-exports.maxPlayers = 2;             // 最大人数
+exports.maxPlayers = 2;             // 最大人数（上限）
+exports.minPlayers = 1;             // 可选，最小人数（默认 2，你画我猜/合成大西瓜设 1 允许单人）
 exports.createState = () => ({...}); // 返回初始状态
 exports.handleMove = (data, state, playerIndex) => {...}; // 返回 null 或错误字符串
 exports.initGame = (state, playerCount) => {...}; // 可选，用于开局初始化（接收 state._options 和 state._playerCount）
+exports.onTimeout = (state) => {...}; // 可选，服务端计时器超时回调（你画我猜用：选词→自动选/作画→空提交/猜词→超时提交）
 ```
 
 `state.currentPlayer` 和 `state.winner` 由服务端读取，其余字段游戏自定义。`handleMove` 直接修改 `state`。
 
 **特殊模式:**
 - 24 点游戏是同时竞速（非回合制），`scheduleBotMove` 和 `next_round` 有特殊处理分支。
-- **per-player 视图**（隐藏对手信息 / 提供合法走法）：游戏导出 `exports.playerView(state, playerIndex)` 或 `exports.playerBoardView(...)`，server.js 在 `game_started`/`game_state`/`game_restart` 三处分别为每个玩家广播过滤后的 state。已用此模式：扫雷（`playerBoardView`，共享雷布局、独立 reveal/flag）、德州扑克（`playerView`，隐藏对手底牌）、中国象棋（`playerView`，向当前玩家提供 `legalMoves` 数组，非当前玩家为空）。新增需此模式的游戏照此扩展 server.js 的 `if (room.game === ...)` 分支。
+- **per-player 视图**（隐藏对手信息 / 提供合法走法）：游戏导出 `exports.playerView(state, playerIndex)` 或 `exports.playerBoardView(...)`，server.js 在 `game_started`/`game_state`/`game_restart` 三处分别为每个玩家广播过滤后的 state。已用此模式：扫雷（`playerBoardView`，共享雷布局、独立 reveal/flag）、德州扑克（`playerView`，隐藏对手底牌）、中国象棋（`playerView`，向当前玩家提供 `legalMoves` 数组，非当前玩家为空）、你画我猜（`playerView`，隐藏 word/wordOptions，choosing 阶段只给 chooser 发 `myTask`）。新增需此模式的游戏照此扩展 server.js 的 `if (room.game === ...)` 分支。
 - **魔力桥重组**：rummikub 有 `phase: 'manipulate'` 操作台——`start_manipulate` 把桌面+手牌快照进 workspace，submit 校验"桌面原有牌必须全部重新成组"（否则丢牌），cancel 还原快照。前端 `renderManipulate` 是分格牌桌交互。
 - **飞行棋保底**：`noSixStreak` 字段存在每个 player 对象上，连续 5 次掷不出 6 且全部飞机在基地时自动给 6。
+- **你画我猜服务端计时兜底**：`scheduleDrawguessTimer(room)` 存 `room._dgTimer`，按 phase 取时限写入 `state.stepDeadline`（绝对时间戳+2s 缓冲），超时回调校验 `room.state === 闭包捕获的 state`（防 game_restart 换 state 后旧 timer 乱触发），调 `onTimeout` 后走 playerView 逐人广播。每次 game_move/game_started/game_restart 重新 schedule。`game_restart` 开头 + 房间销毁路径必须 `clearTimeout(room._dgTimer)`。
+- **合成大西瓜客户端物理**：suikabattle 服务端只存 scores/current/next/eliminated，物理引擎（Matter.js）完全在客户端运行。客户端通过 `drop`/`merge`/`gameover` 三种 move type 上报结果。支持单人模式（`minPlayers:1`）。
 
 ## AI 机器人接口（`bots/*.js`）
 
@@ -108,7 +113,7 @@ room = {
   hostWS,                        // 房主连接
   readyPlayers: Set,             // 已准备的玩家索引
   options: {},                   // 游戏特定设置（如 {roundTime, requireBreak}）
-  _roomId, _cleanupTimer, _botTimer, _tfTimer,
+  _roomId, _cleanupTimer, _botTimer, _tfTimer, _dgTimer,
 }
 ```
 
@@ -187,7 +192,7 @@ function animTick(now) {
 
 **对手走法检测：** 象棋用 `cloneBoard` + `detectMove()`（遍历 2D 数组找变化），飞行棋用 `prevPlanes` 快照（比较每个 `planes[j]` 数值变化）。检测到变化后自动启动画。
 
-## 现有游戏（17 款）
+## 现有游戏（22 款）
 
 | 游戏 | name | 人数 | AI | 特殊说明 |
 |------|------|------|-----|----------|
@@ -197,6 +202,7 @@ function animTick(now) {
 | UNO | uno | 2-6 | ✅ | 小屏自动缩小卡片，手牌 >5 张显示滑动提示 |
 | 斗地主 | doudizhu | 2-3 | ✅ | 动态 `_playerCount`，前端实时牌型检测 + 出牌判定 |
 | 爆炸猫 | exploding-kittens | 2-6 | ✅ | 已去掉猫咪卡，改为偷牌道具卡模式 |
+| 贪吃蛇大乱斗 | snakebattle | 2-6 | ✅ | 实时对撞；同图生存淘汰制；120ms tick；客户端 Canvas 渲染 |
 | 魔力桥 | rummikub | 2-4 | ✅ | `manipulate` 操作台可拿桌面牌重组；可设 `requireBreak`（破冰≥30） |
 | 24点 | twentyfour | 不限 | ✅ | 同时竞速（非回合制）+ 排行榜 + 可设每轮限时 |
 | 扫雷竞速 | minesweeper | 2-6 | ❌ | 纯 PvP；per-player 独立棋盘 (playerBoardView)；左键翻格右键/长按标旗 |
@@ -208,6 +214,10 @@ function animTick(now) {
 | 飞行棋 | flightchess | 2-4 | ✅ | 掷6起飞/再掷；同色跳+4、虚线飞+24；`FLY_STEP/FLY_ADV` 常量双份须同步；`noSixStreak` 保底机制（per-player）；堆叠偏移+拿起走子动画 |
 | 中国象棋 | chinesechess | 2 | ✅ | minimax + alpha-beta；Canvas 木纹棋盘；per-player view 提供 `legalMoves`；拿起/走子动画 + 合法走法绿点红圈指示 |
 | 围棋(9×9) | go9 | 2 | ✅ | 提子/禁着/打劫；EMPTY=0/BLACK=1/WHITE=2（与 playerIndex 区分）；黑贴3.75子 |
+| 合成大西瓜 | suikabattle | 1-4 | ❌ | 客户端 Matter.js 物理；服务端只存分数/出局；`minPlayers:1` 允许单人 |
+| 你画我猜 | drawguess | 1-6 | ❌ | 传话链模式；首画家 3 选 1 选词；300+ 分类词库(`drawguess-words.js`)；房间设置(分类/时限/候选数/自定义词)；服务端计时兜底(`_dgTimer`+`onTimeout`)；per-player `playerView` 防词泄漏 |
+| 大富翁 | monopoly | 2-6 | ✅ | 28 格对称棋盘(角 0/7/14/21)；骰子滚动+逐格移动+收租飘字动画；AI 建房；event queue+displayState/latestState 双轨 |
+| 羊了个羊 | sheeptile | 2-6 | ✅ | 关卡制(1 易 2 难)；金字塔堆叠+暗牌队列；剥洋葱可解性生成(连续三元组保证 peak≤2)；道具限次(撤回/洗牌/移出 3 张)；飞入槽位+三消动画；sameBoard 房间设置 |
 
 ## 关键端点
 

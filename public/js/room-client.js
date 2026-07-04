@@ -11,6 +11,7 @@
   let isHost = false;
   let myReady = false;
   let terminalRoomError = false;
+  let seatSwapFromIndex = null;
 
   document.getElementById('roomBadge').textContent = roomId;
 
@@ -42,7 +43,9 @@
 
   let roomOptions = {};
   let prevPlayerCount = 0;
-  const gameInfo = gameNames[game] || { name: game, icon: '?' };
+  const gameInfo = (window.gameCatalog && window.gameCatalog.byId(game))
+    || gameNames[game]
+    || { name: game, icon: '?', subtitle: '', description: '', players: '', duration: '', category: '', tags: [], cover: '', maxPlayers: 4, supportsAI: !NO_AI_GAMES.has(game) };
 
   function notify(msg) {
     const bar = document.getElementById('notifyBar');
@@ -67,10 +70,98 @@
     return colors[index % colors.length];
   }
 
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value || '';
+  }
+
+  function renderFacts(id, values) {
+    const root = document.getElementById(id);
+    if (!root) return;
+    root.innerHTML = values.filter(Boolean).map(function(value) {
+      return '<span>' + value + '</span>';
+    }).join('');
+  }
+
+  function renderMetaPills(id, values) {
+    const root = document.getElementById(id);
+    if (!root) return;
+    root.innerHTML = values.filter(Boolean).map(function(value) {
+      return '<span class="meta-pill">' + value + '</span>';
+    }).join('');
+  }
+
+  function seatSummary(index) {
+    const player = players ? players.find(function(p) { return p.index === index; }) : null;
+    if (!player) return { title: '空位', meta: '点这里换到这个位置' };
+    const meta = [];
+    if (player.isHost) meta.push('房主');
+    if (player.isBot) meta.push('AI');
+    if (!player.isBot) meta.push(player.ready ? '已准备' : '未准备');
+    return { title: player.name, meta: meta.join(' · ') };
+  }
+
+  function openSeatSwapModal(fromIndex, maxSlots) {
+    seatSwapFromIndex = fromIndex;
+    const modal = document.getElementById('seatSwapModal');
+    const grid = document.getElementById('seatSwapGrid');
+    const hint = document.getElementById('seatSwapHint');
+    if (!modal || !grid || !hint) return;
+
+    const origin = seatSummary(fromIndex);
+    hint.textContent = '把 ' + (fromIndex + 1) + ' 号位「' + origin.title + '」换到哪里？';
+    grid.innerHTML = '';
+
+    for (let i = 0; i < maxSlots; i++) {
+      const summary = seatSummary(i);
+      const btn = document.createElement('button');
+      btn.className = 'seat-swap-option' + (i === fromIndex ? ' current' : '');
+      btn.dataset.seatIndex = String(i);
+      btn.disabled = i === fromIndex;
+      btn.innerHTML =
+        '<div class="seat-swap-slot">位置 ' + (i + 1) + '</div>' +
+        '<div class="seat-swap-player">' + summary.title + '</div>' +
+        '<div class="seat-swap-tags">' + summary.meta + '</div>';
+      btn.addEventListener('click', function() {
+        const toIdx = parseInt(this.dataset.seatIndex, 10);
+        if (Number.isNaN(toIdx) || toIdx === seatSwapFromIndex) return;
+        ws.send(JSON.stringify({ type: 'swap_seat', data: { fromIndex: seatSwapFromIndex, toIndex: toIdx } }));
+        closeSeatSwapModal();
+      });
+      grid.appendChild(btn);
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closeSeatSwapModal() {
+    const modal = document.getElementById('seatSwapModal');
+    if (modal) modal.style.display = 'none';
+    seatSwapFromIndex = null;
+  }
+
+  function getSocketURL() {
+    const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+    return protocol + location.host;
+  }
+
+  function updateSharedShell() {
+    setText('activeGameName', gameInfo.name);
+    setText('activeGameSubtitle', gameInfo.subtitle || '等待玩家加入');
+    setText('stageGameName', gameInfo.name);
+    setText('waitingGameName', gameInfo.name);
+    setText('waitingGameSubtitle', gameInfo.description || gameInfo.subtitle || '');
+    setText('stageRoomFacts', '房间 ' + roomId + ' · ' + (gameInfo.supportsAI ? '可加 AI' : '纯玩家对战'));
+    renderMetaPills('waitingMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
+    renderFacts('stageMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
+    // Show connecting status until first server response arrives
+    document.getElementById('waitingStatus').textContent = '正在连接房间...';
+  }
+
   // ---- WebSocket ----
   function connect() {
     if (ws) { try { ws.close(); } catch(e) {} }
-    ws = new WebSocket(`ws://${location.host}`);
+    ws = new WebSocket(getSocketURL());
     ws.onopen = () => ws.send(JSON.stringify({ type: 'join_room', data: { roomId, resumeToken } }));
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
@@ -188,9 +279,9 @@
     document.getElementById('waitingRoom').style.display = 'none';
     document.getElementById('profileEdit').style.display = 'none';
     document.getElementById('emojiRow').style.display = 'none';
+    document.getElementById('gameStage').style.display = '';
     document.getElementById('playerBar').style.display = '';
     document.getElementById('status').style.display = '';
-    document.querySelector('.board-wrap').style.display = '';
     document.getElementById('gameActions').style.display = '';
   }
 
@@ -198,6 +289,7 @@
     document.getElementById('waitingRoom').style.display = '';
     document.getElementById('profileEdit').style.display = 'flex';
     document.getElementById('emojiRow').style.display = '';
+    document.getElementById('gameStage').style.display = 'none';
     // Generate QR code via server endpoint (server uses LAN IP)
     var qrImg = document.getElementById('qrImage');
     if (qrImg && roomId) {
@@ -207,7 +299,6 @@
     if (qrCode && roomId) qrCode.textContent = roomId;
     document.getElementById('playerBar').style.display = 'none';
     document.getElementById('status').style.display = 'none';
-    document.querySelector('.board-wrap').style.display = 'none';
     document.getElementById('gameActions').style.display = 'none';
     document.getElementById('overlay').style.display = 'none';
   }
@@ -220,8 +311,8 @@
     }
     showLobby();
 
-    // Update header
-    document.getElementById('waitingGameName').textContent = gameInfo.icon + ' ' + gameInfo.name;
+    // Update shared shell copy
+    updateSharedShell();
 
     // Check host status
     const myInfo = players ? players.find(p => p.index === playerIndex && !p.isBot) : null;
@@ -276,9 +367,10 @@
     }
 
     // Determine max slots
+    const defaultSlots = gameInfo.maxPlayers || (game === 'doudizhu' ? 3 : game === 'tictactoe' || game === 'gomoku' || game === 'chinesechess' || game === 'go9' ? 2 : game === 'twentyfour' ? 6 : 4);
     const maxSlots = players && players.length > 0
-      ? Math.max(players.length, game === 'doudizhu' ? 3 : game === 'tictactoe' || game === 'gomoku' || game === 'chinesechess' || game === 'go9' ? 2 : game === 'twentyfour' ? 6 : 4)
-      : (game === 'doudizhu' ? 3 : game === 'tictactoe' || game === 'gomoku' || game === 'chinesechess' || game === 'go9' ? 2 : game === 'twentyfour' ? 6 : 4);
+      ? Math.max(players.length, defaultSlots)
+      : defaultSlots;
 
     // Build slots
     const slots = document.getElementById('waitingSlots');
@@ -289,10 +381,13 @@
         const isMe = player.index === playerIndex && !player.isBot;
         const meClass = isMe ? ' me' : '';
         const botClass = player.isBot ? ' ai' : '';
+        const disconnected = !player.isBot && player.connected === false;
         let tagsHtml = '';
         if (player.isHost) tagsHtml += '<span class="waiting-slot-badge host">👑 房主</span>';
         if (player.isBot) {
           tagsHtml += '<span class="waiting-slot-badge ai">🤖 AI</span>';
+        } else if (disconnected) {
+          tagsHtml += '<span class="waiting-slot-badge" style="background:#fff3e0;color:#e67e22">📱 在大厅</span>';
         } else if (player.ready) {
           tagsHtml += '<span class="waiting-slot-badge ready">✓ 已准备</span>';
         } else {
@@ -324,13 +419,8 @@
     // Attach swap handlers
     slots.querySelectorAll('.waiting-slot-swap').forEach(btn => {
       btn.addEventListener('click', function() {
-        const from = parseInt(this.dataset.from);
-        // Find a target: ask which slot to swap with
-        const target = prompt('换到哪个位置？输入位置编号 (1-' + maxSlots + ')');
-        if (target === null) return;
-        const toIdx = parseInt(target) - 1;
-        if (isNaN(toIdx) || toIdx < 0 || toIdx >= maxSlots || toIdx === from) return;
-        ws.send(JSON.stringify({ type: 'swap_seat', data: { fromIndex: from, toIndex: toIdx } }));
+        const from = parseInt(this.dataset.from, 10);
+        openSeatSwapModal(from, maxSlots);
       });
     });
 
@@ -496,7 +586,7 @@
 
     // Add bot button (host only)
     if (addBotBtn) {
-      const supportsAI = !NO_AI_GAMES.has(game);
+      const supportsAI = gameInfo.supportsAI !== undefined ? gameInfo.supportsAI : !NO_AI_GAMES.has(game);
       addBotBtn.style.display = isHost && supportsAI ? '' : 'none';
       const totalOccupied = players ? players.length : 0;
       const roomFull = totalOccupied >= maxSlots;
@@ -620,8 +710,17 @@
   };
 
   window.doLeaveRoom = function() {
-    window.location.href = '/';
+    sessionStorage.removeItem('roomId');
+    sessionStorage.removeItem('playerIndex');
+    sessionStorage.removeItem('game');
+    sessionStorage.removeItem('resumeToken');
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'leave_room' }));
+    }
+    window.location.replace('/');
   };
+
+  window._leaveRoom = window.doLeaveRoom;
 
   window.openAvatarDrawer = function() {
     var d = document.getElementById('avatarDrawer');
@@ -632,6 +731,7 @@
     var d = document.getElementById('avatarDrawer');
     if (d) d.style.display = 'none';
   };
+  window.closeSeatSwapModal = closeSeatSwapModal;
 
   window._sendNextRound = function() {
     ws.send(JSON.stringify({ type: 'next_round' }));
@@ -652,6 +752,9 @@
   // ---- Init ----
   if (!roomId || !game) clearExpiredRoomAndReturn();
   else connect();
+
+  // Pre-populate shell from sessionStorage immediately (before WS connects)
+  updateSharedShell();
 
   // Show lobby initially (will update when room_joined arrives)
   showLobby();

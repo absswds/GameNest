@@ -12,6 +12,9 @@
   var COLOR_TEXT = { red:'#fff', blue:'#fff', green:'#fff', yellow:'#222', wild:'#fff' };
   var COLOR_NAMES = { red:'红', blue:'蓝', green:'绿', yellow:'黄' };
   var COLOR_ORDER = ['red','blue','green','yellow'];
+  var lastDiscardKey = null;
+  var lastHandSignature = null;
+  var lastHandLen = 0;
 
   var STYLES = '' +
     '.uno-table{width:100%;display:flex;flex-direction:column;gap:5px;}' +
@@ -26,6 +29,7 @@
     '.uno-color-badge{font-size:12px;font-weight:700;padding:3px 14px;border-radius:20px;color:#fff;transition:background .3s;}' +
     '.uno-play-area{display:flex;gap:20px;align-items:center;justify-content:center;padding:4px 0;}' +
     '.uno-discard-card{width:76px;height:110px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;box-shadow:0 2px 10px rgba(0,0,0,.15);position:relative;transition:transform .2s;}' +
+    '.uno-discard-card.play-flash{animation:unoDiscardPop .42s ease;}' +
     '.uno-discard-card .dv{font-size:28px;line-height:1;}' +
     '.uno-discard-card .dl{font-size:9px;opacity:.8;margin-top:1px;text-transform:uppercase;}' +
     '.uno-discard-card.wild-card{background:linear-gradient(135deg,#e74c3c 25%,#3498db 25%,#3498db 50%,#2ecc71 50%,#2ecc71 75%,#f1c40f 75%);}' +
@@ -39,6 +43,7 @@
     '.uno-hand-wrap::-webkit-scrollbar-thumb{background:#ddd;border-radius:4px;}' +
     '.uno-hand{display:flex;gap:6px;padding:2px 4px;min-height:90px;}' +
     '.uno-card{width:60px;height:88px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.13);cursor:pointer;transition:transform .15s,opacity .15s,box-shadow .15s;flex-shrink:0;position:relative;}' +
+    '.uno-card.new-card{animation:unoNewCardIn .38s ease;}' +
     '.uno-card:active{transform:scale(.94);}' +
     '.uno-card.wild-rainbow{background:linear-gradient(135deg,#e74c3c 25%,#3498db 25%,#3498db 50%,#2ecc71 50%,#2ecc71 75%,#f1c40f 75%);color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.4);}' +
     '.uno-card .cv{font-size:22px;line-height:1;}' +
@@ -50,6 +55,15 @@
     '.uno-color-picker-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:2px 0;}' +
     '.uno-color-picker-btn{width:48px;height:48px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .15s;}' +
     '.uno-color-picker-btn:active{transform:scale(.9);}' +
+    '@keyframes unoDiscardPop{' +
+      '0%{transform:translateY(12px) scale(.92) rotate(-6deg);opacity:.55;}' +
+      '60%{transform:translateY(-4px) scale(1.03) rotate(1deg);opacity:1;}' +
+      '100%{transform:translateY(0) scale(1) rotate(0deg);opacity:1;}' +
+    '}' +
+    '@keyframes unoNewCardIn{' +
+      '0%{transform:translateY(22px) scale(.88);opacity:0;}' +
+      '100%{transform:translateY(0) scale(1);opacity:1;}' +
+    '}' +
     // Narrow screens (sub-360px phones)
     '@media(max-width:380px){' +
       '.uno-opponent{font-size:11px;padding:5px 8px;gap:0;}' +
@@ -165,13 +179,22 @@
       var drawStack = state.drawStack || 0;
       var unoCalled = state.unoCalled || [];
       var isMyTurn = (currentPlayer === playerIndex) && (winner === null || winner === undefined);
+      var topCard = discard[0] || null;
+      var discardKey = topCard ? topCard.id + ':' + currentColor : null;
+      var discardChanged = !!discardKey && lastDiscardKey !== null && discardKey !== lastDiscardKey;
+      var handSignature = (hands[playerIndex] || []).map(function(card) { return card.id; }).join('|');
+      var currentLen = (hands[playerIndex] || []).length;
+      var drewCard = lastHandSignature !== null && handSignature !== lastHandSignature && currentLen > lastHandLen;
 
       renderOpponents(hands, currentPlayer, playerIndex, unoCalled);
       renderColorBadge(currentColor);
-      renderDiscard(discard);
+      renderDiscard(discard, discardChanged);
       renderDrawPile(deck, drawStack);
-      renderHand(hands[playerIndex] || [], discard, currentColor, isMyTurn);
+      renderHand(hands[playerIndex] || [], discard, currentColor, isMyTurn, drewCard);
       renderButtons(hands[playerIndex] || [], drawStack, isMyTurn, unoCalled[playerIndex]);
+      lastDiscardKey = discardKey;
+      lastHandSignature = handSignature;
+      lastHandLen = currentLen;
 
       // Scroll hint for small screens with many cards
       var hand = hands[playerIndex] || [];
@@ -237,7 +260,7 @@
     }
   }
 
-  function renderDiscard(discard) {
+  function renderDiscard(discard, discardChanged) {
     var el = document.getElementById('unoDiscardCard');
     if (!el) return;
     if (!discard || discard.length === 0) {
@@ -255,6 +278,14 @@
     el.style.color = fg;
     el.innerHTML = '<div class="dv">' + (VALUE_LABELS[top.value] || top.value) + '</div>' +
       '<div class="dl">' + (COLOR_NAMES[top.color] || top.color.toUpperCase()) + '</div>';
+    if (discardChanged) {
+      void el.offsetWidth;
+      el.classList.add('play-flash');
+      clearTimeout(el._animTimer);
+      el._animTimer = setTimeout(function() {
+        el.classList.remove('play-flash');
+      }, 460);
+    }
   }
 
   function renderDrawPile(deck, drawStack) {
@@ -267,7 +298,7 @@
       (drawStack > 0 ? '<div class="uno-draw-stack">+' + drawStack + '</div>' : '');
   }
 
-  function renderHand(hand, discard, currentColor, isMyTurn) {
+  function renderHand(hand, discard, currentColor, isMyTurn, drewCard) {
     var el = document.getElementById('unoHand');
     if (!el) return;
     if (!hand || hand.length === 0) {
@@ -283,8 +314,9 @@
       var notPlayableCls = playable ? '' : ' not-playable';
       var bg = c.color !== 'wild' ? 'background:' + (COLOR_HEX[c.color] || '#ccc') : '';
       var fg = c.color !== 'wild' ? 'color:' + (COLOR_TEXT[c.color] || '#fff') : '';
+      var newCardCls = drewCard && i === hand.length - 1 ? ' new-card' : '';
       html += '' +
-        '<div class="uno-card' + wildCls + notPlayableCls + '" data-card-id="' + c.id + '" style="' + bg + ';' + fg + '">' +
+        '<div class="uno-card' + wildCls + notPlayableCls + newCardCls + '" data-card-id="' + c.id + '" style="' + bg + ';' + fg + '">' +
           '<div class="cv">' + (VALUE_LABELS[c.value] || c.value) + '</div>' +
           '<div class="cl">' + (COLOR_NAMES[c.color] || c.color.toUpperCase()) + '</div>' +
         '</div>';

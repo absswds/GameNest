@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(rtk git *)",
-      "Bash(git init *)",
-      "Bash(git config *)"
-    ]
-  }
-}
