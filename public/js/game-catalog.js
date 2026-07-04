@@ -329,6 +329,19 @@
       supportsAI: false,
       maxPlayers: 8,
       cover: '/assets/game-covers/drawguess-party.png'
+    },
+    truthdare: {
+      id: 'truthdare',
+      name: '真心话大冒险',
+      icon: '?',
+      subtitle: '抽卡问答，派对破冰',
+      description: '多种主题卡组，聚会暖场必备。',
+      players: '2-10人',
+      duration: '约15分钟',
+      category: '派对聚会',
+      tags: ['社交', '轻松'],
+      supportsAI: false,
+      maxPlayers: 10
     }
   };
 
@@ -360,6 +373,7 @@
     'numberbomb',
     'oldmaid',
     'exploding-kittens',
+    'truthdare',
     'snakebattle'
   ];
 
