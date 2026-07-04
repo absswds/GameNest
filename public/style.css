@@ -1461,30 +1461,6 @@ body.lobby-page {
   align-content: start;
 }
 
-.waiting-cover-card {
-  overflow: hidden;
-  border-radius: 18px;
-  aspect-ratio: 4 / 3;
-  background: linear-gradient(135deg, #e5d6b0, #f3eedf);
-}
-
-.waiting-cover-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.waiting-cover-fallback {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 64px;
-  color: #4d3a25;
-}
-
 .rules-btn {
   width: 100%;
 }

@@ -91,25 +91,6 @@
     }).join('');
   }
 
-  function renderCover() {
-    const img = document.getElementById('waitingCoverImage');
-    const fallback = document.getElementById('waitingCoverFallback');
-    if (!img || !fallback) return;
-    fallback.textContent = gameInfo.icon || '?';
-    if (!gameInfo.cover) {
-      img.style.display = 'none';
-      fallback.style.display = 'flex';
-      return;
-    }
-    img.onerror = function() {
-      img.style.display = 'none';
-      fallback.style.display = 'flex';
-    };
-    img.src = gameInfo.cover;
-    img.style.display = '';
-    fallback.style.display = 'none';
-  }
-
   function seatSummary(index) {
     const player = players ? players.find(function(p) { return p.index === index; }) : null;
     if (!player) return { title: '空位', meta: '点这里换到这个位置' };
@@ -172,9 +153,7 @@
     setText('waitingGameSubtitle', gameInfo.description || gameInfo.subtitle || '');
     setText('stageRoomFacts', '房间 ' + roomId + ' · ' + (gameInfo.supportsAI ? '可加 AI' : '纯玩家对战'));
     renderMetaPills('waitingMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
-    renderFacts('waitingFacts', [gameInfo.players, gameInfo.duration, gameInfo.supportsAI ? '支持 AI' : '纯 PvP']);
     renderFacts('stageMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
-    renderCover();
     // Show connecting status until first server response arrives
     document.getElementById('waitingStatus').textContent = '正在连接房间...';
   }
