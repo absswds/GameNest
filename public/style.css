@@ -2484,3 +2484,95 @@ body.lobby-page {
     padding: 14px;
   }
 }
+
+/* ====== Stage 5 Featured Shelf Fix ====== */
+@media (min-width: 861px) {
+  .lobby-page .featured-strip {
+    display: grid;
+    grid-template-columns: minmax(360px, 1.35fr) repeat(2, minmax(220px, 1fr));
+    grid-auto-rows: 126px;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .lobby-page .featured-card,
+  .lobby-page .featured-card:first-child {
+    min-height: 0;
+    height: 100%;
+    border-radius: 10px;
+  }
+
+  .lobby-page .featured-card {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .lobby-page .featured-card:first-child {
+    grid-column: 1;
+    grid-row: span 2;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .lobby-page .featured-card .featured-media {
+    height: 100%;
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+
+  .lobby-page .featured-card:first-child .featured-media {
+    min-height: 0;
+  }
+
+  .lobby-page .featured-card:not(:first-child) .featured-content {
+    padding: 10px 12px;
+    gap: 4px;
+  }
+
+  .lobby-page .featured-card:not(:first-child) .featured-content p {
+    display: none;
+  }
+
+  .lobby-page .featured-card:not(:first-child) .featured-content h3 {
+    font-size: 16px;
+  }
+
+  .lobby-page .featured-card:not(:first-child) .featured-topline {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 4px 8px;
+  }
+}
+
+@media (min-width: 1180px) {
+  .lobby-page .featured-strip {
+    grid-template-columns: minmax(380px, 1.25fr) repeat(3, minmax(190px, 1fr));
+  }
+}
+
+/* ====== Stage 6 Place Create Action Inline ====== */
+.lobby-page .quick-create-btn {
+  position: static;
+  width: 100%;
+  min-height: 46px;
+  margin-top: 10px;
+  padding: 0 16px;
+  transform: none;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.lobby-page .quick-create-btn:active {
+  transform: translateY(1px);
+}
+
+.lobby-page .lobby-shell {
+  padding-bottom: 28px;
+}
+
+@media (max-width: 560px) {
+  .lobby-page .lobby-shell {
+    padding-bottom: 24px;
+  }
+}
