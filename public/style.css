@@ -2576,3 +2576,54 @@ body.lobby-page {
     padding-bottom: 24px;
   }
 }
+
+/* ====== Stage 7 Floating Create Shortcut ====== */
+.lobby-page .quick-create-btn {
+  position: fixed;
+  left: auto;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: calc(18px + var(--safe-bottom));
+  z-index: 40;
+  width: 78px;
+  height: 78px;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #181816;
+  color: #fff;
+  box-shadow: 0 14px 34px rgba(24, 24, 22, 0.24);
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.18;
+  letter-spacing: 0;
+  transform: none;
+}
+
+.lobby-page .quick-create-btn:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.lobby-page .quick-create-btn:hover {
+  background: #2a2823;
+}
+
+.lobby-page .lobby-shell {
+  padding-bottom: 116px;
+}
+
+@media (max-width: 560px) {
+  .lobby-page .quick-create-btn {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(12px + var(--safe-bottom));
+    width: 72px;
+    height: 72px;
+    font-size: 13px;
+  }
+
+  .lobby-page .lobby-shell {
+    padding-bottom: 104px;
+  }
+}
