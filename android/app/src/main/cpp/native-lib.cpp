@@ -70,7 +70,7 @@ static int start_redirecting_stdout_stderr() {
 
 // libUV requires all arguments to live in one contiguous block of memory.
 extern "C" JNIEXPORT jint JNICALL
-Java_com_localgames_app_MainActivity_startNodeWithArguments(
+Java_com_gamenest_app_MainActivity_startNodeWithArguments(
         JNIEnv *env, jobject /*thiz*/, jobjectArray arguments) {
 
     jsize argc = env->GetArrayLength(arguments);

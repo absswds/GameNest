@@ -1,4 +1,4 @@
-package com.localgames.app
+package com.gamenest.app
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -17,7 +17,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
-import com.localgames.app.databinding.ActivityMainBinding
+import com.gamenest.app.databinding.ActivityMainBinding
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
