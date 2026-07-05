@@ -42,6 +42,10 @@ Desktop.ini
 # Screenshots (ad-hoc, not code)
 ScreenShot_*.png
 
+# AI agent workspace artifacts
+.agents/
+.codex/
+
 # IDE config (local user preferences)
 .idea/
 .claude/

@@ -1,4 +1,4 @@
-name: Release APK
+name: Release
 
 on:
   push:
@@ -29,6 +29,7 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      # ── Android APK ──
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
@@ -59,6 +60,32 @@ jobs:
       - name: Build APK
         run: cd android && ./gradlew assembleDebug
 
+      # ── Desktop standalone exe (Windows) ──
+      - name: Build Desktop executable (pkg)
+        run: |
+          npx @yao-pkg/pkg desktop-entry.js \
+            --out-path dist \
+            --targets node24-win-x64 \
+            --assets "public/**/*" \
+            --assets "games/**/*" \
+            --assets "bots/**/*" \
+            --assets "lang/**/*" \
+            --assets "startup-port.js" \
+            --assets "node_modules/**/*" \
+            --compress Brotli
+          mv dist/desktop-entry.exe dist/GameNest-Windows.exe
+
+      # ── Portable source package (Linux/macOS + Node.js users) ──
+      - name: Create portable ZIP
+        run: |
+          mkdir -p dist/portable
+          cp server.js desktop-entry.js startup-port.js package.json package-lock.json dist/portable/
+          cp start.bat start.vbs dist/portable/
+          cp -r games bots public lang dist/portable/
+          cd dist/portable
+          zip -r ../GameNest-Portable.zip .
+          rm -rf ../portable
+
       - name: Extract version from tag
         id: version
         run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
@@ -72,15 +99,26 @@ jobs:
             ## GameNest ${{ steps.version.outputs.tag }}
 
             ### Download
-            - **app-debug.apk** - Install on an Android phone and host games on the same WiFi.
 
-            ### Desktop / browser host
-            You can also run GameNest directly with Node.js:
+            | Asset | Platform | Description |
+            |---|---|---|
+            | **GameNest-Windows.exe** | Windows 7+ | Standalone executable (no Node.js needed). Double-click to start server, browser opens automatically. |
+            | **GameNest-Portable.zip** | Any OS | Source code + launcher scripts. Requires Node.js 18+. Run `npm install && node desktop-entry.js`. |
+            | **app-debug.apk** | Android 8+ | Install APK on an Android phone to host games on the same WiFi. |
+
+            ### Desktop quick start
+
+            **Windows**: Download `GameNest-Windows.exe`, double-click, and start playing.
+
+            **Linux / macOS**: Download `GameNest-Portable.zip`, extract, then:
 
             ```bash
             npm install
-            npm start
+            node desktop-entry.js
             ```
 
-            Then open `http://localhost:3000`, or share `http://<host-ip>:3000` with devices on the same WiFi.
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+            Open the lobby at `http://localhost:3000`, or share `http://<host-ip>:3000` with other devices on the same WiFi.
+          files: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            dist/GameNest-Windows.exe
+            dist/GameNest-Portable.zip
