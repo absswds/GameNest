@@ -53,16 +53,7 @@ jobs:
             cp -r node_modules android/app/src/main/assets/nodejs-project/
           fi
 
-      - name: Build signed release APK
-        env:
-          RELEASE_STORE_FILE: ${{ secrets.RELEASE_STORE_FILE }}
-          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: cd android && ./gradlew assembleRelease
-
-      - name: Sign APK (fallback if no keystore secrets)
-        if: env.RELEASE_STORE_FILE == ''
+      - name: Build APK
         run: cd android && ./gradlew assembleDebug
 
       - name: Extract version from tag
@@ -77,12 +68,9 @@ jobs:
           body: |
             ## GameNest ${{ steps.version.outputs.tag }}
 
-            ### What's new
-            See [commit log](https://github.com/absswds/GameNest/commits/${{ steps.version.outputs.tag }}) for full details.
-
             ### Download
-            - **APK**: Install on Android devices (arm64-v8a / armeabi-v7a / x86_64)
-            - Requires Android 8.0 (API 26) or newer
-          files: |
-            android/app/build/outputs/apk/release/app-release.apk
-            android/app/build/outputs/apk/debug/app-debug.apk
+            - **app-debug.apk** — 安装到 Android 手机（8.0+），局域网开玩
+
+            ### 桌面版
+            也可以直接用浏览器打开 `http://localhost:3000` 玩，不需要 Android。
+          files: android/app/build/outputs/apk/debug/app-debug.apk
