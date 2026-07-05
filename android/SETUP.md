@@ -102,7 +102,7 @@ android/
 └── app/
     ├── build.gradle                      # App 级 Gradle（含 nodejs-mobile 依赖）
     ├── proguard-rules.pro                # ProGuard 混淆规则
-    ├── libs/                             # 需手动放置 nodejs-mobile.aar 和 jniLibs/
+    ├── libs/                             # jniLibs/ 存放 libnode.so
     └── src/main/
         ├── AndroidManifest.xml           # 权限和入口
         ├── java/com/gamenest/app/

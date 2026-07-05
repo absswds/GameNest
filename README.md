@@ -136,13 +136,6 @@ More details:
 - [CONTRIBUTING.md](CONTRIBUTING.md) has the new-game checklist.
 - [docs/STORE_LISTING.md](docs/STORE_LISTING.md) collects app-store copy and asset planning.
 
-## Release Checklist
-
-- Add a GitHub release section with the direct APK download link after the next APK build is published.
-- Write a short roadmap covering upcoming games, mobile polish, and test coverage.
-- Add more regression coverage for newer games and renderer-heavy flows.
-- Verify mobile join on two devices connected to the same WiFi before tagging a release.
-
 ## Contributing
 
 Bug reports, rules fixes, AI improvements, renderer polish, and new games are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md).

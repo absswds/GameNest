@@ -136,13 +136,6 @@ cd android
 - [CONTRIBUTING.md](CONTRIBUTING.md) 提供新增游戏清单。
 - [docs/STORE_LISTING.md](docs/STORE_LISTING.md) 收集商店文案和素材规划。
 
-## 发布前还要做
-
-- 下一次 APK 构建发布后，在 README 里补上 GitHub Release 直达下载说明。
-- 写一小段 roadmap，说明接下来要补的游戏、移动端体验和测试覆盖。
-- 给较新的游戏和重渲染器流程补更多回归测试。
-- 打 tag 前，用两台同 WiFi 设备实际验证创建房间、扫码加入、返回房间和继续游戏。
-
 ## 参与贡献
 
 欢迎提交 bug 修复、规则修正、AI 优化、渲染器打磨和新游戏。开始前建议先看 [CONTRIBUTING.md](CONTRIBUTING.md)。
