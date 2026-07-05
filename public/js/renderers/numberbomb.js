@@ -31,13 +31,13 @@
               '<button class="nb-key" onclick="window._nbPad(9)">9</button>' +
               '<button class="nb-key nb-key-action" onclick="window._nbClear()">⌫</button>' +
               '<button class="nb-key" onclick="window._nbPad(0)">0</button>' +
-              '<button class="nb-key nb-key-fire" onclick="window._nbGuess()">猜!</button>' +
+              '<button class="nb-key nb-key-fire" onclick="window._nbGuess()">' + _t('nb_guess') + '</button>' +
             '</div>' +
           '</div>' +
           // Status line
           '<div class="nb-status" id="nbStatus"></div>' +
           // Message log
-          '<div class="nb-log" id="nbLog"><div class="nb-log-empty">等待第一个猜测…</div></div>' +
+          '<div class="nb-log" id="nbLog"><div class="nb-log-empty">' + _t('nb_waiting_first_guess') + '</div></div>' +
           // Bomb hit flash overlay
           '<div class="nb-boom" id="nbBoom"><div class="nb-boom-text">💥</div></div>' +
         '</div>';
@@ -163,7 +163,7 @@
           txt = txt.replace(/↑/g, '<span class="dir up">↑</span>');
           logHtml += '<div class="nb-log-row' + rowCls + '">' + txt + '</div>';
         }
-        logEl.innerHTML = logHtml || '<div class="nb-log-empty">等待第一个猜测…</div>';
+        logEl.innerHTML = logHtml || '<div class="nb-log-empty">' + _t('nb_waiting_first_guess') + '</div>';
         logEl.scrollTop = logEl.scrollHeight;
       }
 
@@ -173,25 +173,25 @@
         statusEl.className = 'nb-status';
         if (winner !== null && winner !== undefined) {
           if (winner >= 0) {
-            statusEl.textContent = '🏆 ' + (winner === playerIndex ? '你赢了！' : '玩家 ' + (winner + 1) + ' 获胜！');
+            statusEl.textContent = '🏆 ' + (winner === playerIndex ? _t('nb_you_win') : _tf('nb_player_wins', winner + 1));
             statusEl.classList.add('win');
           } else if (winner === -1) {
-            statusEl.textContent = '💀 全体阵亡…平局！';
+            statusEl.textContent = _t('nb_draw');
             statusEl.classList.add('danger');
           }
         } else if (state.lives && state.lives[playerIndex] <= 0) {
-          statusEl.textContent = '你已出局，等待游戏结束…';
+          statusEl.textContent = _t('nb_eliminated');
           statusEl.classList.add('muted');
         } else if (state.currentPlayer === playerIndex) {
           if (state.low === state.high) {
-            statusEl.textContent = '⚠️ 只剩 ' + state.low + ' 一个数字！必须猜它…';
+            statusEl.textContent = _tf('nb_forced_guess', state.low);
             statusEl.classList.add('danger');
           } else {
-            statusEl.textContent = '🎯 轮到你了';
+            statusEl.textContent = _t('nb_your_turn');
             statusEl.classList.add('');
           }
         } else {
-          statusEl.textContent = '等待玩家 ' + (state.currentPlayer + 1) + ' 猜数字…';
+          statusEl.textContent = _tf('nb_waiting_player', state.currentPlayer + 1);
           statusEl.classList.add('muted');
         }
       }
@@ -230,7 +230,7 @@
     var v = parseInt(input.value);
     if (isNaN(v)) {
       var el = document.getElementById('nbStatus');
-      if (el) { el.textContent = '请输入数字'; el.className = 'nb-status danger'; setTimeout(function() { el.className = 'nb-status'; }, 1500); }
+      if (el) { el.textContent = _t('nb_enter_number'); el.className = 'nb-status danger'; setTimeout(function() { el.className = 'nb-status'; }, 1500); }
       return;
     }
     window.makeGameMove({ guess: v });

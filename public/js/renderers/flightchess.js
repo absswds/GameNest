@@ -296,7 +296,7 @@
       if (fin <= 0) continue;
       var fbc = BS[fp];
       var lx = fbc.c * cs + 3 * cs, ly = fbc.r * cs + 3 * cs - 1.55 * cs;
-      var txt = '🏆 已到家 ' + fin + '/' + PP;
+      var txt = _tf('fc_finished_planes', fin, PP);
       ctx.font = 'bold ' + (cs * .42) + 'px system-ui';
       var tw = ctx.measureText(txt).width, pad = cs * .28;
       ctx.fillStyle = 'rgba(0,0,0,0.62)';
@@ -380,10 +380,10 @@
       var dv = s.dice;
       if (s.hasRolled && dv) {
         var who = s.currentPlayer, wc = rCO[who] || '#333';
-        var wn = (window.gamePlayers && window.gamePlayers[who]) ? window.gamePlayers[who].name : '玩家' + (who + 1);
-        diceEl.innerHTML = dieBox(dv, wc) + '<span style="font-size:18px;font-weight:800;color:' + wc + ';">' + wn + ' 掷出 ' + dv + ' 点</span>';
+        var wn = (window.gamePlayers && window.gamePlayers[who]) ? window.gamePlayers[who].name : _t('fc_player') + (who + 1);
+        diceEl.innerHTML = dieBox(dv, wc) + '<span style="font-size:18px;font-weight:800;color:' + wc + ';">' + _tf('fc_dice_roll', wn, dv) + '</span>';
       } else if (dv) {
-        diceEl.innerHTML = dieBox(dv, '#888') + '<span style="font-size:16px;font-weight:700;color:#888;">上一手 ' + dv + ' 点</span>';
+        diceEl.innerHTML = dieBox(dv, '#888') + '<span style="font-size:16px;font-weight:700;color:#888;">' + _tf('fc_last_roll', dv) + '</span>';
       } else {
         diceEl.innerHTML = '<span style="font-size:40px;opacity:.25;">🎲</span>';
       }
@@ -394,14 +394,14 @@
     if (legEl) {
       var chips = '';
       for (var lp = 0; lp < s._playerCount; lp++) {
-        var lnm = (window.gamePlayers && window.gamePlayers[lp]) ? window.gamePlayers[lp].name : '玩家' + (lp + 1);
+        var lnm = (window.gamePlayers && window.gamePlayers[lp]) ? window.gamePlayers[lp].name : _t('fc_player') + (lp + 1);
         var isMe = lp === pi;
         var isTurn = lp === s.currentPlayer && s.winner == null;
         chips += '<span style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;' +
           'padding:3px 9px;border-radius:14px;background:' + (isTurn ? 'rgba(200,164,92,.18)' : '#fff') +
           ';border:1px solid ' + (isTurn ? '#c8a45c' : '#e4e4e4') + ';color:#444;">' +
           '<span style="width:12px;height:12px;border-radius:50%;background:' + rCO[lp] + ';border:1px solid rgba(0,0,0,.15);"></span>' +
-          lnm + (isMe ? '（你）' : '') + '</span>';
+          lnm + (isMe ? _t('fc_you_label') : '') + '</span>';
       }
       legEl.innerHTML = chips;
     }
@@ -411,9 +411,9 @@
     var my = s.currentPlayer === pi && s.winner == null;
     if (info) {
       var turnTxt;
-      if (s.winner != null) turnTxt = s.winner === pi ? '🏆 你赢了！' : '😢 你输了';
-      else if (my) turnTxt = s.hasRolled ? '点击发光的 ✈ 走棋' : '轮到你掷骰子';
-      else { var ci = window.gamePlayers && window.gamePlayers[s.currentPlayer]; var nm2 = ci ? ci.name : '对手'; turnTxt = s.hasRolled ? '🕐 ' + nm2 + ' 正在走棋…' : '🕐 等待 ' + nm2 + ' 掷骰'; }
+      if (s.winner != null) turnTxt = s.winner === pi ? _t('fc_you_win') : _t('fc_you_lose');
+      else if (my) turnTxt = s.hasRolled ? _t('fc_tap_to_move') : _t('fc_your_turn_roll');
+      else { var ci = window.gamePlayers && window.gamePlayers[s.currentPlayer]; var nm2 = ci ? ci.name : _t('fc_opponent'); turnTxt = s.hasRolled ? _tf('fc_opponent_moving', nm2) : _tf('fc_waiting_roll', nm2); }
       var lr = s.lastMoveResult || '';
       var special = /飞到对面|跳|踩/.test(lr);
       info.innerHTML = turnTxt + (special ? '<br><span style="color:#c8a45c;font-weight:800;">' + lr + '</span>' : '');
@@ -432,7 +432,7 @@
         '<canvas id="fcCanvas" style="display:block;border-radius:16px;touch-action:manipulation;cursor:pointer;box-shadow:0 6px 28px rgba(0,0,0,.18);"></canvas>' +
         '<div id="fcDice" style="display:flex;align-items:center;justify-content:center;gap:12px;min-height:60px;"></div>' +
         '<div id="fcInfo" style="font-size:15px;color:#666;font-weight:600;text-align:center;min-height:22px;"></div>' +
-        '<button id="fcRollBtn" class="btn btn-accent" style="font-size:17px;padding:13px 48px;border-radius:30px;">🎲 掷骰子</button>' +
+        '<button id="fcRollBtn" class="btn btn-accent" style="font-size:17px;padding:13px 48px;border-radius:30px;">' + _t('fc_roll_button') + '</button>' +
         '</div>';
       cvs = document.getElementById('fcCanvas'); ctx = cvs.getContext('2d');
 

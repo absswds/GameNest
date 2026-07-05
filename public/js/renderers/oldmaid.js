@@ -113,7 +113,7 @@
           '<div class="om-action" id="omAction"></div>' +
           '<div id="omOppHand"></div>' +
           '<div class="om-log" id="omLog"></div>' +
-          '<div class="om-hand-title">🃏 我的手牌</div>' +
+          '<div class="om-hand-title">' + _t('om_my_hand') + '</div>' +
           '<div class="om-my-hand" id="omHand"></div>' +
         '</div>';
     },
@@ -139,33 +139,33 @@
         var clickable = isMyTurn && hasCards;
         othersHtml += '<div class="' + cls + '"' +
           (clickable ? ' onclick="window._omPickPlayer(' + i + ')"' : '') +
-          '><div class="name">玩家 ' + (i + 1) + '</div>' +
+          '><div class="name">' + _t('om_player') + (i + 1) + '</div>' +
           '<div class="count">🃏×' + (hands[i] ? hands[i].length : 0) + '</div></div>';
       }
       var othersEl = document.getElementById('omOthers');
-      if (othersEl) othersEl.innerHTML = othersHtml || '<div style="color:var(--text-muted);font-size:13px;">等待其他玩家加入…</div>';
+      if (othersEl) othersEl.innerHTML = othersHtml || '<div style="color:var(--text-muted);font-size:13px;">' + _t('om_waiting_for_players') + '</div>';
 
       // Status
       var statusEl = document.getElementById('omStatus');
       if (statusEl) {
         statusEl.style.color = '';
         if (loser !== undefined && loser !== null) {
-          if (loser === -1) { statusEl.textContent = '🎉 最后两人同时出完 · 平局'; statusEl.style.color = '#58d68d'; }
-          else if (loser === playerIndex) { statusEl.textContent = '😱 你拿着鬼牌…输了！'; statusEl.style.color = '#e74c3c'; }
-          else { statusEl.textContent = '🎉 玩家 ' + (loser + 1) + ' 拿着鬼牌 · 你赢了！'; statusEl.style.color = '#58d68d'; }
+          if (loser === -1) { statusEl.textContent = _t('om_draw'); statusEl.style.color = '#58d68d'; }
+          else if (loser === playerIndex) { statusEl.textContent = _t('om_lost'); statusEl.style.color = '#e74c3c'; }
+          else { statusEl.textContent = _t('om_won'); statusEl.style.color = '#58d68d'; }
         } else if (hands[playerIndex] && hands[playerIndex].length === 0) {
-          statusEl.textContent = '✅ 你没有牌了，等待游戏结束…';
+          statusEl.textContent = _t('om_no_cards');
           statusEl.style.color = 'var(--text-muted)';
         } else if (currentPlayer === playerIndex) {
           if (pickingFrom >= 0) {
-            statusEl.textContent = '👆 从玩家 ' + (pickingFrom + 1) + ' 手中选一张牌';
+            statusEl.textContent = _tf('om_pick_card', _t('om_player') + (pickingFrom + 1));
             statusEl.style.color = 'var(--accent)';
           } else {
-            statusEl.textContent = '🎯 你的回合 — 先点击对手';
+            statusEl.textContent = _t('om_your_turn');
             statusEl.style.color = 'var(--accent)';
           }
         } else {
-          statusEl.textContent = '玩家 ' + (currentPlayer + 1) + ' 正在抽牌…';
+          statusEl.textContent = _tf('om_opponent_drawing', _t('om_player') + (currentPlayer + 1));
           statusEl.style.color = 'var(--text-muted)';
         }
       }
@@ -176,12 +176,12 @@
         if (lastDraw && lastDraw.to === playerIndex) {
           var drawnSym = lastDraw.card.suit ? SUIT_SYMBOLS[lastDraw.card.suit] : '';
           var drawnName = lastDraw.card.rank + drawnSym;
-          actionEl.innerHTML = '你从玩家 ' + (lastDraw.from + 1) + ' 抽到了 <b style="font-size:120%;">' + drawnName + '</b>';
+          actionEl.innerHTML = _tf('om_you_drew', _t('om_player') + (lastDraw.from + 1), drawnName);
         } else if (lastDraw && lastDraw.from === playerIndex) {
-          actionEl.innerHTML = '玩家 ' + (lastDraw.to + 1) + ' 从你手中抽走了一张牌' +
+          actionEl.innerHTML = _tf('om_opponent_drew_from_you', _t('om_player') + (lastDraw.to + 1)) +
             (lastDraw.cardDrawn ? ' <span style="opacity:.7;">(' + lastDraw.cardDrawn + ')</span>' : '');
         } else if (lastDraw && lastDraw.from >= 0) {
-          actionEl.textContent = '玩家 ' + (lastDraw.to + 1) + ' ← 玩家 ' + (lastDraw.from + 1);
+          actionEl.textContent = _t('om_player') + (lastDraw.to + 1) + ' ← ' + _t('om_player') + (lastDraw.from + 1);
         } else {
           actionEl.textContent = '';
         }
@@ -207,7 +207,7 @@
         if (pickingFrom >= 0 && hands[pickingFrom] && hands[pickingFrom].length > 0) {
           var oppCards = hands[pickingFrom];
           var cardsHtml = '<div class="om-opp-section">' +
-            '<span class="om-back-btn" onclick="window._omCancelPick()">← 换一个人</span>' +
+            '<span class="om-back-btn" onclick="window._omCancelPick()">' + _t('om_pick_another') + '</span>' +
             '<div class="om-opp-hand">';
           for (var c = 0; c < oppCards.length; c++) {
             cardsHtml += '<div class="om-opp-card" onclick="window._omDrawCard(' + c + ')">🂠</div>';
@@ -231,7 +231,7 @@
           var isDrawn = lastDraw && lastDraw.to === playerIndex && h === myHand.length - 1;
           handHtml += renderCard(myHand[h], isDrawn);
         }
-        handEl.innerHTML = handHtml || '<div class="om-empty-hint">没有手牌了 🎉</div>';
+        handEl.innerHTML = handHtml || '<div class="om-empty-hint">' + _t('om_hand_empty') + '</div>';
       }
     }
   });

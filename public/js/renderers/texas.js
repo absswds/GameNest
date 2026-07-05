@@ -13,7 +13,7 @@
         '<div id="txWrap" style="width:100%;max-width:420px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
           '<div id="txOpponents" style="display:flex;justify-content:space-around;gap:8px;flex-wrap:wrap;"></div>' +
           '<div id="txCommunity" style="min-height:80px;background:var(--bg);border-radius:var(--radius-sm);padding:12px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;">' +
-            '<div style="font-size:12px;color:var(--text-muted);">公共牌</div>' +
+            '<div style="font-size:12px;color:var(--text-muted);">' + _t('tx_community') + '</div>' +
             '<div id="txCommunityCards" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;"></div>' +
             '<div id="txPot" style="font-size:18px;font-weight:800;color:var(--accent);"></div>' +
             '<div id="txPhase" style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:2px;"></div>' +
@@ -23,7 +23,7 @@
           '<div id="txActions" style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;"></div>' +
           '<div id="txRaiseInput" style="display:none;text-align:center;gap:8px;">' +
             '<input id="txRaiseAmount" type="number" style="width:100px;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:8px;font-size:14px;font-weight:600;" min="0">' +
-            '<button class="btn btn-sm btn-accent" onclick="window._txConfirmRaise()">确认加注</button>' +
+            '<button class="btn btn-sm btn-accent" onclick="window._txConfirmRaise()">' + _t('tx_confirm_raise') + '</button>' +
           '</div>' +
           '<div id="txShowdown" style="display:none;background:var(--bg);border-radius:var(--radius-sm);padding:12px;"></div>' +
         '</div>';
@@ -52,7 +52,7 @@
 
       for (var i = 0; i < chips.length; i++) {
         if (i === selfIdx) continue;
-        var name = window.getPlayerName ? window.getPlayerName(i) : ('玩家' + (i + 1));
+        var name = window.getPlayerName ? window.getPlayerName(i) : (_t('tx_player') + (i + 1));
         var isActive = s.currentPlayer === i;
         var isFolded = folded[i];
         var isAllIn = allIn[i];
@@ -61,9 +61,9 @@
         var isSB = s.smallBlind === i;
 
         var statusTag = '';
-        if (isFolded) statusTag = '<span style="font-size:10px;color:var(--danger);">已弃牌</span>';
+        if (isFolded) statusTag = '<span style="font-size:10px;color:var(--danger);">' + _t('tx_folded') + '</span>';
         else if (isAllIn) statusTag = '<span style="font-size:10px;color:var(--accent);">ALL IN!</span>';
-        else if (isDealer) statusTag = '<span style="font-size:10px;color:var(--text-muted);">庄</span>';
+        else if (isDealer) statusTag = '<span style="font-size:10px;color:var(--text-muted);">' + _t('tx_dealer') + '</span>';
 
         var blindTag = '';
         if (isBB && !isFolded) blindTag = ' BB';
@@ -75,7 +75,7 @@
           (isFolded ? 'opacity:0.5;' : '') + '">' +
           '<div style="font-size:12px;font-weight:600;">' + name + blindTag + '</div>' +
           '<div style="font-size:11px;color:var(--text-muted);">$' + (chips[i] || 0) + '</div>' +
-          (bets[i] > 0 ? '<div style="font-size:11px;color:var(--accent);font-weight:600;">下注 $' + bets[i] + '</div>' : '') +
+          (bets[i] > 0 ? '<div style="font-size:11px;color:var(--accent);font-weight:600;">' + _t('tx_bet') + bets[i] + '</div>' : '') +
           '<div>' + statusTag + '</div>' +
           '</div>';
       }
@@ -97,12 +97,12 @@
       }
       el.innerHTML = html;
 
-      var phaseNames = { preflop: '翻牌前', flop: '翻牌', turn: '转牌', river: '河牌', showdown: '摊牌' };
+      var phaseNames = { preflop: _t('tx_phase_preflop'), flop: _t('tx_phase_flop'), turn: _t('tx_phase_turn'), river: _t('tx_phase_river'), showdown: _t('tx_showdown') };
       var phaseEl = document.getElementById('txPhase');
       if (phaseEl) phaseEl.textContent = phaseNames[s.phase] || s.phase;
 
       var potEl = document.getElementById('txPot');
-      if (potEl) potEl.textContent = '💰 彩池: $' + (s.pot || 0);
+      if (potEl) potEl.textContent = _t('tx_pot') + (s.pot || 0);
     },
 
     renderHoleCards: function(s, selfIdx, winner) {
@@ -111,7 +111,7 @@
       var holeCards = s.holeCards || (s.hands && s.hands[selfIdx]) || [];
       if (holeCards.length === 0) { el.innerHTML = ''; return; }
 
-      var html = '<div style="font-size:12px;color:var(--text-muted);text-align:center;">你的手牌</div><div style="display:flex;gap:6px;">';
+      var html = '<div style="font-size:12px;color:var(--text-muted);text-align:center;">' + _t('tx_your_hand') + '</div><div style="display:flex;gap:6px;">';
       for (var i = 0; i < holeCards.length; i++) {
         html += cardSpan(holeCards[i]);
       }
@@ -126,10 +126,10 @@
       var myBet = (s.bets || [])[selfIdx] || 0;
       var isAllIn = (s.allIn || [])[selfIdx];
       var isFolded = (s.folded || [])[selfIdx];
-      var text = '💎 你的筹码: $' + myChips;
-      if (myBet > 0) text += ' (已下注 $' + myBet + ')';
-      if (isAllIn) text = 'ALL IN! 💎 已全下';
-      if (isFolded) text = '已弃牌';
+      var text = _t('tx_your_chips') + myChips;
+      if (myBet > 0) text += _t('tx_bet_appendix') + myBet + ')';
+      if (isAllIn) text = 'ALL IN! 💎 ' + _t('tx_all_in_text');
+      if (isFolded) text = _t('tx_folded');
       el.textContent = text;
     },
 
@@ -154,16 +154,16 @@
       var minRaise = s.currentBet + ((s.lastRaise || 0) > 0 ? s.lastRaise : s.currentBet > 0 ? s.currentBet : 10);
 
       var html = '';
-      html += '<button class="btn btn-sm btn-outline" onclick="window._txFold()">弃牌</button>';
+      html += '<button class="btn btn-sm btn-outline" onclick="window._txFold()">' + _t('tx_fold') + '</button>';
       if (canCheck) {
-        html += '<button class="btn btn-sm btn-primary" onclick="window._txCheck()">过牌</button>';
-        if (chips > 10) html += '<button class="btn btn-sm btn-accent" onclick="window._txShowRaise()">加注</button>';
+        html += '<button class="btn btn-sm btn-primary" onclick="window._txCheck()">' + _t('tx_check') + '</button>';
+        if (chips > 10) html += '<button class="btn btn-sm btn-accent" onclick="window._txShowRaise()">' + _t('tx_raise') + '</button>';
       } else {
         if (chips > toCall) {
-          html += '<button class="btn btn-sm btn-primary" onclick="window._txCall()">跟注 $' + toCall + '</button>';
-          if (chips > minRaise) html += '<button class="btn btn-sm btn-accent" onclick="window._txShowRaise()">加注</button>';
+          html += '<button class="btn btn-sm btn-primary" onclick="window._txCall()">' + _t('tx_call') + toCall + '</button>';
+          if (chips > minRaise) html += '<button class="btn btn-sm btn-accent" onclick="window._txShowRaise()">' + _t('tx_raise') + '</button>';
         }
-        html += '<button class="btn btn-sm" style="background:var(--danger);color:#fff;" onclick="window._txAllIn()">全下!</button>';
+        html += '<button class="btn btn-sm" style="background:var(--danger);color:#fff;" onclick="window._txAllIn()">' + _t('tx_all_in') + '</button>';
       }
 
       el.innerHTML = html;
@@ -173,11 +173,11 @@
       var el = document.getElementById('txShowdown');
       if (!el || !s.showdownHands) return;
       el.style.display = '';
-      var html = '<div style="font-size:14px;font-weight:700;margin-bottom:8px;">摊牌</div>';
-      var typeNames = { high_card: '高牌', pair: '一对', two_pair: '两对', three: '三条', straight: '顺子', flush: '同花', full_house: '葫芦', four: '铁支', straight_flush: '同花顺' };
+      var html = '<div style="font-size:14px;font-weight:700;margin-bottom:8px;">' + _t('tx_showdown') + '</div>';
+      var typeNames = { high_card: _t('tx_hand_high_card'), pair: _t('tx_hand_pair'), two_pair: _t('tx_hand_two_pair'), three: _t('tx_hand_three'), straight: _t('tx_hand_straight'), flush: _t('tx_hand_flush'), full_house: _t('tx_hand_full_house'), four: _t('tx_hand_four'), straight_flush: _t('tx_hand_straight_flush') };
       for (var i = 0; i < s.showdownHands.length; i++) {
         var h = s.showdownHands[i];
-        var name = window.getPlayerName ? window.getPlayerName(h.player) : ('玩家' + (h.player + 1));
+        var name = window.getPlayerName ? window.getPlayerName(h.player) : (_t('tx_player') + (h.player + 1));
         var isMe = h.player === selfIdx;
         var handType = typeNames[h.hand.type] || h.hand.type;
         var isWinner = s.showdownWinner === h.player;
@@ -190,7 +190,7 @@
           html += cardSpan(h.cards[j]);
         }
         html += '</div>';
-        if (isWinner) html += '<span style="font-size:12px;color:var(--accent);font-weight:700;">🏆 胜</span>';
+        if (isWinner) html += '<span style="font-size:12px;color:var(--accent);font-weight:700;">' + _t('tx_winner') + '</span>';
         html += '</div>';
       }
       el.innerHTML = html;
@@ -250,7 +250,7 @@
   window._txConfirmRaise = function() {
     var input = document.getElementById('txRaiseAmount');
     var amount = parseInt(input.value);
-    if (isNaN(amount) || amount <= 0) { showToast('请输入有效金额'); return; }
+    if (isNaN(amount) || amount <= 0) { showToast(_t('tx_invalid_amount')); return; }
     window.makeGameMove({ action: 'raise', amount: amount });
     var el = document.getElementById('txRaiseInput');
     if (el) el.style.display = 'none';

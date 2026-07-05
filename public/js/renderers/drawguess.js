@@ -161,14 +161,14 @@
 
     // Eraser
     var eTb = document.createElement('button');
-    eTb.textContent = '橡皮';
+    eTb.textContent = _t('dg_eraser');
     eTb.style.cssText = 'padding:4px 8px;border-radius:4px;border:1px solid #ccc;background:#f8f9fa;cursor:pointer;font-size:12px;';
     eTb.onclick = function () { isEraser = true; };
     tb.appendChild(eTb);
 
     // Clear
     var clrBtn = document.createElement('button');
-    clrBtn.textContent = '清空';
+    clrBtn.textContent = _t('dg_clear');
     clrBtn.style.cssText = 'padding:4px 8px;border-radius:4px;border:1px solid #e74c3c;background:#fff5f5;color:#e74c3c;cursor:pointer;font-size:12px;';
     clrBtn.onclick = function () { localStrokes = []; redrawCanvas(); };
     tb.appendChild(clrBtn);
@@ -204,7 +204,7 @@
         container.appendChild(timerEl);
       }
     }
-    if (!remainingMs || remainingMs <= 0) { timerEl.textContent = '不限时'; return; }
+    if (!remainingMs || remainingMs <= 0) { timerEl.textContent = _t('dg_no_time_limit'); return; }
     var localDeadline = Date.now() + remainingMs;
     var expired = false;
     function tick() {
@@ -212,11 +212,11 @@
       if (rem <= 1 && !expired) {
         expired = true;
         clearInterval(timerInterval);
-        timerEl.textContent = '时间到！';
+        timerEl.textContent = _t('dg_time_up');
         if (onExpire) onExpire();
         return;
       }
-      timerEl.textContent = '剩余 ' + rem + ' 秒';
+      timerEl.textContent = _t('dg_remaining') + rem + _t('dg_seconds');
       timerEl.style.color = rem <= 10 ? '#e74c3c' : 'var(--text-muted)';
     }
     tick();
@@ -231,7 +231,7 @@
     container.appendChild(wrap);
 
     var wordLabel = document.createElement('div');
-    var wordText = task.word ? ('画这个词：' + task.word) : ('根据这段描述画画：「' + task.prevContent + '」');
+    var wordText = task.word ? (_t('dg_draw_this_word') + task.word) : (_t('dg_draw_from_desc') + task.prevContent + '」');
     wordLabel.textContent = wordText;
     wordLabel.style.cssText = 'font-size:17px;font-weight:700;color:var(--accent);margin-bottom:6px;text-align:center;';
     wrap.appendChild(wordLabel);
@@ -242,13 +242,13 @@
       wsSend({ type: 'submit', content: localStrokes });
       clearInterval(timerInterval);
       localStrokes = [];
-      renderWaiting(container, '画作已提交，等待其他玩家…');
+      renderWaiting(container, _t('dg_drawing_submitted'));
     }
     startTimer(wrap, state && state.stepRemainingMs, doSubmitDraw);
     buildToolbar(wrap);
 
-    buildSubmitBtn(wrap, '提交画作 ✓', function () {
-      if (localStrokes.length === 0) { alert('请先画一下再提交'); return; }
+    buildSubmitBtn(wrap, _t('dg_submit_drawing'), function () {
+      if (localStrokes.length === 0) { alert(_t('dg_draw_first_alert')); return; }
       doSubmitDraw();
     });
   }
@@ -261,14 +261,14 @@
     container.appendChild(wrap);
 
     var lbl = document.createElement('div');
-    lbl.textContent = '看图猜词（上一位玩家的画）:';
+    lbl.textContent = _t('dg_guess_instruction');
     lbl.style.cssText = 'font-size:14px;color:var(--text-muted);margin-bottom:6px;';
     wrap.appendChild(lbl);
 
     startTimer(wrap, state && state.stepRemainingMs, function () {
-      var val = (input && input.value.trim()) || '（超时）';
+      var val = (input && input.value.trim()) || _t('dg_timeout_fallback');
       wsSend({ type: 'submit', content: val });
-      renderWaiting(container, '猜词已提交，等待其他玩家…');
+      renderWaiting(container, _t('dg_guess_submitted'));
     });
 
     // Draw the previous strokes on canvas
@@ -287,14 +287,14 @@
 
     var input = document.createElement('input');
     input.type = 'text';
-    input.placeholder = '你猜这是什么？';
+    input.placeholder = _t('dg_guess_placeholder');
     input.maxLength = 20;
     input.style.cssText = 'flex:1;padding:10px 14px;border-radius:8px;border:1px solid var(--border);font-size:15px;';
     inputWrap.appendChild(input);
 
     var submitBtn = document.createElement('button');
     submitBtn.className = 'btn btn-primary';
-    submitBtn.textContent = '提交';
+    submitBtn.textContent = _t('dg_submit');
     inputWrap.appendChild(submitBtn);
 
     function doSubmit() {
@@ -302,7 +302,7 @@
       if (!val) { input.focus(); return; }
       wsSend({ type: 'submit', content: val });
       clearInterval(timerInterval);
-      renderWaiting(container, '猜词已提交，等待其他玩家…');
+      renderWaiting(container, _t('dg_guess_submitted'));
     }
     submitBtn.onclick = doSubmit;
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSubmit(); });
@@ -317,7 +317,7 @@
     container.appendChild(wrap);
 
     var title = document.createElement('div');
-    title.textContent = '🎨 选一个词来画';
+    title.textContent = _t('dg_choose_word_title');
     title.style.cssText = 'font-size:19px;font-weight:800;margin-bottom:6px;';
     wrap.appendChild(title);
 
@@ -331,20 +331,20 @@
       btn.onmouseleave = function () { btn.style.borderColor = 'var(--border)'; };
       btn.onclick = function () {
         wsSend({ type: 'choose_word', index: i });
-        renderWaiting(container, '已选词，准备开画…');
+        renderWaiting(container, _t('dg_word_chosen'));
       };
       wrap.appendChild(btn);
     });
 
     var hint = document.createElement('div');
-    hint.textContent = '超时将自动选择第一个词';
+    hint.textContent = _t('dg_auto_select_hint');
     hint.style.cssText = 'margin-top:14px;font-size:12px;color:var(--text-muted);';
     wrap.appendChild(hint);
   }
 
   // ---- Render waiting ----
   function renderWaiting(container, msg) {
-    container.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted);font-size:15px;">' + (msg || '等待其他玩家完成当前步骤…') + '</div>';
+    container.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted);font-size:15px;">' + (msg || _t('dg_waiting_default')) + '</div>';
   }
 
   function renderStage(container, task) {
@@ -353,9 +353,9 @@
     wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;padding:8px;';
     container.appendChild(wrap);
     var header = document.createElement('div');
-    var drawer = (window._players && window._players[state.drawerIndex]) ? window._players[state.drawerIndex].name : ('玩家' + (state.drawerIndex + 1));
+    var drawer = (window._players && window._players[state.drawerIndex]) ? window._players[state.drawerIndex].name : (_t('dg_player_fallback') + (state.drawerIndex + 1));
     header.style.cssText = 'font-size:16px;font-weight:800;text-align:center;margin-bottom:6px;';
-    header.textContent = task.canDraw ? ('第 ' + state.round + ' 轮：画 ' + task.word) : ('第 ' + state.round + ' 轮 · ' + drawer + ' 在画 · ' + (task.correct ? '你已猜中 ✓' : task.wordMask));
+    header.textContent = task.canDraw ? (_t('dg_round_prefix') + state.round + _t('dg_round_draw') + task.word) : (_t('dg_round_prefix') + state.round + _t('dg_round_sep') + drawer + _t('dg_is_drawing') + (task.correct ? _t('dg_guessed_correct') : task.wordMask));
     wrap.appendChild(header);
     resizeCanvas();
     drawStrokes(task.strokes || []);
@@ -364,8 +364,8 @@
     if (task.canDraw) { localStrokes = task.strokes || []; buildToolbar(wrap); return; }
     if (task.correct) return;
     var row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;margin-top:10px;width:min(100%,500px);'; wrap.appendChild(row);
-    var input = document.createElement('input'); input.placeholder = '输入答案，随时再猜'; input.maxLength = 20; input.style.cssText = 'flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;'; row.appendChild(input);
-    var btn = document.createElement('button'); btn.className = 'btn btn-primary'; btn.textContent = '猜'; row.appendChild(btn);
+    var input = document.createElement('input'); input.placeholder = _t('dg_stage_guess_placeholder'); input.maxLength = 20; input.style.cssText = 'flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;'; row.appendChild(input);
+    var btn = document.createElement('button'); btn.className = 'btn btn-primary'; btn.textContent = _t('dg_guess_btn'); row.appendChild(btn);
     function guess() { var text = input.value.trim(); if (!text) return; wsSend({ type: 'stage_guess', text: text }); input.select(); }
     btn.onclick = guess; input.onkeydown = function(e) { if (e.key === 'Enter') guess(); }; setTimeout(function(){ input.focus(); }, 50);
   }
@@ -373,8 +373,8 @@
   function renderStageResult(container, st) {
     clearInterval(timerInterval); container.innerHTML = '';
     var box = document.createElement('div'); box.style.cssText = 'margin:32px auto;padding:24px;max-width:420px;text-align:center;background:#fff9ee;border-radius:16px;font-size:16px;';
-    var scores = (st.scores || []).map(function(s, i) { var n = window._players && window._players[i] ? window._players[i].name : ('玩家' + (i + 1)); return n + ' ' + s + '分'; }).join(' · ');
-    box.innerHTML = '<div style="font-size:22px;font-weight:800">答案：' + (st.word || '') + '</div><div style="margin-top:12px;color:var(--text-muted)">' + scores + '</div><div style="margin-top:12px">下一轮马上开始…</div>';
+    var scores = (st.scores || []).map(function(s, i) { var n = window._players && window._players[i] ? window._players[i].name : (_t('dg_player_fallback') + (i + 1)); return n + ' ' + s + _t('dg_points_suffix'); }).join(' · ');
+    box.innerHTML = '<div style="font-size:22px;font-weight:800">' + _t('dg_answer_label') + (st.word || '') + '</div><div style="margin-top:12px;color:var(--text-muted)">' + scores + '</div><div style="margin-top:12px">' + _t('dg_next_round_soon') + '</div>';
     container.appendChild(box);
   }
 
@@ -387,13 +387,13 @@
 
     var title = document.createElement('div');
     title.style.cssText = 'font-size:18px;font-weight:800;margin-bottom:6px;text-align:center;';
-    title.textContent = '📺 揭示传话链';
+    title.textContent = _t('dg_reveal_title');
     wrap.appendChild(title);
 
     if (st.word) {
       var wordEl = document.createElement('div');
       wordEl.style.cssText = 'font-size:14px;color:var(--text-muted);margin-bottom:12px;';
-      wordEl.textContent = '原始词语：「' + st.word + '」';
+      wordEl.textContent = _t('dg_original_word') + st.word + '」';
       wrap.appendChild(wordEl);
     }
 
@@ -404,11 +404,11 @@
     nav.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:10px;width:100%;flex-wrap:nowrap;';
     var prevBtn = document.createElement('button');
     prevBtn.className = 'btn';
-    prevBtn.textContent = '← 上一步';
+    prevBtn.textContent = _t('dg_prev_step');
     prevBtn.style.cssText = 'white-space:nowrap;flex:0 0 132px;width:132px;padding:10px 0;';
     var nextBtn = document.createElement('button');
     nextBtn.className = 'btn btn-primary';
-    nextBtn.textContent = '下一步 →';
+    nextBtn.textContent = _t('dg_next_step');
     nextBtn.style.cssText = 'white-space:nowrap;flex:0 0 132px;width:132px;padding:10px 0;';
     var stepLabel = document.createElement('span');
     stepLabel.style.cssText = 'font-size:13px;color:var(--text-muted);white-space:nowrap;flex:0 0 auto;min-width:30px;text-align:center;';
@@ -426,16 +426,16 @@
       revealStep = Math.max(0, Math.min(idx, chain.length - 1));
       prevBtn.disabled = revealStep === 0;
       nextBtn.disabled = revealStep === chain.length - 1;
-      nextBtn.textContent = revealStep === chain.length - 1 ? '回放结束' : '下一步 →';
+      nextBtn.textContent = revealStep === chain.length - 1 ? _t('dg_replay_end') : _t('dg_next_step');
       stepLabel.textContent = (revealStep + 1) + ' / ' + chain.length;
 
       var step = chain[revealStep];
-      var pname = players && players[step.playerIndex] ? players[step.playerIndex].name : ('玩家' + (step.playerIndex + 1));
+      var pname = players && players[step.playerIndex] ? players[step.playerIndex].name : (_t('dg_player_fallback') + (step.playerIndex + 1));
       stepArea.innerHTML = '';
 
       var hdr = document.createElement('div');
       hdr.style.cssText = 'font-size:14px;font-weight:600;margin-bottom:8px;text-align:center;';
-      hdr.textContent = pname + ' ' + (step.type === 'draw' ? '画了：' : '猜的词：');
+      hdr.textContent = pname + ' ' + (step.type === 'draw' ? _t('dg_action_drew') : _t('dg_action_guessed'));
       stepArea.appendChild(hdr);
 
       if (step.type === 'draw') {
@@ -464,7 +464,7 @@
       } else {
         var guessEl = document.createElement('div');
         guessEl.style.cssText = 'font-size:28px;font-weight:800;text-align:center;padding:30px;background:#f8f9fa;border-radius:12px;letter-spacing:2px;';
-        guessEl.textContent = step.content || '（空白）';
+        guessEl.textContent = step.content || _t('dg_blank');
         stepArea.appendChild(guessEl);
       }
 
@@ -480,23 +480,23 @@
     }
     var resultEl = document.createElement('div');
     resultEl.style.cssText = 'margin-top:16px;padding:14px 20px;background:#f8f9fa;border-radius:12px;text-align:center;font-size:15px;font-weight:700;color:#5a4a32;';
-    resultEl.textContent = '原词「' + st.word + '」→ 最后猜词「' + (lastGuess || '无答案') + '」';
+    resultEl.textContent = _t('dg_original_prefix') + st.word + _t('dg_to_final_guess') + (lastGuess || _t('dg_no_answer')) + '」';
     wrap.appendChild(resultEl);
 
     if (st.transmissionResult) {
       var verdict = document.createElement('div');
       var matched = st.transmissionResult === 'match';
       verdict.style.cssText = 'margin-top:12px;padding:12px;border-radius:12px;text-align:center;font-weight:800;background:' + (matched ? '#ecf9ef' : '#fff5f2') + ';color:' + (matched ? '#23864a' : '#c95f3c') + ';';
-      verdict.textContent = matched ? '🎯 全员投票：传话仍然符合原词' : '🌀 全员投票：传话已经跑偏';
+      verdict.textContent = matched ? _t('dg_verdict_match') : _t('dg_verdict_drift');
       wrap.appendChild(verdict);
       var matchVotes = st.votes ? Object.values(st.votes).filter(function(v) { return v === 'match'; }).length : 0;
       var driftVotes = st.votes ? Object.values(st.votes).filter(function(v) { return v === 'drift'; }).length : 0;
       var tally = document.createElement('div');
       tally.style.cssText = 'margin-top:8px;font-size:13px;color:var(--text-muted);text-align:center;';
-      tally.textContent = '符合原词 ' + matchVotes + ' 票 · 已跑偏 ' + driftVotes + ' 票';
+      tally.textContent = _t('dg_match_votes_prefix') + matchVotes + _t('dg_votes_separator') + driftVotes + _t('dg_votes_suffix');
       wrap.appendChild(tally);
       var restartBtn = document.createElement('button');
-      restartBtn.className = 'btn btn-primary'; restartBtn.textContent = '再来一局';
+      restartBtn.className = 'btn btn-primary'; restartBtn.textContent = _t('dg_play_again');
       restartBtn.style.cssText = 'margin-top:14px;white-space:nowrap;';
       restartBtn.onclick = function () { if (window.doRestart) window.doRestart(); };
       wrap.appendChild(restartBtn);
@@ -509,14 +509,14 @@
     var agreeBtn = document.createElement('button');
     var driftBtn = document.createElement('button');
     agreeBtn.className = 'btn'; driftBtn.className = 'btn';
-    agreeBtn.textContent = myVote === 'match' ? '✓ 符合原词' : '符合原词';
-    driftBtn.textContent = myVote === 'drift' ? '✓ 已跑偏' : '已经跑偏';
+    agreeBtn.textContent = myVote === 'match' ? _t('dg_voted_match') : _t('dg_vote_match');
+    driftBtn.textContent = myVote === 'drift' ? _t('dg_voted_drift') : _t('dg_vote_drift');
     agreeBtn.style.cssText = 'margin:0 5px;white-space:nowrap;'; driftBtn.style.cssText = 'margin:0 5px;white-space:nowrap;';
     agreeBtn.onclick = function () { wsSend({ type: 'vote_match', value: 'match' }); };
     driftBtn.onclick = function () { wsSend({ type: 'vote_match', value: 'drift' }); };
     voteBox.appendChild(agreeBtn); voteBox.appendChild(driftBtn);
     var count = st.votes ? Object.keys(st.votes).length : 0;
-    var note = document.createElement('div'); note.style.cssText = 'font-size:12px;color:var(--text-muted);margin-top:8px;'; note.textContent = '请投票决定最后猜词是否仍符合原词（' + count + '/' + (players ? players.length : 0) + '）'; voteBox.appendChild(note);
+    var note = document.createElement('div'); note.style.cssText = 'font-size:12px;color:var(--text-muted);margin-top:8px;'; note.textContent = _t('dg_vote_prompt') + count + '/' + (players ? players.length : 0) + '）'; voteBox.appendChild(note);
     wrap.appendChild(voteBox);
   }
 
@@ -529,24 +529,24 @@
     box.style.cssText = 'margin:28px auto;padding:24px;max-width:440px;text-align:center;background:#fff9ee;border-radius:16px;box-shadow:0 4px 18px rgba(115,82,31,.10);';
     var result = st.roundResults || {};
     var starter = result.drawerIndex === undefined ? 0 : result.drawerIndex;
-    var starterName = window._players && window._players[starter] ? window._players[starter].name : ('玩家' + (starter + 1));
+    var starterName = window._players && window._players[starter] ? window._players[starter].name : (_t('dg_player_fallback') + (starter + 1));
     var rows = (st.scores || []).map(function(score, index) {
-      var name = window._players && window._players[index] ? window._players[index].name : ('玩家' + (index + 1));
-      return '<div style="display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px solid rgba(200,164,92,.18);"><span>' + name + '</span><strong>' + score + ' 分</strong></div>';
+      var name = window._players && window._players[index] ? window._players[index].name : (_t('dg_player_fallback') + (index + 1));
+      return '<div style="display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px solid rgba(200,164,92,.18);"><span>' + name + '</span><strong>' + score + ' ' + _t('dg_points_suffix') + '</strong></div>';
     }).join('');
     if (isFinal) {
-      var winnerName = window._players && window._players[st.winner] ? window._players[st.winner].name : ('玩家' + ((st.winner || 0) + 1));
-      box.innerHTML = '<div style="font-size:24px;font-weight:800">🏆 ' + winnerName + ' 获胜</div><div style="margin:8px 0 16px;color:var(--text-muted)">所有接力链已结算，最终积分如下</div>' + rows;
+      var winnerName = window._players && window._players[st.winner] ? window._players[st.winner].name : (_t('dg_player_fallback') + ((st.winner || 0) + 1));
+      box.innerHTML = '<div style="font-size:24px;font-weight:800">🏆 ' + winnerName + _t('dg_wins') + '</div><div style="margin:8px 0 16px;color:var(--text-muted)">' + _t('dg_final_scores') + '</div>' + rows;
     } else {
       var gained = result.scoreAwarded || 0;
       var matched = st.transmissionResult === 'match';
       var nextIndex = (starter + 1) % (st.scores || [0]).length;
-      var nextName = window._players && window._players[nextIndex] ? window._players[nextIndex].name : ('玩家' + (nextIndex + 1));
-      box.innerHTML = '<div style="font-size:21px;font-weight:800">第 ' + st.round + ' 轮结算</div>' +
+      var nextName = window._players && window._players[nextIndex] ? window._players[nextIndex].name : (_t('dg_player_fallback') + (nextIndex + 1));
+      box.innerHTML = '<div style="font-size:21px;font-weight:800">' + _t('dg_round_prefix') + st.round + _t('dg_round_result_suffix') + '</div>' +
         '<div style="margin:10px 0;padding:10px;border-radius:10px;background:' + (matched ? '#ecf9ef' : '#fff5f2') + ';color:' + (matched ? '#23864a' : '#c95f3c') + ';font-weight:700">' +
-        (matched ? '🎯 传话成功' : '🌀 传话跑偏') + ' · ' + starterName + ' +' + gained + ' 分</div>' +
+        (matched ? _t('dg_transmission_match') : _t('dg_transmission_drift')) + ' · ' + starterName + ' +' + gained + ' ' + _t('dg_points_suffix') + '</div>' +
         '<div style="text-align:left;margin-top:10px">' + rows + '</div>' +
-        '<div style="margin-top:16px;color:var(--text-muted);font-size:13px">下一轮由 ' + nextName + ' 选词并开始画</div>';
+        '<div style="margin-top:16px;color:var(--text-muted);font-size:13px">' + _t('dg_next_round_by_prefix') + nextName + _t('dg_next_round_by_suffix') + '</div>';
       startTimer(box, st.stepRemainingMs, null);
     }
     container.appendChild(box);
@@ -565,7 +565,7 @@
       if (st.mode === 'stage') {
         if (st.phase === 'choosing') {
           if (st.myTask && st.myTask.type === 'choose') renderChooseWord(container, st.myTask);
-          else renderWaiting(container, '等待画手选词…');
+          else renderWaiting(container, _t('dg_waiting_drawer_choose'));
         } else if (st.phase === 'playing' && st.myTask) {
           renderStage(container, st.myTask);
         } else if (st.phase === 'round_result') {
@@ -586,7 +586,7 @@
       }
 
       if (winner !== null && winner !== undefined && st.phase !== 'reveal') {
-        renderWaiting(container, '游戏结束！');
+        renderWaiting(container, _t('dg_game_over'));
         return;
       }
 
@@ -597,8 +597,8 @@
           renderChooseWord(container, st.myTask);
         } else {
           var chooser = st.chain && st.chain[0] ? st.chain[0].playerIndex : 0;
-          var cname = (window._players && window._players[chooser]) ? window._players[chooser].name : ('玩家' + (chooser + 1));
-          renderWaiting(container, cname + ' 正在选词…');
+          var cname = (window._players && window._players[chooser]) ? window._players[chooser].name : (_t('dg_player_fallback') + (chooser + 1));
+          renderWaiting(container, cname + _t('dg_is_choosing'));
         }
         return;
       }
@@ -610,7 +610,7 @@
           var step = st.chain[st.currentStep] || {};
           var stepNum = (st.currentStep || 0) + 1;
           var total = st.chain ? st.chain.length : '?';
-          renderWaiting(container, '第 ' + stepNum + ' / ' + total + ' 步进行中，请等待轮到你…');
+          renderWaiting(container, _t('dg_round_prefix') + stepNum + ' / ' + total + _t('dg_step_in_progress'));
         } else if (task.type === 'draw') {
           var alreadyDrawing = container.querySelector('#dg-toolbar');
           if (!alreadyDrawing) {

@@ -49,10 +49,10 @@
     skip: '⏭️', future: '🔮', shuffle: '🔀', favor: '🎁',
     steal: '👋'
   };
-  var CARD_NAMES = {
-    explode: '爆炸猫', defuse: '拆除', attack: '甩锅',
-    skip: '跳过', future: '预言', shuffle: '洗混', favor: '偷牌',
-    steal: '偷牌'
+  var CARD_NAME_KEYS = {
+    explode: 'ek_card_explode', defuse: 'ek_card_defuse', attack: 'ek_card_attack',
+    skip: 'ek_card_skip', future: 'ek_card_future', shuffle: 'ek_card_shuffle', favor: 'ek_card_steal',
+    steal: 'ek_card_steal'
   };
   var CARD_COLORS = {
     explode: '#e74c3c', defuse: '#2ecc71', attack: '#c0392b',
@@ -72,15 +72,15 @@
           '<div class="ek-opponents" id="ekOpps"></div>' +
           '<div class="ek-action-log" id="ekActionLog"></div>' +
           '<div class="ek-center">' +
-            '<div class="ek-pile ek-draw-pile" id="ekDrawPile"><span id="ekDrawCount">0</span><div class="label">牌堆</div></div>' +
-            '<div class="ek-pile ek-discard" id="ekDiscard"><span id="ekDiscardCount">0</span><div class="label">弃牌</div></div>' +
+            '<div class="ek-pile ek-draw-pile" id="ekDrawPile"><span id="ekDrawCount">0</span><div class="label">' + _t('ek_draw_pile') + '</div></div>' +
+            '<div class="ek-pile ek-discard" id="ekDiscard"><span id="ekDiscardCount">0</span><div class="label">' + _t('ek_discard') + '</div></div>' +
           '</div>' +
           '<div class="ek-future" id="ekFuture" style="display:none"></div>' +
           '<div class="ek-hand-wrap" id="ekHandWrap"><div class="ek-hand" id="ekHand"></div></div>' +
-          '<div id="ekScrollHint" style="display:none;text-align:center;font-size:11px;color:var(--text-muted);padding:2px 0;">👈 左右滑动查看全部牌 →</div>' +
+          '<div id="ekScrollHint" style="display:none;text-align:center;font-size:11px;color:var(--text-muted);padding:2px 0;">' + _t('ek_scroll_hint') + '</div>' +
           '<div id="ekStealMsg" style="text-align:center;font-size:13px;font-weight:600;min-height:20px;padding:2px 0;"></div>' +
           '<div class="ek-actions">' +
-            '<button class="btn btn-primary btn-sm" id="ekDrawBtn">抽牌</button>' +
+            '<button class="btn btn-primary btn-sm" id="ekDrawBtn">' + _t('ek_draw') + '</button>' +
           '</div>' +
           '<div class="ek-status" id="ekStatus"></div>' +
           '<div class="ek-target-picker" id="ekTargetPicker" style="display:none"></div>' +
@@ -112,27 +112,27 @@
     if (!el) return;
     var la = state.lastAction;
     if (!la) { el.textContent = ''; return; }
-    var who = la.player === selfIdx ? '你' : (window.getPlayerName ? window.getPlayerName(la.player) : ('玩家' + (la.player + 1)));
+    var who = la.player === selfIdx ? _t('ek_you') : (window.getPlayerName ? window.getPlayerName(la.player) : (_t('ek_player_fallback') + (la.player + 1)));
     var msg = '', color = 'var(--text-muted)';
     switch (la.type) {
       case 'explode':
-        msg = '💥 ' + who + ' 抽到爆炸猫，被炸飞了！'; color = '#e74c3c'; break;
+        msg = _tf('ek_msg_explode', who); color = '#e74c3c'; break;
       case 'defuse':
-        msg = '🔧 ' + who + ' 用拆除化解了爆炸！'; color = '#2ecc71'; break;
+        msg = _tf('ek_msg_defuse', who); color = '#2ecc71'; break;
       case 'skip':
-        msg = who + ' 出了 ⏭️ 跳过'; break;
+        msg = _tf('ek_msg_skip', who); break;
       case 'attack':
-        var tgt = (la.target != null && la.target !== la.player) ? (window.getPlayerName ? window.getPlayerName(la.target) : ('玩家' + (la.target + 1))) : '下家';
-        msg = '⚔️ ' + who + ' 甩锅给 ' + tgt; color = '#c0392b'; break;
+        var tgt = (la.target != null && la.target !== la.player) ? (window.getPlayerName ? window.getPlayerName(la.target) : (_t('ek_player_fallback') + (la.target + 1))) : _t('ek_next_player');
+        msg = _tf('ek_msg_attack', who, tgt); color = '#c0392b'; break;
       case 'future':
-        msg = who + ' 出了 🔮 预言'; break;
+        msg = _tf('ek_msg_future', who); break;
       case 'shuffle':
-        msg = who + ' 出了 🔀 洗混'; break;
+        msg = _tf('ek_msg_shuffle', who); break;
       case 'favor':
       case 'steal':
-        msg = who + ' 出了 偷牌'; break;
+        msg = _tf('ek_msg_steal', who); break;
       case 'draw':
-        msg = who + ' 抽了一张牌，结束回合'; break;
+        msg = _tf('ek_msg_draw', who); break;
       default:
         msg = '';
     }
@@ -171,8 +171,8 @@
       var active = i === state.currentPlayer ? ' active' : '';
       var dead = !state.alive[i] ? ' dead' : '';
       html += '<div class="ek-opp' + active + dead + '">' +
-        '<div class="name">' + (window.getPlayerName ? window.getPlayerName(i) : ('玩家' + (i + 1))) + (dead ? ' 💀' : '') + '</div>' +
-        '<div class="count">' + count + '</div><div style="font-size:11px;color:var(--text-muted)">张牌</div></div>';
+        '<div class="name">' + (window.getPlayerName ? window.getPlayerName(i) : (_t('ek_player_fallback') + (i + 1))) + (dead ? _t('ek_dead_indicator') : '') + '</div>' +
+        '<div class="count">' + count + '</div><div style="font-size:11px;color:var(--text-muted)">' + _t('ek_cards_count') + '</div></div>';
     }
     el.innerHTML = html;
   }
@@ -187,7 +187,7 @@
     if (!el) return;
     if (state.peekedCards && state.currentPlayer === selfIdx && state.phase === 'play') {
       el.style.display = 'block';
-      var html = '<div class="ftitle">🔮 牌堆顶 ' + state.peekedCards.length + ' 张:</div><div class="fcards">';
+      var html = '<div class="ftitle">' + _tf('ek_future_title', state.peekedCards.length) + '</div><div class="fcards">';
       for (var i = state.peekedCards.length - 1; i >= 0; i--) {
         var c = state.peekedCards[i];
         var bg = CARD_COLORS[c.type] || '#555';
@@ -212,7 +212,7 @@
       var c = hand[i];
       var bg = CARD_COLORS[c.type] || '#555';
       var icon = CARD_ICONS[c.type] || '?';
-      var name = CARD_NAMES[c.type] || c.type;
+      var name = _t(CARD_NAME_KEYS[c.type]) || c.type;
       html += '<div class="ek-card" data-id="' + c.id + '" style="background:' + bg + '">' +
         '<div class="ekv">' + icon + '</div><div class="ekl">' + name + '</div></div>';
     }
@@ -223,11 +223,11 @@
     for (var j = 0; j < cards.length; j++) {
       (function(cardEl, card) {
         cardEl.addEventListener('click', function() {
-          if (!inPlay) { showToast('还没轮到你'); return; }
+          if (!inPlay) { showToast(_t('ek_toast_not_turn')); return; }
           if (card.type === 'steal' || card.type === 'favor' || card.type === 'attack') {
             var alive = [];
             state.alive.forEach(function(a, i) { if (a && i !== selfIdx) alive.push(i); });
-            var noTargetMsg = card.type === 'attack' ? '没有可甩锅的目标' : '没有可偷的目标';
+            var noTargetMsg = card.type === 'attack' ? _t('ek_toast_no_attack_target') : _t('ek_toast_no_steal_target');
             if (alive.length === 0) {
               showToast(noTargetMsg);
             } else if (alive.length === 1) {
@@ -268,10 +268,10 @@
     var isMyTurn = state.currentPlayer === selfIdx && state.alive[selfIdx];
     if (isMyTurn && state.phase === 'draw') {
       drawBtn.style.display = '';
-      drawBtn.textContent = '抽牌';
+      drawBtn.textContent = _t('ek_draw');
     } else if (isMyTurn && state.phase === 'play') {
       drawBtn.style.display = '';
-      drawBtn.textContent = '跳过打牌 → 抽牌';
+      drawBtn.textContent = _t('ek_skip_to_draw');
     } else {
       drawBtn.style.display = 'none';
     }
@@ -281,13 +281,13 @@
     var el = document.getElementById('ekStatus');
     if (!el) return;
     if (state.winner !== null) {
-      el.textContent = state.winner === selfIdx ? '🎉 你赢了！' : '💀 ' + (window.getPlayerName ? window.getPlayerName(state.winner) : ('玩家' + (state.winner + 1))) + ' 获胜';
+      el.textContent = state.winner === selfIdx ? _t('ek_you_win') : '💀 ' + (window.getPlayerName ? window.getPlayerName(state.winner) : (_t('ek_player_fallback') + (state.winner + 1))) + _t('ek_player_wins');
     } else if (!state.alive[selfIdx]) {
-      el.textContent = '💀 你已出局，观看中...';
+      el.textContent = _t('ek_you_eliminated');
     } else if (state.currentPlayer === selfIdx) {
-      el.textContent = state.phase === 'play' ? '出牌或跳过' : '请抽牌';
+      el.textContent = state.phase === 'play' ? _t('ek_play_or_skip') : _t('ek_please_draw');
     } else {
-      el.textContent = '等待对手...';
+      el.textContent = _t('ek_waiting');
     }
 
     // Steal notification
@@ -295,13 +295,13 @@
     if (stealEl) {
       if (state.lastSteal) {
         var ls = state.lastSteal;
-        var cardName = CARD_NAMES[ls.cardType] || ls.cardType;
+        var cardName = _t(CARD_NAME_KEYS[ls.cardType]) || ls.cardType;
         var cardIcon = CARD_ICONS[ls.cardType] || '?';
         if (ls.stealer === selfIdx) {
-          stealEl.textContent = '🎉 你偷到了 ' + cardIcon + ' ' + cardName + '！';
+          stealEl.textContent = _tf('ek_msg_stolen_you', cardIcon + ' ' + cardName);
           stealEl.style.color = '#2ecc71';
         } else if (ls.victim === selfIdx) {
-          stealEl.textContent = '😱 你的 ' + cardIcon + ' ' + cardName + ' 被偷走了！';
+          stealEl.textContent = _tf('ek_msg_stolen_victim', cardIcon + ' ' + cardName);
           stealEl.style.color = '#e74c3c';
         } else {
           stealEl.textContent = '';
@@ -315,12 +315,12 @@
   function showTargetPicker(card, targets) {
     var el = document.getElementById('ekTargetPicker');
     if (!el) return;
-    var verb = card.type === 'attack' ? '甩锅给' : '偷';
-    var html = '<div class="ek-picker-card"><div class="ek-picker-title">' + verb + '哪位玩家？</div><div class="ek-picker-btns">';
+    var verb = card.type === 'attack' ? _t('ek_target_attack_verb') : _t('ek_target_steal_verb');
+    var html = '<div class="ek-picker-card"><div class="ek-picker-title">' + verb + _t('ek_target_prompt') + '</div><div class="ek-picker-btns">';
     targets.forEach(function(i) {
-      html += '<button class="btn btn-primary btn-sm" data-target="' + i + '">' + (window.getPlayerName ? window.getPlayerName(i) : ('玩家' + (i + 1))) + '</button>';
+      html += '<button class="btn btn-primary btn-sm" data-target="' + i + '">' + (window.getPlayerName ? window.getPlayerName(i) : (_t('ek_player_fallback') + ' ' + (i + 1))) + '</button>';
     });
-    html += '</div><button class="btn btn-outline btn-sm ek-picker-cancel">取消</button></div>';
+    html += '</div><button class="btn btn-outline btn-sm ek-picker-cancel">' + _t('ek_cancel') + '</button></div>';
     el.innerHTML = html;
     el.style.display = 'flex';
     el.querySelectorAll('[data-target]').forEach(function(b) {

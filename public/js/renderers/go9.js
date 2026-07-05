@@ -12,7 +12,7 @@
         <div style="width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;">
           <canvas id="goCanvas" style="width:100%;display:block;border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,.08);touch-action:manipulation;"></canvas>
           <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center;">
-            <button id="goPassBtn" class="btn btn-outline btn-sm" style="padding:12px 32px;font-size:16px;border-radius:28px;">⏭ 过手</button>
+            <button id="goPassBtn" class="btn btn-outline btn-sm" style="padding:12px 32px;font-size:16px;border-radius:28px;">` + _t('go_pass') + `</button>
             <div id="goInfo" style="font-size:15px;color:var(--text);text-align:center;font-weight:600;min-width:160px;line-height:1.5;"></div>
           </div>
         </div>`;
@@ -131,8 +131,8 @@
       // === Captures display ===
       var cy = W - margin * 0.4;
       ctx.fillStyle = '#1a1a1a'; ctx.font = 'bold 13px system-ui';
-      ctx.textAlign = 'left'; ctx.fillText('⚫ 提子: ' + ((state.captures||[])[0]||0), margin, cy);
-      ctx.textAlign = 'right'; ctx.fillText('提子: ' + ((state.captures||[])[1]||0) + ' ⚪', W-margin, cy);
+      ctx.textAlign = 'left'; ctx.fillText(_t('go_captures_black') + ((state.captures||[])[0]||0), margin, cy);
+      ctx.textAlign = 'right'; ctx.fillText(_t('go_captures_white') + ((state.captures||[])[1]||0) + ' ⚪', W-margin, cy);
 
       // === Info ===
       var info = document.getElementById('goInfo');
@@ -140,10 +140,10 @@
       if (info) {
         if (state.winner != null) {
           var w = state.winner;
-          info.innerHTML = w === -1 ? '🤝 平局！' : (w === playerIndex ? '🏆 你赢了！' : '😢 你输了');
-          if (state.finalScores) info.innerHTML += '<br><span style="font-size:12px;color:var(--text-muted);">黑 '+state.finalScores.black.toFixed(1)+' 子 · 白 '+state.finalScores.white.toFixed(1)+' 子 · 黑贴3.75子</span>';
+          info.innerHTML = w === -1 ? _t('go_draw') : (w === playerIndex ? _t('go_win') : _t('go_lose'));
+          if (state.finalScores) info.innerHTML += '<br><span style="font-size:12px;color:var(--text-muted);">' + _t('go_score_black') + state.finalScores.black.toFixed(1) + _t('go_score_mid') + state.finalScores.white.toFixed(1) + _t('go_score_komi') + '</span>';
         } else {
-          info.textContent = state.currentPlayer === playerIndex ? '轮到你了' : '对手回合';
+          info.textContent = state.currentPlayer === playerIndex ? _t('go_your_turn') : _t('go_opponent_turn');
         }
       }
       if (passBtn) passBtn.style.display = (state.currentPlayer === playerIndex && state.winner == null) ? '' : 'none';

@@ -52,7 +52,7 @@
     if (state.winner != null) {
       ctx.fillStyle = 'rgba(0,0,0,.52)'; ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '800 ' + Math.max(21, width * .075) + 'px system-ui';
-      ctx.fillText(state.winner === -1 ? '同归于尽，平局！' : state.winner === playerIndex ? '你活到最后！' : '玩家 ' + (state.winner + 1) + ' 获胜', width / 2, height / 2);
+      ctx.fillText(state.winner === -1 ? _t('sb_draw_canvas') : state.winner === playerIndex ? _t('sb_you_survived_canvas') : _tf('sb_player_wins_canvas', state.winner + 1), width / 2, height / 2);
     }
   }
 
@@ -92,12 +92,12 @@
   function updateInfo(state, playerIndex) {
     var status = document.getElementById('sbStatus'), players = document.getElementById('sbPlayers');
     if (players) players.innerHTML = state.snakes.map(function (snake, index) {
-      var name = window.gamePlayers && window.gamePlayers[index] ? window.gamePlayers[index].name : '玩家 ' + (index + 1);
+      var name = window.gamePlayers && window.gamePlayers[index] ? window.gamePlayers[index].name : _t('sb_player_prefix') + (index + 1);
       return '<span class="sb-player' + (index === playerIndex ? ' sb-self' : '') + (!snake.alive ? ' sb-out' : '') + '"><i style="background:' + COLORS[index % COLORS.length] + '"></i>' + name + ' · ' + snake.score + '</span>';
     }).join('');
     if (!status) return;
     var me = state.snakes[playerIndex];
-    status.textContent = state.winner != null ? (state.winner === -1 ? '全员淘汰，平局！' : state.winner === playerIndex ? '🏆 你活到最后了！' : '本局结束，观看下一局吧') : (!me || !me.alive ? '💥 你已淘汰，继续观战' : '滑动、方向键或点按按钮控制蛇头');
+    status.textContent = state.winner != null ? (state.winner === -1 ? _t('sb_draw') : state.winner === playerIndex ? _t('sb_you_survived') : _t('sb_game_over')) : (!me || !me.alive ? _t('sb_eliminated') : _t('sb_controls'));
   }
 
   function installStyles() {

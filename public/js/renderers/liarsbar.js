@@ -40,7 +40,7 @@
       var alive = s.alive || [];
       var shots = s.firedShots || [];
       for (var i = 0; i < alive.length; i++) {
-        var name = window.getPlayerName ? window.getPlayerName(i) : ('玩家' + (i + 1));
+        var name = window.getPlayerName ? window.getPlayerName(i) : (_t('lb_player_fallback') + (i + 1));
         var isMe = i === selfIdx;
         var isAlive = alive[i];
         var isActive = s.currentPlayer === i && winner == null && isAlive;
@@ -49,9 +49,9 @@
 
         var statusHtml = '';
         if (!isAlive) {
-          statusHtml = '<div style="font-size:11px;color:#e74c3c;font-weight:700;">💀 阵亡' + (isMe ? ' (你)' : '') + '</div>';
+          statusHtml = '<div style="font-size:11px;color:#e74c3c;font-weight:700;">' + _t('lb_died') + (isMe ? _t('lb_you_suffix') : '') + '</div>';
         } else if (isShooting) {
-          statusHtml = '<div style="font-size:11px;color:#e74c3c;font-weight:700;animation:pulse 0.8s ease infinite;">🔫 扣扳机中...</div>';
+          statusHtml = '<div style="font-size:11px;color:#e74c3c;font-weight:700;animation:pulse 0.8s ease infinite;">' + _t('lb_pulling_trigger') + '</div>';
         }
 
         // Show fired count as dots (just how many shots taken, NOT bullet position)
@@ -69,7 +69,7 @@
           (!isAlive ? 'opacity:0.45;' : '') + '">' +
           '<div style="font-size:12px;font-weight:600;">' + (isMe ? '⭐' : '') + name + '</div>' +
           '<div style="margin-top:2px;">' + dotsHtml + '</div>' +
-          '<div style="font-size:10px;color:var(--text-muted);">' + (isAlive ? firedCount + '/6 枪' : '') + '</div>' +
+          '<div style="font-size:10px;color:var(--text-muted);">' + (isAlive ? firedCount + _t('lb_shots_count') : '') + '</div>' +
           statusHtml +
           '</div>';
       }
@@ -81,11 +81,11 @@
       if (!el || !s.themeRank) return;
       var colorMap = { J: '#c8a45c', Q: '#d4695a', K: '#1a1a1a' };
       el.innerHTML =
-        '<div style="font-size:13px;color:var(--text-muted);">本轮主题牌</div>' +
+        '<div style="font-size:13px;color:var(--text-muted);">' + _t('lb_theme_label') + '</div>' +
         '<div style="font-size:36px;font-weight:800;color:' + (colorMap[s.themeRank] || '#1a1a1a') + ';letter-spacing:4px;">' +
           s.themeRank +
         '</div>' +
-        '<div style="font-size:11px;color:var(--text-muted);">你必须声称出的是 ' + s.themeRank + '</div>';
+        '<div style="font-size:11px;color:var(--text-muted);">' + _tf('lb_claim_prompt', s.themeRank) + '</div>';
     },
 
     renderPile: function(s, selfIdx) {
@@ -94,10 +94,10 @@
       var parts = [];
 
       if (s.phase === 'shooting') {
-        var shooterName = window.getPlayerName ? window.getPlayerName(s.currentShooter) : ('玩家' + (s.currentShooter + 1));
-        parts.push('<div style="font-size:14px;color:var(--danger);font-weight:600;">🔫 ' + shooterName + ' 正在扣扳机...</div>');
+        var shooterName = window.getPlayerName ? window.getPlayerName(s.currentShooter) : (_t('lb_player_fallback') + (s.currentShooter + 1));
+        parts.push('<div style="font-size:14px;color:var(--danger);font-weight:600;">' + _tf('lb_shooter_triggering', shooterName) + '</div>');
       } else if (s.revealedPile && s.revealedPile.length > 0) {
-        parts.push('<div style="font-size:12px;color:var(--text-muted);">已揭示的牌</div>');
+        parts.push('<div style="font-size:12px;color:var(--text-muted);">' + _t('lb_revealed_cards') + '</div>');
         var cardsHtml = '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">';
         for (var i = 0; i < s.revealedPile.length; i++) {
           cardsHtml += cardSpan(s.revealedPile[i]);
@@ -105,19 +105,19 @@
         cardsHtml += '</div>';
         parts.push(cardsHtml);
       } else if (s.pileCards && s.pileCards.length > 0) {
-        parts.push('<div style="font-size:12px;color:var(--text-muted);">桌上有 ' + s.pileCards.length + ' 张面朝下的牌</div>');
+        parts.push('<div style="font-size:12px;color:var(--text-muted);">' + _tf('lb_face_down_cards', s.pileCards.length) + '</div>');
         var lastClaim = s.pileClaims && s.pileClaims[s.pileClaims.length - 1];
         if (lastClaim) {
-          var claimer = window.getPlayerName ? window.getPlayerName(lastClaim.playerIndex) : ('玩家' + (lastClaim.playerIndex + 1));
-          parts.push('<div style="font-size:13px;font-weight:600;">' + claimer + ' 声称是 ' + lastClaim.claimedRank + '</div>');
+          var claimer = window.getPlayerName ? window.getPlayerName(lastClaim.playerIndex) : (_t('lb_player_fallback') + (lastClaim.playerIndex + 1));
+          parts.push('<div style="font-size:13px;font-weight:600;">' + _tf('lb_claimed_as', claimer, lastClaim.claimedRank) + '</div>');
         }
       } else {
-        parts.push('<div style="font-size:13px;color:var(--text-muted);">新的一轮，还没有人出牌</div>');
+        parts.push('<div style="font-size:13px;color:var(--text-muted);">' + _t('lb_new_round') + '</div>');
       }
 
       if (s.lastClaimant >= 0 && (!s.revealedPile || s.revealedPile.length === 0) && s.phase === 'playing') {
         if (s.lastClaimant !== selfIdx) {
-          parts.push('<div style="font-size:12px;color:var(--danger);margin-top:4px;font-weight:600;">🔍 你可以质疑上家！</div>');
+          parts.push('<div style="font-size:12px;color:var(--danger);margin-top:4px;font-weight:600;">' + _t('lb_can_suspect') + '</div>');
         }
       }
 
@@ -143,8 +143,8 @@
       var firedCount = (s.firedShots || [])[selfIdx] || 0;
       var remaining = 6 - firedCount;
 
-      var html = '<div style="font-size:14px;font-weight:700;margin-bottom:4px;color:#e74c3c;">🔫 轮到你了！</div>';
-      html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">第 ' + (firedCount + 1) + ' 次开枪 (' + remaining + ' 发弹仓还没转)</div>';
+      var html = '<div style="font-size:14px;font-weight:700;margin-bottom:4px;color:#e74c3c;">' + _t('lb_your_turn_shoot') + '</div>';
+      html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">' + _tf('lb_shoot_info', firedCount + 1, remaining) + '</div>';
 
       // Revolver cylinder visualization
       html += '<div style="display:flex;gap:5px;justify-content:center;margin-bottom:14px;">';
@@ -156,9 +156,9 @@
       }
       html += '</div>';
 
-      html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">子弹藏在某个还没转到的弹仓里... 谁敢按下扳机？</div>';
+      html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">' + _t('lb_cylinder_hint') + '</div>';
 
-      html += '<button class="btn btn-sm" id="lbFireBtn" style="background:#e74c3c;color:#fff;border:none;font-size:16px;font-weight:700;min-width:120px;" onclick="window._lbShoot()">🔫 开枪!</button>';
+      html += '<button class="btn btn-sm" id="lbFireBtn" style="background:#e74c3c;color:#fff;border:none;font-size:16px;font-weight:700;min-width:120px;" onclick="window._lbShoot()">' + _t('lb_shoot_btn') + '</button>';
 
       el.innerHTML = html;
     },
@@ -170,19 +170,19 @@
         return;
       }
       el.style.display = '';
-      var html = '<div style="font-weight:700;margin-bottom:6px;">🔫 开枪结果</div>';
+      var html = '<div style="font-weight:700;margin-bottom:6px;">' + _t('lb_shoot_results') + '</div>';
       for (var i = 0; i < s.lastShotResults.length; i++) {
         var r = s.lastShotResults[i];
-        var name = window.getPlayerName ? window.getPlayerName(r.player) : ('玩家' + (r.player + 1));
+        var name = window.getPlayerName ? window.getPlayerName(r.player) : (_t('lb_player_fallback') + (r.player + 1));
         var isMe = r.player === selfIdx;
 
         if (r.dead) {
           html += '<div style="color:#e74c3c;font-weight:700;font-size:16px;margin:6px 0;animation:scaleIn .3s ease;">' +
-            (isMe ? '💥💀 你的第 ' + r.firedCount + ' 枪... 中弹了！！你当场阵亡' : '💥💀 ' + name + ' 开第 ' + r.firedCount + ' 枪... 中弹阵亡！') +
+            (isMe ? _tf('lb_you_died', r.firedCount) : _tf('lb_player_died', name, r.firedCount)) +
             '</div>';
         } else {
           html += '<div style="color:#5a9e6f;font-size:14px;margin:3px 0;">' +
-            (isMe ? '😮‍💨 第 ' + r.firedCount + ' 枪... 咔嚓！是空枪，你还活着' : '😮‍💨 ' + name + ' 开了第 ' + r.firedCount + ' 枪... 咔嚓！空枪') +
+            (isMe ? _tf('lb_you_survived', r.firedCount) : _tf('lb_player_survived', name, r.firedCount)) +
             '</div>';
         }
       }
@@ -194,7 +194,7 @@
       if (!el) return;
       var hand = s.hands[selfIdx] || [];
       if (hand.length === 0) {
-        el.innerHTML = '<div style="font-size:13px;color:var(--text-muted);text-align:center;">没有手牌了</div>';
+        el.innerHTML = '<div style="font-size:13px;color:var(--text-muted);text-align:center;">' + _t('lb_no_cards') + '</div>';
         return;
       }
 
@@ -239,11 +239,11 @@
       var html = '';
 
       if (!isAlive && winner == null) {
-        html += '<div style="font-size:13px;color:var(--danger);text-align:center;width:100%;">💀 你已阵亡，正在观战中...</div>';
+        html += '<div style="font-size:13px;color:var(--danger);text-align:center;width:100%;">' + _t('lb_spectating') + '</div>';
       } else if (myTurn) {
-        html += '<button class="btn btn-sm btn-primary" onclick="window._lbPlayCard()">出牌</button>';
+        html += '<button class="btn btn-sm btn-primary" onclick="window._lbPlayCard()">' + _t('lb_play_card') + '</button>';
         if (s.lastClaimant >= 0 && s.lastClaimant !== selfIdx) {
-          html += '<button class="btn btn-sm" style="background:var(--danger);color:#fff;border:none;" onclick="window._lbSuspect()">🔍 质疑上家！</button>';
+          html += '<button class="btn btn-sm" style="background:var(--danger);color:#fff;border:none;" onclick="window._lbSuspect()">' + _t('lb_suspect_btn') + '</button>';
         }
       }
 
@@ -275,7 +275,7 @@
   };
 
   window._lbPlayCard = function() {
-    if (!selectedCard) { showToast('请先选择一张牌'); return; }
+    if (!selectedCard) { showToast(_t('lb_toast_select_first')); return; }
     window.makeGameMove({ action: 'play', cardId: selectedCard });
     selectedCard = null;
   };

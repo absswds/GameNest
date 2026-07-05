@@ -92,7 +92,7 @@
     var remain = tiles.filter(function (t) { return !me().removed[t.id]; }).length;
     ctx.fillStyle = '#2e6b46'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = 'bold 18px sans-serif';
-    ctx.fillText('第 ' + lv + ' 关　剩余 ' + remain, W / 2, 16);
+    ctx.fillText(_tf('st_level_remaining', lv, remain), W / 2, 16);
 
     // 卡牌：低 z 先画
     var ids = tiles.map(function (t) { return t.id; }).filter(function (id) { return !me().removed[id]; });
@@ -286,9 +286,9 @@
     panel.innerHTML = '';
     var p = me();
     var powers = [
-      { k: 'power_undo', label: '↩ 撤回', n: p.powers.undo },
-      { k: 'power_shuffle', label: '🔀 洗牌', n: p.powers.shuffle },
-      { k: 'power_pop3', label: '⏏ 移出3张', n: p.powers.pop3 },
+      { k: 'power_undo', label: _t('st_undo'), n: p.powers.undo },
+      { k: 'power_shuffle', label: _t('st_shuffle'), n: p.powers.shuffle },
+      { k: 'power_pop3', label: _t('st_pop3'), n: p.powers.pop3 },
     ];
     powers.forEach(function (pw) {
       var b = document.createElement('button');
@@ -311,8 +311,8 @@
       var remain = lvT.filter(function (t) { return !op.removed[t.id]; }).length;
       var chip = document.createElement('div');
       chip.style.cssText = 'padding:4px 10px;border-radius:12px;font-size:12px;background:#fff;border:1px solid var(--border);' + (op.eliminated ? 'opacity:.45;text-decoration:line-through;' : '');
-      var nm = (window._players && window._players[i]) ? window._players[i].name : '玩家' + (i + 1);
-      chip.textContent = nm + '：第' + op.level + '关·剩' + remain + (op.eliminated ? '·爆槽' : '·槽' + op.slot.length + '/7');
+      var nm = (window._players && window._players[i]) ? window._players[i].name : _t('st_player') + (i + 1);
+      chip.textContent = nm + '：' + _tf('st_opponent_info', op.level, remain) + (op.eliminated ? _t('st_burst_slot') : _tf('st_slot_count', op.slot.length));
       oppBar.appendChild(chip);
     }
   }
@@ -356,7 +356,7 @@
 
       // 关卡切换 → 重算布局
       if (me().level !== prevLevel) {
-        pushBanner('过关，进入第 ' + me().level + ' 关', '#4c8f63', 1100);
+        pushBanner(_tf('st_level_up', me().level), '#4c8f63', 1100);
         prevLevel = me().level;
         prevSlotLen = 0;
         layoutBoard();
@@ -366,13 +366,13 @@
       var curSlot = me().slot.length;
       if (curSlot < prevSlotLen) {
         for (var k = 0; k < 3; k++) anim.merges.push({ idx: k, start: Date.now() });
-        pushBanner('三连消除', '#c8a45c', 720);
+        pushBanner(_t('st_triple_match'), '#c8a45c', 720);
         ensureLoop();
       }
       prevSlotLen = curSlot;
 
       if (me().eliminated && !prevEliminated && winner === null) {
-        pushBanner('爆槽出局', '#c45d52', 1100);
+        pushBanner(_t('st_eliminated'), '#c45d52', 1100);
       }
       prevEliminated = !!me().eliminated;
 
@@ -384,10 +384,10 @@
       var statusEl = document.getElementById('status');
       if (statusEl) {
         if (winner !== null && winner !== undefined) {
-          var wn = (window._players && window._players[winner]) ? window._players[winner].name : '玩家' + (winner + 1);
-          statusEl.textContent = winner === pi ? '🎉 你赢了！' : wn + ' 通关获胜！';
+          var wn = (window._players && window._players[winner]) ? window._players[winner].name : _t('st_player') + ' ' + (winner + 1);
+          statusEl.textContent = winner === pi ? _t('st_you_win') : wn + ' ' + _t('st_other_wins');
         } else if (me().eliminated) {
-          statusEl.textContent = '💥 你爆槽了，观战中…';
+          statusEl.textContent = _t('st_spectating');
         } else { statusEl.textContent = ''; }
       }
     },

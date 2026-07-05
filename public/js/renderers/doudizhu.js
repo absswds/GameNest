@@ -34,8 +34,8 @@
         if (passer !== playerIndex) {
           var toast = document.getElementById('toast');
           if (!toast) { toast = document.createElement('div'); toast.id = 'toast'; toast.className = 'toast'; document.body.appendChild(toast); }
-          var passerName = (window.gamePlayers && window.gamePlayers[passer]) ? window.gamePlayers[passer].name : ('玩家' + (passer + 1));
-          toast.textContent = passerName + ' 跳过';
+          var passerName = (window.gamePlayers && window.gamePlayers[passer]) ? window.gamePlayers[passer].name : (_t('ddz_player_fallback') + ' ' + (passer + 1));
+          toast.textContent = passerName + _t('ddz_player_passed');
           toast.classList.add('show');
           clearTimeout(toast._timer);
           toast._timer = setTimeout(function() { toast.classList.remove('show'); }, 2000);
@@ -60,17 +60,17 @@
         var isActive = cp === i;
         var didPass = (s.passed && s.passed[i] && s.phase === 'playing') ? true : false;
         var passBadge = didPass
-          ? '<span style="margin-left:6px;background:#e74c3c;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700;vertical-align:middle;">跳过</span>'
+          ? '<span style="margin-left:6px;background:#e74c3c;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700;vertical-align:middle;">' + _t('ddz_passed_badge') + '</span>'
           : '';
         html +=
           '<div style="text-align:center;padding:8px 16px;background:var(--bg,#f8f9fa);border-radius:var(--radius-sm,16px);' +
           (isActive ? 'border:2px solid var(--accent,#c8a45c);animation:pulse 2s ease infinite;' : 'border:1px solid var(--border,#eee);') + '">' +
           '<div style="font-size:13px;font-weight:600;">' +
           (isLandlord ? '<span style="color:#c0392b;">&#x1F451;</span> ' : '') +
-          ((window.gamePlayers && window.gamePlayers[i]) ? window.gamePlayers[i].name : ('玩家' + (i + 1))) +
+          ((window.gamePlayers && window.gamePlayers[i]) ? window.gamePlayers[i].name : (_t('ddz_player_fallback') + ' ' + (i + 1))) +
           '</div>' +
           '<div style="font-size:24px;font-weight:800;margin-top:4px;">' + count + '</div>' +
-          '<div style="font-size:11px;color:var(--text-muted,#999);">张牌' + passBadge + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted,#999);">' + _t('ddz_cards_label') + passBadge + '</div>' +
           '</div>';
       }
       el.innerHTML = html;
@@ -84,7 +84,7 @@
 
       // Bottom cards (visible after deal/start)
       if (s.bottomCards && s.bottomCards.length > 0 && s.phase !== 'bidding') {
-        var bcHtml = '<div style="font-size:12px;color:var(--text-muted,#999);margin-bottom:4px;">底牌</div><div style="display:flex;gap:4px;justify-content:center;">';
+        var bcHtml = '<div style="font-size:12px;color:var(--text-muted,#999);margin-bottom:4px;">' + _t('ddz_bottom_cards') + '</div><div style="display:flex;gap:4px;justify-content:center;">';
         for (var b = 0; b < s.bottomCards.length; b++) {
           bcHtml += cardSpan(s.bottomCards[b]);
         }
@@ -94,8 +94,8 @@
 
       // Last played cards
       if (s.lastPlay) {
-        var who = s.lastPlay.player === selfIdx ? '你' : ((window.gamePlayers && window.gamePlayers[s.lastPlay.player]) ? window.gamePlayers[s.lastPlay.player].name : ('玩家' + (s.lastPlay.player + 1)));
-        var lpHtml = '<div style="font-size:12px;color:var(--text-muted,#999);margin-bottom:4px;">' + who + ' 出了</div>' +
+        var who = s.lastPlay.player === selfIdx ? _t('ddz_you') : ((window.gamePlayers && window.gamePlayers[s.lastPlay.player]) ? window.gamePlayers[s.lastPlay.player].name : (_t('ddz_player_fallback') + ' ' + (s.lastPlay.player + 1)));
+        var lpHtml = '<div style="font-size:12px;color:var(--text-muted,#999);margin-bottom:4px;">' + who + ' ' + _t('ddz_played') + '</div>' +
           '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">';
         for (var c = 0; c < s.lastPlay.cards.length; c++) {
           lpHtml += cardSpan(s.lastPlay.cards[c]);
@@ -106,15 +106,15 @@
 
       // Bidding info
       if (s.phase === 'bidding') {
-        var bidInfo = '<div style="font-size:13px;color:var(--text-muted,#999);margin-bottom:4px;">叫地主阶段</div>';
+        var bidInfo = '<div style="font-size:13px;color:var(--text-muted,#999);margin-bottom:4px;">' + _t('ddz_bidding_phase') + '</div>';
         if (s.bids && Object.keys(s.bids).length > 0) {
           bidInfo += '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">';
           for (var bi = 0; bi < (s._playerCount || 3); bi++) {
             var bidVal = s.bids[bi];
-            var biName = (window.gamePlayers && window.gamePlayers[bi]) ? window.gamePlayers[bi].name : ('玩家' + (bi + 1));
+            var biName = (window.gamePlayers && window.gamePlayers[bi]) ? window.gamePlayers[bi].name : (_t('ddz_player_fallback') + ' ' + (bi + 1));
             if (bidVal !== undefined) {
               var bidColor = bidVal === 0 ? 'var(--text-muted,#999)' : (bidVal === 3 ? '#c0392b' : 'var(--accent,#c8a45c)');
-              bidInfo += '<span style="font-size:12px;font-weight:700;color:' + bidColor + ';">' + biName + ': ' + (bidVal === 0 ? '不叫' : bidVal) + '</span>';
+              bidInfo += '<span style="font-size:12px;font-weight:700;color:' + bidColor + ';">' + biName + ': ' + (bidVal === 0 ? _t('ddz_no_bid_display') : bidVal) + '</span>';
             }
           }
           bidInfo += '</div>';
@@ -124,8 +124,8 @@
 
       // Current round info
       if (s.landlord != null && s.phase === 'playing') {
-        var landlordName = (window.gamePlayers && window.gamePlayers[s.landlord]) ? window.gamePlayers[s.landlord].name : ('玩家' + (s.landlord + 1));
-        var landHtml = '<div style="font-size:12px;color:#c0392b;">&#x1F451; 地主: ' + landlordName + '</div>';
+        var landlordName = (window.gamePlayers && window.gamePlayers[s.landlord]) ? window.gamePlayers[s.landlord].name : (_t('ddz_player_fallback') + ' ' + (s.landlord + 1));
+        var landHtml = '<div style="font-size:12px;color:#c0392b;">&#x1F451; ' + _t('ddz_landlord_label') + ': ' + landlordName + '</div>';
         parts.push(landHtml);
       }
 
@@ -222,17 +222,17 @@
     var html = '';
     for (var sc = 1; sc <= 3; sc++) {
       if (sc <= s.currentBid) continue;
-      html += '<button class="btn btn-sm" onclick="window._ddzBid(' + sc + ')" style="min-width:56px;">' + sc + ' 分</button>';
+      html += '<button class="btn btn-sm" onclick="window._ddzBid(' + sc + ')" style="min-width:56px;">' + sc + ' ' + _t('ddz_bid_points') + '</button>';
     }
-    html += '<button class="btn btn-sm btn-outline" onclick="window._ddzBid(0)">不叫</button>';
+    html += '<button class="btn btn-sm btn-outline" onclick="window._ddzBid(0)">' + _t('ddz_no_bid') + '</button>';
     return html;
   }
 
   function renderPlayButtons(s, selfIdx) {
     var canPass = s.lastPlay && s.lastPlay.player !== selfIdx;
-    var html = '<button class="btn btn-sm btn-primary" onclick="window._ddzPlay()" style="min-width:80px;">出牌</button>';
+    var html = '<button class="btn btn-sm btn-primary" onclick="window._ddzPlay()" style="min-width:80px;">' + _t('ddz_play') + '</button>';
     if (canPass) {
-      html += '<button class="btn btn-sm btn-outline" onclick="window._ddzPass()" style="min-width:80px;">不出</button>';
+      html += '<button class="btn btn-sm btn-outline" onclick="window._ddzPass()" style="min-width:80px;">' + _t('ddz_pass') + '</button>';
     }
     return html;
   }
@@ -258,11 +258,11 @@
 
     // Rocket
     if (n === 2 && cards.some(function(c) { return c.id === 'SJ'; }) && cards.some(function(c) { return c.id === 'BJ'; }))
-      return { type: 'rocket', rank: 15, name: '火箭' };
+      return { type: 'rocket', rank: 15, name: _t('ddz_rocket') };
 
     // Bomb
     if (n === 4 && rvals[0] === rvals[3])
-      return { type: 'bomb', rank: rvals[0], name: '炸弹' };
+      return { type: 'bomb', rank: rvals[0], name: _t('ddz_bomb') };
 
     // Count rank groups
     var countMap = new Map();
@@ -277,26 +277,26 @@
     var typeName = '';
     var result;
 
-    if (n === 1) { typeName = '单牌'; result = { type: 'single', rank: rvals[0] }; }
-    else if (n === 2 && rvals[0] === rvals[1]) { typeName = '对子'; result = { type: 'pair', rank: rvals[0] }; }
-    else if (groups[3].length === 1 && n === 3) { typeName = '三张'; result = { type: 'triple', rank: groups[3][0] }; }
-    else if (groups[3].length === 1 && n === 4) { typeName = '三带一'; result = { type: 'triple_one', rank: groups[3][0] }; }
-    else if (groups[3].length === 1 && n === 5 && groups[2].length === 1) { typeName = '三带二'; result = { type: 'triple_two', rank: groups[3][0] }; }
+    if (n === 1) { typeName = _t('ddz_single'); result = { type: 'single', rank: rvals[0] }; }
+    else if (n === 2 && rvals[0] === rvals[1]) { typeName = _t('ddz_pair'); result = { type: 'pair', rank: rvals[0] }; }
+    else if (groups[3].length === 1 && n === 3) { typeName = _t('ddz_triple'); result = { type: 'triple', rank: groups[3][0] }; }
+    else if (groups[3].length === 1 && n === 4) { typeName = _t('ddz_triple_one'); result = { type: 'triple_one', rank: groups[3][0] }; }
+    else if (groups[3].length === 1 && n === 5 && groups[2].length === 1) { typeName = _t('ddz_triple_two'); result = { type: 'triple_two', rank: groups[3][0] }; }
     else if (n >= 5 && groups[1].length === n && _isConsecutive(groups[1], n) && groups[1][n-1] < 12)
-      { typeName = '顺子'; result = { type: 'straight', rank: groups[1][0], length: n }; }
+      { typeName = _t('ddz_straight'); result = { type: 'straight', rank: groups[1][0], length: n }; }
     else if (n >= 6 && n % 2 === 0 && groups[2].length === n/2 && _isConsecutive(groups[2], n/2) && groups[2][n/2-1] < 12)
-      { typeName = '连对'; result = { type: 'consecutive_pairs', rank: groups[2][0], length: n/2 }; }
+      { typeName = _t('ddz_consecutive_pairs'); result = { type: 'consecutive_pairs', rank: groups[2][0], length: n/2 }; }
     else if (n >= 6 && n % 3 === 0 && groups[3].length === n/3 && _isConsecutive(groups[3], n/3) && groups[3][n/3-1] < 12)
-      { typeName = '飞机'; result = { type: 'plane', rank: groups[3][0], length: n/3 }; }
+      { typeName = _t('ddz_plane'); result = { type: 'plane', rank: groups[3][0], length: n/3 }; }
     else if (groups[3].length >= 2 && _isConsecutive(groups[3], groups[3].length) && groups[3][groups[3].length-1] < 12) {
       var triCount = groups[3].length;
       var remaining = n - triCount * 3;
-      if (remaining === triCount) { typeName = '飞机带单'; result = { type: 'plane_wings_1', rank: groups[3][0], length: triCount }; }
+      if (remaining === triCount) { typeName = _t('ddz_plane_wings_1'); result = { type: 'plane_wings_1', rank: groups[3][0], length: triCount }; }
       else if (remaining === triCount * 2 && groups[2].length === triCount && n === triCount * 5)
-        { typeName = '飞机带双'; result = { type: 'plane_wings_2', rank: groups[3][0], length: triCount }; }
+        { typeName = _t('ddz_plane_wings_2'); result = { type: 'plane_wings_2', rank: groups[3][0], length: triCount }; }
     }
-    else if (groups[4].length === 1 && n === 6) { typeName = '四带二'; result = { type: 'four_two', rank: groups[4][0] }; }
-    else if (groups[4].length === 1 && n === 8 && groups[2].length === 2) { typeName = '四带两对'; result = { type: 'four_two_pairs', rank: groups[4][0] }; }
+    else if (groups[4].length === 1 && n === 6) { typeName = _t('ddz_four_two'); result = { type: 'four_two', rank: groups[4][0] }; }
+    else if (groups[4].length === 1 && n === 8 && groups[2].length === 2) { typeName = _t('ddz_four_two_pairs'); result = { type: 'four_two_pairs', rank: groups[4][0] }; }
 
     if (result) { result.name = typeName; return result; }
     return null;
@@ -364,19 +364,19 @@
     var playType = _detectType(cards);
     hintEl.style.display = '';
     if (!playType) {
-      hintEl.innerHTML = '<span style="color:#e74c3c;">无效牌型</span>';
+      hintEl.innerHTML = '<span style="color:#e74c3c;">' + _t('ddz_invalid_type') + '</span>';
     } else {
       var lastPlay = state.lastPlay;
       var isFree = !lastPlay || lastPlay.player === selfIdx;
       var canBeat = isFree || _canBeat(playType, lastPlay ? lastPlay.play : null);
       var html = '<span style="color:#5a9e6f;font-weight:600;">' + playType.name + '</span>';
       if (isFree) {
-        html += ' <span style="color:#5a9e6f;">✓ 自由出牌</span>';
+        html += ' <span style="color:#5a9e6f;">✓ ' + _t('ddz_free_play') + '</span>';
       } else if (canBeat) {
-        html += ' <span style="color:#5a9e6f;">✓ 能打过</span>';
+        html += ' <span style="color:#5a9e6f;">✓ ' + _t('ddz_can_beat') + '</span>';
       } else {
         var lastName = lastPlay.play.name || lastPlay.play.type;
-        html += ' <span style="color:#e74c3c;">✗ 打不过（需要 > ' + lastName + '）</span>';
+        html += ' <span style="color:#e74c3c;">' + _tf('ddz_cannot_beat', lastName) + '</span>';
       }
       hintEl.innerHTML = html;
     }
@@ -391,7 +391,7 @@
   window._ddzPlay = function() {
     var ids = Object.keys(selected);
     if (ids.length === 0) {
-      showToast('请先选牌');
+      showToast(_t('ddz_select_cards_first'));
       return;
     }
     selected = {};

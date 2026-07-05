@@ -112,15 +112,15 @@
           '<div class="rk-opponents" id="rkOpps"></div>' +
           '<div class="rk-info">' +
             '<span class="rk-break" id="rkBreakBadge" style="display:none"></span>' +
-            '<span class="rk-pool-info" id="rkPoolInfo">牌堆: 0</span>' +
+            '<span class="rk-pool-info" id="rkPoolInfo">' + _tf('rk_pool', 0) + '</span>' +
           '</div>' +
-          '<div class="rk-table-area" id="rkTable"><div style="color:var(--text-muted);font-size:13px;padding:8px;">桌面牌组区域</div></div>' +
+          '<div class="rk-table-area" id="rkTable"><div style="color:var(--text-muted);font-size:13px;padding:8px;">' + _t('rk_table_placeholder') + '</div></div>' +
           '<div class="rk-hand-wrap" id="rkHandWrap"><div class="rk-hand" id="rkHand"></div></div>' +
           '<div class="rk-actions" id="rkActions">' +
-            '<button class="btn btn-primary btn-sm" id="rkPlayBtn">出牌</button>' +
-            '<button class="btn btn-accent btn-sm" id="rkManipBtn" style="display:none">🔀 重组牌桌（拿桌面牌）</button>' +
-            '<button class="btn btn-outline btn-sm" id="rkEndTurnBtn" style="display:none">结束回合</button>' +
-            '<button class="btn btn-outline btn-sm" id="rkDrawBtn">摸牌并结束</button>' +
+            '<button class="btn btn-primary btn-sm" id="rkPlayBtn">' + _t('rk_play') + '</button>' +
+            '<button class="btn btn-accent btn-sm" id="rkManipBtn" style="display:none">' + _t('rk_manipulate') + '</button>' +
+            '<button class="btn btn-outline btn-sm" id="rkEndTurnBtn" style="display:none">' + _t('rk_end_turn') + '</button>' +
+            '<button class="btn btn-outline btn-sm" id="rkDrawBtn">' + _t('rk_draw_end') + '</button>' +
           '</div>' +
           '<div class="rk-status" id="rkStatus"></div>' +
         '</div>';
@@ -128,7 +128,7 @@
       // Play button
       document.getElementById('rkPlayBtn').addEventListener('click', function() {
         var ids = Object.keys(selectedTiles);
-        if (ids.length === 0) { showToast('请先选择牌'); return; }
+if (ids.length === 0) { showToast(_t('rk_select_tiles_first')); return; }
         var data = { tileIds: ids };
         if (ids.length === 1 && _targetSet !== null) {
           data.targetSet = _targetSet;
@@ -201,24 +201,24 @@
   function renderManipulate(state, selfIdx) {
     if (!_manipInit) seedBoxes(state, selfIdx);
     var poolEl = document.getElementById('rkPoolInfo');
-    if (poolEl) poolEl.textContent = '牌堆: ' + (state.pool ? state.pool.length : 0);
+    if (poolEl) poolEl.textContent = _tf('rk_pool', state.pool ? state.pool.length : 0);
 
     var tableEl = document.getElementById('rkTable');
     if (tableEl) {
-      var html = '<div class="rk-ws-label">操作牌桌：点牌选中（可多选）→ 点目标牌组放入；可新建牌组。每组需同色顺子或同数≥3张，绿框=合法。必须用掉≥1张手牌。</div>';
+      var html = '<div class="rk-ws-label">' + _t('rk_manip_instructions') + '</div>';
       html += '<div class="rk-boxes">';
       for (var i = 0; i < _boxes.length; i++) {
         var box = _boxes[i];
         var cls = box.length === 0 ? 'empty' : (clientValidSet(box) ? 'ok' : 'bad');
         html += '<div class="rk-box ' + cls + '" data-box="' + i + '">';
-        html += '<span class="rk-box-tag">' + (box.length === 0 ? '空' : box.length + '张') + '</span>';
+        html += '<span class="rk-box-tag">' + (box.length === 0 ? _t('rk_empty') : box.length + _t('rk_tiles_suffix')) + '</span>';
         for (var t = 0; t < box.length; t++) html += tileHTML(box[t], _sel[box[t].id]);
-        if (box.length === 0) html += '放入此组';
+        if (box.length === 0) html += _t('rk_drop_here');
         html += '</div>';
       }
-      html += '<div class="rk-box rk-box-new" data-newbox="1">＋ 新建牌组</div>';
+      html += '<div class="rk-box rk-box-new" data-newbox="1">' + _t('rk_new_group') + '</div>';
       html += '</div>';
-      html += '<div class="rk-ws-label" style="margin-top:10px;">我的手牌（点牌选中 → 放入上方牌组）</div>';
+      html += '<div class="rk-ws-label" style="margin-top:10px;">' + _t('rk_manip_hand_label') + '</div>';
       html += '<div class="rk-box rk-handbox" data-hand="1">';
       for (var h = 0; h < _handBox.length; h++) html += tileHTML(_handBox[h], _sel[_handBox[h].id]);
       html += '</div>';
@@ -268,15 +268,15 @@
     var actEl = document.getElementById('rkActions');
     if (actEl) {
       actEl.innerHTML =
-        '<button class="btn btn-accent btn-sm" id="rkSubmitBtn">✓ 提交</button>' +
-        '<button class="btn btn-outline btn-sm" id="rkCancelBtn">取消</button>';
+        '<button class="btn btn-accent btn-sm" id="rkSubmitBtn">' + _t('rk_submit') + '</button>' +
+        '<button class="btn btn-outline btn-sm" id="rkCancelBtn">' + _t('rk_cancel') + '</button>';
       if (state.currentPlayer === selfIdx) {
         document.getElementById('rkSubmitBtn').addEventListener('click', function() {
           var groups = _boxes.filter(function(b){ return b.length > 0; });
           for (var g = 0; g < groups.length; g++) {
-            if (!clientValidSet(groups[g])) { showToast('有牌组不合法（红框），请调整'); return; }
+            if (!clientValidSet(groups[g])) { showToast(_t('rk_invalid_groups')); return; }
           }
-          if (groups.length === 0) { showToast('请至少组成一个牌组'); return; }
+          if (groups.length === 0) { showToast(_t('rk_min_one_group')); return; }
           window.makeGameMove({ action: 'submit', groups: groups.map(function(b){ return b.slice(); }) });
           _manipInit = false;
         });
@@ -300,11 +300,11 @@
       var brokenHtml = '';
       if (state.requireBreak) {
         brokenHtml = state.hasBroken && state.hasBroken[i]
-          ? '<div class="rk-opp-badge">已破冰</div>'
-          : '<div style="font-size:11px;color:var(--text-muted)">未破冰</div>';
+          ? '<div class="rk-opp-badge">' + _t('rk_broken_badge') + '</div>'
+          : '<div style="font-size:11px;color:var(--text-muted)">' + _t('rk_not_broken_badge') + '</div>';
       }
       html += '<div class="rk-opp' + active + '"><div class="rk-opp-name">' +
-        (window.getPlayerName ? window.getPlayerName(i) : ('玩家' + (i + 1))) + '</div>' +
+        (window.getPlayerName ? window.getPlayerName(i) : (_t('rk_player_prefix') + ' ' + (i + 1))) + '</div>' +
         '<div class="rk-opp-count">' + count + '</div>' + brokenHtml + '</div>';
     }
     el.innerHTML = html;
@@ -319,14 +319,14 @@
       } else {
         badge.style.display = '';
         if (state.hasBroken && state.hasBroken[selfIdx]) {
-          badge.className = 'rk-break done'; badge.textContent = '已破冰 ✅';
+          badge.className = 'rk-break done'; badge.textContent = _t('rk_broken_done');
         } else {
-          badge.className = 'rk-break need'; badge.textContent = '需要破冰 ≥30';
+          badge.className = 'rk-break need'; badge.textContent = _t('rk_need_break');
         }
       }
     }
     var pi = document.getElementById('rkPoolInfo');
-    if (pi) pi.textContent = '牌堆: ' + (state.pool ? state.pool.length : 0);
+    if (pi) pi.textContent = _tf('rk_pool', state.pool ? state.pool.length : 0);
   }
 
   // ---- TABLE RENDER ----
@@ -334,7 +334,7 @@
     var el = document.getElementById('rkTable');
     if (!el) return;
     if (!state.table || state.table.length === 0) {
-      el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">桌面牌组区域</div>';
+      el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">' + _t('rk_table_placeholder') + '</div>';
       return;
     }
     var isMyTurn = state.currentPlayer === selfIdx && state.winner === null;
@@ -415,13 +415,13 @@
     var actions = document.getElementById('rkActions');
     if (!actions || document.getElementById('rkPlayBtn')) return;
     actions.innerHTML =
-      '<button class="btn btn-primary btn-sm" id="rkPlayBtn">出牌</button>' +
-      '<button class="btn btn-accent btn-sm" id="rkManipBtn">🔀 重组牌桌</button>' +
-      '<button class="btn btn-outline btn-sm" id="rkEndTurnBtn">结束回合</button>' +
-      '<button class="btn btn-outline btn-sm" id="rkDrawBtn">摸牌并结束</button>';
+      '<button class="btn btn-primary btn-sm" id="rkPlayBtn">' + _t('rk_play') + '</button>' +
+      '<button class="btn btn-accent btn-sm" id="rkManipBtn">' + _t('rk_manipulate_short') + '</button>' +
+      '<button class="btn btn-outline btn-sm" id="rkEndTurnBtn">' + _t('rk_end_turn') + '</button>' +
+      '<button class="btn btn-outline btn-sm" id="rkDrawBtn">' + _t('rk_draw_end') + '</button>';
     document.getElementById('rkPlayBtn').addEventListener('click', function() {
       var ids = Object.keys(selectedTiles);
-      if (ids.length === 0) { showToast('请先选择牌'); return; }
+      if (ids.length === 0) { showToast(_t('rk_select_tiles_first')); return; }
       var data = { tileIds: ids };
       if (ids.length === 1 && _targetSet !== null) data.targetSet = _targetSet;
       selectedTiles = {}; _targetSet = null; window.makeGameMove(data);
@@ -448,7 +448,7 @@
     if (drawBtn) drawBtn.style.display = (isMyTurn && !hasPlayed) ? '' : 'none';
 
     if (drawBtn && isMyTurn) {
-      drawBtn.textContent = hasPlayed ? '摸牌并结束' : '摸牌并结束';
+      drawBtn.textContent = _t('rk_draw_end');
     }
   }
 
@@ -457,16 +457,16 @@
     var el = document.getElementById('rkStatus');
     if (!el) return;
     if (state.winner !== null) {
-      el.textContent = state.winner === selfIdx ? '🎉 拉密！你赢了！' :
-        (window.getPlayerName ? window.getPlayerName(state.winner) : ('玩家' + (state.winner + 1))) + ' 拉密！';
+      el.textContent = state.winner === selfIdx ? _t('rk_you_win') :
+        (window.getPlayerName ? window.getPlayerName(state.winner) : (_t('rk_player_prefix') + ' ' + (state.winner + 1))) + ' ' + _t('rk_rummikub');
     } else if (state.currentPlayer === selfIdx) {
       if (state.requireBreak && state.hasBroken && !state.hasBroken[selfIdx]) {
-        el.textContent = '首次出牌需要总分≥30';
+        el.textContent = _t('rk_break_requirement');
       } else {
-        el.textContent = '选择牌出牌、操作桌面牌、或摸牌';
+        el.textContent = _t('rk_turn_prompt');
       }
     } else {
-      el.textContent = '等待对手...';
+      el.textContent = _t('rk_waiting');
     }
   }
 

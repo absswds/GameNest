@@ -6,9 +6,9 @@
   var SUIT_SYMBOL = { s: '♠', h: '♥', c: '♣', d: '♦' };
   var SUIT_COLOR = { s: '#1a1a1a', h: '#e74c3c', c: '#1a1a1a', d: '#e74c3c' };
   var TYPE_NAMES = {
-    single: '单张', pair: '对子', triple: '三条',
-    straight: '顺子', flush: '同花', full_house: '葫芦',
-    four_one: '铁支', straight_flush: '同花顺'
+    single: 'bt_single', pair: 'bt_pair', triple: 'bt_triple',
+    straight: 'bt_straight', flush: 'bt_flush', full_house: 'bt_full_house',
+    four_one: 'bt_four_one', straight_flush: 'bt_straight_flush'
   };
 
   window.gameRenderers.set('bigtwo', {
@@ -48,12 +48,12 @@
           '<div style="text-align:center;padding:8px 14px;background:var(--bg);border-radius:var(--radius-sm);' +
           (isActive ? 'border:2px solid var(--accent);animation:pulse 2s ease infinite;' : 'border:1px solid var(--border);') + '">' +
           '<div style="font-size:13px;font-weight:600;">' +
-          (window.getPlayerName ? window.getPlayerName(i) : ('玩家' + (i + 1))) +
+          (window.getPlayerName ? window.getPlayerName(i) : (_t('bt_player_fallback') + (i + 1))) +
           '</div>' +
           '<div style="font-size:22px;font-weight:800;margin-top:2px;">' + count + '</div>' +
           '<div style="font-size:11px;color:var(--text-muted);">' +
-            (count === 0 ? '已出完' : '张牌') +
-            (didPass ? ' · <span style="color:#e74c3c;font-weight:700;">跳过</span>' : '') +
+            (count === 0 ? _t('bt_finished') : _t('bt_cards_label')) +
+            (didPass ? ' · <span style="color:#e74c3c;font-weight:700;">' + _t('bt_passed') + '</span>' : '') +
           '</div>' +
           '</div>';
       }
@@ -65,8 +65,8 @@
       if (!el) return;
 
       if (s.winner != null) {
-        var winnerName = window.getPlayerName ? window.getPlayerName(s.winner) : ('玩家' + (s.winner + 1));
-        el.innerHTML = '<div style="font-size:15px;font-weight:700;color:var(--success);">' + winnerName + ' 获胜！</div>';
+        var winnerName = window.getPlayerName ? window.getPlayerName(s.winner) : (_t('bt_player_fallback') + (s.winner + 1));
+        el.innerHTML = '<div style="font-size:15px;font-weight:700;color:var(--success);">' + winnerName + _t('bt_wins') + '</div>';
         return;
       }
 
@@ -74,11 +74,11 @@
 
       // Last played cards
       if (s.lastPlay && s.lastPlay.cards) {
-        var who = s.lastPlayPlayer === selfIdx ? '你' :
-          (window.getPlayerName ? window.getPlayerName(s.lastPlayPlayer) : ('玩家' + (s.lastPlayPlayer + 1)));
+        var who = s.lastPlayPlayer === selfIdx ? _t('bt_you') :
+          (window.getPlayerName ? window.getPlayerName(s.lastPlayPlayer) : (_t('bt_player_fallback') + (s.lastPlayPlayer + 1)));
         var lpType = s.lastPlay.play;
-        var typeName = TYPE_NAMES[lpType.type] || lpType.type;
-        parts.push('<div style="font-size:12px;color:var(--text-muted);">' + who + ' 出了 · ' + typeName + '</div>');
+        var typeName = _t(TYPE_NAMES[lpType.type]) || lpType.type;
+        parts.push('<div style="font-size:12px;color:var(--text-muted);">' + who + _t('bt_played') + typeName + '</div>');
         var cardsHtml = '<div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;">';
         for (var i = 0; i < s.lastPlay.cards.length; i++) {
           cardsHtml += cardSpan(s.lastPlay.cards[i]);
@@ -86,7 +86,7 @@
         cardsHtml += '</div>';
         parts.push(cardsHtml);
       } else {
-        parts.push('<div style="font-size:13px;color:var(--text-muted);">新的一轮，自由出牌</div>');
+        parts.push('<div style="font-size:13px;color:var(--text-muted);">' + _t('bt_new_round') + '</div>');
       }
 
       el.innerHTML = parts.join('');
@@ -130,9 +130,9 @@
       var html = '';
 
       if (myTurn) {
-        html += '<button class="btn btn-sm btn-primary" onclick="window._btPlay()" style="min-width:80px;">出牌</button>';
+        html += '<button class="btn btn-sm btn-primary" onclick="window._btPlay()" style="min-width:80px;">' + _t('bt_play') + '</button>';
         if (s.lastPlay && s.lastPlayPlayer !== selfIdx) {
-          html += '<button class="btn btn-sm btn-outline" onclick="window._btPass()" style="min-width:80px;">不出</button>';
+          html += '<button class="btn btn-sm btn-outline" onclick="window._btPass()" style="min-width:80px;">' + _t('bt_pass') + '</button>';
         }
       }
 
@@ -181,25 +181,25 @@
     var suits = cards.map(function(c) { return c.suit; });
     var allSameSuit = new Set(suits).size === 1;
 
-    if (n === 1) { typeName = '单张'; result = { type: 'single', rank: rvals[0], suit: Math.max.apply(null, suits.map(function(s) { return ({s:3,h:2,c:1,d:0})[s]||0; })) }; }
+    if (n === 1) { typeName = _t('bt_single'); result = { type: 'single', rank: rvals[0], suit: Math.max.apply(null, suits.map(function(s) { return ({s:3,h:2,c:1,d:0})[s]||0; })) }; }
     else if (n === 2 && rvals[0] === rvals[1]) {
-      typeName = '对子';
+      typeName = _t('bt_pair');
       var maxSuit = Math.max.apply(null, cards.map(function(c) { return ({s:3,h:2,c:1,d:0})[c.suit]||0; }));
       result = { type: 'pair', rank: rvals[0], suit: maxSuit };
     }
-    else if (groups[3].length === 1 && n === 3) { typeName = '三条'; result = { type: 'triple', rank: groups[3][0] }; }
+    else if (groups[3].length === 1 && n === 3) { typeName = _t('bt_triple'); result = { type: 'triple', rank: groups[3][0] }; }
     else if (n >= 5 && groups[1].length === n && _isConsecutive(groups[1], n)) {
-      typeName = '顺子'; result = { type: 'straight', rank: groups[1][0], length: n };
+      typeName = _t('bt_straight'); result = { type: 'straight', rank: groups[1][0], length: n };
     }
     else if (n === 5 && allSameSuit && !_isConsecutive([...rvals].sort(function(a,b){return a-b;}), 5)) {
-      typeName = '同花';
+      typeName = _t('bt_flush');
       var maxSuit2 = Math.max.apply(null, cards.map(function(c) { return ({s:3,h:2,c:1,d:0})[c.suit]||0; }));
       result = { type: 'flush', rank: rvals[rvals.length-1], suit: maxSuit2 };
     }
-    else if (n === 5 && groups[3].length === 1 && groups[2].length === 1) { typeName = '葫芦'; result = { type: 'full_house', rank: groups[3][0] }; }
-    else if (n === 5 && groups[4].length === 1) { typeName = '铁支'; result = { type: 'four_one', rank: groups[4][0] }; }
+    else if (n === 5 && groups[3].length === 1 && groups[2].length === 1) { typeName = _t('bt_full_house'); result = { type: 'full_house', rank: groups[3][0] }; }
+    else if (n === 5 && groups[4].length === 1) { typeName = _t('bt_four_one'); result = { type: 'four_one', rank: groups[4][0] }; }
     else if (n === 5 && allSameSuit && _isConsecutive([...rvals].sort(function(a,b){return a-b;}), 5)) {
-      typeName = '同花顺';
+      typeName = _t('bt_straight_flush');
       result = { type: 'straight_flush', rank: groups[1][0], suit: Math.max.apply(null, cards.map(function(c) { return ({s:3,h:2,c:1,d:0})[c.suit]||0; })) };
     }
 
@@ -253,18 +253,18 @@
     var playType = _detectType(cards);
     hintEl.style.display = '';
     if (!playType) {
-      hintEl.innerHTML = '<span style="color:#e74c3c;">无效牌型</span>';
+      hintEl.innerHTML = '<span style="color:#e74c3c;">' + _t('bt_invalid_combo') + '</span>';
     } else {
       var lastPlay = state.lastPlay;
       var isFree = !lastPlay || lastPlay.player === selfIdx;
       var canBeat = isFree || (!lastPlay || _canBeat(playType, lastPlay.play));
       var html = '<span style="color:#5a9e6f;font-weight:600;">' + playType.name + '</span>';
       if (!lastPlay || lastPlay.player === selfIdx) {
-        html += ' <span style="color:#5a9e6f;">✓ 自由出牌</span>';
+        html += ' <span style="color:#5a9e6f;">' + _t('bt_hint_free') + '</span>';
       } else if (canBeat) {
-        html += ' <span style="color:#5a9e6f;">✓ 能打过</span>';
+        html += ' <span style="color:#5a9e6f;">' + _t('bt_hint_can_beat') + '</span>';
       } else {
-        html += ' <span style="color:#e74c3c;">✗ 打不过上家</span>';
+        html += ' <span style="color:#e74c3c;">' + _t('bt_hint_cannot_beat') + '</span>';
       }
       hintEl.innerHTML = html;
     }
@@ -272,7 +272,7 @@
 
   window._btPlay = function() {
     var ids = Object.keys(selected);
-    if (ids.length === 0) { showToast('请先选牌'); return; }
+    if (ids.length === 0) { showToast(_t('bt_toast_select_first')); return; }
     selected = {};
     var h = document.getElementById('btHint'); if (h) h.style.display = 'none';
     window.makeGameMove({ cards: ids });

@@ -91,8 +91,8 @@
 
         var label = document.createElement('div');
         label.className = 'dv-player-label';
-        var pName = (window.gamePlayers && window.gamePlayers[pIdx]) ? window.gamePlayers[pIdx].name : ('玩家 ' + (pIdx + 1));
-        label.textContent = isMe ? '你的牌' : (pName + (elim ? ' (已出局)' : ''));
+        var pName = (window.gamePlayers && window.gamePlayers[pIdx]) ? window.gamePlayers[pIdx].name : (_t('dv_player_fallback') + (pIdx + 1));
+        label.textContent = isMe ? _t('dv_your_cards') : (pName + (elim ? _t('dv_eliminated') : ''));
         section.appendChild(label);
 
         var row = document.createElement('div');
@@ -145,7 +145,7 @@
         if (isMe && inPenalty) {
           var hint = document.createElement('div');
           hint.className = 'dv-penalty-hint';
-          hint.textContent = '👆 点击要翻开的牌';
+          hint.textContent = _t('dv_penalty_hint');
           section.appendChild(hint);
         }
 
@@ -193,9 +193,9 @@
       var targetInfo = document.getElementById('dvTargetInfo');
       if (_selTarget >= 0 && _selTileIdx >= 0) {
         var tgt = state.tiles[_selTarget][_selTileIdx];
-        targetInfo.textContent = '猜测: ' + (window.getPlayerName ? window.getPlayerName(_selTarget) : ('玩家 ' + (_selTarget + 1))) + ' 位置 ' + (_selTileIdx + 1);
+        targetInfo.textContent = _t('dv_guess_prefix') + (window.getPlayerName ? window.getPlayerName(_selTarget) : (_t('dv_player_fallback') + (_selTarget + 1))) + _t('dv_position') + (_selTileIdx + 1);
       } else {
-        targetInfo.textContent = '点击对手的牌选择目标';
+        targetInfo.textContent = _t('dv_select_target_hint');
       }
 
       // Tile grid for target
@@ -289,32 +289,32 @@
     if (!statusEl) return;
 
     if (state.winner !== null) {
-      if (state.winner === playerIndex) statusEl.textContent = '你赢了！';
-      else if (state.winner === -1) statusEl.textContent = '平局';
-      else statusEl.textContent = '游戏结束';
+      if (state.winner === playerIndex) statusEl.textContent = _t('dv_you_win');
+      else if (state.winner === -1) statusEl.textContent = _t('dv_draw');
+      else statusEl.textContent = _t('dv_game_over');
     } else if (state.phase === 'init_place') {
       if (state.currentPlayer === playerIndex) {
-        statusEl.textContent = '游戏开始前：选择万能牌放在哪个位置';
+        statusEl.textContent = _t('dv_init_place_hint');
       } else {
-        statusEl.textContent = '等待所有玩家放好万能牌后开始...';
+        statusEl.textContent = _t('dv_waiting_init_place');
       }
     } else if (state.lastGuessResult && state.lastGuessResult.correct) {
-      statusEl.textContent = '猜对了！可以继续猜或按"过"结束回合';
+      statusEl.textContent = _t('dv_guess_correct');
     } else if (state.lastGuessResult && !state.lastGuessResult.correct) {
-      statusEl.textContent = '猜错了...请翻开一张自己的牌';
+      statusEl.textContent = _t('dv_guess_wrong');
     } else if (state.currentPlayer === playerIndex) {
-      if (state.phase === 'place') statusEl.textContent = '选择万能牌插入位置';
-      else if (state.phase === 'guess') statusEl.textContent = '猜对手的牌或点击"过"';
-      else statusEl.textContent = '请抽牌';
+      if (state.phase === 'place') statusEl.textContent = _t('dv_place_joker');
+      else if (state.phase === 'guess') statusEl.textContent = _t('dv_guess_or_pass');
+      else statusEl.textContent = _t('dv_please_draw');
     } else {
-      statusEl.textContent = '等待对手操作...';
+      statusEl.textContent = _t('dv_waiting');
     }
   }
 
   function selectTarget(state) {
     var targetInfo = document.getElementById('dvTargetInfo');
     if (targetInfo) {
-      targetInfo.textContent = '猜测: 玩家 ' + (_selTarget + 1) + ' 位置 ' + (_selTileIdx + 1);
+      targetInfo.textContent = _t('dv_guess_prefix') + _t('dv_player_fallback') + (_selTarget + 1) + _t('dv_position') + (_selTileIdx + 1);
     }
     if (state && state.tiles && _selTarget >= 0) {
       var tileGrid = document.getElementById('dvGuessGrid');
@@ -382,28 +382,28 @@
 '<div class="dv-game" id="dvGame">' +
   '<div class="dv-penalty-msg" id="dvPenaltyMsg" style="display:none"></div>' +
   '<div class="dv-players" id="dvPlayers"></div>' +
-  '<button class="btn btn-primary btn-sm dv-draw-btn" id="dvDrawBtn" style="display:none">抽牌</button>' +
+  '<button class="btn btn-primary btn-sm dv-draw-btn" id="dvDrawBtn" style="display:none">' + _t('dv_draw') + '</button>' +
   '<div class="dv-drawn" id="dvDrawn" style="display:none">' +
-    '<div class="dv-drawn-label">抽到的牌</div>' +
+    '<div class="dv-drawn-label">' + _t('dv_drawn_label') + '</div>' +
     '<div class="dv-tile" id="dvDrawnContent"></div>' +
   '</div>' +
   '<div id="dvPlace" style="display:none;background:var(--accent-dim);border-radius:16px;padding:12px;text-align:center;margin:8px 0;">' +
-    '<div style="font-size:14px;font-weight:600;margin-bottom:8px;">选择万能牌插入位置</div>' +
+    '<div style="font-size:14px;font-weight:600;margin-bottom:8px;">' + _t('dv_place_joker') + '</div>' +
     '<div id="dvPlaceSlots" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;"></div>' +
   '</div>' +
   '<div class="dv-guess" id="dvGuess">' +
-    '<div class="dv-guess-title">猜牌</div>' +
-    '<div class="dv-target-info" id="dvTargetInfo">点击对手的牌选择目标</div>' +
+    '<div class="dv-guess-title">' + _t('dv_guess_title') + '</div>' +
+    '<div class="dv-target-info" id="dvTargetInfo">' + _t('dv_select_target_hint') + '</div>' +
     '<div class="dv-guess-tile-grid" id="dvGuessGrid"></div>' +
     '<div class="dv-color-row">' +
-      '<button class="dv-color-btn dv-color-white selected" id="dvCw">白</button>' +
-      '<button class="dv-color-btn dv-color-black" id="dvCb">黑</button>' +
-      '<button class="dv-color-btn dv-color-joker" id="dvCj">★万能</button>' +
+      '<button class="dv-color-btn dv-color-white selected" id="dvCw">' + _t('dv_white') + '</button>' +
+      '<button class="dv-color-btn dv-color-black" id="dvCb">' + _t('dv_black') + '</button>' +
+      '<button class="dv-color-btn dv-color-joker" id="dvCj">' + _t('dv_joker') + '</button>' +
     '</div>' +
     '<div class="dv-num-row" id="dvNumRow"></div>' +
     '<div class="dv-guess-actions">' +
-      '<button class="btn btn-primary btn-sm" id="dvGuessBtn">猜</button>' +
-      '<button class="btn btn-outline btn-sm" id="dvPassBtn">过</button>' +
+      '<button class="btn btn-primary btn-sm" id="dvGuessBtn">' + _t('dv_guess_btn') + '</button>' +
+      '<button class="btn btn-outline btn-sm" id="dvPassBtn">' + _t('dv_pass') + '</button>' +
     '</div>' +
   '</div>' +
   '<div class="dv-status" id="dvStatus"></div>' +

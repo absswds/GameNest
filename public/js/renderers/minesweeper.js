@@ -154,8 +154,8 @@
           '<div class="ms-status" id="msStatus"></div>' +
           '<div class="ms-grid-wrap" id="msGridWrap"></div>' +
           '<div class="ms-legend" id="msLegend">' +
-            '<span>🖱️ 点击翻格</span><span>🖱️ 右键标旗</span>' +
-            '<span>📱 点按翻格</span><span>📱 长按标旗</span>' +
+            '<span>' + _t('ms_click_reveal') + '</span><span>' + _t('ms_right_click_flag') + '</span>' +
+            '<span>' + _t('ms_tap_reveal') + '</span><span>' + _t('ms_longpress_flag') + '</span>' +
           '</div>' +
         '</div>';
     },
@@ -186,18 +186,18 @@
       var statusEl = document.getElementById('msStatus');
       if (statusEl) {
         if (winner !== null && winner !== undefined && winner >= 0) {
-          statusEl.innerHTML = '🏆 玩家 <b>' + (winner + 1) + '</b> 获胜！';
+          statusEl.innerHTML = _tf('ms_player_wins', winner + 1);
           statusEl.style.color = '#58d68d';
         } else if (winner === -1) {
-          statusEl.textContent = '💀 全部踩雷出局 · 平局';
+          statusEl.textContent = _t('ms_draw');
           statusEl.style.color = '#e74c3c';
         } else if (alive[playerIndex] === false) {
-          statusEl.textContent = '💥 你踩雷了！正在观战…';
+          statusEl.textContent = _t('ms_exploded');
           statusEl.style.color = '#e74c3c';
         } else {
           var aliveCount = alive.filter(function(v) { return v; }).length;
           var pct = safeCells > 0 ? Math.round((state.revealedCount || 0) / safeCells * 100) : 0;
-          statusEl.textContent = '🔍 安全格 ' + (state.revealedCount || 0) + '/' + safeCells + ' · ' + aliveCount + '人存活';
+          statusEl.textContent = _tf('ms_safe_progress', (state.revealedCount || 0), safeCells, aliveCount);
           statusEl.style.color = '';
         }
       }

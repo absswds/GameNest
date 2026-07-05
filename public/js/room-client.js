@@ -535,7 +535,7 @@
             '</select>' +
           '</label>' +
           '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">' +
-            '获胜回合: <select id="optMaxRounds" onchange="window._setGameOption(\'maxRounds\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
+            _t('rc_win_rounds_label') + ' <select id="optMaxRounds" onchange="window._setGameOption(\'maxRounds\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
               mrOpts +
             '</select>' +
           '</label>';
