@@ -157,24 +157,26 @@
     var cx = g.x + g.w / 2, cy = g.y + g.h / 2;
     var icon = typeIcon(sp);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    var minDim = Math.min(g.w, g.h);
     if (icon) {
-      ctx.font = Math.floor(Math.min(g.w, g.h) * 0.34) + 'px serif';
-      ctx.fillText(icon, cx, g.y + g.h * 0.42);
+      ctx.font = Math.floor(minDim * 0.3) + 'px serif';
+      ctx.fillText(icon, cx, g.y + g.h * 0.36);
     }
     ctx.fillStyle = '#3a3020';
-    var fs = Math.max(9, Math.floor(Math.min(g.w, g.h) * 0.22));
+    var fs = Math.max(8, Math.floor(minDim * (icon ? 0.16 : 0.2)));
     ctx.font = fs + 'px "Nunito", "Noto Sans SC", sans-serif';
     var label = spName(sp) || (sp.type === 'chance' ? _t('mp_chance') : '');
     if (label) {
-      var lines = wrapLabel(label, 7);
+      var lines = wrapLabel(label, icon ? 8 : 10);
+      var textY = icon ? g.y + g.h * 0.64 : g.y + g.h * 0.45;
       lines.forEach(function (ln, li) {
-        ctx.fillText(ln, cx, g.y + g.h * (icon ? 0.7 : 0.42) + (li - (lines.length - 1) / 2) * (fs + 1));
+        ctx.fillText(ln, cx, textY + (li - (lines.length - 1) / 2) * (fs + 1));
       });
     }
     if (sp.price) {
       ctx.fillStyle = g.side === 'top' ? priceTextColor(sp.color) : '#6b5537';
       ctx.font = '700 ' + Math.floor(fs * 0.9) + 'px "Nunito", "Noto Sans SC", sans-serif';
-      ctx.fillText('$' + sp.price, cx, g.y + g.h * 0.9);
+      ctx.fillText('$' + sp.price, cx, g.y + g.h * 0.92);
     }
 
     // 所有权 + 房子
