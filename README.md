@@ -1,6 +1,6 @@
 # GameNest
 
-> Self-hosted LAN multiplayer board, card, and party games. One server, browser UI, same WiFi.
+> 23 self-hosted LAN board, card, and party games. Start one server, share one QR code, play from any browser on the same WiFi.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/absswds/GameNest/actions/workflows/ci.yml/badge.svg)](https://github.com/absswds/GameNest/actions/workflows/ci.yml)
@@ -10,18 +10,28 @@
 
 [简体中文](README.zh-CN.md) | English
 
-GameNest is an open-source, self-hosted tabletop game room for family, friends, classrooms, and small gatherings. Start one Node.js server, open the lobby in a browser, and let other phones or laptops join from the same WiFi through a QR code or the host IP.
+GameNest is an open-source tabletop game room for family nights, dorms, classrooms, and small gatherings. One laptop or Android phone hosts the room, everyone else joins from a browser on the same WiFi, and the whole stack stays intentionally simple: Express 4, `ws`, and plain HTML/CSS/JavaScript.
 
-The project keeps the stack intentionally small: Express 4, `ws`, plain HTML/CSS/JavaScript, and optional Android packaging through nodejs-mobile.
+## Why GameNest
 
-## Highlights
+- 23 built-in games across board games, cards, poker, deduction, party games, puzzle races, and real-time battles.
+- Zero-account LAN flow: start the host, open the lobby, and let other devices join through the host IP or QR code.
+- AI opponents for most turn-based games, so solo testing and small groups still work well.
+- Browser-first UI with per-game renderers, hidden-information views, legal-move hints, and lightweight animations.
+- Optional Android wrapper powered by nodejs-mobile, so the same project can be carried around as a local host app.
 
-- 23 built-in games across classic board games, cards, poker, deduction, party, puzzle racing, and real-time battle.
-- Local-first multiplayer over one LAN server, with HTTP and WebSocket sharing port `3000`.
-- AI opponents for most turn-based games, so solo testing and small rooms are still useful.
-- Room lobby with ready state, host controls, seat swapping, QR-code sharing, reconnect support, and game options.
-- Game-specific renderers, including Canvas boards, hidden-information player views, legal-move hints, and lightweight animations.
-- Optional Android wrapper that runs the same Node.js project inside a WebView app.
+## Screenshots
+
+Add these assets before the next release:
+
+- `docs/media/lobby.png` - game selection lobby on desktop
+- `docs/media/room.png` - waiting room with players, ready state, and QR join
+- `docs/media/game-uno.png` - card game in progress
+- `docs/media/game-chinesechess.png` - board game in progress
+- `docs/media/android-host.jpg` - Android host screen or same-WiFi join flow
+- `docs/media/join-flow.gif` - 15 to 30 second host-to-join demo
+
+Once those files exist, place them here in the README.
 
 ## Quick Start
 
@@ -30,19 +40,33 @@ npm install
 npm start
 ```
 
-Open the lobby:
+Open the lobby on the host machine:
 
 ```text
 http://localhost:3000
 ```
 
-Other devices on the same WiFi can join with:
+Other phones, tablets, or laptops on the same WiFi can join with:
 
 ```text
 http://<host-ip>:3000
 ```
 
-## Games
+If port `3000` is still occupied on Windows:
+
+```powershell
+taskkill /f /im node.exe
+```
+
+## How It Works
+
+1. Start the GameNest server on one computer or Android device.
+2. Open the lobby and create a room for the game you want.
+3. Let other players join through the QR code or host IP.
+4. Use the waiting room for seat swaps, bots, ready state, and game options.
+5. Start the match and keep playing in the browser with synchronized game state over WebSocket.
+
+## Game Catalog
 
 | Category | Games |
 | --- | --- |
@@ -63,11 +87,26 @@ npm run check         # syntax-check project JavaScript
 npm run test:monopoly # run focused Monopoly tests
 ```
 
-On Windows, if port `3000` is still occupied by an old server run:
+CI currently runs `npm run check` and `npm test` on GitHub Actions.
+
+## Platform Notes
+
+### Browser host
+
+- Node.js `18+`
+- HTTP and WebSocket share port `3000`
+- Best fit for laptops, desktops, classrooms, and home LAN play
+
+### Android host
+
+The Android project wraps the same Node.js server with nodejs-mobile and a WebView.
 
 ```powershell
-taskkill /f /im node.exe
+cd android
+.\copy-nodejs-project.ps1
 ```
+
+Then open `android/` in Android Studio and run the app. Full setup details live in [android/SETUP.md](android/SETUP.md).
 
 ## Repository Layout
 
@@ -82,23 +121,21 @@ taskkill /f /im node.exe
 |-- scripts/                  # smoke simulations and maintenance helpers
 |-- tests/                    # node:test regression suites
 |-- android/                  # Android Studio wrapper project
-`-- docs/                     # public architecture and development notes
+`-- docs/                     # architecture and release notes
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the server/client flow and [CONTRIBUTING.md](CONTRIBUTING.md) for the game-module checklist.
+More details:
 
-## Android
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the server/client flow
+- [CONTRIBUTING.md](CONTRIBUTING.md) for the game-module checklist
+- [docs/STORE_LISTING.md](docs/STORE_LISTING.md) for app-store copy and asset planning
 
-The Android project wraps the same Node.js game server with nodejs-mobile and a WebView. See [android/SETUP.md](android/SETUP.md) for the full setup.
+## What Still Needs Polishing
 
-Short version:
-
-```powershell
-cd android
-.\copy-nodejs-project.ps1
-```
-
-Then open `android/` in Android Studio and run the app.
+- Final screenshots and one short GIF for the GitHub front page and release assets
+- A cleaner release section with direct APK download instructions once the next release is published
+- A short roadmap for upcoming games, mobile polish, and testing gaps
+- More focused regression coverage for newer games and renderer-heavy flows
 
 ## Contributing
 
@@ -106,4 +143,4 @@ Bug reports, rules fixes, AI improvements, renderer polish, and new games are we
 
 ## License
 
-[MIT](LICENSE).
+[MIT](LICENSE)
