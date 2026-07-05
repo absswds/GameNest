@@ -39,9 +39,9 @@ jobs:
           mkdir -p android/app/libs/jniLibs/arm64-v8a
           mkdir -p android/app/libs/jniLibs/armeabi-v7a
           mkdir -p android/app/libs/jniLibs/x86_64
-          cp nodejs-mobile-tmp/android/arm64-v8a/libnode.so android/app/libs/jniLibs/arm64-v8a/
-          cp nodejs-mobile-tmp/android/armeabi-v7a/libnode.so android/app/libs/jniLibs/armeabi-v7a/
-          cp nodejs-mobile-tmp/android/x86_64/libnode.so android/app/libs/jniLibs/x86_64/
+          cp nodejs-mobile-tmp/bin/arm64-v8a/libnode.so android/app/libs/jniLibs/arm64-v8a/
+          cp nodejs-mobile-tmp/bin/armeabi-v7a/libnode.so android/app/libs/jniLibs/armeabi-v7a/
+          cp nodejs-mobile-tmp/bin/x86_64/libnode.so android/app/libs/jniLibs/x86_64/
           rm -rf nodejs-mobile.zip nodejs-mobile-tmp
 
       - name: Copy project to Android assets
