@@ -312,7 +312,7 @@
       var chip = document.createElement('div');
       chip.style.cssText = 'padding:4px 10px;border-radius:12px;font-size:12px;background:#fff;border:1px solid var(--border);' + (op.eliminated ? 'opacity:.45;text-decoration:line-through;' : '');
       var nm = (window._players && window._players[i]) ? window._players[i].name : _t('st_player') + (i + 1);
-      chip.textContent = nm + '：' + _tf('st_opponent_info', op.level, remain) + (op.eliminated ? _t('st_burst_slot') : _tf('st_slot_count', op.slot.length));
+      chip.textContent = nm + _t('st_colon') + _tf('st_opponent_info', op.level, remain) + (op.eliminated ? _t('st_burst_slot') : _tf('st_slot_count', op.slot.length));
       oppBar.appendChild(chip);
     }
   }

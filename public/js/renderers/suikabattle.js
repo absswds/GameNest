@@ -274,7 +274,7 @@
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
       ctx.fillRect(ox, oy, cW, cH);
       ctx.fillStyle = '#fff'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('出局！', ox + cW / 2, oy + cH / 2);
+      ctx.fillText(_t('sk_eliminated'), ox + cW / 2, oy + cH / 2);
     }
   }
 
@@ -386,8 +386,8 @@
       var infoBar = document.getElementById('suika-info');
       if (infoBar) {
         var nextInfo = FRUITS[nextFruitType];
-        infoBar.innerHTML = '<span>分数: <b>' + (st.scores && st.scores[pi] || 0) + '</b></span>' +
-          '<span>下一个: ' + nextInfo.emoji + ' ' + nextInfo.name + '</span>';
+        infoBar.innerHTML = '<span>' + _t('sk_score_label') + '<b>' + (st.scores && st.scores[pi] || 0) + '</b></span>' +
+          '<span>' + _t('sk_next_label') + nextInfo.emoji + ' ' + nextInfo.name + '</span>';
       }
 
       // Opponent bar
@@ -397,11 +397,11 @@
         var players = window._players || [];
         for (var i = 0; i < (st._playerCount || 0); i++) {
           if (i === pi) continue;
-          var pname = players[i] ? players[i].name : ('玩家' + (i + 1));
+          var pname = players[i] ? players[i].name : (_t('sk_player') + (i + 1));
           var elim = st.eliminated && st.eliminated[i];
           var chip = document.createElement('div');
           chip.style.cssText = 'padding:3px 10px;border-radius:12px;background:' + (elim ? '#fee' : '#f0f9f0') + ';border:1px solid ' + (elim ? '#fcc' : '#c0e0c0') + ';';
-          chip.textContent = pname + ': ' + (elim ? '❌' : (st.scores && st.scores[i] || 0) + '分');
+          chip.textContent = pname + ': ' + (elim ? '❌' : (st.scores && st.scores[i] || 0) + _t('sk_pts'));
           oppBar.appendChild(chip);
         }
       }

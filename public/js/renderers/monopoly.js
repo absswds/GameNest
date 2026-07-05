@@ -102,14 +102,14 @@
 
     // 当前玩家
     ctx.fillStyle = '#5a4a32';
-    ctx.font = Math.floor(CS * 0.3) + 'px sans-serif';
+    ctx.font = Math.floor(CS * 0.3) + 'px "Nunito", "Noto Sans SC", sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     if (winnerIdx === null || winnerIdx === undefined) {
       ctx.fillText(_tf('mp_turn_prefix', nameOf(st.currentPlayer)), W / 2, H / 2 + h * 0.16);
     }
 
     // 事件 log
-    ctx.font = Math.floor(CS * 0.24) + 'px sans-serif';
+    ctx.font = Math.floor(CS * 0.24) + 'px "Nunito", "Noto Sans SC", sans-serif';
     ctx.fillStyle = '#8a7a5e';
     for (var i = 0; i < eventLog.length; i++) {
       ctx.fillText(eventLog[i], W / 2, H / 2 + h * 0.27 + i * (CS * 0.3));
@@ -162,18 +162,18 @@
       ctx.fillText(icon, cx, g.y + g.h * 0.42);
     }
     ctx.fillStyle = '#3a3020';
-    var fs = Math.max(9, Math.floor(Math.min(g.w, g.h) * 0.2));
-    ctx.font = fs + 'px sans-serif';
+    var fs = Math.max(9, Math.floor(Math.min(g.w, g.h) * 0.22));
+    ctx.font = fs + 'px "Nunito", "Noto Sans SC", sans-serif';
     var label = spName(sp) || (sp.type === 'chance' ? _t('mp_chance') : '');
     if (label) {
-      var lines = wrapLabel(label, 4);
+      var lines = wrapLabel(label, 7);
       lines.forEach(function (ln, li) {
         ctx.fillText(ln, cx, g.y + g.h * (icon ? 0.7 : 0.42) + (li - (lines.length - 1) / 2) * (fs + 1));
       });
     }
     if (sp.price) {
       ctx.fillStyle = g.side === 'top' ? priceTextColor(sp.color) : '#6b5537';
-      ctx.font = '700 ' + Math.floor(fs * 0.9) + 'px sans-serif';
+      ctx.font = '700 ' + Math.floor(fs * 0.9) + 'px "Nunito", "Noto Sans SC", sans-serif';
       ctx.fillText('$' + sp.price, cx, g.y + g.h * 0.9);
     }
 
@@ -213,7 +213,7 @@
     ctx.font = Math.floor(g.w * 0.36) + 'px serif';
     var icon = { go: '▶', jail_visit: '👮', free_parking: '🅿️', go_to_jail: '🚓' }[sp.type] || '';
     ctx.fillText(icon, cx, cy - g.h * 0.12);
-    ctx.fillStyle = '#5a4a32'; ctx.font = 'bold ' + Math.floor(g.w * 0.17) + 'px sans-serif';
+    ctx.fillStyle = '#5a4a32'; ctx.font = 'bold ' + Math.floor(g.w * 0.17) + 'px "Nunito", "Noto Sans SC", sans-serif';
     var labelMap = { go: _t('mp_go'), jail_visit: _t('mp_jail_visit'), free_parking: _t('mp_free_parking'), go_to_jail: _t('mp_go_to_jail') };
     var label = labelMap[sp.type] || '';
     ctx.fillText(label, cx, cy + g.h * 0.26);
@@ -225,7 +225,17 @@
 
   function wrapLabel(s, per) {
     if (s.length <= per) return [s];
-    return [s.slice(0, per), s.slice(per, per * 2)];
+    var isCJK = /[\u4e00-\u9fff\u3400-\u4dbf]/.test(s);
+    if (isCJK) return [s.slice(0, per), s.slice(per, per * 2)];
+    var words = s.split(' ');
+    var lines = []; var cur = '';
+    for (var i = 0; i < words.length; i++) {
+      var test = cur ? cur + ' ' + words[i] : words[i];
+      if (test.length > per && cur) { lines.push(cur); cur = words[i]; }
+      else cur = test;
+    }
+    if (cur) lines.push(cur);
+    return lines.length > 2 ? [lines[0], lines.slice(1).join(' ')] : lines;
   }
 
   function drawTokens(st) {
@@ -260,7 +270,7 @@
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = PLAYER_COLORS[p % 6]; ctx.fill();
     ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.floor(r * 1.1) + 'px sans-serif';
+    ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.floor(r * 1.1) + 'px "Nunito", "Noto Sans SC", sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('' + (p + 1), x, y);
     ctx.restore();
@@ -275,7 +285,7 @@
       ctx.save();
       ctx.globalAlpha = 1 - prog;
       ctx.fillStyle = f.color;
-      ctx.font = 'bold ' + Math.floor(CS * 0.34) + 'px sans-serif';
+      ctx.font = 'bold ' + Math.floor(CS * 0.34) + 'px "Nunito", "Noto Sans SC", sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(f.text, f.x, f.y - prog * CS * 1.2);
       ctx.restore();

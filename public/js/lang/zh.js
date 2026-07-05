@@ -592,6 +592,17 @@
     'mp_end_turn': '结束回合 →',
     'mp_you_win': '🎉 你赢了！',
     'mp_wins': ' 获胜！',
+    // ---- Suikabattle ----
+    'sk_eliminated': '出局！',
+    'sk_score_label': '分数: ',
+    'sk_next_label': '下一个: ',
+    'sk_player': '玩家',
+    'sk_pts': '分',
+    // ---- Drawguess punctuation ----
+    'dg_close_quote': '」',
+    'dg_close_paren': '）',
+    // ---- Sheeptile punctuation ----
+    'st_colon': '：',
 
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'zh';

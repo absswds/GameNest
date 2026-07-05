@@ -239,7 +239,7 @@
     container.appendChild(wrap);
 
     var wordLabel = document.createElement('div');
-    var wordText = task.word ? (_t('dg_draw_this_word') + task.word) : (_t('dg_draw_from_desc') + task.prevContent + '」');
+    var wordText = task.word ? (_t('dg_draw_this_word') + task.word) : (_t('dg_draw_from_desc') + task.prevContent + _t('dg_close_quote'));
     wordLabel.textContent = wordText;
     wordLabel.style.cssText = 'font-size:17px;font-weight:700;color:var(--accent);margin-bottom:6px;text-align:center;';
     wrap.appendChild(wordLabel);
@@ -401,7 +401,7 @@
     if (st.word) {
       var wordEl = document.createElement('div');
       wordEl.style.cssText = 'font-size:14px;color:var(--text-muted);margin-bottom:12px;';
-      wordEl.textContent = _t('dg_original_word') + st.word + '」';
+      wordEl.textContent = _t('dg_original_word') + st.word + _t('dg_close_quote');
       wrap.appendChild(wordEl);
     }
 
@@ -488,7 +488,7 @@
     }
     var resultEl = document.createElement('div');
     resultEl.style.cssText = 'margin-top:16px;padding:14px 20px;background:#f8f9fa;border-radius:12px;text-align:center;font-size:15px;font-weight:700;color:#5a4a32;';
-    resultEl.textContent = _t('dg_original_prefix') + st.word + _t('dg_to_final_guess') + (lastGuess || _t('dg_no_answer')) + '」';
+    resultEl.textContent = _t('dg_original_prefix') + st.word + _t('dg_to_final_guess') + (lastGuess || _t('dg_no_answer')) + _t('dg_close_quote');
     wrap.appendChild(resultEl);
 
     if (st.transmissionResult) {
@@ -524,7 +524,7 @@
     driftBtn.onclick = function () { wsSend({ type: 'vote_match', value: 'drift' }); };
     voteBox.appendChild(agreeBtn); voteBox.appendChild(driftBtn);
     var count = st.votes ? Object.keys(st.votes).length : 0;
-    var note = document.createElement('div'); note.style.cssText = 'font-size:12px;color:var(--text-muted);margin-top:8px;'; note.textContent = _t('dg_vote_prompt') + count + '/' + (players ? players.length : 0) + '）'; voteBox.appendChild(note);
+    var note = document.createElement('div'); note.style.cssText = 'font-size:12px;color:var(--text-muted);margin-top:8px;'; note.textContent = _t('dg_vote_prompt') + count + '/' + (players ? players.length : 0) + _t('dg_close_paren'); voteBox.appendChild(note);
     wrap.appendChild(voteBox);
   }
 

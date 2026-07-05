@@ -592,6 +592,17 @@
     'mp_end_turn': 'End Turn →',
     'mp_you_win': '🎉 You win!',
     'mp_wins': ' wins!',
+    // ---- Suikabattle ----
+    'sk_eliminated': 'Eliminated!',
+    'sk_score_label': 'Score: ',
+    'sk_next_label': 'Next: ',
+    'sk_player': 'Player',
+    'sk_pts': 'pts',
+    // ---- Drawguess punctuation ----
+    'dg_close_quote': '"',
+    'dg_close_paren': ')',
+    // ---- Sheeptile punctuation ----
+    'st_colon': ': ',
 
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'en';
