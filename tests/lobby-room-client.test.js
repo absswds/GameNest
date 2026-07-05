@@ -65,8 +65,18 @@ test('shared room shell summary includes the room id', () => {
   const match = js.match(/function updateSharedShell\(\) \{([\s\S]*?)\n  \}/);
   assert.ok(match, 'updateSharedShell should exist');
   assert.ok(
-    /setText\('activeGameSubtitle',[\s\S]*roomId/.test(match[1]),
+    /setText\('activeGameSubtitle',\s*roomContextSummary\(\)\)/.test(match[1]),
     'top shell subtitle should explicitly include the current room id'
+  );
+});
+
+test('stage room facts include both game name and room id', () => {
+  const js = fs.readFileSync(path.join(root, 'public', 'js', 'room-client.js'), 'utf8');
+  const match = js.match(/function updateSharedShell\(\) \{([\s\S]*?)\n  \}/);
+  assert.ok(match, 'updateSharedShell should exist');
+  assert.ok(
+    /setText\('stageRoomFacts',\s*roomContextSummary\(\)\s*\+/.test(match[1]),
+    'stage room facts should include the active game name and current room id together'
   );
 });
 

@@ -170,7 +170,7 @@
     setText('stageGameName', gameInfo.name);
     setText('waitingGameName', gameInfo.name);
     setText('waitingGameSubtitle', gameInfo.description || gameInfo.subtitle || '');
-    setText('stageRoomFacts', _t('room') + ' ' + roomId + ' · ' + (gameInfo.supportsAI ? _t('can_add_bot') : _t('pvp_only')));
+    setText('stageRoomFacts', roomContextSummary() + ' · ' + (gameInfo.supportsAI ? _t('can_add_bot') : _t('pvp_only')));
     renderMetaPills('waitingMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
     renderFacts('stageMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
     // Show connecting status until first server response arrives
