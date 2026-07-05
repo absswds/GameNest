@@ -343,7 +343,7 @@
       tags: ['社交', '轻松'],
       supportsAI: false,
       maxPlayers: 10,
-      cover: '/assets/game-covers/drawguess-party.png'
+      cover: '/assets/game-covers/truthdare.svg'
     }
   };
 
