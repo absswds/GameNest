@@ -65,8 +65,8 @@ android-startup.log
 # Agent worktrees
 .claude/worktrees/
 
-# Android Gradle wrapper binary
-android/gradle/wrapper/gradle-wrapper.jar
+# Gradle wrapper binary is tracked (needed for CI builds on Linux)
+# android/gradle/wrapper/gradle-wrapper.jar
 
 # Android build artifacts
 android/app/build/
