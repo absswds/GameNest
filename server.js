@@ -514,6 +514,7 @@ wss.on('connection', (ws) => {
         return;
       }
       const bot = botMod.createBot(botIndex);
+      bot.name = currentRoom._lang === 'zh' ? '电脑' + (botIndex + 1) : 'Bot ' + (botIndex + 1);
       if (!currentRoom.bots) currentRoom.bots = new Map();
       currentRoom.bots.set(botIndex, bot);
       broadcastRoom(currentRoom, {
