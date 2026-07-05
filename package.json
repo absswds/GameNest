@@ -8,7 +8,7 @@
     "start": "node server.js",
     "test": "node scripts/run-tests.js",
     "check": "node scripts/check-syntax.js",
-    "build:desktop": "pkg . --out-path dist",
+    "build:desktop": "npx @yao-pkg/pkg . --out-path dist",
     "test:monopoly": "node tests/monopoly.test.js"
   },
   "pkg": {
