@@ -1,0 +1,88 @@
+name: Release APK
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Download nodejs-mobile libnode.so
+        run: |
+          curl -sL -o nodejs-mobile.zip "https://github.com/nodejs-mobile/nodejs-mobile/releases/download/v18.20.4/nodejs-mobile-v18.20.4-android.zip"
+          unzip -q nodejs-mobile.zip -d nodejs-mobile-tmp
+          mkdir -p android/app/libs/jniLibs/arm64-v8a
+          mkdir -p android/app/libs/jniLibs/armeabi-v7a
+          mkdir -p android/app/libs/jniLibs/x86_64
+          cp nodejs-mobile-tmp/bin/arm64-v8a/libnode.so android/app/libs/jniLibs/arm64-v8a/
+          cp nodejs-mobile-tmp/bin/armeabi-v7a/libnode.so android/app/libs/jniLibs/armeabi-v7a/
+          cp nodejs-mobile-tmp/bin/x86_64/libnode.so android/app/libs/jniLibs/x86_64/
+          rm -rf nodejs-mobile.zip nodejs-mobile-tmp
+
+      - name: Copy project to Android assets
+        run: |
+          if command -v pwsh &> /dev/null; then
+            pwsh android/copy-nodejs-project.ps1
+          else
+            rm -rf android/app/src/main/assets/nodejs-project
+            mkdir -p android/app/src/main/assets/nodejs-project
+            cp -r server.js main.js startup-port.js package.json package-lock.json android/app/src/main/assets/nodejs-project/
+            cp -r games bots public android/app/src/main/assets/nodejs-project/
+            cp -r node_modules android/app/src/main/assets/nodejs-project/
+          fi
+
+      - name: Build signed release APK
+        env:
+          RELEASE_STORE_FILE: ${{ secrets.RELEASE_STORE_FILE }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: cd android && ./gradlew assembleRelease
+
+      - name: Sign APK (fallback if no keystore secrets)
+        if: env.RELEASE_STORE_FILE == ''
+        run: cd android && ./gradlew assembleDebug
+
+      - name: Extract version from tag
+        id: version
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: GameNest ${{ steps.version.outputs.tag }}
+          body: |
+            ## GameNest ${{ steps.version.outputs.tag }}
+
+            ### What's new
+            See [commit log](https://github.com/absswds/GameNest/commits/${{ steps.version.outputs.tag }}) for full details.
+
+            ### Download
+            - **APK**: Install on Android devices (arm64-v8a / armeabi-v7a / x86_64)
+            - Requires Android 8.0 (API 26) or newer
+          files: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/debug/app-debug.apk

@@ -35,10 +35,23 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            // Read from env vars (CI) or gradle.properties (local)
+            storeFile = System.getenv('RELEASE_STORE_FILE') ? file(System.getenv('RELEASE_STORE_FILE')) : null
+            storePassword = System.getenv('RELEASE_STORE_PASSWORD') ?: (project.findProperty('RELEASE_STORE_PASSWORD') ?: '')
+            keyAlias = System.getenv('RELEASE_KEY_ALIAS') ?: (project.findProperty('RELEASE_KEY_ALIAS') ?: '')
+            keyPassword = System.getenv('RELEASE_KEY_PASSWORD') ?: (project.findProperty('RELEASE_KEY_PASSWORD') ?: '')
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (signingConfigs.release.storeFile != null) {
+                signingConfig signingConfigs.release
+            }
         }
         debug {
             applicationIdSuffix ".debug"
