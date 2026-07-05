@@ -1,6 +1,9 @@
 // public/js/renderers/truthdare.js
-// 真心话大冒险 — shared party card picker
+// Truth or Dare — shared party card picker
 (function() {
+  function t(key) { return typeof _t === 'function' ? _t(key) : key; }
+  function tf(key) { var args = Array.prototype.slice.call(arguments, 1); return String(t(key)).replace(/%s/g, function() { return args.shift(); }); }
+
   window.gameRenderers = window.gameRenderers || new Map();
 
   window.gameRenderers.set('truthdare', {
@@ -8,23 +11,23 @@
       container.innerHTML = '' +
         '<div class="td-shell">' +
           '<div class="td-hero">' +
-            '<div class="td-kicker">场外剪刀石头布</div>' +
-            '<h2>输的人，来抽一张</h2>' +
-            '<p>这个页面只负责抽题和同步结果；谁来抽，由你们场外决定。</p>' +
+            '<div class="td-kicker">' + t('td_kicker') + '</div>' +
+            '<h2>' + t('td_title') + '</h2>' +
+            '<p>' + t('td_desc') + '</p>' +
           '</div>' +
           '<div class="td-card" id="tdCard">' +
             '<div class="td-card-type" id="tdCardType">READY</div>' +
-            '<div class="td-card-text" id="tdCardText">先猜拳，输的人点下面的按钮。</div>' +
-            '<div class="td-card-deck" id="tdCardDeck">真心话 / 大冒险</div>' +
+            '<div class="td-card-text" id="tdCardText">' + t('td_card_prompt') + '</div>' +
+            '<div class="td-card-deck" id="tdCardDeck">' + t('td_card_deck') + '</div>' +
           '</div>' +
           '<div class="td-actions">' +
-            '<button class="td-btn truth" onclick="window._tdDraw(\'truth\')">真心话</button>' +
-            '<button class="td-btn random" onclick="window._tdDraw(\'random\')">随机来一张</button>' +
-            '<button class="td-btn dare" onclick="window._tdDraw(\'dare\')">大冒险</button>' +
+            '<button class="td-btn truth" onclick="window._tdDraw(\'truth\')">' + t('td_truth') + '</button>' +
+            '<button class="td-btn random" onclick="window._tdDraw(\'random\')">' + t('td_random') + '</button>' +
+            '<button class="td-btn dare" onclick="window._tdDraw(\'dare\')">' + t('td_dare') + '</button>' +
           '</div>' +
           '<div class="td-hint" id="tdHint"></div>' +
           '<div class="td-history-wrap">' +
-            '<div class="td-history-title">最近抽到</div>' +
+            '<div class="td-history-title">' + t('td_history_title') + '</div>' +
             '<div class="td-history" id="tdHistory"></div>' +
           '</div>' +
         '</div>';
@@ -80,28 +83,30 @@
         var card = state.currentCard;
         cardEl.className = 'td-card ' + card.kind + ' pop';
         setTimeout(function() { if (cardEl) cardEl.classList.remove('pop'); }, 360);
-        typeEl.textContent = card.kind === 'truth' ? '真心话' : '大冒险';
+        typeEl.textContent = card.kind === 'truth' ? t('td_truth') : t('td_dare');
         textEl.textContent = card.text;
-        deckEl.textContent = (window.getPlayerName ? window.getPlayerName(card.player) : '玩家' + (card.player + 1)) + ' 抽到 · ' + (card.deckName || card.deck || '牌库');
+        var playerName = window.getPlayerName ? window.getPlayerName(card.player) : t('player') + (card.player + 1);
+        deckEl.textContent = playerName + ' ' + t('td_drawn_by') + ' · ' + (card.deckName || card.deck || t('td_deck_default'));
       }
 
       if (hintEl) {
         var deckCount = state && state.enabledDecks ? state.enabledDecks.length : 0;
-        hintEl.textContent = '已启用 ' + deckCount + ' 个牌库 · 抽卡会同步给房间内所有人';
+        hintEl.textContent = tf('td_decks_enabled', deckCount);
       }
 
       if (historyEl) {
         var history = state && Array.isArray(state.history) ? state.history : [];
         if (history.length === 0) {
-          historyEl.innerHTML = '<div class="td-history-empty">还没有抽过牌</div>';
+          historyEl.innerHTML = '<div class="td-history-empty">' + t('td_history_empty') + '</div>';
         } else {
           historyEl.innerHTML = history.map(function(card) {
-            var label = card.kind === 'truth' ? '真心话' : '大冒险';
+            var label = card.kind === 'truth' ? t('td_truth') : t('td_dare');
+            var playerName = window.getPlayerName ? window.getPlayerName(card.player) : t('player') + (card.player + 1);
             return '<div class="td-history-row">' +
               '<span class="td-history-badge ' + card.kind + '">' + label + '</span>' +
               '<div><div>' + escapeHtml(card.text) + '</div>' +
-              '<div class="td-history-meta">' + escapeHtml(card.deckName || card.deck || '牌库') + ' · ' +
-                escapeHtml(window.getPlayerName ? window.getPlayerName(card.player) : '玩家' + (card.player + 1)) + '</div></div>' +
+              '<div class="td-history-meta">' + escapeHtml(card.deckName || card.deck || t('td_deck_default')) + ' · ' +
+                escapeHtml(playerName) + '</div></div>' +
               '</div>';
           }).join('');
         }

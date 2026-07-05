@@ -89,7 +89,7 @@
 <script src="/js/game-catalog.js"></script>
 <script>
 let selectedGame = 'monopoly';
-let activeCategory = '\u5168\u90e8';
+let activeCategory = (typeof _t === 'function' ? _t('all_categories') : '\u5168\u90e8');
 let searchText = '';
 
 const catalog = window.gameCatalog.list();
@@ -169,7 +169,8 @@ function matches(game) {
     game.category,
     (game.tags || []).join(' ')
   ].join(' ').toLowerCase();
-  if (activeCategory !== '\u5168\u90e8' && game.category !== activeCategory) return false;
+  const allLabel = (typeof _t === 'function' ? _t('all_categories') : '\u5168\u90e8');
+  if (activeCategory !== allLabel && game.category !== activeCategory) return false;
   if (!searchText) return true;
   return haystack.indexOf(searchText) >= 0;
 }
@@ -187,7 +188,7 @@ function bindSelection(containerSelector) {
 }
 
 function renderCategories() {
-  const chips = ['\u5168\u90e8'].concat(window.gameCatalog.categories());
+  const chips = [(typeof _t === 'function' ? _t('all_categories') : '\u5168\u90e8')].concat(window.gameCatalog.categories());
   const root = document.getElementById('categoryChips');
   root.innerHTML = chips.map(function(category) {
     const selectedClass = category === activeCategory ? ' selected' : '';
@@ -233,11 +234,11 @@ function createRoom() {
       ws.close();
       location.replace('/game.html');
     } else if (msg.type === 'error') {
-      toast('\u9519\u8bef: ' + msg.message);
+      toast((typeof _t === 'function' ? _t('error_prefix') : '\u9519\u8bef\uff1a') + msg.message);
     }
   };
   ws.onerror = function() {
-    toast('\u8fde\u63a5\u5931\u8d25\uff0c\u670d\u52a1\u5668\u662f\u5426\u5df2\u542f\u52a8\uff1f');
+    toast(typeof _t === 'function' ? _t('connection_failed') : '\u8fde\u63a5\u5931\u8d25\uff0c\u670d\u52a1\u5668\u662f\u5426\u5df2\u542f\u52a8\uff1f');
   };
 }
 
@@ -248,7 +249,7 @@ document.getElementById('quickCreate').addEventListener('click', function() {
 document.getElementById('joinBtn').addEventListener('click', function() {
   const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
   if (!code) {
-    toast('\u8bf7\u8f93\u5165\u623f\u95f4\u53f7');
+    toast(typeof _t === 'function' ? _t('room_code_empty') : '\u8bf7\u8f93\u5165\u623f\u95f4\u53f7');
     return;
   }
   const ws = new WebSocket(getSocketURL());
@@ -265,7 +266,7 @@ document.getElementById('joinBtn').addEventListener('click', function() {
       ws.close();
       location.replace('/game.html');
     } else if (msg.type === 'error') {
-      toast('\u9519\u8bef: ' + msg.message);
+      toast((typeof _t === 'function' ? _t('error_prefix') : '\u9519\u8bef\uff1a') + msg.message);
       if (msg.code === 'ROOM_NOT_FOUND') {
         sessionStorage.removeItem('roomId');
         sessionStorage.removeItem('playerIndex');
@@ -275,7 +276,7 @@ document.getElementById('joinBtn').addEventListener('click', function() {
     }
   };
   ws.onerror = function() {
-    toast('\u8fde\u63a5\u5931\u8d25\uff0c\u670d\u52a1\u5668\u662f\u5426\u5df2\u542f\u52a8\uff1f');
+    toast(typeof _t === 'function' ? _t('connection_failed') : '\u8fde\u63a5\u5931\u8d25\uff0c\u670d\u52a1\u5668\u662f\u5426\u5df2\u542f\u52a8\uff1f');
   };
 });
 
@@ -299,8 +300,8 @@ function renderResumeBanner() {
   var sub = document.getElementById('resumeRoomSub');
   var section = document.getElementById('resumeSection');
   var btn = document.getElementById('resumeBtn');
-  if (title) title.textContent = '\u300a' + game.name + '\u300b \u623f\u95f4 ' + roomId;
-  if (sub) sub.textContent = '\u4f60\u6b63\u5728\u8fd9\u95f4\u623f\u4e2d\uff0c\u70b9\u51fb\u8fd4\u56de\u7ee7\u7eed\u3002';
+  if (title) title.textContent = (typeof _t === 'function' ? '\u300a' + game.name + '\u300b ' + _t('room') + ' ' + roomId : '\u300a' + game.name + '\u300b \u623f\u95f4 ' + roomId);
+  if (sub) sub.textContent = (typeof _t === 'function' ? _t('resume_subtitle') : '\u4f60\u5df2\u5728\u8fd9\u95f4\u623f\u4e2d\uff0c\u70b9\u51fb\u8fd4\u56de');
   if (section) section.style.display = '';
   if (btn) btn.onclick = function() {
     location.href = '/game.html';
@@ -325,7 +326,7 @@ if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
 (function() {
   const params = new URLSearchParams(location.search);
   if (params.get('roomExpired') === '1') {
-    toast('\u623f\u95f4\u5df2\u5931\u6548\uff0c\u8bf7\u91cd\u65b0\u521b\u5efa\u6216\u8f93\u5165\u623f\u95f4\u53f7\u52a0\u5165\u3002');
+    toast(typeof _t === 'function' ? _t('room_expired') : '\u623f\u95f4\u5df2\u5931\u6548\uff0c\u8bf7\u91cd\u65b0\u521b\u5efa\u6216\u8f93\u5165\u623f\u95f4\u53f7\u52a0\u5165\u3002');
     sessionStorage.removeItem('roomId');
     sessionStorage.removeItem('playerIndex');
     sessionStorage.removeItem('game');

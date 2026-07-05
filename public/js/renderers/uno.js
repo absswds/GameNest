@@ -2,6 +2,9 @@
 (function() {
   window.gameRenderers = window.gameRenderers || new Map();
 
+  function t(key) { return typeof _t === 'function' ? _t(key) : key; }
+  function tf(key) { var args = Array.prototype.slice.call(arguments, 1); return String(t(key)).replace(/%s/g, function() { return args.shift(); }); }
+
   var VALUE_LABELS = {
     '0':'0','1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9',
     'skip':'⊘', 'reverse':'↻', '+2':'+2',
@@ -10,7 +13,7 @@
 
   var COLOR_HEX = { red:'#e74c3c', blue:'#3498db', green:'#2ecc71', yellow:'#f1c40f', wild:'#555' };
   var COLOR_TEXT = { red:'#fff', blue:'#fff', green:'#fff', yellow:'#222', wild:'#fff' };
-  var COLOR_NAMES = { red:'红', blue:'蓝', green:'绿', yellow:'黄' };
+  var COLOR_NAMES = { red: t('uno_red'), blue: t('uno_blue'), green: t('uno_green'), yellow: t('uno_yellow') };
   var COLOR_ORDER = ['red','blue','green','yellow'];
   var lastDiscardKey = null;
   var lastHandSignature = null;
@@ -122,20 +125,20 @@
                 '<div class="dv">-</div><div class="dl"></div>' +
               '</div>' +
               '<div class="uno-draw-pile" id="unoDrawPile">' +
-                '<div class="dc">0</div><div class="dl">剩余</div>' +
+                '<div class="dc">0</div><div class="dl">' + t('uno_remaining') + '</div>' +
               '</div>' +
             '</div>' +
           '</div>' +
           '<div class="uno-hand-wrap" id="unoHandWrap"><div class="uno-hand" id="unoHand"></div></div>' +
-          '<div id="unoScrollHint" style="display:none;text-align:center;font-size:11px;color:var(--text-muted);padding:2px 0;">👈 左右滑动查看全部手牌 →</div>' +
+          '<div id="unoScrollHint" style="display:none;text-align:center;font-size:11px;color:var(--text-muted);padding:2px 0;">' + t('uno_scroll_hint') + '</div>' +
           '<div class="uno-actions">' +
-            '<button class="btn btn-outline btn-sm" id="drawBtn">摸牌</button>' +
+            '<button class="btn btn-outline btn-sm" id="drawBtn">' + t('uno_draw') + '</button>' +
             '<button class="btn btn-outline btn-sm" id="unoBtn" style="display:none">UNO!</button>' +
           '</div>' +
         '</div>' +
         '<div class="overlay" id="unoColorPicker" style="display:none">' +
           '<div class="overlay-card">' +
-            '<div style="font-size:18px;font-weight:700;margin-bottom:10px">选择颜色</div>' +
+            '<div style="font-size:18px;font-weight:700;margin-bottom:10px">' + t('uno_choose_color') + '</div>' +
             '<div class="uno-color-picker-btns" id="unoColorBtns"></div>' +
           '</div>' +
         '</div>';
@@ -235,9 +238,9 @@
       html += '' +
         '<div class="uno-opponent' + active + '">' +
           '<div class="opp-top">' +
-            '<span>' + ((window.gamePlayers && window.gamePlayers[i]) ? window.gamePlayers[i].name : ('玩家 ' + (i + 1))) +
+            '<span>' + ((window.gamePlayers && window.gamePlayers[i]) ? window.gamePlayers[i].name : tf('uno_player', i+1)) +
               (called ? ' <span style="background:#2ecc71;color:#fff;font-size:9px;padding:1px 5px;border-radius:6px;font-weight:700;">UNO</span>' : '') +
-              (notCalled ? ' <span style="color:#e74c3c;font-size:9px;font-weight:700;">⚠1张</span>' : '') +
+              (notCalled ? ' <span style="color:#e74c3c;font-size:9px;font-weight:700;">' + t('uno_uno_warning') + '</span>' : '') +
             '</span>' +
             '<span class="card-count">×' + count + '</span>' +
           '</div>' +
@@ -253,10 +256,10 @@
     if (color && COLOR_HEX[color]) {
       el.style.background = COLOR_HEX[color];
       el.style.color = COLOR_TEXT[color];
-      el.textContent = '当前' + (COLOR_NAMES[color] || color);
+      el.textContent = tf('uno_current', COLOR_NAMES[color] || color);
     } else {
       el.style.background = '#999';
-      el.textContent = '游戏未开始';
+      el.textContent = t('uno_not_started');
     }
   }
 
@@ -294,7 +297,7 @@
     var count = (deck && deck.length) || 0;
     el.innerHTML = '' +
       '<div class="dc">' + count + '</div>' +
-      '<div class="dl">剩余</div>' +
+      '<div class="dl">' + t('uno_remaining') + '</div>' +
       (drawStack > 0 ? '<div class="uno-draw-stack">+' + drawStack + '</div>' : '');
   }
 
@@ -329,11 +332,11 @@
       (function(cardEl, cardData) {
         cardEl.addEventListener('click', function() {
           if (!isMyTurn) {
-            showToast('轮到对手');
+            showToast(t('uno_opponent_turn'));
             return;
           }
           if (!canPlayCard(cardData, top, currentColor)) {
-            showToast('不能出这张牌');
+            showToast(t('uno_cannot_play'));
             return;
           }
           if (cardData.color === 'wild') {
@@ -354,7 +357,7 @@
 
     if (isMyTurn) {
       drawBtn.style.display = '';
-      drawBtn.textContent = drawStack > 0 ? '摸牌 (+' + drawStack + ')' : '摸牌';
+      drawBtn.textContent = drawStack > 0 ? tf('uno_draw_stack', drawStack) : t('uno_draw');
       drawBtn.disabled = false;
 
       if (hand && hand.length === 1) {

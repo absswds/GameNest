@@ -1,10 +1,19 @@
 // public/js/renderers/twentyfour.js
 (function() {
+  function t(key) { return typeof _t === 'function' ? _t(key) : key; }
+  function tf(key) { var args = Array.prototype.slice.call(arguments, 1); return String(t(key)).replace(/%s/g, function() { return args.shift(); }); }
+  function playerName(idx) {
+    if (idx === _playerIndex) return t('you');
+    if (window.gamePlayers && window.gamePlayers[idx]) return window.gamePlayers[idx].name;
+    return t('player') + (idx + 1);
+  }
+
   window.gameRenderers = window.gameRenderers || new Map();
 
   var _expr = '';
   var _usedNums = [];
   var _lastState = null;
+  var _playerIndex = 0;
 
   var STYLES =
     '.tf-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;}' +
@@ -56,10 +65,10 @@
             '<button class="tf-op" onclick="window._tfPushOp(\')\')">)</button>' +
           '</div>' +
           '<div class="tf-actions">' +
-            '<button class="btn btn-outline btn-sm" onclick="window._tfUndo()">撤销</button>' +
-            '<button class="btn btn-outline btn-sm" onclick="window._tfClear()">清空</button>' +
-            '<button class="btn btn-primary btn-sm" onclick="window._tfSubmit()">提交</button>' +
-            '<button class="btn btn-outline btn-sm" id="tfHintBtn" onclick="window._tfHint()">💡 来点提示</button>' +
+            '<button class="btn btn-outline btn-sm" onclick="window._tfUndo()">' + t('tf_undo') + '</button>' +
+            '<button class="btn btn-outline btn-sm" onclick="window._tfClear()">' + t('tf_clear') + '</button>' +
+            '<button class="btn btn-primary btn-sm" onclick="window._tfSubmit()">' + t('tf_submit') + '</button>' +
+            '<button class="btn btn-outline btn-sm" id="tfHintBtn" onclick="window._tfHint()">' + t('tf_hint') + '</button>' +
           '</div>' +
           '<div class="tf-hint" id="tfHint"></div>' +
           '<div class="tf-round-winner" id="tfRoundWinner" style="display:none"></div>' +
@@ -81,10 +90,11 @@
     render: function(state, container, playerIndex, winner) {
       if (!state || !state.numbers) return;
       _lastState = state;
+      _playerIndex = playerIndex;
 
       // Round indicator
       var roundEl = document.getElementById('tfRound');
-      if (roundEl) roundEl.textContent = '第 ' + (state.currentRound || 1) + ' / ' + (state.maxRounds || 5) + ' 轮';
+      if (roundEl) roundEl.textContent = tf('tf_round', state.currentRound || 1, state.maxRounds || 5);
 
       // Build number cards (only when numbers change)
       var numsDiv = document.getElementById('tfNums');
@@ -99,7 +109,7 @@
         if (hintEl) hintEl.textContent = '';
         var hintBtn = document.getElementById('tfHintBtn');
         clearInterval(_hintCooldownTimer); _hintCooldownTimer = null;
-        if (hintBtn) { hintBtn.disabled = false; hintBtn.textContent = '💡 来点提示'; }
+        if (hintBtn) { hintBtn.disabled = false; hintBtn.textContent = t('tf_hint'); }
         numsDiv.innerHTML = '';
         for (var i = 0; i < state.numbers.length; i++) {
           (function(idx) {
@@ -136,11 +146,11 @@
       if (myStatusEl) {
         if (state.phase === 'playing' && mySub && mySub.correct) {
           myStatusEl.style.display = '';
-          myStatusEl.textContent = '✅ 已答对！等待倒计时结束…（已有 ' + answeredCount + ' 人答对）';
+          myStatusEl.textContent = tf('tf_answered', answeredCount);
         } else if (state.phase === 'playing' && answeredCount > 0) {
           myStatusEl.style.display = '';
           myStatusEl.style.color = 'var(--text-muted)';
-          myStatusEl.textContent = '已有 ' + answeredCount + ' 人答对，加油！';
+          myStatusEl.textContent = tf('tf_others_answered', answeredCount);
         } else {
           myStatusEl.style.display = 'none';
           myStatusEl.style.color = '#5a9e6f';
@@ -157,19 +167,19 @@
           var answerLine = '';
           var sol = findSolution(state.numbers.slice());
           if (sol) {
-            answerLine = '<div style="font-size:13px;color:var(--text-muted);margin-top:4px;">答案: ' + sol.str + ' = 24</div>';
+            answerLine = '<div style="font-size:13px;color:var(--text-muted);margin-top:4px;">' + tf('tf_answer', sol.str) + '</div>';
           }
           if (state.roundWinner === -1) {
             rwEl.style.display = '';
-            rwEl.innerHTML = '⏰ 时间到！本轮无人得分' + answerLine +
+            rwEl.innerHTML = t('tf_timeout_noone') + answerLine +
               '<br><button class="btn btn-accent btn-sm" onclick="window._tfNextRound()" style="margin-top:8px;">' +
-              (state.currentRound >= state.maxRounds ? '查看最终排名' : '下一轮') + '</button>';
+              (state.currentRound >= state.maxRounds ? t('tf_view_final') : t('tf_next_round')) + '</button>';
           } else if (state.roundWinner !== null) {
-            var rwName = state.roundWinner === playerIndex ? '你' : ((window.gamePlayers && window.gamePlayers[state.roundWinner]) ? window.gamePlayers[state.roundWinner].name : ('玩家' + (state.roundWinner + 1)));
+            var rwName = playerName(state.roundWinner);
             rwEl.style.display = '';
-            rwEl.innerHTML = '🎉 ' + rwName + ' 赢了本轮！' + answerLine +
+            rwEl.innerHTML = tf('tf_wins_round', rwName) + answerLine +
               '<br><button class="btn btn-accent btn-sm" onclick="window._tfNextRound()" style="margin-top:8px;">' +
-              (state.currentRound >= state.maxRounds ? '查看最终排名' : '下一轮') + '</button>';
+              (state.currentRound >= state.maxRounds ? t('tf_view_final') : t('tf_next_round')) + '</button>';
           } else {
             rwEl.style.display = 'none';
           }
@@ -187,11 +197,11 @@
         sorted.sort(function(a, b) { return b.wins - a.wins; });
 
         var medals = ['🥇', '🥈', '🥉'];
-        var html = '<div style="font-size:14px;font-weight:700;margin-bottom:6px;">排行榜</div>';
+        var html = '<div style="font-size:14px;font-weight:700;margin-bottom:6px;">' + t('tf_leaderboard') + '</div>';
         for (var r = 0; r < sorted.length; r++) {
-          var name = sorted[r].player === playerIndex ? '你' : ((window.gamePlayers && window.gamePlayers[sorted[r].player]) ? window.gamePlayers[sorted[r].player].name : ('玩家' + (sorted[r].player + 1)));
+          var name = playerName(sorted[r].player);
           var icon = medals[r] || (r + 1);
-          html += '<div class="tf-lb-row"><span><span class="tf-lb-rank">' + icon + '</span> ' + name + '</span><span class="tf-lb-wins">' + sorted[r].wins + ' 胜</span></div>';
+          html += '<div class="tf-lb-row"><span><span class="tf-lb-rank">' + icon + '</span> ' + name + '</span><span class="tf-lb-wins">' + sorted[r].wins + ' ' + t('tf_wins') + '</span></div>';
         }
         lbEl.innerHTML = html;
       }
@@ -201,11 +211,10 @@
       if (infoEl) {
         if (state.phase === 'over') {
           stopCountdown();
-          var champ = state.winner === playerIndex ? '你' : ((window.gamePlayers && window.gamePlayers[state.winner]) ? window.gamePlayers[state.winner].name : ('玩家' + (state.winner + 1)));
-          infoEl.innerHTML = '<span style="font-size:16px;font-weight:700;color:#c8a45c;">🏆 总冠军: ' + champ + '</span>';
+          infoEl.innerHTML = '<span style="font-size:16px;font-weight:700;color:#c8a45c;">' + tf('tf_champion', playerName(state.winner)) + '</span>';
         } else if (state.phase === 'round_end') {
           stopCountdown();
-          infoEl.textContent = '等待房主开始下一轮...';
+          infoEl.textContent = t('tf_waiting_host');
         } else if (state.phase === 'playing') {
           // Timed mode: use client-local clock to avoid cross-machine clock skew
           var numKey = JSON.stringify(state.numbers);
@@ -220,7 +229,7 @@
               startCountdown(state.roundTime, _roundLocalStart, infoEl);
             }
           } else {
-            infoEl.textContent = '用所有数字算出24！先答对的赢';
+            infoEl.textContent = t('tf_instruction');
           }
         }
       }
@@ -235,7 +244,7 @@
 
   function updateDisplay() {
     var el = document.getElementById('tfExpr');
-    if (el) el.textContent = _expr || '点击数字和运算符开始';
+    if (el) el.textContent = _expr || t('tf_expr_placeholder');
   }
 
   window._tfPushOp = function(op) {
@@ -259,7 +268,7 @@
   };
 
   window._tfSubmit = function() {
-    if (!_expr.trim()) { showToast('请先组合表达式'); return; }
+    if (!_expr.trim()) { showToast(t('tf_enter_expr')); return; }
     var realExpr = _expr.replace(/×/g, '*').replace(/÷/g, '/');
     _expr = '';
     _usedNums = [];
@@ -322,13 +331,13 @@
     if (!infoEl) infoEl = document.getElementById('tfInfo');
     if (!infoEl) return;
     if (remaining <= 0) {
-      infoEl.innerHTML = '<span style="color:#e74c3c;font-weight:700;">⏰ 时间到！</span>';
+      infoEl.innerHTML = '<span style="color:#e74c3c;font-weight:700;">' + t('tf_time_up') + '</span>';
       return;
     }
     var mins = Math.floor(remaining / 60);
     var secs = remaining % 60;
     var color = remaining <= 10 ? '#e74c3c' : remaining <= 30 ? '#f39c12' : 'var(--text-muted)';
-    infoEl.innerHTML = '<span style="color:' + color + ';font-weight:700;">⏱ 剩余 ' + (mins > 0 ? mins + '分' : '') + secs + '秒</span>';
+    infoEl.innerHTML = '<span style="color:' + color + ';font-weight:700;">' + tf('tf_time_remaining', (mins > 0 ? mins + t('tf_minutes') : '') + secs + t('tf_seconds')) + '</span>';
   }
 
   function showToast(msg) {
@@ -463,44 +472,44 @@
       case 1: {
         // Only reveal which operators are used — no numbers, no result
         var opSet = ops.filter(function(o, i, a) { return a.indexOf(o) === i; });
-        var opNames = { '×': '乘法', '+': '加法', '-': '减法', '÷': '除法' };
+        var opNames = { '×': t('tf_op_mul'), '+': t('tf_op_add'), '-': t('tf_op_sub'), '÷': t('tf_op_div') };
         var opWords = opSet.map(function(o) { return opNames[o] || o; });
         var hasMul = ops.indexOf('×') >= 0, hasDiv = ops.indexOf('÷') >= 0;
-        if (hasMul && hasDiv) return '需要用乘法和除法';
-        if (hasMul) return '乘法是关键，想想哪两个数相乘';
-        if (hasDiv) return '除法是关键，想想哪个数能被整除';
-        return '只用加减法：' + opWords.join('、');
+        if (hasMul && hasDiv) return t('tf_hint_muldiv');
+        if (hasMul) return t('tf_hint_mul');
+        if (hasDiv) return t('tf_hint_div');
+        return tf('tf_hint_addsub', opWords.join(', '));
       }
       case 2:
         // The overall bracket structure (blanks only, no numbers)
-        if (solution.pattern === 1) return '括号结构：((□ _ □) _ □) _ □';
-        if (solution.pattern === 2) return '括号结构：(□ _ (□ _ □)) _ □';
-        if (solution.pattern === 3) return '括号结构：(□ _ □) _ (□ _ □)';
-        if (solution.pattern === 4) return '括号结构：□ _ ((□ _ □) _ □)';
-        if (solution.pattern === 5) return '括号结构：□ _ (□ _ (□ _ □))';
-        return '试试不同的括号分组方式';
+        if (solution.pattern === 1) return t('tf_pattern_1');
+        if (solution.pattern === 2) return t('tf_pattern_2');
+        if (solution.pattern === 3) return t('tf_pattern_3');
+        if (solution.pattern === 4) return t('tf_pattern_4');
+        if (solution.pattern === 5) return t('tf_pattern_5');
+        return t('tf_pattern_fallback');
       case 3: {
         // Intermediate target
         if (solution.pattern === 1 || solution.pattern === 2) {
           var t1_1 = solution.pattern === 1 ? calcSym(a, b, ops[0]) : 0;
           var t1_2 = solution.pattern === 2 ? calcSym(b, c, ops[1]) : 0;
           var target = solution.pattern === 1 ? t1_1 : t1_2;
-          if (target !== null && Number.isInteger(target)) return '先凑出 ' + Math.round(target) + '，再和剩余数字运算';
+          if (target !== null && Number.isInteger(target)) return tf('tf_target', Math.round(target));
         }
         if (solution.pattern === 3) {
           var ta = calcSym(a, b, ops[0]);
           var tb = calcSym(c, d, ops[2]);
           if (ta !== null && tb !== null && Number.isInteger(ta) && Number.isInteger(tb))
-            return '分成两组分别算：一组得 ' + Math.round(ta) + '，另一组得 ' + Math.round(tb);
+            return tf('tf_two_groups', Math.round(ta), Math.round(tb));
         }
-        return '想想中间需要先凑出什么数';
+        return t('tf_think_intermediate');
       }
       case 4: {
         // First actual step with result
         var fs = firstStep();
         var res = calcSym(fs.x, fs.y, fs.op);
         var resStr = res !== null ? (Number.isInteger(res) ? res : res.toFixed(1)) : '?';
-        return '第一步：' + fs.x + ' ' + fs.op + ' ' + fs.y + ' = ' + resStr;
+        return tf('tf_first_step', fs.x, fs.op, fs.y, resStr);
       }
     }
   }
@@ -525,8 +534,8 @@
     if (!btn) return;
     var remain = seconds != null ? seconds : HINT_COOLDOWN;
     btn.disabled = true;
-    var baseLabel = '💡 来点提示';
-    btn.textContent = isOpening ? '⏳ ' + remain + 's 后可提示' : '⏳ ' + remain + 's';
+    var baseLabel = t('tf_hint');
+    btn.textContent = isOpening ? tf('tf_hint_wait', remain) : tf('tf_hint_wait_short', remain);
     clearInterval(_hintCooldownTimer);
     _hintCooldownTimer = setInterval(function() {
       remain--;
@@ -537,7 +546,7 @@
         if (_hintLevel < 16) btn.disabled = false;
         btn.textContent = baseLabel;
       } else {
-        btn.textContent = isOpening ? '⏳ ' + remain + 's 后可提示' : '⏳ ' + remain + 's';
+        btn.textContent = isOpening ? tf('tf_hint_wait', remain) : tf('tf_hint_wait_short', remain);
       }
     }, 1000);
   }
@@ -546,21 +555,22 @@
     var hintEl = document.getElementById('tfHint');
     var hintBtn = document.getElementById('tfHintBtn');
     if (hintBtn && hintBtn.disabled) return; // guard against spam / programmatic calls
-    if (!_lastState || !_lastState.numbers) { if (hintEl) hintEl.textContent = '暂无数字'; return; }
+    if (!_lastState || !_lastState.numbers) { if (hintEl) hintEl.textContent = t('tf_no_numbers'); return; }
     var solution = findSolution(_lastState.numbers.slice());
     if (!solution) {
-      if (hintEl) hintEl.textContent = '😅 本轮暂无标准24点解法';
+      if (hintEl) hintEl.textContent = t('tf_no_solution');
       if (hintBtn) hintBtn.disabled = true;
       return;
     }
     _hintLevel++;
     var hintText = generateHint(solution, _lastState.numbers);
     if (hintEl && hintText) {
-      var label = _hintLevel > 4 ? '反复思考' : (_hintLevel === 4 ? '最后一眼' : (_hintLevel === 3 ? '再近一步' : (_hintLevel === 2 ? '再想一想' : '初窥门径')));
-      hintEl.textContent = '💡 [' + label + '] ' + hintText;
+      var hintLabels = [null, 'tf_hint_level_1', 'tf_hint_level_2', 'tf_hint_level_3', 'tf_hint_level_4', 'tf_hint_level_5'];
+      var hintLabel = _hintLevel > 5 ? t('tf_hint_level_5') : (_hintLevel > 0 ? t(hintLabels[_hintLevel]) : '');
+      hintEl.textContent = '💡 [' + hintLabel + '] ' + hintText;
     }
     if (_hintLevel >= 16) {
-      if (hintBtn) { hintBtn.disabled = true; hintBtn.textContent = '💡 提示已用尽'; }
+      if (hintBtn) { hintBtn.disabled = true; hintBtn.textContent = t('tf_hint_exhausted'); }
     } else {
       var fewPlayers = _lastState && _lastState._hasBots && (_lastState._realPlayerCount || 99) < 3;
       startHintCooldown(hintBtn, fewPlayers ? 2 : HINT_COOLDOWN, false);

@@ -1,7 +1,7 @@
 // public/js/tutorials.js
 // Game tutorial system — shows rules overlay for each game
 (function() {
-  var TUTORIALS = {
+  var TUTORIALS_ZH = {
     tictactoe: {
       title: '井字棋',
       sections: [
@@ -248,9 +248,260 @@
     },
   };
 
+  var TUTORIALS_EN = {
+    tictactoe: {
+      title: 'Tic-Tac-Toe',
+      sections: [
+        { h: 'Objective', p: 'Be the first to get three of your marks in a row (horizontally, vertically, or diagonally) on a 3×3 grid.' },
+        { h: 'Gameplay', p: 'Players take turns placing their mark in an empty cell. First player is ⨉, second is ○.' },
+        { h: 'Draw', p: 'If the board fills up with no winner, the game ends in a draw.' },
+      ]
+    },
+    gomoku: {
+      title: 'Gomoku',
+      sections: [
+        { h: 'Objective', p: 'Be the first to get five stones in a row (horizontally, vertically, or diagonally) on a 15×15 board.' },
+        { h: 'Gameplay', p: 'Players take turns placing stones. Black goes first, White second. Stones cannot be moved once placed.' },
+        { h: 'Strategy', p: 'Watch for your opponent\'s open-threes and open-fours while building your own winning lines.' },
+      ]
+    },
+    davinci: {
+      title: 'Da Vinci Code',
+      sections: [
+        { h: 'Objective', p: 'Guess all opponents\' hidden tiles to become the last player standing.' },
+        { h: 'Tile Set', p: '26 tiles: Black 0-11, White 0-11, plus 2 wild tiles (★). Wild tiles can be placed anywhere in your sequence.' },
+        { h: 'Sorting Rule', p: 'Tiles are arranged smallest to largest; same number: black left, white right. Wild tiles stay where you place them — they won\'t be auto-sorted.' },
+        { h: 'Turn Flow', p: '① Draw: take a tile from the pile and look at it. ② Guess: click an opponent\'s face-down tile and guess its color & number. ③ Correct guess: the tile is revealed — you may guess again or end your turn. ④ Wrong guess: penalty phase — you must reveal one of your own tiles. ⑤ Pass: insert the drawn tile face-down into your sequence without guessing.' },
+        { h: 'Penalty Phase', p: 'After a wrong guess, you must flip up one of your own unrevealed tiles. Click your own hidden tile to choose which one to reveal.' },
+        { h: 'Wild Tile', p: 'When you draw a wild tile (including your first tile of the game), choose where to insert it in your sequence. It stays in that position for the entire game. When guessing a wild tile, select the "★ Wild" color option.' },
+      ]
+    },
+    uno: {
+      title: 'UNO',
+      sections: [
+        { h: 'Objective', p: 'Be the first to get rid of all your cards. Shout "UNO" when you\'re down to your last card!' },
+        { h: 'Play Rule', p: 'Play a card matching the color or number of the top discard. Wild cards can be played at any time.' },
+        { h: 'Action Cards', p: '⊘ Skip: skip the next player. ↻ Reverse: reverse play direction (in 2-player, acts as Skip). +2: next player draws 2 and is skipped. ★ Wild: choose the next color. +4: wild card + next player draws 4.' },
+        { h: 'Stacking', p: '+2 and +4 cards stack! If you\'re hit with a +2, you can play your own +2 or +4 to pass the accumulated penalty to the next player; same for +4. If you don\'t play a stacking card, you must draw all accumulated cards.' },
+        { h: 'Drawing', p: 'If you can\'t play any card, draw 1. You may play it immediately if eligible or keep it.' },
+        { h: 'UNO!', p: 'Don\'t forget to shout UNO when you have only one card left!' },
+      ]
+    },
+    doudizhu: {
+      title: 'Dou Dizhu (Fight the Landlord)',
+      sections: [
+        { h: 'Objective', p: 'The Landlord must play all cards first. Either Peasant getting rid of all cards means the Peasants win.' },
+        { h: 'Deal', p: '17 cards per player, 3 cards in the kitty. The highest bidder becomes Landlord and takes the kitty.' },
+        { h: 'Bidding', p: 'Players take turns bidding (1-3 points or pass). Highest bidder becomes Landlord. If nobody bids, redeal.' },
+        { h: 'Combinations', p: 'Single, Pair, Triple, Triple+1, Triple+2, Straight (5+ consecutive), Consecutive Pairs (3+ pairs), Airplane (consecutive triples), Bomb (four of a kind), Rocket (Red Joker + Black Joker).' },
+        { h: 'Play Rule', p: 'Leader plays any combination. Subsequent players must play a higher combination of the same type (or a Bomb/Rocket). You may pass at any time.' },
+        { h: 'Ranking', p: 'Rocket > Bomb > Regular. Regular order: 3<4<5<6<7<8<9<10<J<Q<K<A<2<Black Joker<Red Joker.' },
+      ]
+    },
+    'exploding-kittens': {
+      title: 'Exploding Kittens',
+      sections: [
+        { h: 'Objective', p: 'Survive to the end! Avoid drawing Exploding Kittens and be the last player standing.' },
+        { h: 'Card Types', p: '💣 Exploding Kitten (draw = eliminated), 🔧 Defuse (neutralize an explosion), ⏭ Skip (end turn without drawing), ⚔ Attack (force a player to take two turns), 🔮 See the Future (peek at top 3 cards), 🔀 Shuffle (shuffle the deck), 🎁/👋 Steal (randomly steal a card from an opponent).' },
+        { h: 'Turn Flow', p: '① Play phase (optional): play any number of action cards, or none. ② Draw phase (mandatory): draw 1 card from the deck. Drawing an Exploding Kitten without a Defuse = instant elimination!' },
+        { h: 'Stealing', p: 'Play a steal card (🎁/👋) and pick an opponent to randomly take one card from their hand.' },
+        { h: 'Defuse Trap', p: 'After defusing an explosion, secretly place the Exploding Kitten back anywhere in the deck (including right on top to sabotage the next player!).' },
+      ]
+    },
+    rummikub: {
+      title: 'Rummikub',
+      sections: [
+        { h: 'Objective', p: 'Be the first to play all your tiles. Shout "Rummikub!" when you clear your rack.' },
+        { h: 'Tile Set', p: '106 tiles: 4 colors (Black, Blue, Red, Orange) × numbers 1-13 (two of each) + 2 Jokers (★). Each player starts with 14 tiles.' },
+        { h: 'Legal Sets', p: '① Run: same color, consecutive numbers, at least 3 tiles (e.g. 🔴3-4-5). ② Group: different colors, same number, at least 3 tiles (e.g. 🔴7-🔵7-🟠7).' },
+        { h: 'Initial Meld', p: 'Your first play must use only tiles from your rack to form legal sets totaling at least 30 points. Jokers count as 0. This rule can be turned off in settings.' },
+        { h: 'After Melding', p: 'Each turn you may play any number of tiles: ① lay down new runs or groups. ② Add tiles to existing sets on the table. ③ Click "🔀 Manipulate" to enter the workbench and rearrange table tiles. If you can\'t play, draw 1 tile and end your turn.' },
+        { h: 'Manipulation', p: 'In the workbench, all table sets + your hand are spread out in a grid. Click a tile to select it → click a target set to insert it. You can split, merge, and create new sets freely using table tiles. Requirements: ① every set must be legal (green border) ② at least 1 of your own tiles must be used ③ no original table tiles may be lost. Click "Submit" when done, or "Cancel" to revert.' },
+        { h: 'Jokers', p: 'Jokers can substitute for any tile. At game end, each Joker still in hand is a 30-point penalty.' },
+      ]
+    },
+    twentyfour: {
+      title: 'Twenty-Four (24 Game)',
+      sections: [
+        { h: 'Objective', p: 'Use all 4 given numbers exactly once each, with + − × ÷ and parentheses, to make 24. Multiple rounds — the player with the most round wins takes the crown.' },
+        { h: 'Controls', p: 'Click numbers and operators ( + − × ÷ and parentheses ) to build your expression, then click "Submit". Use Undo/Clear to fix mistakes.' },
+        { h: 'Timed Mode', p: 'If the host sets a round time limit: solving correctly puts you in waiting state — the round won\'t end immediately. When the countdown finishes, everyone advances together. The fastest correct solver wins the round.' },
+        { h: 'Wrong Answer', p: 'If your expression doesn\'t equal 24, the actual result is shown so you can adjust your approach.' },
+        { h: 'Untimed Mode', p: 'With no time limit, the first player to submit a correct solution instantly wins the round.' },
+      ]
+    },
+    minesweeper: {
+      title: 'Minesweeper Race',
+      sections: [
+        { h: 'Objective', p: 'Race other players on the same minefield! Be the first to uncover all safe cells. Hitting a mine means instant elimination.' },
+        { h: 'Controls', p: '🖱️ Desktop: left-click to reveal, right-click to flag. 📱 Mobile: tap to reveal, long-press (0.5s) to flag. Numbers show how many mines are in the 8 surrounding cells. Empty areas (zero) auto-expand.' },
+        { h: 'Win & Draw', p: '① First to uncover all safe cells wins. ② If only one player remains alive, they win. ③ If all players hit mines, it\'s a draw. Eliminated players can spectate.' },
+        { h: 'Strategy', p: 'Use numbers to deduce mine locations. Flag uncertain spots. In a race, you don\'t need to flag every mine — mark what you need and boldly click safe cells.' },
+      ]
+    },
+    numberbomb: {
+      title: 'Number Bomb',
+      sections: [
+        { h: 'Objective', p: 'Guess numbers between 1-100 without hitting the bomb! Each bomb hit costs a life — last one standing wins.' },
+        { h: 'Turn Flow', p: 'The system secretly picks a bomb number. Players take turns guessing; the range narrows after each guess. Guessing the bomb number costs a life and starts a new round with a fresh bomb.' },
+        { h: 'Input', p: 'Tap the number pad to build your guess, or type with your keyboard. Click "Guess!" or press Enter to confirm.' },
+        { h: 'Lives & Victory', p: 'Everyone starts with 3 lives. Lose all lives = eliminated. Last remaining player wins. If everyone dies simultaneously, it\'s a draw.' },
+        { h: 'Strategy', p: 'Binary search isn\'t safe — every guess could be the bomb. Watch which ranges opponents have already guessed and find a safe middle ground.' },
+      ]
+    },
+    oldmaid: {
+      title: 'Old Maid',
+      sections: [
+        { h: 'Objective', p: 'Get rid of all your cards as fast as possible. Whoever holds the Joker at the end loses!' },
+        { h: 'Deal & Pairs', p: 'A 53-card deck (52 standard + 1 Joker 👻) is dealt to all players. Before play starts, each player automatically discards all matching pairs. The Joker cannot be paired.' },
+        { h: 'Turn Flow', p: '① Click an opponent\'s avatar. ② Their cards are shown face-down — click one to draw it. ③ If the drawn card matches one in your hand, both are automatically discarded. ④ Next player\'s turn.' },
+        { h: 'Win & Draw', p: 'Players who clear their hand safely exit. The last person holding the Joker loses. If the final two players both clear their hands simultaneously, it\'s a draw (the Joker was discarded with a pair earlier).' },
+        { h: 'Tip', p: 'If you hold the Joker, bluff to mislead opponents. If someone keeps picking the same card from your hand, they likely have a match for it.' },
+      ]
+    },
+    liarsbar: {
+      title: 'Liar\'s Bar',
+      sections: [
+        { h: 'Objective', p: 'Play cards face-down and declare their rank — truth or lie, your choice. Be the last one alive!' },
+        { h: 'Deck', p: 'J, Q, K (2 of each suit = 24) + Wild ★ (4) + Joker 👻 (1). Wild cards are always "truth" when challenged. When the Joker is challenged, everyone except the player who played it takes a shot.' },
+        { h: 'Turn Flow', p: '① A target rank (J/Q/K) is drawn. ② Each player gets 5 cards. Take turns playing one card face-down and declaring it as the target rank. ③ The next player may accept (play their own card) or challenge (flip the last card). ④ After a challenge, the round ends — whoever lied takes a shot. Then a new round begins with a new deal.' },
+        { h: 'Russian Roulette', p: 'Each player gets a 6-chamber revolver with 1 bullet placed at a random position (1-6). When judged to be lying after a challenge: fire! The chamber advances by one each shot. If the Nth shot lands on the bullet, you\'re out. No bullet = safe. Each player\'s bullet position is independent — some may die on the first shot, others survive to the 6th.' },
+        { h: 'Wild Card ★', p: 'The wild card counts as any rank and can never be successfully challenged. The challenger takes the shot instead!' },
+        { h: 'Joker 👻', p: 'Play the Joker and claim it\'s the target rank. If challenged → everyone except the player who played it takes a shot! Called "wiping out the table."' },
+        { h: 'Victory', p: 'Last surviving player wins. If all die simultaneously, it\'s a draw.' },
+        { h: 'Strategy', p: 'If you have the target rank, tell the truth. If not, you must lie. Wild cards are your safety net. Hide the Joker until chambers are nearly full for maximum devastation. Challenge aggressively when an opponent\'s chamber is nearly full!' },
+      ]
+    },
+    bigtwo: {
+      title: 'Big Two (Choi Dai Di)',
+      sections: [
+        { h: 'Objective', p: 'Be the first to play all your cards.' },
+        { h: 'Combinations', p: 'Single, Pair, Three of a Kind, Straight (5+ consecutive), Flush (5 same suit), Full House (triple + pair), Four of a Kind (quad + single), Straight Flush (5 consecutive, same suit).' },
+        { h: 'Play Rule', p: 'The player holding ♦3 leads. You must play the same number of cards and the same combination type as the previous play (same type, higher rank). If you can\'t beat it, pass. When everyone passes, the last player leads freely.' },
+        { h: 'Ranking', p: 'Face value: 3<4<5<6<7<8<9<10<J<Q<K<A<2. Suits: ♠>♥>♣>♦. Equal face values are broken by suit.' },
+        { h: 'Victory', p: 'First to empty their hand wins. Other players score based on remaining cards.' },
+      ]
+    },
+    texas: {
+      title: 'Texas Hold\'em',
+      sections: [
+        { h: 'Objective', p: 'Use betting, raising, and folding strategy to win the pot with your best five-card hand at showdown.' },
+        { h: 'Deal', p: 'Each player gets 2 hole cards (visible only to you). Five community cards are dealt in three stages: Flop (3) → Turn (1) → River (1).' },
+        { h: 'Betting Rounds', p: 'Pre-flop → Flop → Turn → River. Each round, you may: Fold, Check, Call, Raise, or go All-In.' },
+        { h: 'Hand Rankings', p: 'High Card < One Pair < Two Pair < Three of a Kind < Straight < Flush < Full House < Four of a Kind < Straight Flush.' },
+        { h: 'Blinds', p: 'Two players post automatic blinds each hand (Small Blind / Big Blind) to seed the pot. The dealer button rotates each hand.' },
+        { h: 'All-In', p: 'If you don\'t have enough chips to call, you can go all-in. After going all-in, you can only show down — no further betting.' },
+      ]
+    },
+    flightchess: {
+      title: 'Flight Chess (Aeroplane Chess)',
+      sections: [
+        { h: 'Objective', p: 'Move all 4 of your planes from the hangar, around the board, and into the home base. First to land all 4 planes wins.' },
+        { h: 'Takeoff', p: 'Roll a 6 to move a plane from the hangar to the starting space. Rolling a 6 grants an extra roll.' },
+        { h: 'Movement', p: 'After rolling, click a plane to move it forward by the die value. Planes move clockwise along the path.' },
+        { h: 'Bumping', p: 'If your plane lands on a space occupied by an opponent\'s plane, the opponent\'s plane is sent back to their hangar!' },
+        { h: 'Jump Pads', p: 'Landing on a space matching your color lets you jump 4 spaces forward. If the destination is also your color, jump again!' },
+        { h: 'Home Stretch', p: 'Planes must land on the home stretch entry with an exact roll. Once on the home stretch, no exact roll is needed — reaching the center completes the plane.' },
+        { h: 'Triple Six', p: 'Three consecutive 6s → your turn ends immediately with no movement.' },
+      ]
+    },
+    snakebattle: {
+      title: 'Snake Battle Royale',
+      sections: [
+        { h: 'Objective', p: 'All players control their own snake on a shared map. Hitting a wall, a snake body, or colliding with another snake head eliminates you. Last survivor wins.' },
+        { h: 'Controls', p: 'Mobile: swipe on the board or tap the direction pad. Desktop: arrow keys or WASD. Each input only changes your next direction — you can\'t reverse into yourself.' },
+        { h: 'Apples', p: 'Eating an 🍎 makes your snake grow 1 cell longer and spawns a new apple on an empty cell. Longer snakes score more but are harder to steer.' },
+        { h: 'Collisions', p: 'Hitting a wall or any non-vacated snake body = instant elimination. Two snakes entering the same cell or swapping head positions both get eliminated.' },
+        { h: 'Spectating & Victory', p: 'Eliminated players can still watch. If all snakes die in the same moment, it\'s a draw; otherwise the last surviving snake wins.' },
+      ]
+    },
+    chinesechess: {
+      title: 'Chinese Chess (Xiangqi)',
+      sections: [
+        { h: 'Objective', p: 'Checkmate the opponent\'s General (King) — leaving it no escape. 9×10 board, 16 pieces per side.' },
+        { h: 'Piece Moves', p: 'Rook (Chariot): straight lines, any distance. Knight (Horse): L-shape (日), can be blocked. Cannon: straight lines, but must jump a piece to capture. Elephant/Bishop: diagonal 2×2 (田), blocked by center piece, cannot cross river. Advisor: one diagonal step within the palace. General/King: one orthogonal step within the palace, cannot face the opposing General. Pawn/Soldier: one step forward, after crossing the river also one step sideways.' },
+        { h: 'Check & Checkmate', p: 'You cannot leave your General in check after a move. If a player has no legal moves and is in check, it\'s checkmate — opponent wins. No legal moves without being in check is also a loss (stalemate = loss in Xiangqi).' },
+        { h: 'Controls', p: 'Click your piece to select it, then click the destination. Illegal moves are rejected by the server.' },
+      ]
+    },
+    go9: {
+      title: 'Go (9×9)',
+      sections: [
+        { h: 'Objective', p: 'Surround territory on a 9×9 board. At the end, the player with more territory (stones + surrounded empty points) wins. White gets 6.5 points compensation (komi).' },
+        { h: 'Placement', p: 'Black and White alternate placing stones on intersections. Stones cannot be moved once placed.' },
+        { h: 'Capture', p: 'When a group of stones has all its liberties (adjacent empty points) filled by the opponent, the group is captured and removed. Captured stones count toward your prisoners.' },
+        { h: 'Ko Rule', p: 'You cannot immediately recapture a single stone that just captured one of yours (you must play elsewhere first). Positions marked with a red dot are currently forbidden.' },
+        { h: 'Suicide', p: 'You cannot place a stone where it would have no liberties (suicide), unless the move captures opponent\'s stones.' },
+        { h: 'Ending', p: 'Both players pass consecutively twice → game ends, automatic scoring. Click the "Pass" button to skip your turn.' },
+        { h: 'Scoring', p: 'Chinese rules: your stones on the board + surrounded empty points = score. White adds 6.5 komi.' },
+      ]
+    },
+    drawguess: {
+      title: 'Draw & Guess (Telephone Game)',
+      sections: [
+        { h: 'Objective', p: 'Draw, guess, and pass messages with friends. The host can choose between live drawing with real-time guessing (Stage Mode) or a telephone chain where messages drift hilariously off-course.' },
+        { h: 'Two Modes', p: '🎤 Stage Mode: one artist draws live while everyone races to guess. Correct guessers score points. Players rotate as artist; highest total score wins. 🔇 Telephone Chain: Player 1 sees a word and draws it → Player 2 guesses from the drawing → Player 3 draws from that guess → alternating until the last player. The full chain is revealed step by step, and everyone votes for the funniest step.' },
+        { h: 'Word Selection', p: 'The first artist picks a word from several candidates (number adjustable in room settings). Timer auto-selects the first option if you run out of time.' },
+        { h: 'Drawing', p: 'When it\'s your turn to draw, sketch based on the given word (or the previous guess). Change colors, brush width, use eraser and clear canvas. Auto-submits when time is up.' },
+        { h: 'Guessing', p: 'When it\'s your turn to guess, look at the previous drawing and type your best guess. Your answer becomes the word for the next artist.' },
+        { h: 'Reveal & Voting', p: 'After everyone finishes, the full chain is revealed step by step: Original Word → Drawing → Guess → Drawing → … → Final Guess. Each player votes for the funniest or most absurd step. The author of the most-voted step wins. It\'s hilarious even if the final guess is nothing like the original!' },
+        { h: 'Room Settings', p: 'The host can choose word categories (Animals, Food, Idioms, Internet Slang, etc.), set drawing/guessing time limits, number of candidate words, and add custom words.' },
+      ]
+    },
+    monopoly: {
+      title: 'Monopoly',
+      sections: [
+        { h: 'Objective', p: 'Bankrupt your opponents by buying properties and collecting rent. Be the last player standing. Everyone starts with $1500.' },
+        { h: 'Movement', p: 'On your turn, click "Roll Dice" to advance. Passing or landing on GO collects $200.' },
+        { h: 'Buying & Rent', p: 'Land on an unowned property/railroad/utility to buy it. Land on an owned property and pay rent — rent increases with houses.' },
+        { h: 'Monopoly & Building', p: 'Owning all properties in a color group creates a monopoly: unimproved rent doubles. During the build phase at turn end, you can buy houses (up to 5 = Hotel) to drastically increase rent.' },
+        { h: 'Chance Cards', p: 'Landing on "❓ Chance" draws a card: you might gain money, pay a fine, advance, go back, go directly to Jail, or earn a Get Out of Jail Free card.' },
+        { h: 'Jail', p: 'Landing on the "Go to Jail" corner sends you to Jail. Roll doubles to escape, or pay $50 after 3 failed attempts for mandatory release.' },
+        { h: 'Bankruptcy', p: 'Negative cash means bankruptcy — you\'re eliminated and your properties are released. Last remaining player wins.' },
+      ]
+    },
+    suikabattle: {
+      title: 'Suika (Watermelon) Game',
+      sections: [
+        { h: 'Objective', p: 'Drop fruits and merge identical ones into bigger fruits to rack up a high score. Solo: beat your personal best. Multiplayer: outlast everyone.' },
+        { h: 'Dropping', p: 'Drag the current fruit to the desired position, then tap or release to drop. The next fruit preview shows what\'s coming.' },
+        { h: 'Merging & Scoring', p: 'When two identical fruits collide, they merge into the next larger fruit, awarding points based on the merge level. Keep the playfield flat to leave room for later merges.' },
+        { h: 'Game Over', p: 'If fruit stacks above the danger line and stays there, you\'re out. In multiplayer, the last uneliminated player wins. In solo, your final score is recorded.' },
+        { h: 'Tips', p: 'Cluster smaller fruits to one side rather than scattering mixed sizes in the middle. Leaving top space is more important than chasing one big merge.' },
+      ]
+    },
+    sheeptile: {
+      title: 'Sheep Tile (Yang Le Ge Yang)',
+      sections: [
+        { h: 'Objective', p: 'Clear all stacked tiles to win. Two stages: Stage 1 is a warm-up; Stage 2 is significantly harder.' },
+        { h: 'Match Rule', p: 'Tap a tile not covered by upper layers — it flies into your 7-slot bar. Collect 3 matching tiles in the bar to clear them automatically.' },
+        { h: 'Bar Overflow', p: 'If your 7-slot bar fills up with unmatched tiles, you\'re out. Eliminated players can spectate.' },
+        { h: 'Hidden Queue', p: 'Stage 2 has a face-down tile queue (❔) at the bottom — only the exposed end can be clicked. You\'ll see the pattern only after flipping it. Plan your sequence in advance to avoid getting stuck.' },
+        { h: 'Power-Ups', p: 'Each stage gives you 1 use of each: ↩ Undo (return last tile), 🔀 Shuffle (rearrange remaining tiles), ⏏ Eject 3 (clear the first 3 slots).' },
+        { h: 'Battle', p: 'Every player solves independently — you can\'t see others\' moves, only their progress bar. First to clear Stage 2 wins. Alternatively, see who survives longest.' },
+        { h: 'Room Settings', p: 'Host can choose "Same Board" (everyone gets an identical layout for a fair speed race) or "Random" boards.' },
+      ]
+    },
+    truthdare: {
+      title: 'Truth or Dare',
+      sections: [
+        { h: 'What Is This', p: 'A party prompt-drawing tool. Decide winners and losers outside the app (e.g., rock-paper-scissors). The loser comes back to the page and draws a card. This page syncs the prompts — it does not judge who wins or loses.' },
+        { h: 'Starting', p: 'Everyone readies up in the room, then the host clicks start. After starting, choose "Truth," "Dare," or "Random Pick."' },
+        { h: 'Card Sync', p: 'Any prompt drawn by any player is synced to everyone in the room. The central card shows the current prompt; recent history is displayed below.' },
+        { h: 'Deck Types', p: 'The host can enable different deck types: Light Icebreaker, Friends Party, Deep Truth, Dare Challenge, and more.' },
+        { h: 'Custom Decks', p: 'The host can add custom Truth and Dare prompts in the waiting room (one per line). After saving, check the "Custom" deck to include them in the pool.' },
+        { h: 'Tip', p: 'For a gentler game, start with Light Icebreaker and Friends Party. Save Deep Truth and Dare Challenge for close friends.' },
+      ]
+    },
+  };
+
+  function getTutorials() {
+    return (window.__ACTIVE_LANG === 'en' && window.__LANG && window.__LANG.en) ? TUTORIALS_EN : TUTORIALS_ZH;
+  }
+
   // ---- Tutorial overlay ----
   function showTutorial(gameType) {
-    var t = TUTORIALS[gameType];
+    var t = getTutorials()[gameType];
     if (!t) return;
 
     var overlay = document.getElementById('tutorialOverlay');
