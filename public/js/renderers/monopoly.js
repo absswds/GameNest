@@ -102,14 +102,14 @@
 
     // 当前玩家
     ctx.fillStyle = '#5a4a32';
-    ctx.font = Math.floor(CS * 0.3) + 'px "Nunito", "Noto Sans SC", sans-serif';
+    ctx.font = Math.floor(CS * 0.3) + 'px "Nunito", "LXGW WenKai", sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     if (winnerIdx === null || winnerIdx === undefined) {
       ctx.fillText(_tf('mp_turn_prefix', nameOf(st.currentPlayer)), W / 2, H / 2 + h * 0.16);
     }
 
     // 事件 log
-    ctx.font = Math.floor(CS * 0.24) + 'px "Nunito", "Noto Sans SC", sans-serif';
+    ctx.font = Math.floor(CS * 0.24) + 'px "Nunito", "LXGW WenKai", sans-serif';
     ctx.fillStyle = '#8a7a5e';
     for (var i = 0; i < eventLog.length; i++) {
       ctx.fillText(eventLog[i], W / 2, H / 2 + h * 0.27 + i * (CS * 0.3));
@@ -164,7 +164,7 @@
     }
     ctx.fillStyle = '#3a3020';
     var fs = Math.max(8, Math.floor(minDim * (icon ? 0.16 : 0.2)));
-    ctx.font = fs + 'px "Nunito", "Noto Sans SC", sans-serif';
+    ctx.font = fs + 'px "Nunito", "LXGW WenKai", sans-serif';
     var label = spName(sp) || (sp.type === 'chance' ? _t('mp_chance') : '');
     if (label) {
       var lines = wrapLabel(label, icon ? 8 : 10);
@@ -175,7 +175,7 @@
     }
     if (sp.price) {
       ctx.fillStyle = g.side === 'top' ? priceTextColor(sp.color) : '#6b5537';
-      ctx.font = '700 ' + Math.floor(fs * 0.9) + 'px "Nunito", "Noto Sans SC", sans-serif';
+      ctx.font = '700 ' + Math.floor(fs * 0.9) + 'px "Nunito", "LXGW WenKai", sans-serif';
       ctx.fillText('$' + sp.price, cx, g.y + g.h * 0.92);
     }
 
@@ -215,7 +215,7 @@
     ctx.font = Math.floor(g.w * 0.36) + 'px serif';
     var icon = { go: '▶', jail_visit: '👮', free_parking: '🅿️', go_to_jail: '🚓' }[sp.type] || '';
     ctx.fillText(icon, cx, cy - g.h * 0.12);
-    ctx.fillStyle = '#5a4a32'; ctx.font = 'bold ' + Math.floor(g.w * 0.17) + 'px "Nunito", "Noto Sans SC", sans-serif';
+    ctx.fillStyle = '#5a4a32'; ctx.font = 'bold ' + Math.floor(g.w * 0.17) + 'px "Nunito", "LXGW WenKai", sans-serif';
     var labelMap = { go: _t('mp_go'), jail_visit: _t('mp_jail_visit'), free_parking: _t('mp_free_parking'), go_to_jail: _t('mp_go_to_jail') };
     var label = labelMap[sp.type] || '';
     ctx.fillText(label, cx, cy + g.h * 0.26);
@@ -272,7 +272,7 @@
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = PLAYER_COLORS[p % 6]; ctx.fill();
     ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.floor(r * 1.1) + 'px "Nunito", "Noto Sans SC", sans-serif';
+    ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.floor(r * 1.1) + 'px "Nunito", "LXGW WenKai", sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('' + (p + 1), x, y);
     ctx.restore();
@@ -287,7 +287,7 @@
       ctx.save();
       ctx.globalAlpha = 1 - prog;
       ctx.fillStyle = f.color;
-      ctx.font = 'bold ' + Math.floor(CS * 0.34) + 'px "Nunito", "Noto Sans SC", sans-serif';
+      ctx.font = 'bold ' + Math.floor(CS * 0.34) + 'px "Nunito", "LXGW WenKai", sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(f.text, f.x, f.y - prog * CS * 1.2);
       ctx.restore();
