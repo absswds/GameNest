@@ -512,16 +512,16 @@
         var mr = roomOptions.maxRounds || 5;
         var opts = '';
         [0, 30, 60, 90, 120].forEach(function(t) {
-          opts += '<option value="' + t + '"' + (rt === t ? ' selected' : '') + '>' + (t === 0 ? '不限时' : t + '秒') + '</option>';
+          opts += '<option value="' + t + '"' + (rt === t ? ' selected' : '') + '>' + (t === 0 ? _t('unlimited') : t + _t('seconds')) + '</option>';
         });
         var mrOpts = '';
         [3, 5, 7, 10].forEach(function(n) {
-          mrOpts += '<option value="' + n + '"' + (mr === n ? ' selected' : '') + '>' + n + '轮</option>';
+          mrOpts += '<option value="' + n + '"' + (mr === n ? ' selected' : '') + '>' + n + _t('rounds') + '</option>';
         });
         optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">游戏设置</div>' +
+          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
           '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;margin-bottom:6px;">' +
-            '每轮限时: <select id="optRoundTime" onchange="window._setGameOption(\'roundTime\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
+            _t('round_time_label') + ': <select id="optRoundTime" onchange="window._setGameOption(\'roundTime\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
               opts +
             '</select>' +
           '</label>' +
@@ -535,47 +535,47 @@
         var rt2 = roomOptions.roundTime || 0;
         var mr2 = roomOptions.maxRounds || 5;
         optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">游戏设置</div>' +
-          '<div style="font-size:13px;color:var(--text-muted)">每轮限时: ' + (rt2 === 0 ? '不限时' : rt2 + '秒') + '・获胜回合: ' + mr2 + '轮</div>';
+          '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+          '<div style="font-size:13px;color:var(--text-muted)">' + _t('round_time_label') + ': ' + (rt2 === 0 ? _t('unlimited') : rt2 + _t('seconds')) + ' ・ ' + _t('max_rounds_label') + ': ' + mr2 + _t('rounds') + '</div>';
       } else if (isHost && game === 'rummikub') {
         optionsEl.style.display = 'block';
         var breakOn = roomOptions.requireBreak !== false; // default true
         optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">游戏设置</div>' +
+          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
           '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">' +
             '<input type="checkbox" id="optRequireBreak" ' + (breakOn ? 'checked' : '') + ' onchange="window._setGameOption(\'requireBreak\', this.checked)">' +
-            '需要破冰（首次出牌 ≥ 30分）' +
+            _t('require_break') +
           '</label>';
       } else if (game === 'rummikub') {
         optionsEl.style.display = 'block';
         var breakOn2 = roomOptions.requireBreak !== false;
         optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">游戏设置</div>' +
-          '<div style="font-size:13px;color:var(--text-muted)">破冰: ' + (breakOn2 ? '需要 ≥30分' : '关闭') + '</div>';
+          '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+          '<div style="font-size:13px;color:var(--text-muted)">' + _t('break_in_rule') + ': ' + (breakOn2 ? _t('break_on') : _t('break_off')) + '</div>';
       } else if (game === 'sheeptile') {
         optionsEl.style.display = 'block';
-        var sameBoard = roomOptions.sameBoard !== false; // 默认同一张棋盘
+        var sameBoard = roomOptions.sameBoard !== false; // default same board
         if (isHost) {
           optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">游戏设置</div>' +
+            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
             '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">' +
               '<input type="checkbox" id="optSameBoard" ' + (sameBoard ? 'checked' : '') + ' onchange="window._setGameOption(\'sameBoard\', this.checked)">' +
-              '所有人同一张棋盘（公平竞速）' +
+              _t('same_board') +
             '</label>' +
-            '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">关闭则每人随机各自的棋盘</div>';
+            '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + _t('random_boards') + '</div>';
         } else {
           optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">游戏设置</div>' +
-            '<div style="font-size:13px;color:var(--text-muted)">棋盘: ' + (sameBoard ? '同一张（公平竞速）' : '各自随机') + '</div>';
+            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+            '<div style="font-size:13px;color:var(--text-muted)">' + _t('board_label') + ': ' + (sameBoard ? _t('same_board') : _t('random_boards')) + '</div>';
         }
       } else if (game === 'truthdare') {
         optionsEl.style.display = 'block';
         var tdDecks = [
-          ['icebreaker', '轻松破冰'],
-          ['party', '朋友聚会'],
-          ['deep', '深度真心话'],
-          ['challenge', '大冒险挑战'],
-          ['custom', '自定义'],
+          ['icebreaker', _t('deck_icebreaker')],
+          ['party', _t('deck_party')],
+          ['deep', _t('deck_deep')],
+          ['challenge', _t('deck_challenge')],
+          ['custom', _t('deck_custom')],
         ];
         var tdEnabled = Array.isArray(roomOptions.enabledDecks) && roomOptions.enabledDecks.length > 0
           ? roomOptions.enabledDecks : ['icebreaker', 'party', 'deep', 'challenge'];
@@ -589,26 +589,26 @@
               '<input type="checkbox" class="td-deck" value="' + d[0] + '"' + (checked ? ' checked' : '') + ' onchange="window._tdCollectDecks()">' + d[1] + '</label>';
           });
           optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">游戏设置</div>' +
-            '<div style="font-size:13px;margin-bottom:8px;">启用牌库：<br>' + tdDeckHtml + '</div>' +
+            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
+            '<div style="font-size:13px;margin-bottom:8px;">' + _t('enable_decks') + ':<br>' + tdDeckHtml + '</div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">' +
-              '<label>自定义真心话（一行一条）<textarea id="optTdTruths" rows="3" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="例如：最近最开心的一件事？">' + tdTruths + '</textarea></label>' +
-              '<label>自定义大冒险（一行一条）<textarea id="optTdDares" rows="3" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="例如：夸右手边的人 15 秒">' + tdDares + '</textarea></label>' +
+              '<label>' + _t('custom_truths') + '<textarea id="optTdTruths" rows="3" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="' + _t('custom_truths_placeholder') + '">' + tdTruths + '</textarea></label>' +
+              '<label>' + _t('custom_dares') + '<textarea id="optTdDares" rows="3" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="' + _t('custom_dares_placeholder') + '">' + tdDares + '</textarea></label>' +
             '</div>' +
-            '<button class="btn" style="margin-top:6px;padding:5px 14px;font-size:13px;" onclick="window._tdSaveCustom()">保存自定义牌库</button>' +
-            '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">场外剪刀石头布，输的人进房间抽卡。</div>';
+            '<button class="btn" style="margin-top:6px;padding:5px 14px;font-size:13px;" onclick="window._tdSaveCustom()">' + _t('save_custom_decks') + '</button>' +
+            '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + _t('truthdare_rule_hint') + '</div>';
         } else {
           var tdNames = tdDecks.filter(function(d) { return tdEnabled.indexOf(d[0]) >= 0; }).map(function(d) { return d[1]; }).join('、');
           var truthCount = (roomOptions.customTruths || '').split(/\r?\n|[;；]/).filter(function(x) { return x.trim(); }).length;
           var dareCount = (roomOptions.customDares || '').split(/\r?\n|[;；]/).filter(function(x) { return x.trim(); }).length;
           optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">游戏设置</div>' +
-            '<div style="font-size:13px;color:var(--text-muted)">牌库: ' + (tdNames || '默认牌库') +
-            (truthCount + dareCount > 0 ? ' · 自定义 ' + (truthCount + dareCount) + ' 张' : '') + '</div>';
+            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+            '<div style="font-size:13px;color:var(--text-muted)">' + _t('enable_decks') + ': ' + (tdNames || _t('deck_custom')) +
+            (truthCount + dareCount > 0 ? ' · ' + _t('deck_custom') + ' ' + (truthCount + dareCount) + ' ' + _t('seconds') : '') + '</div>';
         }
       } else if (game === 'drawguess') {
         optionsEl.style.display = 'block';
-        var dgCats = [['animal','动物'],['food','食物'],['daily','日常物品'],['action','动作'],['place','场景'],['idiom','成语俗语'],['movie','影视动漫游戏'],['internet','网络热词']];
+        var dgCats = [['animal',_t('cat_animal')],['food',_t('cat_food')],['daily',_t('cat_daily')],['action',_t('cat_action')],['place',_t('cat_place')],['idiom',_t('cat_idiom')],['movie',_t('cat_movie')],['internet',_t('cat_internet')]];
         var selCats = Array.isArray(roomOptions.categories) && roomOptions.categories.length > 0
           ? roomOptions.categories : dgCats.map(function(c){ return c[0]; });
         var dgDraw = roomOptions.drawTime !== undefined ? roomOptions.drawTime : 90;
@@ -629,27 +629,28 @@
             return h + '</select>';
           }
           var customVal = (roomOptions.customWords || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+          function _dgTimeLbl(v) { return v === 0 ? _t('unlimited') : v + _t('seconds'); }
           optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">游戏设置</div>' +
-            '<div style="font-size:13px;margin-bottom:8px;">玩法 <select onchange="window._setGameOption(\'mode\', this.value)" style="' + selStyle + '"><option value="stage"' + (dgMode === 'stage' ? ' selected' : '') + '>舞台猜词（实时）</option><option value="whisper"' + (dgMode === 'whisper' ? ' selected' : '') + '>悄悄话传画</option></select></div>' +
-            '<div style="font-size:13px;margin-bottom:6px;">词库分类：<br>' + catHtml + '</div>' +
+            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
+            '<div style="font-size:13px;margin-bottom:8px;">' + _t('mode_label') + ' <select onchange="window._setGameOption(\'mode\', this.value)" style="' + selStyle + '"><option value="stage"' + (dgMode === 'stage' ? ' selected' : '') + '>' + _t('mode_stage') + '</option><option value="whisper"' + (dgMode === 'whisper' ? ' selected' : '') + '>' + _t('mode_whisper') + '</option></select></div>' +
+            '<div style="font-size:13px;margin-bottom:6px;">' + _t('word_categories') + ':<br>' + catHtml + '</div>' +
             '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:14px;margin-bottom:6px;">' +
-              '<label style="display:flex;align-items:center;gap:6px;">画画限时 ' + dgSel('optDgDraw', 'drawTime', [45,60,90,120,0], ['45秒','60秒','90秒','120秒','不限时'], dgDraw) + '</label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">猜词限时 ' + dgSel('optDgGuess', 'guessTime', [30,45,60,90,0], ['30秒','45秒','60秒','90秒','不限时'], dgGuess) + '</label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">候选词数 ' + dgSel('optDgChoices', 'wordChoices', [1,2,3,5], ['1个(直接给词)','2个','3个','5个'], dgChoices) + '</label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('draw_time_label') + ' ' + dgSel('optDgDraw', 'drawTime', [45,60,90,120,0], [_dgTimeLbl(45),_dgTimeLbl(60),_dgTimeLbl(90),_dgTimeLbl(120),_dgTimeLbl(0)], dgDraw) + '</label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('guess_time_label') + ' ' + dgSel('optDgGuess', 'guessTime', [30,45,60,90,0], [_dgTimeLbl(30),_dgTimeLbl(45),_dgTimeLbl(60),_dgTimeLbl(90),_dgTimeLbl(0)], dgGuess) + '</label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('word_count_label') + ' ' + dgSel('optDgChoices', 'wordChoices', [1,2,3,5], [_t('label_1choice'),_t('label_2choices'),_t('label_3choices'),_t('label_5choices')], dgChoices) + '</label>' +
             '</div>' +
-            '<div style="font-size:13px;">自定义词（逗号或换行分隔，会并入词库）：<br>' +
-              '<textarea id="optDgCustom" rows="2" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="例：螺蛳粉, 显眼包, 公司团建">' + customVal + '</textarea>' +
-              '<button class="btn" style="margin-top:4px;padding:4px 14px;font-size:13px;" onclick="window._setGameOption(\'customWords\', document.getElementById(\'optDgCustom\').value)">保存自定义词</button>' +
+            '<div style="font-size:13px;">' + _t('custom_words_label') + ':<br>' +
+              '<textarea id="optDgCustom" rows="2" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="' + _t('custom_words_placeholder') + '">' + customVal + '</textarea>' +
+              '<button class="btn" style="margin-top:4px;padding:4px 14px;font-size:13px;" onclick="window._setGameOption(\'customWords\', document.getElementById(\'optDgCustom\').value)">' + _t('save_custom_words') + '</button>' +
             '</div>';
         } else {
           var catNames = dgCats.filter(function(c){ return selCats.indexOf(c[0]) >= 0; }).map(function(c){ return c[1]; }).join('、');
           var customCount = (roomOptions.customWords || '').split(/[,，\n\s]+/).filter(function(w){ return w.trim(); }).length;
           optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">游戏设置</div>' +
-            '<div style="font-size:13px;color:var(--text-muted)">玩法: ' + (dgMode === 'stage' ? '舞台猜词（实时）' : '悄悄话传画') + ' · 词库: ' + catNames +
-            '・画 ' + (dgDraw === 0 ? '不限时' : dgDraw + '秒') + '・猜 ' + (dgGuess === 0 ? '不限时' : dgGuess + '秒') +
-            '・候选 ' + dgChoices + ' 词' + (customCount > 0 ? '・自定义词 ' + customCount + ' 个' : '') + '</div>';
+            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+            '<div style="font-size:13px;color:var(--text-muted)">' + _t('mode_label') + ': ' + (dgMode === 'stage' ? _t('mode_stage') : _t('mode_whisper')) + ' · ' + _t('word_categories') + ': ' + catNames +
+            ' · ' + _t('draw_time_label') + ': ' + (dgDraw === 0 ? _t('unlimited') : dgDraw + _t('seconds')) + ' · ' + _t('guess_time_label') + ': ' + (dgGuess === 0 ? _t('unlimited') : dgGuess + _t('seconds')) +
+            ' · ' + _t('word_count_label') + ': ' + dgChoices + ' ' + _t('dg_choices_suffix') + (customCount > 0 ? ' · ' + _t('deck_custom') + ' ' + customCount + ' ' + _t('dg_choices_suffix') : '') + '</div>';
         }
       } else {
         optionsEl.style.display = 'none';
