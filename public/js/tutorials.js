@@ -513,7 +513,7 @@
     }
 
     var html = '<div style="background:var(--surface);border-radius:var(--radius);padding:24px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;">';
-    html += '<div style="font-size:24px;font-weight:700;margin-bottom:4px;">📖 ' + t.title + ' 规则</div>';
+    html += '<div style="font-size:24px;font-weight:700;margin-bottom:4px;">📖 ' + _tf('tutorial_title', t.title) + '</div>';
     html += '<div style="width:36px;height:2px;background:var(--accent);margin-bottom:16px;"></div>';
 
     for (var i = 0; i < t.sections.length; i++) {

@@ -25,7 +25,7 @@
     var r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
     return (r * 0.299 + g * 0.587 + b * 0.114) > 156 ? '#2d2114' : '#fffdf7';
   }
-  function nameOf(i) { return (window._players && window._players[i]) ? window._players[i].name : '玩家' + (i + 1); }
+  function nameOf(i) { return (window._players && window._players[i]) ? window._players[i].name : _t('mp_player') + ' ' + (i + 1); }
 
   // ---------- 布局 ----------
   function computeSize() {
@@ -87,7 +87,7 @@
     ctx.fillStyle = '#c8a45c';
     ctx.font = 'bold ' + Math.floor(CO * 0.62) + 'px "Ma Shan Zheng", serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('大 富 翁', 0, -h * 0.18);
+    ctx.fillText(_t('mp_title'), 0, -h * 0.18);
     ctx.restore();
 
     // 骰子
@@ -104,7 +104,7 @@
     ctx.font = Math.floor(CS * 0.3) + 'px sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     if (winnerIdx === null || winnerIdx === undefined) {
-      ctx.fillText('轮到 ' + nameOf(st.currentPlayer), W / 2, H / 2 + h * 0.16);
+      ctx.fillText(_tf('mp_turn_prefix', nameOf(st.currentPlayer)), W / 2, H / 2 + h * 0.16);
     }
 
     // 事件 log
@@ -163,7 +163,7 @@
     ctx.fillStyle = '#3a3020';
     var fs = Math.max(9, Math.floor(Math.min(g.w, g.h) * 0.2));
     ctx.font = fs + 'px sans-serif';
-    var label = sp.name || (sp.type === 'chance' ? '机会' : '');
+    var label = sp.name || (sp.type === 'chance' ? _t('mp_chance') : '');
     if (label) {
       var lines = wrapLabel(label, 4);
       lines.forEach(function (ln, li) {
@@ -213,7 +213,8 @@
     var icon = { go: '▶', jail_visit: '👮', free_parking: '🅿️', go_to_jail: '🚓' }[sp.type] || '';
     ctx.fillText(icon, cx, cy - g.h * 0.12);
     ctx.fillStyle = '#5a4a32'; ctx.font = 'bold ' + Math.floor(g.w * 0.17) + 'px sans-serif';
-    var label = { go: '起点 +200', jail_visit: '监狱探视', free_parking: '免费停车', go_to_jail: '入狱！' }[sp.type] || '';
+    var labelMap = { go: _t('mp_go'), jail_visit: _t('mp_jail_visit'), free_parking: _t('mp_free_parking'), go_to_jail: _t('mp_go_to_jail') };
+    var label = labelMap[sp.type] || '';
     ctx.fillText(label, cx, cy + g.h * 0.26);
   }
 
@@ -409,7 +410,7 @@
     }
     if (st.lastRent && st.lastRent !== (prevSnap && prevSnap.lastRent) && st.lastRent.amount > 0) {
       evs.push({ type: 'rent', space: st.lastRent.space, amount: st.lastRent.amount, owner: st.lastRent.owner, dur: 300 });
-      pushLog(nameOf(st.lastRent.payer) + ' 付租 $' + st.lastRent.amount + ' 给 ' + nameOf(st.lastRent.owner));
+      pushLog(_tf('mp_pay_rent', nameOf(st.lastRent.payer), st.lastRent.amount, nameOf(st.lastRent.owner)));
     }
     if (st.lastCard && st.lastCard !== (prevSnap && prevSnap.lastCard)) {
       pushLog('🎴 ' + st.lastCard.text);
@@ -446,8 +447,8 @@
     if (!effect) return null;
     var palette = cardEffectPalette(effect.tone);
     var box = document.createElement('div');
-    var actorName = effect.player === pi ? '你' : nameOf(effect.player);
-    var prefix = effect.player === pi ? '你抽到机会卡' : actorName + ' 抽到机会卡';
+    var actorName = effect.player === pi ? _t('mp_you') : nameOf(effect.player);
+    var prefix = effect.player === pi ? _t('mp_you_drew_card') : _tf('mp_drew_card', actorName);
     box.style.cssText = 'width:100%;padding:10px 12px;border-radius:12px;border:1px solid ' + palette.border + ';background:' + palette.bg + ';color:' + palette.text + ';box-shadow:0 6px 18px rgba(90,74,50,.08);';
 
     var title = document.createElement('div');
@@ -492,7 +493,7 @@
 
     var cashEl = document.createElement('div');
     cashEl.style.cssText = 'font-size:15px;font-weight:800;color:#5a4a32;';
-    cashEl.textContent = '💰 ' + cash + ' 元';
+    cashEl.textContent = _tf('mp_cash', cash);
     panel.appendChild(cashEl);
 
     if (effectBanner) panel.appendChild(effectBanner);
@@ -500,7 +501,7 @@
     if (!isMyTurn) {
       var w = document.createElement('div');
       w.style.cssText = 'color:var(--text-muted);font-size:13px;';
-      w.textContent = animating ? '…' : '等待 ' + nameOf(st.currentPlayer) + ' 操作…';
+      w.textContent = animating ? '…' : _tf('mp_waiting', nameOf(st.currentPlayer));
       panel.appendChild(w);
       return;
     }
@@ -509,23 +510,23 @@
     if (st.inJail && st.inJail[pi]) {
       var jl = document.createElement('div');
       jl.style.cssText = 'font-size:12px;color:#e74c3c;width:100%;text-align:center;';
-      jl.textContent = '🔒 监狱中（' + (st.jailTurns[pi] || 0) + '/3）— 掷出双数出狱';
+      jl.textContent = _tf('mp_in_jail', (st.jailTurns[pi] || 0));
       panel.appendChild(jl);
     }
 
     if (st.phase === 'waiting') {
-      addBtn(panel, '🎲 掷骰子', 'btn-primary', function () { wsSend({ type: 'roll' }); });
+      addBtn(panel, _t('mp_roll_dice'), 'btn-primary', function () { wsSend({ type: 'roll' }); });
     } else if (st.phase === 'landed' && st.pendingAction === 'can_buy') {
       var sp = board[st.positions[pi]] || {};
-      addBtn(panel, '🏠 购买 ' + (sp.name || '') + ' ($' + (sp.price || 0) + ')', 'btn-primary', function () { wsSend({ type: 'buy' }); });
-      addBtn(panel, '跳过', '', function () { wsSend({ type: 'skip_buy' }); });
+      addBtn(panel, _tf('mp_buy', (sp.name || ''), (sp.price || 0)), 'btn-primary', function () { wsSend({ type: 'buy' }); });
+      addBtn(panel, _t('mp_skip'), '', function () { wsSend({ type: 'skip_buy' }); });
     } else if (st.phase === 'landed' && st.pendingAction === 'can_build') {
       var ownSpace = board[st.positions[pi]] || {};
       var ownProp = st.properties[st.positions[pi]] || { houses: 0 };
-      addBtn(panel, '馃彈 升级 ' + (ownSpace.name || '') + ' (' + ownProp.houses + '→' + (ownProp.houses + 1) + ') $' + ((ownSpace.price || 0) / 2), 'btn-primary', function () {
+      addBtn(panel, _tf('mp_upgrade', (ownSpace.name || ''), ownProp.houses, ownProp.houses + 1, ((ownSpace.price || 0) / 2)), 'btn-primary', function () {
         wsSend({ type: 'build' });
       });
-      addBtn(panel, '稍后再升', '', function () { wsSend({ type: 'skip_buy' }); });
+      addBtn(panel, _t('mp_skip_upgrade'), '', function () { wsSend({ type: 'skip_buy' }); });
     } else if (st.phase === 'end_turn') {
       // 可建房的垄断地产
       var buildable = getBuildableSpaces(st, pi);
@@ -533,7 +534,7 @@
         var s = board[i];
         addBtn(panel, '🏗 ' + s.name + ' (' + (st.properties[i].houses || 0) + '→' + ((st.properties[i].houses || 0) + 1) + ') $' + (s.price / 2), '', function () { wsSend({ type: 'build', spaceIndex: i }); }, '11px');
       });
-      addBtn(panel, '结束回合 →', 'btn-primary', function () { wsSend({ type: 'end_turn' }); });
+      addBtn(panel, _t('mp_end_turn'), 'btn-primary', function () { wsSend({ type: 'end_turn' }); });
     }
   }
 
@@ -633,7 +634,7 @@
     var statusEl = document.getElementById('status');
     if (!statusEl) return;
     if (winner !== null && winner !== undefined) {
-      statusEl.textContent = winner === playerIndex ? '🎉 你赢了！' : nameOf(winner) + ' 获胜！';
+      statusEl.textContent = winner === playerIndex ? _t('mp_you_win') : nameOf(winner) + _t('mp_wins');
     } else {
       statusEl.textContent = '';
     }
