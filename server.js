@@ -77,15 +77,15 @@ app.use(express.static(path.join(__dirname, 'public'), {
   },
 }));
 
-// QR code endpoint — generates QR with LAN IP
+// QR code endpoint — generates QR with the host from the request
+// Works on LAN (192.168.x.x:3000) and cloud (project.up.railway.app)
 app.get('/qr', async (req, res) => {
   try {
     const room = req.query.room;
     if (!room) { res.status(400).send('missing room'); return; }
-    // Use LAN IP instead of localhost
-    const ips = getShareableLanIPs();
-    const lanIP = ips.length > 0 ? ips[0].ip : req.hostname;
-    const url = `http://${lanIP}:${activePort}/?room=${room}`;
+    const host = req.get('Host') || 'localhost:3000';
+    const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+    const url = `${proto}://${host}/?room=${room}`;
     const png = await QRCode.toBuffer(url, { width: 256, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
     res.set('Content-Type', 'image/png');
     res.send(png);

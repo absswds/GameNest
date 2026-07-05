@@ -145,7 +145,7 @@ function buildFeaturedCard(game) {
 
 function buildBrowseCard(game) {
   const selectedClass = game.id === selectedGame ? ' selected' : '';
-  const ai = game.supportsAI ? '<span>\u53ef\u52a0 AI</span>' : '<span>\u7eaf PvP</span>';
+  const ai = game.supportsAI ? '<span>' + _t('can_add_bot') + '</span>' : '<span>' + _t('pvp_only') + '</span>';
   return '<button class="browse-card' + selectedClass + '" data-game="' + game.id + '">' +
     '<div class="browse-card-media">' + buildCover(game, false) + '</div>' +
     '<div class="browse-card-body">' +
@@ -158,7 +158,7 @@ function buildBrowseCard(game) {
 }
 
 function updateQuickCreate() {
-  document.getElementById('quickCreate').textContent = '\u521b\u5efa\u623f\u95f4';
+  document.getElementById('quickCreate').textContent = typeof _t === 'function' ? _t('create_room') : '\u521b\u5efa\u623f\u95f4';
 }
 
 function matches(game) {
