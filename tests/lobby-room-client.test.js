@@ -46,7 +46,8 @@ test('truthdare catalog entry uses a real cover image', () => {
   const js = fs.readFileSync(path.join(root, 'public', 'js', 'game-catalog.js'), 'utf8');
   const match = js.match(/truthdare:\s*\{[\s\S]*?cover:\s*'([^']+)'/);
   assert.ok(match, 'truthdare entry should define a cover');
-  assert.equal(match[1], '/assets/game-covers/drawguess-party.png');
+  assert.equal(match[1], '/assets/game-covers/truthdare.svg');
+  assert.ok(fs.existsSync(path.join(root, 'public', match[1].replace(/^\//, ''))));
 });
 
 function test(name, fn) {

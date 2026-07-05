@@ -209,7 +209,7 @@
       featured: true,
       supportsAI: true,
       maxPlayers: 8,
-      cover: '/assets/game-covers/texas-table.svg'
+      cover: '/assets/game-covers/texas.svg'
     },
     flightchess: {
       id: 'flightchess',
@@ -224,7 +224,7 @@
       featured: true,
       supportsAI: true,
       maxPlayers: 4,
-      cover: '/assets/game-covers/flightchess-race.svg'
+      cover: '/assets/game-covers/flightchess.svg'
     },
     snakebattle: {
       id: 'snakebattle',
@@ -284,7 +284,7 @@
       featured: true,
       supportsAI: true,
       maxPlayers: 6,
-      cover: '/assets/game-covers/monopoly-golden-city.svg'
+      cover: '/assets/game-covers/monopoly.svg'
     },
     suikabattle: {
       id: 'suikabattle',
@@ -299,7 +299,7 @@
       featured: true,
       supportsAI: false,
       maxPlayers: 4,
-      cover: '/assets/game-covers/suika-fruit-arena.svg'
+      cover: '/assets/game-covers/suikabattle.svg'
     },
     sheeptile: {
       id: 'sheeptile',
@@ -314,7 +314,7 @@
       featured: true,
       supportsAI: true,
       maxPlayers: 6,
-      cover: '/assets/game-covers/sheeptile-pasture.svg'
+      cover: '/assets/game-covers/sheeptile.svg'
     },
     drawguess: {
       id: 'drawguess',
@@ -329,7 +329,7 @@
       featured: true,
       supportsAI: false,
       maxPlayers: 8,
-      cover: '/assets/game-covers/drawguess-party.svg'
+      cover: '/assets/game-covers/drawguess.svg'
     },
     truthdare: {
       id: 'truthdare',
@@ -343,9 +343,11 @@
       tags: ['社交', '轻松'],
       supportsAI: false,
       maxPlayers: 10,
-      cover: '/assets/game-covers/drawguess-party.svg'
+      cover: '/assets/game-covers/truthdare.svg'
     }
   };
+
+  var catalog = zhCatalog;
 
   Object.keys(catalog).forEach(function(id) {
     if (!catalog[id].cover) {

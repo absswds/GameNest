@@ -1,14 +1,23 @@
 {
   "name": "local-games",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "LAN local multiplayer board/card/party game platform powered by Node.js and WebSocket.",
+  "main": "server.js",
   "scripts": {
-    "test": "node tests/truthdare.test.js && node tests/truthdare-integration.test.js"
+    "start": "node server.js",
+    "test": "node scripts/run-tests.js",
+    "check": "node scripts/check-syntax.js",
+    "test:monopoly": "node tests/monopoly.test.js"
   },
-  "keywords": [],
+  "keywords": [
+    "lan",
+    "multiplayer",
+    "board-games",
+    "websocket",
+    "party-games"
+  ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
   "dependencies": {
     "express": "^4.22.2",
