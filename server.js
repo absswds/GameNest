@@ -1118,7 +1118,15 @@ function getShareableLanIPs() {
 }
 
 function startServer(port, attempt = 0) {
+  // When PORT is explicitly set by the platform (Railway, etc.), do NOT retry
+  // on a different port — the platform only routes traffic to the assigned $PORT.
+  const isEnvPort = 'PORT' in process.env;
   server.once('error', (err) => {
+    if (isEnvPort) {
+      console.error('Server error on platform-assigned port:', err.message);
+      process.exit(1);
+      return;
+    }
     const nextPort = getNextPort(err.code, port);
     if (nextPort && attempt < MAX_PORT_RETRIES) {
       console.log(`Port ${port} unavailable (${err.code}), trying ${nextPort}...`);
