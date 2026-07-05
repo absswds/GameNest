@@ -376,6 +376,7 @@ button, input { font-family: inherit; font-size: inherit; }
 .board-wrap {
   width: 100%;
   display: flex; justify-content: center;
+  align-items: center;
   padding-bottom: 72px;
 }
 
@@ -1339,9 +1340,11 @@ body.lobby-page {
   width: 100%;
   max-width: 1220px;
   margin: 0 auto;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
   min-width: 0;
+  min-height: 100dvh;
 }
 
 .game-topbar {
@@ -1377,8 +1380,10 @@ body.lobby-page {
 
 .room-stage {
   width: 100%;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
+  flex: 1;
 }
 
 .waiting-room.refresh {
@@ -1466,8 +1471,11 @@ body.lobby-page {
 }
 
 .game-stage-panel {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 14px;
+  flex: 1;
+  min-height: 0;
 }
 
 .game-stage-header {
@@ -1479,9 +1487,9 @@ body.lobby-page {
 }
 
 .board-wrap.stage-board {
-  min-height: min(72vh, 860px);
-  align-items: flex-start;
-  padding-bottom: 96px;
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 0;
 }
 
 .game-actions-fixed.refresh {
@@ -1949,10 +1957,37 @@ body.lobby-page {
 }
 
 .lobby-page .room-banner {
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
   border-color: rgba(73, 106, 87, 0.22);
   border-radius: 12px;
   background: #eef4ef;
+  padding: 10px 12px;
+}
+
+.lobby-page .room-banner-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.lobby-page .room-banner-title {
+  font-size: 13px;
+}
+
+.lobby-page .room-banner-meta {
+  margin-top: 1px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.lobby-page .room-banner-btn {
+  width: auto;
+  min-width: 96px;
+  min-height: 36px;
+  padding: 7px 12px;
+  white-space: nowrap;
 }
 
 .lobby-page .wifi-note {
@@ -2625,5 +2660,31 @@ body.lobby-page {
 
   .lobby-page .lobby-shell {
     padding-bottom: 104px;
+  }
+}
+
+/* ====== Page Transitions ====== */
+
+/* Game → Lobby exit (game.html) */
+.game-page-shell.exit-anim {
+  animation: pageSlideUpExit 0.35s ease-in forwards;
+}
+
+@keyframes pageSlideUpExit {
+  to {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+}
+
+/* Game → Lobby entrance (index.html) */
+.lobby-page.entrance-anim {
+  animation: pageSlideUpEntrance 0.4s ease-out;
+}
+
+@keyframes pageSlideUpEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
   }
 }

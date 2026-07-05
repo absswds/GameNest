@@ -53,6 +53,7 @@ exports.createState = () => ({
   savedTable: null,   // snapshot for cancel
   savedHand: null,    // snapshot for cancel
   savedHandIds: null, // IDs of original hand tiles to verify at least one used
+  passesSinceLastPlay: 0, // consecutive passes while pool empty — draw detection
 });
 
 function initGame(state, playerCount) {
@@ -75,6 +76,7 @@ function initGame(state, playerCount) {
   state.savedTable = null;
   state.savedHand = null;
   state.savedHandIds = null;
+  state.passesSinceLastPlay = 0;
 }
 exports.initGame = initGame;
 
@@ -243,6 +245,7 @@ exports.handleMove = (data, state, playerIndex) => {
 
       state.hasBroken[playerIndex] = true;
       state.playedThisTurn[playerIndex] = true;
+      state.passesSinceLastPlay = 0;
       state.workspace = [];
       state.savedTable = null;
       state.savedHand = null;
@@ -290,10 +293,18 @@ exports.handleMove = (data, state, playerIndex) => {
 
     if (pass) {
       if (state.playedThisTurn[playerIndex]) return '本回合已经出过牌，只能继续出牌、重组或结束回合';
-      // Draw a tile
       if (state.pool.length > 0) {
         hand.push(state.pool.pop());
         sortHand(hand);
+        state.passesSinceLastPlay = 0;
+      } else {
+        // Pool empty — increment stalemate counter
+        state.passesSinceLastPlay++;
+        if (state.passesSinceLastPlay >= state.hands.length) {
+          state.winner = -1; // draw
+          state.phase = 'over';
+          return null;
+        }
       }
       state.playedThisTurn[playerIndex] = false;
       state.currentPlayer = (state.currentPlayer + 1) % state.hands.length;
@@ -329,6 +340,7 @@ exports.handleMove = (data, state, playerIndex) => {
         state.table.push(toPlay);
         state.hasBroken[playerIndex] = true;
         state.playedThisTurn[playerIndex] = true;
+        state.passesSinceLastPlay = 0;
 
         if (hand.length === 0) {
           state.winner = playerIndex;
@@ -358,6 +370,7 @@ exports.handleMove = (data, state, playerIndex) => {
 
         state.hasBroken[playerIndex] = true;
         state.playedThisTurn[playerIndex] = true;
+        state.passesSinceLastPlay = 0;
 
         if (hand.length === 0) {
           state.winner = playerIndex;
@@ -374,6 +387,14 @@ exports.handleMove = (data, state, playerIndex) => {
     if (state.pool.length > 0) {
       hand.push(state.pool.pop());
       sortHand(hand);
+      state.passesSinceLastPlay = 0;
+    } else {
+      state.passesSinceLastPlay++;
+      if (state.passesSinceLastPlay >= state.hands.length) {
+        state.winner = -1; // draw
+        state.phase = 'over';
+        return null;
+      }
     }
     state.playedThisTurn[playerIndex] = false;
     state.currentPlayer = (state.currentPlayer + 1) % state.hands.length;

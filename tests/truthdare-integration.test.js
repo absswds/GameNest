@@ -16,7 +16,9 @@ function test(name, fn) {
 }
 
 test('truthdare is registered in lobby and game shell', () => {
-  assert.match(read('public/index.html'), /data-game="truthdare"/);
+  const catalog = read('public/js/game-catalog.js');
+  assert.match(catalog, /truthdare:\s*\{/);
+  assert.match(catalog, /id:\s*'truthdare'/);
   assert.match(read('public/game.html'), /\/js\/renderers\/truthdare\.js/);
   assert.ok(fs.existsSync(path.join(root, 'public/js/renderers/truthdare.js')));
 });

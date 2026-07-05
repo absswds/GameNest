@@ -1,8 +1,8 @@
 // public/js/room-client.js
 (function() {
-  const game = sessionStorage.getItem('game');
+  let game = sessionStorage.getItem('game');
   const roomId = sessionStorage.getItem('roomId');
-  const playerIndex = parseInt(sessionStorage.getItem('playerIndex'));
+  let playerIndex = parseInt(sessionStorage.getItem('playerIndex'));
   const resumeToken = sessionStorage.getItem('resumeToken');
   const NO_AI_GAMES = new Set(['truthdare', 'drawguess', 'minesweeper', 'suikabattle']);
 
@@ -16,30 +16,34 @@
   document.getElementById('roomBadge').textContent = roomId;
 
   // ---- Game name lookup ----
+  function _gt(id) {
+    var g = window.gameCatalog && window.gameCatalog.byId(id);
+    return g ? { name: g.name, icon: g.icon } : null;
+  }
   const gameNames = {
-    tictactoe: { name: '井字棋', icon: '⚡' },
-    gomoku: { name: '五子棋', icon: '◉' },
-    davinci: { name: '达芬奇密码', icon: '🔢' },
-    uno: { name: 'UNO', icon: '🃏' },
-    doudizhu: { name: '斗地主', icon: '🂡' },
-    'exploding-kittens': { name: '爆炸猫', icon: '💣' },
-    rummikub: { name: '魔力桥', icon: '🧩' },
-    twentyfour: { name: '24点', icon: '🔢' },
-    minesweeper: { name: '扫雷竞速', icon: '💣' },
-    numberbomb: { name: '数字炸弹', icon: '💣' },
-    oldmaid: { name: '抽鬼牌', icon: '👻' },
-    liarsbar: { name: '骗子酒馆', icon: '🤥' },
-    bigtwo: { name: '大老二', icon: '🂡' },
-    texas: { name: '德州扑克', icon: '🎰' },
-    flightchess: { name: '飞行棋', icon: '✈️' },
-    snakebattle: { name: '贪吃蛇大乱斗', icon: '🐍' },
-    chinesechess: { name: '中国象棋', icon: '♟️' },
-    go9: { name: '围棋9路', icon: '⚫' },
-    monopoly: { name: '大富翁', icon: '🏦' },
-    suikabattle: { name: '合成大西瓜', icon: '🍉' },
-    sheeptile: { name: '羊了个羊', icon: '🐑' },
-    truthdare: { name: '真心话大冒险', icon: '🎭' },
-    drawguess: { name: '你画我猜', icon: '🎨' },
+    tictactoe: _gt('tictactoe') || { name: 'Tic Tac Toe', icon: '✦' },
+    gomoku: _gt('gomoku') || { name: 'Gomoku', icon: '●' },
+    davinci: _gt('davinci') || { name: 'Davinci Code', icon: '🧠' },
+    uno: _gt('uno') || { name: 'UNO', icon: '🃏' },
+    doudizhu: _gt('doudizhu') || { name: 'Dou Dizhu', icon: '♠' },
+    'exploding-kittens': _gt('exploding-kittens') || { name: 'Exploding Kittens', icon: '💣' },
+    rummikub: _gt('rummikub') || { name: 'Rummikub', icon: '▦' },
+    twentyfour: _gt('twentyfour') || { name: '24 Game', icon: '24' },
+    minesweeper: _gt('minesweeper') || { name: 'Minesweeper', icon: '✹' },
+    numberbomb: _gt('numberbomb') || { name: 'Number Bomb', icon: '#' },
+    oldmaid: _gt('oldmaid') || { name: 'Old Maid', icon: '👻' },
+    liarsbar: _gt('liarsbar') || { name: "Liar's Bar", icon: '♣' },
+    bigtwo: _gt('bigtwo') || { name: 'Big Two', icon: '♠' },
+    texas: _gt('texas') || { name: "Texas Hold'em", icon: 'A' },
+    flightchess: _gt('flightchess') || { name: 'Flight Chess', icon: '✈' },
+    snakebattle: _gt('snakebattle') || { name: 'Snake Battle', icon: 'S' },
+    chinesechess: _gt('chinesechess') || { name: 'Chinese Chess', icon: '楚' },
+    go9: _gt('go9') || { name: 'Go 9x9', icon: '○' },
+    monopoly: _gt('monopoly') || { name: 'Monopoly', icon: 'M' },
+    suikabattle: _gt('suikabattle') || { name: 'Suika Battle', icon: '◔' },
+    sheeptile: _gt('sheeptile') || { name: 'Sheep Tile', icon: 'Y' },
+    truthdare: _gt('truthdare') || { name: 'Truth or Dare', icon: '?' },
+    drawguess: _gt('drawguess') || { name: 'Draw & Guess', icon: '✎' },
   };
 
   let roomOptions = {};
@@ -100,11 +104,11 @@
 
   function seatSummary(index) {
     const player = players ? players.find(function(p) { return p.index === index; }) : null;
-    if (!player) return { title: '空位', meta: '点这里换到这个位置' };
-    const meta = [];
-    if (player.isHost) meta.push('房主');
+    if (!player) return { title: _t('empty_seat'), meta: _t('swap_hint') };
+    var meta = [];
+    if (player.isHost) meta.push(_t('host'));
     if (player.isBot) meta.push('AI');
-    if (!player.isBot) meta.push(player.ready ? '已准备' : '未准备');
+    if (!player.isBot) meta.push(player.ready ? _t('ready_status') : _t('not_ready'));
     return { title: player.name, meta: meta.join(' · ') };
   }
 
@@ -154,18 +158,34 @@
 
   function updateSharedShell() {
     setText('activeGameName', gameInfo.name);
-    setText('activeGameSubtitle', gameInfo.subtitle || '等待玩家加入');
+    setText('activeGameSubtitle', gameInfo.subtitle || _t('waiting_players'));
     setText('stageGameName', gameInfo.name);
     setText('waitingGameName', gameInfo.name);
     setText('waitingGameSubtitle', gameInfo.description || gameInfo.subtitle || '');
-    setText('stageRoomFacts', '房间 ' + roomId + ' · ' + (gameInfo.supportsAI ? '可加 AI' : '纯玩家对战'));
+    setText('stageRoomFacts', _t('room') + ' ' + roomId + ' · ' + (gameInfo.supportsAI ? _t('can_add_bot') : _t('pvp_only')));
     renderMetaPills('waitingMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
     renderFacts('stageMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
     // Show connecting status until first server response arrives
-    document.getElementById('waitingStatus').textContent = '正在连接房间...';
+    document.getElementById('waitingStatus').textContent = _t('connecting_room');
   }
 
   // ---- WebSocket ----
+  function i18nStatic() {
+    if (typeof _t !== 'function') return;
+    var el;
+    el = document.getElementById('tutorialBtn');
+    if (el) el.textContent = _t('view_rules');
+    el = document.querySelector('.qr-hint');
+    if (el) el.textContent = _t('scan_join');
+    el = document.getElementById('readyBtn');
+    if (el) el.textContent = _t('ready');
+    el = document.getElementById('addBotBtn');
+    if (el) el.textContent = _t('add_bot');
+    el = document.getElementById('startGameBtn');
+    if (el) el.textContent = _t('start_game');
+  }
+  i18nStatic();
+
   function connect() {
     if (ws) { try { ws.close(); } catch(e) {} }
     ws = new WebSocket(getSocketURL());
@@ -226,6 +246,13 @@
         updateWaitingRoom();
       }
 
+      // player_index_updated (after seat swap — update local playerIndex)
+      if (msg.type === 'player_index_updated') {
+        playerIndex = msg.playerIndex;
+        sessionStorage.setItem('playerIndex', msg.playerIndex);
+        updateWaitingRoom();
+      }
+
       // player_joined / player_left
       if (msg.type === 'player_joined' || msg.type === 'player_left') {
         const newCount = (msg.players || players || []).length;
@@ -252,7 +279,7 @@
           updateWaitingRoom();
         }
         if (msg.type === 'player_left') {
-          document.getElementById('status').textContent = '对手离开了，等待中...';
+          document.getElementById('status').textContent = _t('opponent_left');
           document.getElementById('overlay').style.display = 'none';
         }
       }
@@ -595,10 +622,10 @@
     if (readyBtn) {
       readyBtn.style.display = '';
       if (myReady) {
-        readyBtn.textContent = '取消准备';
+        readyBtn.textContent = _t('unready');
         readyBtn.classList.add('ready-active');
       } else {
-        readyBtn.textContent = '准备';
+        readyBtn.textContent = _t('ready');
         readyBtn.classList.remove('ready-active');
       }
       readyBtn.onclick = function() {
@@ -647,9 +674,9 @@
       const allReady = players && players.filter(p => !p.isBot).every(p => p.ready);
       const totalPlayers = players ? players.length : 0;
       if (allReady && totalPlayers >= 2) {
-        waitingStatus.textContent = isHost ? '所有玩家已准备，可以开始！' : '等待房主开始游戏...';
+        waitingStatus.textContent = isHost ? _t('all_ready_start') : _t('waiting_host_start');
       } else {
-        waitingStatus.textContent = '等待所有玩家准备...';
+        waitingStatus.textContent = _t('waiting_all_ready');
       }
     }
   }
@@ -674,12 +701,12 @@
     if (!state || state.winner == null) {
       const st = document.getElementById('status');
       st.classList.remove('my-turn');
-      if (players.length < 2) st.textContent = '等待玩家加入...';
+      if (players.length < 2) st.textContent = _t('waiting_players');
       else if (state && state.currentPlayer === playerIndex) {
-        st.textContent = '轮到你了';
+        st.textContent = _t('your_turn');
         st.classList.add('my-turn');
       }
-      else if (state) st.textContent = '对手回合';
+      else if (state) st.textContent = _t('opponent_turn');
     }
   }
 
@@ -710,34 +737,34 @@
     const resultEl = document.getElementById('resultText');
     let txt, sub, isWin = false;
     if (winner === -1) {
-      txt = '平局！'; sub = '不分胜负';
+      txt = _t('draw'); sub = '';
     } else if (game === 'doudizhu' && state) {
       // Doudizhu uses team-based winner sentinels
       if (winner === -2) {
         // Landlord team wins
         isWin = (playerIndex === state.landlord);
-        txt = isWin ? '你赢了！' : '你输了';
-        sub = isWin ? '地主胜利' : '农民获胜';
+        txt = isWin ? _t('you_win') : _t('you_lose');
+        sub = isWin ? _t('landlord_win') : _t('farmer_win');
       } else if (winner === -3) {
         // Farmers win
         isWin = (playerIndex !== state.landlord);
-        txt = isWin ? '你赢了！' : '你输了';
-        sub = isWin ? '农民胜利' : '地主获胜';
+        txt = isWin ? _t('you_win') : _t('you_lose');
+        sub = isWin ? _t('farmer_win') : _t('landlord_win');
       } else {
         isWin = (winner === playerIndex);
-        txt = isWin ? '你赢了！' : '你输了'; sub = '';
+        txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';
       }
     } else {
       isWin = (winner === playerIndex);
-      txt = isWin ? '你赢了！' : '你输了'; sub = '';
+      txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';
     }
     resultEl.textContent = txt;
     resultEl.classList.toggle('win-text', isWin);
     document.getElementById('resultSub').textContent = sub;
     overlay.style.display = 'flex';
-    const st = document.getElementById('status');
+    var st = document.getElementById('status');
     st.classList.remove('my-turn');
-    st.textContent = isWin ? '你赢了！' : winner === -1 ? '平局' : '对手赢了';
+    st.textContent = isWin ? _t('you_win') : winner === -1 ? _t('draw') : _t('opponent_wins');
   }
 
   window.makeGameMove = function(data) {
@@ -755,14 +782,16 @@
   };
 
   window.doLeaveRoom = function() {
-    sessionStorage.removeItem('roomId');
-    sessionStorage.removeItem('playerIndex');
-    sessionStorage.removeItem('game');
-    sessionStorage.removeItem('resumeToken');
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'leave_room' }));
     }
-    window.location.replace('/');
+    // Keep roomId + resumeToken in sessionStorage so lobby shows the resume banner
+    sessionStorage.setItem('_returnFromGame', '1');
+    var shell = document.querySelector('.game-page-shell');
+    if (shell) shell.classList.add('exit-anim');
+    setTimeout(function() {
+      window.location.replace('/');
+    }, 350);
   };
 
   window._leaveRoom = window.doLeaveRoom;

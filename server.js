@@ -5,6 +5,28 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const startupLogPath = path.join(__dirname, 'android-startup.log');
+
+// Language packs
+const SERVER_LANGS = {
+  zh: require('./lang/server-zh'),
+  en: require('./lang/server-en'),
+};
+function serverT(room, key) {
+  const lang = (room && room._lang) || 'zh';
+  const pack = SERVER_LANGS[lang] || SERVER_LANGS.zh;
+  return pack[key] || key;
+}
+function logStep(message) {
+  try {
+    fs.appendFileSync(startupLogPath, message + '\n');
+  } catch (err) {}
+}
+logStep('[android-node] server.js require: express');
+logStep('[android-node] server.js require: http');
+logStep('[android-node] server.js require: ws');
+logStep('[android-node] server.js require: os/path/fs/crypto');
+logStep('[android-node] server.js require: startup-port');
 const { getNextPort, isRecoverablePortError } = require('./startup-port');
 
 const PORT = parseInt(process.env.PORT) || 3000;
@@ -15,27 +37,36 @@ let activePort = PORT;
 // Load game registry
 const gameRegistry = Object.create(null);
 const gamesDir = path.join(__dirname, 'games');
-fs.readdirSync(gamesDir).forEach(file => {
-  if (file.endsWith('.js')) {
-    const mod = require(path.join(gamesDir, file));
-    gameRegistry[mod.name] = mod;
-  }
-});
+// Temporary startup isolation for Android crash triage.
+// If this server boots with registries disabled, a specific module load is the culprit.
+if (!process.env.ANDROID_SKIP_REGISTRY_LOAD) {
+  fs.readdirSync(gamesDir).forEach(file => {
+    if (file.endsWith('.js')) {
+      logStep('[android-node] loading game module: ' + file);
+      const mod = require(path.join(gamesDir, file));
+      gameRegistry[mod.name] = mod;
+    }
+  });
+}
 
 // Load bot registry
 const botRegistry = Object.create(null);
 const botsDir = path.join(__dirname, 'bots');
-if (fs.existsSync(botsDir)) {
+if (fs.existsSync(botsDir) && !process.env.ANDROID_SKIP_REGISTRY_LOAD) {
   fs.readdirSync(botsDir).forEach(file => {
     if (file.endsWith('.js')) {
+      logStep('[android-node] loading bot module: ' + file);
       const mod = require(path.join(botsDir, file));
       botRegistry[mod.name] = mod;
     }
   });
 }
 
+logStep('[android-node] server.js require: qrcode');
 const QRCode = require('qrcode');
+logStep('[android-node] server.js require complete');
 
+logStep('[android-node] server.js init express app');
 const app = express();
 // Always revalidate static assets so clients never run a stale cached HTML/CSS/JS.
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -76,6 +107,7 @@ app.get('/network-info', (req, res) => {
   });
 });
 
+logStep('[android-node] server.js init http/ws server');
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 wss.on('error', (err) => {
@@ -408,12 +440,12 @@ wss.on('connection', (ws) => {
     if (type === 'create_room') {
       const { game } = data || {};
       if (!gameRegistry[game]) {
-        ws.send(JSON.stringify({ type: 'error', message: '无效的游戏类型' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'invalid_game_type') }));
         return;
       }
       const result = createRoom(ws, game);
       if (!result) {
-        ws.send(JSON.stringify({ type: 'error', message: '创建房间失败' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'create_room_failed') }));
         return;
       }
       currentRoomId = result.roomId;
@@ -436,16 +468,16 @@ wss.on('connection', (ws) => {
     if (type === 'add_bot') {
       if (!currentRoom) return;
       if (ws !== currentRoom.hostWS) {
-        ws.send(JSON.stringify({ type: 'error', message: '只有房主可以添加AI' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'host_only_add_bot') }));
         return;
       }
       if (currentRoom.phase === 'playing') {
-        ws.send(JSON.stringify({ type: 'error', message: '游戏已开始，不能添加AI' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'game_started_add_bot') }));
         return;
       }
       const botMod = botRegistry[currentRoom.game];
       if (!botMod) {
-        ws.send(JSON.stringify({ type: 'error', message: '该游戏不支持AI' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'game_no_ai') }));
         return;
       }
       // Find next available slot
@@ -457,7 +489,7 @@ wss.on('connection', (ws) => {
         if (!occupied.has(i)) { botIndex = i; break; }
       }
       if (botIndex === -1) {
-        ws.send(JSON.stringify({ type: 'error', message: '房间已满' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'room_full') }));
         return;
       }
       const bot = botMod.createBot(botIndex);
@@ -476,7 +508,7 @@ wss.on('connection', (ws) => {
       const { roomId, resumeToken } = data || {};
       const room = rooms.get(roomId);
       if (!room) {
-        ws.send(JSON.stringify({ type: 'error', code: 'ROOM_NOT_FOUND', message: '房间不存在或已结束' }));
+        ws.send(JSON.stringify({ type: 'error', code: 'ROOM_NOT_FOUND', message: serverT(currentRoom, 'room_not_found') }));
         return;
       }
       // Resume an existing seat after returning to the lobby / temporary disconnect.
@@ -533,7 +565,7 @@ wss.on('connection', (ws) => {
       }
       // Count current human players
       if (room.players.size >= room.maxPlayers) {
-        ws.send(JSON.stringify({ type: 'error', message: '房间已满' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'room_full') }));
         return;
       }
       // Find next available slot
@@ -545,7 +577,7 @@ wss.on('connection', (ws) => {
         if (!occupied.has(i)) { idx = i; break; }
       }
       if (idx === -1) {
-        ws.send(JSON.stringify({ type: 'error', message: '房间已满' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'room_full') }));
         return;
       }
       room.players.set(ws, { name: `玩家 ${idx + 1}`, index: idx, avatar: '😊', resumeToken: crypto.randomUUID(), disconnectedAt: null });
@@ -579,7 +611,7 @@ wss.on('connection', (ws) => {
     if (type === 'player_ready') {
       if (!currentRoom) return;
       if (currentRoom.phase === 'playing') {
-        ws.send(JSON.stringify({ type: 'error', message: '游戏已经开始' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'game_started') }));
         return;
       }
       const info = currentRoom.players.get(ws);
@@ -608,24 +640,24 @@ wss.on('connection', (ws) => {
     if (type === 'start_game') {
       if (!currentRoom) return;
       if (ws !== currentRoom.hostWS) {
-        ws.send(JSON.stringify({ type: 'error', message: '只有房主可以开始游戏' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'host_only_start') }));
         return;
       }
       if (currentRoom.phase === 'playing') {
-        ws.send(JSON.stringify({ type: 'error', message: '游戏已经开始' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'game_started') }));
         return;
       }
       const gameMod = gameRegistry[currentRoom.game];
       const totalPlayers = currentRoom.players.size + (currentRoom.bots ? currentRoom.bots.size : 0);
       const minPlayers = (gameMod && gameMod.minPlayers) || 2;
       if (totalPlayers < minPlayers) {
-        ws.send(JSON.stringify({ type: 'error', message: '至少需要2名玩家' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'min_players') }));
         return;
       }
       const allReady = Array.from(currentRoom.players.values())
         .every(p => currentRoom.readyPlayers.has(p.index));
       if (!allReady) {
-        ws.send(JSON.stringify({ type: 'error', message: '所有玩家就绪后才能开始' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'all_ready_required') }));
         return;
       }
 
@@ -689,7 +721,7 @@ wss.on('connection', (ws) => {
     if (type === 'swap_seat') {
       if (!currentRoom) return;
       if (currentRoom.phase === 'playing') {
-        ws.send(JSON.stringify({ type: 'error', message: '游戏已经开始，不能换位' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'game_started_no_swap') }));
         return;
       }
       const { fromIndex, toIndex } = data || {};
@@ -717,8 +749,10 @@ wss.on('connection', (ws) => {
       // Swap ready states
       const fromReady = currentRoom.readyPlayers.has(fromIndex);
       const toReady = currentRoom.readyPlayers.has(toIndex);
-      if (fromReady) currentRoom.readyPlayers.delete(fromIndex); else currentRoom.readyPlayers.add(fromIndex);
-      if (toReady) currentRoom.readyPlayers.delete(toIndex); else currentRoom.readyPlayers.add(toIndex);
+      currentRoom.readyPlayers.delete(fromIndex);
+      currentRoom.readyPlayers.delete(toIndex);
+      if (fromReady) currentRoom.readyPlayers.add(toIndex);
+      if (toReady) currentRoom.readyPlayers.add(fromIndex);
 
       // Transfer host if host player swapped
       if (currentRoom.hostWS === (fromPlayer ? fromPlayer[0] : null)) {
@@ -732,6 +766,20 @@ wss.on('connection', (ws) => {
         phase: currentRoom.phase,
         players: roomPlayersList(currentRoom),
       });
+
+      // Tell each swapped player their new index so the client can update sessionStorage
+      if (fromPlayer) {
+        const fromWs = fromPlayer[0];
+        if (fromWs.readyState === 1) {
+          fromWs.send(JSON.stringify({ type: 'player_index_updated', playerIndex: toIndex }));
+        }
+      }
+      if (toPlayer) {
+        const toWs = toPlayer[0];
+        if (toWs.readyState === 1) {
+          toWs.send(JSON.stringify({ type: 'player_index_updated', playerIndex: fromIndex }));
+        }
+      }
       return;
     }
 
@@ -739,11 +787,11 @@ wss.on('connection', (ws) => {
     if (type === 'set_option') {
       if (!currentRoom) return;
       if (ws !== currentRoom.hostWS) {
-        ws.send(JSON.stringify({ type: 'error', message: '只有房主可以修改设置' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'host_only_settings') }));
         return;
       }
       if (currentRoom.phase === 'playing') {
-        ws.send(JSON.stringify({ type: 'error', message: '游戏已开始，不能修改设置' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'game_started_no_settings') }));
         return;
       }
       const { key, value } = data || {};
@@ -856,7 +904,7 @@ wss.on('connection', (ws) => {
     if (type === 'game_restart') {
       if (!currentRoom) return;
       if (ws !== currentRoom.hostWS) {
-        ws.send(JSON.stringify({ type: 'error', message: '只有房主可以重新开局' }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'host_only_restart') }));
         return;
       }
       const gameMod = gameRegistry[currentRoom.game];
@@ -918,23 +966,30 @@ wss.on('connection', (ws) => {
       return;
     }
 
-    // --- leave_room (explicitly leave, no grace period) ---
+    // --- leave_room (go back to lobby, with grace period for resume) ---
     if (type === 'leave_room') {
       if (!currentRoom) return;
+      const info = currentRoom.players.get(ws);
+      if (!info) return;
+      // Don't delete immediately — start grace timer so the player can resume
+      info.disconnectedAt = Date.now();
       if (info._disconnectTimer) clearTimeout(info._disconnectTimer);
-      currentRoom.players.delete(ws);
-      currentRoom.readyPlayers.delete(info.index);
-      if (currentRoom.hostWS === ws) {
-        currentRoom.hostWS = Array.from(currentRoom.players.keys()).find(client => client.readyState === 1) || null;
-      }
-      if (currentRoom.players.size === 0) {
-        stopRealtimeGame(currentRoom);
-        rooms.delete(currentRoomId);
-        broadcastRoom(currentRoom, { type: 'player_left', players: [], phase: currentRoom.phase });
-      } else {
-        broadcastRoom(currentRoom, { type: 'player_left', players: roomPlayersList(currentRoom), phase: currentRoom.phase });
-        scheduleBotMove(currentRoom);
-      }
+      info._disconnectTimer = setTimeout(() => {
+        if (info.disconnectedAt && currentRoom.players.get(ws) === info) {
+          currentRoom.players.delete(ws);
+          currentRoom.readyPlayers.delete(info.index);
+          if (currentRoom.hostWS === ws) {
+            currentRoom.hostWS = Array.from(currentRoom.players.keys()).find(client => client.readyState === 1) || null;
+          }
+          if (currentRoom.players.size === 0) {
+            stopRealtimeGame(currentRoom);
+            rooms.delete(currentRoomId);
+          } else {
+            broadcastRoom(currentRoom, { type: 'player_left', players: roomPlayersList(currentRoom), phase: currentRoom.phase });
+            scheduleBotMove(currentRoom);
+          }
+        }
+      }, 300000);  // 5-minute grace for rejoin
       ws.send(JSON.stringify({ type: 'left_room' }));
       return;
     }

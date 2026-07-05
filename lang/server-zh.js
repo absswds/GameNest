@@ -1,0 +1,17 @@
+module.exports = {
+  'invalid_game_type': '无效的游戏类型',
+  'create_room_failed': '创建房间失败',
+  'host_only_add_bot': '只有房主可以添加AI',
+  'game_started_add_bot': '游戏已开始，不能添加AI',
+  'game_no_ai': '该游戏不支持AI',
+  'room_full': '房间已满',
+  'room_not_found': '房间不存在或已结束',
+  'game_started': '游戏已经开始',
+  'host_only_start': '只有房主可以开始游戏',
+  'min_players': '至少需要2名玩家',
+  'all_ready_required': '所有玩家就绪后才能开始',
+  'game_started_no_swap': '游戏已经开始，不能换位',
+  'host_only_settings': '只有房主可以修改设置',
+  'game_started_no_settings': '游戏已开始，不能修改设置',
+  'host_only_restart': '只有房主可以重新开局',
+};

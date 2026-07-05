@@ -28,6 +28,7 @@ New-Item -ItemType Directory -Force $dest | Out-Null
 $items = @(
     "server.js",
     "main.js",
+    "startup-port.js",
     "package.json",
     "package-lock.json",
     "games",

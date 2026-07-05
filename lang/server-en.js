@@ -1,0 +1,17 @@
+module.exports = {
+  'invalid_game_type': 'Invalid game type',
+  'create_room_failed': 'Failed to create room',
+  'host_only_add_bot': 'Only the host can add bots',
+  'game_started_add_bot': 'Game already started, cannot add bots',
+  'game_no_ai': 'This game does not support AI',
+  'room_full': 'Room is full',
+  'room_not_found': 'Room not found or has ended',
+  'game_started': 'Game already started',
+  'host_only_start': 'Only the host can start the game',
+  'min_players': 'At least 2 players needed',
+  'all_ready_required': 'All players must be ready before starting',
+  'game_started_no_swap': 'Game already started, cannot swap seats',
+  'host_only_settings': 'Only the host can change settings',
+  'game_started_no_settings': 'Game already started, cannot change settings',
+  'host_only_restart': 'Only the host can restart the game',
+};
