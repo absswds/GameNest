@@ -80,6 +80,26 @@ test('stage room facts include both game name and room id', () => {
   );
 });
 
+test('playing room updates refresh the shared shell and player bar', () => {
+  const js = fs.readFileSync(path.join(root, 'public', 'js', 'room-client.js'), 'utf8');
+  const match = js.match(/function updateWaitingRoom\(\) \{([\s\S]*?)\n  \}/);
+  assert.ok(match, 'updateWaitingRoom should exist');
+  const playingBranch = match[1].match(/if \(roomPhase === 'playing'\) \{([\s\S]*?)return;/);
+  assert.ok(playingBranch, 'playing branch should exist');
+  assert.ok(/updateSharedShell\(\)/.test(playingBranch[1]), 'playing updates should refresh room title/facts');
+  assert.ok(/updatePlayerBar\(\)/.test(playingBranch[1]), 'playing updates should refresh avatars and names');
+});
+
+test('resume joins broadcast a room update to other players', () => {
+  const js = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
+  const match = js.match(/if \(resumable\) \{([\s\S]*?)\n        return;/);
+  assert.ok(match, 'resumable join branch should exist');
+  assert.ok(
+    /sendToRoom\(room,\s*\{[\s\S]*type:\s*'room_update'/.test(match[1]),
+    'resuming a seat should notify other clients immediately'
+  );
+});
+
 function test(name, fn) {
   try {
     fn();

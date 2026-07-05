@@ -391,7 +391,9 @@
   // ---- Waiting Room ----
   function updateWaitingRoom() {
     if (roomPhase === 'playing') {
+      updateSharedShell();
       showGame();
+      updatePlayerBar();
       return;
     }
     showLobby();

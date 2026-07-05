@@ -550,6 +550,12 @@ wss.on('connection', (ws) => {
         ws.send(JSON.stringify({ type: 'room_joined', roomId, game: room.game, maxPlayers: room.maxPlayers,
           playerIndex: info.index, players: roomPlayersList(room), state: room.state, phase: room.phase,
           options: room.options, resumeToken: info.resumeToken }));
+        sendToRoom(room, {
+          type: 'room_update',
+          phase: room.phase,
+          players: roomPlayersList(room),
+          options: room.options,
+        }, ws);
         return;
       }
       // Check if already in this room (reconnect)
