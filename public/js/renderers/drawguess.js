@@ -103,10 +103,18 @@
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, W, H);
 
-    var strokes = state && state.mode === 'stage' && state.myTask
-      ? (state.myTask.strokes || [])
-      : (state && state.myTask && state.myTask.type === 'draw' && state.phase === 'playing'
-        ? localStrokes : (state && state.myTask && state.myTask.prevContent ? state.myTask.prevContent : []));
+    var strokes;
+    if (isMyDrawTurn()) {
+      strokes = localStrokes;
+    } else if (state && state.mode === 'stage' && state.myTask) {
+      strokes = state.myTask.strokes || [];
+    } else if (state && state.myTask && state.myTask.type === 'draw' && state.phase === 'playing') {
+      strokes = localStrokes;
+    } else if (state && state.myTask && state.myTask.prevContent) {
+      strokes = state.myTask.prevContent;
+    } else {
+      strokes = [];
+    }
 
     drawStrokes(strokes);
     if (currentStroke) drawOneStroke(currentStroke);
