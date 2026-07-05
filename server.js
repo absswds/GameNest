@@ -121,6 +121,18 @@ wss.on('error', (err) => {
   console.error('WebSocket server error:', err.message);
 });
 
+// WebSocket keep-alive heartbeat: every 30s ping all clients,
+// terminate any that didn't respond within the interval.
+// This survives Railway's 5-minute idle proxy timeout.
+const wssHeartbeat = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws._isAlive === false) return ws.terminate();
+    ws._isAlive = false;
+    try { ws.ping(); } catch (e) { /* already closed */ }
+  });
+}, 30000);
+wss.on('close', () => clearInterval(wssHeartbeat));
+
 // ---- Room & Game Management ----
 const rooms = new Map();
 
@@ -434,6 +446,8 @@ function scheduleBotMove(room) {
 // ---- WebSocket Handler ----
 
 wss.on('connection', (ws) => {
+  ws._isAlive = true;
+  ws.on('pong', () => { ws._isAlive = true; });
   ws.on('error', () => {});
   let currentRoomId = null;
   let currentRoom = null;
