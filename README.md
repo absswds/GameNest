@@ -1,6 +1,6 @@
 # GameNest
 
-> 23 self-hosted LAN board, card, and party games. Start one server, share one QR code, play from any browser on the same WiFi.
+> 23 self-hosted LAN board, card, party, puzzle, and real-time games. Start one server, share one room code or QR code, and play from any browser on the same WiFi.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/absswds/GameNest/actions/workflows/ci.yml/badge.svg)](https://github.com/absswds/GameNest/actions/workflows/ci.yml)
@@ -10,28 +10,38 @@
 
 [简体中文](README.zh-CN.md) | English
 
-GameNest is an open-source tabletop game room for family nights, dorms, classrooms, and small gatherings. One laptop or Android phone hosts the room, everyone else joins from a browser on the same WiFi, and the whole stack stays intentionally simple: Express 4, `ws`, and plain HTML/CSS/JavaScript.
+GameNest is a lightweight open-source tabletop game room for family nights, dorm rooms, classrooms, offices, and small parties. One laptop or Android phone hosts the room, everyone else joins from a browser on the same local network, and the stack stays intentionally simple: Express 4, `ws`, and plain HTML/CSS/JavaScript.
 
-## Why GameNest
+## Highlights
 
-- 23 built-in games across board games, cards, poker, deduction, party games, puzzle races, and real-time battles.
-- Zero-account LAN flow: start the host, open the lobby, and let other devices join through the host IP or QR code.
-- AI opponents for most turn-based games, so solo testing and small groups still work well.
-- Browser-first UI with per-game renderers, hidden-information views, legal-move hints, and lightweight animations.
-- Optional Android wrapper powered by nodejs-mobile, so the same project can be carried around as a local host app.
+- 23 built-in games covering classic boards, party cards, poker, deduction, puzzle races, and real-time battles.
+- Local-first multiplayer: no account system, no cloud dependency, just one host and one shared WiFi.
+- Room code and QR-code joining for phones, tablets, and laptops.
+- Waiting-room flow with player names, emoji avatars, ready state, seat swaps, bots, and per-game options.
+- AI opponents for most turn-based games, useful for solo testing or small groups.
+- Browser-first renderers with hidden-information views, legal-move hints, canvas boards, and lightweight animations.
+- Optional Android host wrapper powered by nodejs-mobile, so the same project can run as a portable local server.
 
 ## Screenshots
 
-Add these assets before the next release:
+Release screenshots are still the biggest missing piece. Add these files before publishing the next GitHub release:
 
-- `docs/media/lobby.png` - game selection lobby on desktop
-- `docs/media/room.png` - waiting room with players, ready state, and QR join
-- `docs/media/game-uno.png` - card game in progress
-- `docs/media/game-chinesechess.png` - board game in progress
-- `docs/media/android-host.jpg` - Android host screen or same-WiFi join flow
-- `docs/media/join-flow.gif` - 15 to 30 second host-to-join demo
+| Asset | What to capture |
+| --- | --- |
+| `docs/media/lobby.png` | Desktop lobby with the hero, featured games, search, and game cards. |
+| `docs/media/room.png` | Waiting room with players, avatars, ready state, AI slots, room code, and QR join. |
+| `docs/media/game-flightchess.png` | A board-game match in progress, preferably with avatars visible in the player bar. |
+| `docs/media/game-suika.png` | A real-time or battle-style game in progress. |
+| `docs/media/android-host.jpg` | Phone view showing the Android/mobile host or same-WiFi join URL. |
+| `docs/media/join-flow.gif` | 15-30 second demo: create room, scan/join, ready up, start game. |
 
-Once those files exist, place them here in the README.
+After the assets exist, replace this section with a short gallery:
+
+```md
+![GameNest lobby](docs/media/lobby.png)
+![Waiting room](docs/media/room.png)
+![Game in progress](docs/media/game-flightchess.png)
+```
 
 ## Quick Start
 
@@ -60,11 +70,12 @@ taskkill /f /im node.exe
 
 ## How It Works
 
-1. Start the GameNest server on one computer or Android device.
-2. Open the lobby and create a room for the game you want.
-3. Let other players join through the QR code or host IP.
-4. Use the waiting room for seat swaps, bots, ready state, and game options.
-5. Start the match and keep playing in the browser with synchronized game state over WebSocket.
+1. Start GameNest on one computer or Android device.
+2. Open the lobby and choose a game.
+3. Create a room, then share the room code, host IP, or QR code.
+4. In the waiting room, adjust seats, add bots, change avatars, and mark players ready.
+5. Start the match and keep playing in the browser while state syncs over WebSocket.
+6. If someone briefly leaves, they can return to the room from the lobby resume card.
 
 ## Game Catalog
 
@@ -93,7 +104,7 @@ CI currently runs `npm run check` and `npm test` on GitHub Actions.
 
 ### Browser host
 
-- Node.js `18+`
+- Requires Node.js `18+`
 - HTTP and WebSocket share port `3000`
 - Best fit for laptops, desktops, classrooms, and home LAN play
 
@@ -126,16 +137,17 @@ Then open `android/` in Android Studio and run the app. Full setup details live 
 
 More details:
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the server/client flow
-- [CONTRIBUTING.md](CONTRIBUTING.md) for the game-module checklist
-- [docs/STORE_LISTING.md](docs/STORE_LISTING.md) for app-store copy and asset planning
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains the server, WebSocket, and renderer flow.
+- [CONTRIBUTING.md](CONTRIBUTING.md) has the new-game checklist.
+- [docs/STORE_LISTING.md](docs/STORE_LISTING.md) collects app-store copy and asset planning.
 
-## What Still Needs Polishing
+## Release Checklist
 
-- Final screenshots and one short GIF for the GitHub front page and release assets
-- A cleaner release section with direct APK download instructions once the next release is published
-- A short roadmap for upcoming games, mobile polish, and testing gaps
-- More focused regression coverage for newer games and renderer-heavy flows
+- Capture the README screenshots and one short GIF listed above.
+- Add a GitHub release section with the direct APK download link after the next APK build is published.
+- Write a short roadmap covering upcoming games, mobile polish, and test coverage.
+- Add more regression coverage for newer games and renderer-heavy flows.
+- Verify mobile join on two devices connected to the same WiFi before tagging a release.
 
 ## Contributing
 
