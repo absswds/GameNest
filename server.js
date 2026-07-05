@@ -94,6 +94,12 @@ app.get('/qr', async (req, res) => {
   }
 });
 
+// Lightweight room existence check (used by lobby to verify resume banner)
+app.get('/api/room-exists/:roomId', (req, res) => {
+  const room = rooms.get(req.params.roomId);
+  res.json({ exists: !!room });
+});
+
 app.get('/network-info', (req, res) => {
   const lanURLs = getShareableLanIPs().map(({ name, ip }) => ({
     name,

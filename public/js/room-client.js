@@ -60,6 +60,7 @@
     clearTimeout(bar._timer);
     bar._timer = setTimeout(function() {
       bar.style.transform = 'translateY(-100%)';
+      bar._timer = null;
     }, 2500);
   }
 
@@ -218,6 +219,15 @@
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
 
+      // Clear reconnecting indicator on any successful message
+      if (msg.type !== 'error') {
+        var bar = document.getElementById('notifyBar');
+        if (bar && bar._timer === 0) {
+          bar.style.transform = 'translateY(-100%)';
+          bar._timer = null;
+        }
+      }
+
       // room_joined / room_created (initial connection)
       if (msg.type === 'room_joined' || msg.type === 'room_created') {
         state = msg.state || state;
@@ -328,7 +338,16 @@
       }
     };
     ws.onclose = () => {
-      if (!terminalRoomError) setTimeout(connect, 1500);
+      if (!terminalRoomError) {
+        var bar = document.getElementById('notifyBar');
+        if (bar) {
+          bar.textContent = _t('reconnecting') || 'Disconnected. Reconnecting…';
+          bar.style.transform = 'translateY(0)';
+          clearTimeout(bar._timer);
+          bar._timer = 0;
+        }
+        setTimeout(connect, 1500);
+      }
     };
     ws.onerror = () => {};
   }

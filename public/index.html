@@ -300,6 +300,16 @@ if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
   document.getElementById('resumeBtn').onclick = function() {
     location.href = '/game.html';
   };
+  // Verify the room still exists with the server
+  fetch('/api/room-exists/' + encodeURIComponent(roomId)).then(function(r) { return r.json(); }).then(function(data) {
+    if (!data.exists) {
+      sessionStorage.removeItem('roomId');
+      sessionStorage.removeItem('playerIndex');
+      sessionStorage.removeItem('game');
+      sessionStorage.removeItem('resumeToken');
+      document.getElementById('resumeSection').style.display = 'none';
+    }
+  }).catch(function() { /* offline; keep banner so user can retry */ });
 }
 
 (function() {

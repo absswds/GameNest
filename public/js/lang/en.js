@@ -77,6 +77,7 @@
     'room_code_empty': 'Enter a room code',
     'in_lobby': 'In Lobby',
     'seat_label': 'Seat ',
+    'reconnecting': 'Disconnected. Reconnecting…',
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'en';
   // _t function only needed in zh.js; en.js expects zh.js to have defined it

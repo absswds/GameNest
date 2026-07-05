@@ -77,6 +77,7 @@
     'room_code_empty': '请输入房间号',
     'in_lobby': '在大厅',
     'seat_label': '位置',
+    'reconnecting': '连接断开，正在重连…',
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'zh';
   window._t = function(key) {
