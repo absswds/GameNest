@@ -24,24 +24,19 @@ GameNest is a lightweight open-source tabletop game room for family nights, dorm
 
 ## Screenshots
 
-Release screenshots are still the biggest missing piece. Add these files before publishing the next GitHub release:
+GameNest runs as a shared LAN lobby, a QR-code waiting room, and browser-based game boards:
 
-| Asset | What to capture |
-| --- | --- |
-| `docs/media/lobby.png` | Desktop lobby with the hero, featured games, search, and game cards. |
-| `docs/media/room.png` | Waiting room with players, avatars, ready state, AI slots, room code, and QR join. |
-| `docs/media/game-flightchess.png` | A board-game match in progress, preferably with avatars visible in the player bar. |
-| `docs/media/game-suika.png` | A real-time or battle-style game in progress. |
-| `docs/media/android-host.jpg` | Phone view showing the Android/mobile host or same-WiFi join URL. |
-| `docs/media/join-flow.gif` | 15-30 second demo: create room, scan/join, ready up, start game. |
+![GameNest desktop lobby](docs/media/lobby.png)
 
-After the assets exist, replace this section with a short gallery:
+![Waiting room with QR join](docs/media/room.png)
 
-```md
-![GameNest lobby](docs/media/lobby.png)
-![Waiting room](docs/media/room.png)
-![Game in progress](docs/media/game-flightchess.png)
-```
+![Flight Chess in progress](docs/media/game-flightchess.png)
+
+Mobile and join-flow previews:
+
+![Mobile same-WiFi host address](docs/media/android-host.jpg)
+
+![Create and join flow](docs/media/join-flow.gif)
 
 ## Quick Start
 
@@ -143,7 +138,6 @@ More details:
 
 ## Release Checklist
 
-- Capture the README screenshots and one short GIF listed above.
 - Add a GitHub release section with the direct APK download link after the next APK build is published.
 - Write a short roadmap covering upcoming games, mobile polish, and test coverage.
 - Add more regression coverage for newer games and renderer-heavy flows.
