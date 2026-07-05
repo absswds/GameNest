@@ -1128,7 +1128,7 @@ function startServer(port, attempt = 0) {
 
     console.log('');
     console.log('  ╔══════════════════════════════════════╗');
-    console.log('  ║    🎲  Local Games Server           ║');
+    console.log('  ║    🎲  GameNest                     ║');
     console.log('  ╠══════════════════════════════════════╣');
     if (lanIPs.length === 0) {
       console.log(`  ║  http://localhost:${port}`);
