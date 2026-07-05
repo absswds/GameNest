@@ -50,6 +50,26 @@ test('truthdare catalog entry uses a real cover image', () => {
   assert.ok(fs.existsSync(path.join(root, 'public', match[1].replace(/^\//, ''))));
 });
 
+test('in-game player bar renders player avatars beside names', () => {
+  const js = fs.readFileSync(path.join(root, 'public', 'js', 'room-client.js'), 'utf8');
+  const match = js.match(/function updatePlayerBar\(\) \{([\s\S]*?)\n  \}/);
+  assert.ok(match, 'updatePlayerBar should exist');
+  assert.ok(
+    /player-tag-avatar/.test(match[1]) && /const avatar = p\.avatar \|\|/.test(match[1]),
+    'player bar should render each player avatar with a fallback avatar value'
+  );
+});
+
+test('shared room shell summary includes the room id', () => {
+  const js = fs.readFileSync(path.join(root, 'public', 'js', 'room-client.js'), 'utf8');
+  const match = js.match(/function updateSharedShell\(\) \{([\s\S]*?)\n  \}/);
+  assert.ok(match, 'updateSharedShell should exist');
+  assert.ok(
+    /setText\('activeGameSubtitle',[\s\S]*roomId/.test(match[1]),
+    'top shell subtitle should explicitly include the current room id'
+  );
+});
+
 function test(name, fn) {
   try {
     fn();

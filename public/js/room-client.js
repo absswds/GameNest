@@ -103,6 +103,13 @@
     }).join('');
   }
 
+  function roomContextSummary() {
+    var parts = [];
+    if (gameInfo && gameInfo.name) parts.push(gameInfo.name);
+    if (roomId) parts.push(_t('room') + ' ' + roomId);
+    return parts.join(' · ');
+  }
+
   function seatSummary(index) {
     const player = players ? players.find(function(p) { return p.index === index; }) : null;
     if (!player) return { title: _t('empty_seat'), meta: _t('swap_hint') };
@@ -159,7 +166,7 @@
 
   function updateSharedShell() {
     setText('activeGameName', gameInfo.name);
-    setText('activeGameSubtitle', gameInfo.subtitle || _t('waiting_players'));
+    setText('activeGameSubtitle', roomContextSummary());
     setText('stageGameName', gameInfo.name);
     setText('waitingGameName', gameInfo.name);
     setText('waitingGameSubtitle', gameInfo.description || gameInfo.subtitle || '');
@@ -736,7 +743,8 @@
       const tag = document.createElement('div');
       tag.className = 'player-tag p' + p.index;
       if (state && state.currentPlayer === p.index) tag.classList.add('active');
-      tag.innerHTML = '<span class="dot"></span><span>' + p.name + (p.isBot ? ' 🤖' : '') + '</span>';
+      const avatar = p.avatar || (p.isBot ? '\u{1F916}' : '\u{1F60A}');
+      tag.innerHTML = '<span class="dot"></span><span class="player-tag-avatar">' + avatar + '</span><span>' + p.name + (p.isBot ? ' \u{1F916}' : '') + '</span>';
       bar.appendChild(tag);
       if (i < players.length - 1) {
         const vs = document.createElement('span');

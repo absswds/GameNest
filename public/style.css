@@ -339,6 +339,11 @@ button, input { font-family: inherit; font-size: inherit; }
   border: 1px solid transparent;
 }
 
+.player-tag-avatar {
+  font-size: 16px;
+  line-height: 1;
+}
+
 .player-tag.active {
   border-color: var(--accent);
   background: var(--surface);
