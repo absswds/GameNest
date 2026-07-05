@@ -695,6 +695,7 @@ wss.on('connection', (ws) => {
       currentRoom.state._realPlayerCount = currentRoom.players.size;
       currentRoom.state._hasBots = currentRoom.bots.size > 0;
       currentRoom.state._options = { ...currentRoom.options };
+      currentRoom.state._lang = currentRoom._lang || 'zh';
       if (gameMod && gameMod.initGame) {
         gameMod.initGame(currentRoom.state, totalPlayers);
       }
@@ -944,6 +945,7 @@ wss.on('connection', (ws) => {
       currentRoom.state._realPlayerCount = currentRoom.players.size;
       currentRoom.state._hasBots = currentRoom.bots.size > 0;
       currentRoom.state._options = { ...currentRoom.options };
+      currentRoom.state._lang = currentRoom._lang || 'zh';
       if (gameMod && gameMod.initGame) {
         gameMod.initGame(currentRoom.state, totalPlayers);
       }

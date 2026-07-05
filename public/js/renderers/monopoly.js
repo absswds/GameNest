@@ -26,6 +26,7 @@
     return (r * 0.299 + g * 0.587 + b * 0.114) > 156 ? '#2d2114' : '#fffdf7';
   }
   function nameOf(i) { return (window._players && window._players[i]) ? window._players[i].name : _t('mp_player') + ' ' + (i + 1); }
+  function spName(sp) { return (window.__ACTIVE_LANG === 'en' && sp && sp.nameEn) ? sp.nameEn : (sp ? sp.name : ''); }
 
   // ---------- 布局 ----------
   function computeSize() {
@@ -163,7 +164,7 @@
     ctx.fillStyle = '#3a3020';
     var fs = Math.max(9, Math.floor(Math.min(g.w, g.h) * 0.2));
     ctx.font = fs + 'px sans-serif';
-    var label = sp.name || (sp.type === 'chance' ? _t('mp_chance') : '');
+    var label = spName(sp) || (sp.type === 'chance' ? _t('mp_chance') : '');
     if (label) {
       var lines = wrapLabel(label, 4);
       lines.forEach(function (ln, li) {
@@ -518,12 +519,12 @@
       addBtn(panel, _t('mp_roll_dice'), 'btn-primary', function () { wsSend({ type: 'roll' }); });
     } else if (st.phase === 'landed' && st.pendingAction === 'can_buy') {
       var sp = board[st.positions[pi]] || {};
-      addBtn(panel, _tf('mp_buy', (sp.name || ''), (sp.price || 0)), 'btn-primary', function () { wsSend({ type: 'buy' }); });
+      addBtn(panel, _tf('mp_buy', spName(sp), (sp.price || 0)), 'btn-primary', function () { wsSend({ type: 'buy' }); });
       addBtn(panel, _t('mp_skip'), '', function () { wsSend({ type: 'skip_buy' }); });
     } else if (st.phase === 'landed' && st.pendingAction === 'can_build') {
       var ownSpace = board[st.positions[pi]] || {};
       var ownProp = st.properties[st.positions[pi]] || { houses: 0 };
-      addBtn(panel, _tf('mp_upgrade', (ownSpace.name || ''), ownProp.houses, ownProp.houses + 1, ((ownSpace.price || 0) / 2)), 'btn-primary', function () {
+      addBtn(panel, _tf('mp_upgrade', spName(ownSpace), ownProp.houses, ownProp.houses + 1, ((ownSpace.price || 0) / 2)), 'btn-primary', function () {
         wsSend({ type: 'build' });
       });
       addBtn(panel, _t('mp_skip_upgrade'), '', function () { wsSend({ type: 'skip_buy' }); });
@@ -532,7 +533,7 @@
       var buildable = getBuildableSpaces(st, pi);
       buildable.forEach(function (i) {
         var s = board[i];
-        addBtn(panel, '🏗 ' + s.name + ' (' + (st.properties[i].houses || 0) + '→' + ((st.properties[i].houses || 0) + 1) + ') $' + (s.price / 2), '', function () { wsSend({ type: 'build', spaceIndex: i }); }, '11px');
+        addBtn(panel, '🏗 ' + spName(s) + ' (' + (st.properties[i].houses || 0) + '→' + ((st.properties[i].houses || 0) + 1) + ') $' + (s.price / 2), '', function () { wsSend({ type: 'build', spaceIndex: i }); }, '11px');
       });
       addBtn(panel, _t('mp_end_turn'), 'btn-primary', function () { wsSend({ type: 'end_turn' }); });
     }
