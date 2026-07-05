@@ -2,14 +2,14 @@
 
 > 同一 WiFi 下打开浏览器就能玩的本地多人桌游、卡牌和聚会游戏合集。
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm%20Noncommercial-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-43853d.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-lightgrey.svg)](https://expressjs.com/)
 [![WebSocket](https://img.shields.io/badge/WebSocket-ws-111111.svg)](https://github.com/websockets/ws)
 
 简体中文 | [English](README.md)
 
-这是一个面向家庭、朋友聚会、课堂活动和小型局域网场景的本地联机桌游平台。只需要一台电脑启动 Node.js 服务，其他手机或电脑在同一 WiFi 下通过二维码或主机 IP 加入房间即可。
+这是一个源码可见但限制商用的本地联机桌游平台，面向家庭、朋友聚会、课堂活动和小型局域网场景。只需要一台电脑启动 Node.js 服务，其他手机或电脑在同一 WiFi 下通过二维码或主机 IP 加入房间即可。
 
 项目刻意保持轻量：Express 4、`ws`、原生 HTML/CSS/JavaScript，以及可选的 nodejs-mobile Android 打包工程。
 
@@ -105,4 +105,4 @@ cd android
 
 ## 协议
 
-[MIT](LICENSE)
+[PolyForm Noncommercial 1.0.0](LICENSE)。允许非商业使用；未经单独授权，不允许商业使用。

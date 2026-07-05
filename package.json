@@ -17,7 +17,7 @@
     "party-games"
   ],
   "author": "",
-  "license": "MIT",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "type": "commonjs",
   "dependencies": {
     "express": "^4.22.2",
