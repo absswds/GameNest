@@ -4,6 +4,9 @@ on:
   push:
     tags: ['v*.*.*']
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -14,7 +17,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: 17
 
       - name: Setup Node.js
@@ -58,7 +61,7 @@ jobs:
 
       - name: Extract version from tag
         id: version
-        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -69,8 +72,15 @@ jobs:
             ## GameNest ${{ steps.version.outputs.tag }}
 
             ### Download
-            - **app-debug.apk** — 安装到 Android 手机（8.0+），局域网开玩
+            - **app-debug.apk** - Install on an Android phone and host games on the same WiFi.
 
-            ### 桌面版
-            也可以直接用浏览器打开 `http://localhost:3000` 玩，不需要 Android。
+            ### Desktop / browser host
+            You can also run GameNest directly with Node.js:
+
+            ```bash
+            npm install
+            npm start
+            ```
+
+            Then open `http://localhost:3000`, or share `http://<host-ip>:3000` with devices on the same WiFi.
           files: android/app/build/outputs/apk/debug/app-debug.apk
