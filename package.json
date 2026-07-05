@@ -3,11 +3,17 @@
   "version": "1.0.0",
   "description": "LAN multiplayer board/card/party game platform — self-hosted, browser-first, zero setup.",
   "main": "server.js",
+  "bin": "server.js",
   "scripts": {
     "start": "node server.js",
     "test": "node scripts/run-tests.js",
     "check": "node scripts/check-syntax.js",
+    "build:desktop": "pkg . --out-path dist",
     "test:monopoly": "node tests/monopoly.test.js"
+  },
+  "pkg": {
+    "assets": ["games/**/*", "bots/**/*", "public/**/*", "lang/**/*", "node_modules/**/*"],
+    "targets": ["node18-win-x64", "node18-macos-x64", "node18-linux-x64"]
   },
   "keywords": [
     "lan",

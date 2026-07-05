@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for taking a look at LAN Board Games. This project is intentionally small and browser-first, so most contributions should stay easy to run locally.
+Thanks for taking a look at GameNest. This project is intentionally small and browser-first, so most contributions should stay easy to run locally.
 
 ## Development Setup
 

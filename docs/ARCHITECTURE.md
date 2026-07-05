@@ -1,6 +1,6 @@
 # Architecture
 
-LAN Board Games uses one Node.js process for HTTP, WebSocket, room management, game rules, and bot scheduling. Browser clients render each game with plain JavaScript modules.
+GameNest uses one Node.js process for HTTP, WebSocket, room management, game rules, and bot scheduling. Browser clients render each game with plain JavaScript modules.
 
 ## Runtime Flow
 

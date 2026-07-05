@@ -9,7 +9,7 @@
 
 简体中文 | [English](README.md)
 
-GameNest 是一个开源的本联网联机桌游平台，面向家庭、朋友聚会、课堂活动和小型局域网场景。只需要一台电脑启动 Node.js 服务，其他手机或电脑在同一 WiFi 下通过二维码或主机 IP 加入房间即可。
+GameNest 是一个开源的本地联网联机桌游平台，面向家庭、朋友聚会、课堂活动和小型局域网场景。只需要一台电脑启动 Node.js 服务，其他手机或电脑在同一 WiFi 下通过二维码或主机 IP 加入房间即可。
 
 项目刻意保持轻量：Express 4、`ws`、原生 HTML/CSS/JavaScript，以及可选的 nodejs-mobile Android 打包工程。
 
