@@ -1185,3 +1185,5 @@ function startServer(port, attempt = 0) {
 }
 
 startServer(PORT);
+
+module.exports = { server, getActivePort: () => activePort };

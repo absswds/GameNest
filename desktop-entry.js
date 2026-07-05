@@ -1,15 +1,20 @@
 #!/usr/bin/env node
-const http = require('http');
 const { spawn } = require('child_process');
+const http = require('http');
 
-var PORT = process.env.PORT || 3000;
-var URL = 'http://localhost:' + PORT;
+var URL;
 
 console.log('  ╔══════════════════════════════════════╗');
 console.log('  ║     GameNest  -  starting server...  ║');
 console.log('  ╚══════════════════════════════════════╝');
 
-require('./server');
+const serverMod = require('./server');
+const serverInstance = serverMod.server;
+
+serverInstance.on('listening', function() {
+  URL = 'http://localhost:' + serverMod.getActivePort();
+  setTimeout(poll, 500, 0);
+});
 
 function poll(n) {
   if (n > 40) return;
@@ -25,10 +30,8 @@ function poll(n) {
     }
   });
   req.on('error', function() { setTimeout(poll, 500, n + 1); });
-  req.setTimeout(2000, function() { req.destroy(); setTimeout(poll, 500, n + 1); });
+  req.setTimeout(2000, function() { req.destroy(); });
 }
-
-setTimeout(poll, 1500, 0);
 
 process.on('SIGINT', function() { process.exit(0); });
 process.on('SIGTERM', function() { process.exit(0); });
