@@ -120,7 +120,7 @@
     if (!modal || !grid || !hint) return;
 
     const origin = seatSummary(fromIndex);
-    hint.textContent = '把 ' + (fromIndex + 1) + ' 号位「' + origin.title + '」换到哪里？';
+    hint.textContent = _t('swap_hint_full');
     grid.innerHTML = '';
 
     for (let i = 0; i < maxSlots; i++) {
@@ -130,7 +130,7 @@
       btn.dataset.seatIndex = String(i);
       btn.disabled = i === fromIndex;
       btn.innerHTML =
-        '<div class="seat-swap-slot">位置 ' + (i + 1) + '</div>' +
+        '<div class="seat-swap-slot">' + _t('seat_label') + (i + 1) + '</div>' +
         '<div class="seat-swap-player">' + summary.title + '</div>' +
         '<div class="seat-swap-tags">' + summary.meta + '</div>';
       btn.addEventListener('click', function() {
@@ -183,13 +183,38 @@
     if (el) el.textContent = _t('add_bot');
     el = document.getElementById('startGameBtn');
     if (el) el.textContent = _t('start_game');
+    el = document.querySelector('.back-btn');
+    if (el) el.textContent = _t('back_to_lobby');
+    el = document.querySelector('.seat-swap-close');
+    if (el) el.textContent = _t('cancel');
+    el = document.querySelector('.seat-swap-card strong');
+    if (el) el.textContent = _t('swap_seat');
+    el = document.getElementById('seatSwapHint');
+    if (el) el.textContent = _t('swap_hint_full');
+    el = document.querySelector('.avatar-drawer-title');
+    if (el) el.textContent = _t('choose_avatar');
+    el = document.getElementById('nameInput');
+    if (el) el.placeholder = _t('name_placeholder');
+    var overlay = document.getElementById('overlay');
+    if (overlay) {
+      var btns = overlay.querySelectorAll('.btn-outline');
+      if (btns.length >= 2) {
+        btns[0].textContent = _t('return_to_room');
+        btns[1].textContent = _t('back_to_lobby');
+      }
+      var accentBtn = overlay.querySelector('.btn-accent');
+      if (accentBtn) accentBtn.textContent = _t('play_again');
+    }
+    var restartBtns = document.querySelectorAll('#gameActions .btn-outline');
+    if (restartBtns.length > 0) restartBtns[0].textContent = _t('restart');
+    document.title = gameInfo ? (gameInfo.name || 'GameNest') : 'GameNest';
   }
   i18nStatic();
 
   function connect() {
     if (ws) { try { ws.close(); } catch(e) {} }
     ws = new WebSocket(getSocketURL());
-    ws.onopen = () => ws.send(JSON.stringify({ type: 'join_room', data: { roomId, resumeToken } }));
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'join_room', data: { roomId, resumeToken, lang: window.__ACTIVE_LANG || 'zh' } }));
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
 
@@ -261,11 +286,11 @@
         if (msg.type === 'player_joined' && newCount > prevPlayerCount) {
           const latest = humanPlayers[humanPlayers.length - 1];
           if (latest && latest.index !== playerIndex) {
-            notify('👋 ' + latest.name + ' 加入了房间');
+            notify('👋 ' + latest.name + ' ' + _t('joined_room'));
           }
         } else if (msg.type === 'player_left') {
           if (newCount < prevPlayerCount) {
-            notify('🚪 有人离开了房间');
+            notify('🚪 ' + _t('left_room'));
           }
         }
         prevPlayerCount = newCount;
@@ -417,15 +442,15 @@
         const botClass = player.isBot ? ' ai' : '';
         const disconnected = !player.isBot && player.connected === false;
         let tagsHtml = '';
-        if (player.isHost) tagsHtml += '<span class="waiting-slot-badge host">👑 房主</span>';
+        if (player.isHost) tagsHtml += '<span class="waiting-slot-badge host">👑 ' + _t('host') + '</span>';
         if (player.isBot) {
           tagsHtml += '<span class="waiting-slot-badge ai">🤖 AI</span>';
         } else if (disconnected) {
-          tagsHtml += '<span class="waiting-slot-badge" style="background:#fff3e0;color:#e67e22">📱 在大厅</span>';
+          tagsHtml += '<span class="waiting-slot-badge" style="background:#fff3e0;color:#e67e22">📱 ' + _t('in_lobby') + '</span>';
         } else if (player.ready) {
-          tagsHtml += '<span class="waiting-slot-badge ready">✓ 已准备</span>';
+          tagsHtml += '<span class="waiting-slot-badge ready">✓ ' + _t('ready_status') + '</span>';
         } else {
-          tagsHtml += '<span class="waiting-slot-badge">未准备</span>';
+          tagsHtml += '<span class="waiting-slot-badge">' + _t('not_ready') + '</span>';
         }
         html +=
           '<div class="waiting-slot occupied' + meClass + '">' +
@@ -433,17 +458,17 @@
               (player.avatar || (player.isBot ? '🤖' : '😊')) +
             '</div>' +
             '<div class="waiting-slot-info">' +
-              '<div class="waiting-slot-name">' + player.name + (isMe ? ' (你)' : '') + '</div>' +
+              '<div class="waiting-slot-name">' + player.name + (isMe ? ' (' + _t('you') + ')' : '') + '</div>' +
               '<div class="waiting-slot-tags">' + tagsHtml + '</div>' +
             '</div>' +
-            '<button class="waiting-slot-swap" data-from="' + i + '" title="换位">⇅</button>' +
+            '<button class="waiting-slot-swap" data-from="' + i + '" title="⇅">⇅</button>' +
           '</div>';
       } else {
         html +=
           '<div class="waiting-slot empty">' +
             '<div class="waiting-slot-avatar" style="background:#bbb">' + (i + 1) + '</div>' +
             '<div class="waiting-slot-info">' +
-              '<div class="waiting-slot-name" style="color:var(--text-muted)">等待加入...</div>' +
+              '<div class="waiting-slot-name" style="color:var(--text-muted)">' + _t('waiting') + '</div>' +
             '</div>' +
           '</div>';
       }
@@ -715,7 +740,7 @@
     if (window.gamePlayers && window.gamePlayers[idx] && window.gamePlayers[idx].name) {
       return window.gamePlayers[idx].name;
     }
-    return '玩家' + (idx + 1);
+    return _t('player') + (idx + 1);
   };
 
   // ---- Game Rendering ----

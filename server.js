@@ -127,13 +127,14 @@ function generateRoomId() {
   return id;
 }
 
-function createRoom(ws, gameType) {
+function createRoom(ws, gameType, lang) {
   const gameMod = gameRegistry[gameType];
   if (!gameMod) { return null; }
   const roomId = generateRoomId();
   const room = {
     game: gameType,
     maxPlayers: gameMod.maxPlayers,
+    _lang: lang || 'zh',
     players: new Map(),
     bots: new Map(),
     state: gameMod.createState(),
@@ -147,7 +148,7 @@ function createRoom(ws, gameType) {
     readyPlayers: new Set(),   // Set of player indices that are ready
     options: {},               // Game-specific options (e.g. requireBreak)
   };
-  room.players.set(ws, { name: '玩家 1', index: 0, avatar: '😊', resumeToken: crypto.randomUUID(), disconnectedAt: null });
+  room.players.set(ws, { name: 'Player 1', index: 0, avatar: '😊', resumeToken: crypto.randomUUID(), disconnectedAt: null });
   rooms.set(roomId, room);
   return { roomId, room };
 }
@@ -438,12 +439,12 @@ wss.on('connection', (ws) => {
 
     // --- create_room ---
     if (type === 'create_room') {
-      const { game } = data || {};
+      const { game, lang } = data || {};
       if (!gameRegistry[game]) {
         ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'invalid_game_type') }));
         return;
       }
-      const result = createRoom(ws, game);
+      const result = createRoom(ws, game, lang || 'zh');
       if (!result) {
         ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'create_room_failed') }));
         return;
@@ -505,12 +506,13 @@ wss.on('connection', (ws) => {
 
     // --- join_room ---
     if (type === 'join_room') {
-      const { roomId, resumeToken } = data || {};
+      const { roomId, resumeToken, lang } = data || {};
       const room = rooms.get(roomId);
       if (!room) {
         ws.send(JSON.stringify({ type: 'error', code: 'ROOM_NOT_FOUND', message: serverT(currentRoom, 'room_not_found') }));
         return;
       }
+      if (lang && !room._lang) room._lang = lang;
       // Resume an existing seat after returning to the lobby / temporary disconnect.
       const resumable = resumeToken && Array.from(room.players.entries())
         .find(([, info]) => info.resumeToken === resumeToken);
@@ -580,7 +582,7 @@ wss.on('connection', (ws) => {
         ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'room_full') }));
         return;
       }
-      room.players.set(ws, { name: `玩家 ${idx + 1}`, index: idx, avatar: '😊', resumeToken: crypto.randomUUID(), disconnectedAt: null });
+      room.players.set(ws, { name: `Player ${idx + 1}`, index: idx, avatar: '😊', resumeToken: crypto.randomUUID(), disconnectedAt: null });
       if (room.players.size === 1) room.hostWS = ws;
       currentRoomId = roomId;
       currentRoom = room;

@@ -1,0 +1,69 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Download nodejs-mobile libnode.so
+        run: |
+          curl -sL -o nodejs-mobile.zip "https://github.com/nodejs-mobile/nodejs-mobile/releases/download/v18.20.4/nodejs-mobile-v18.20.4-android.zip"
+          unzip -q nodejs-mobile.zip -d nodejs-mobile-tmp
+          mkdir -p android/app/libs/jniLibs/arm64-v8a
+          mkdir -p android/app/libs/jniLibs/armeabi-v7a
+          mkdir -p android/app/libs/jniLibs/x86_64
+          cp nodejs-mobile-tmp/android/arm64-v8a/libnode.so android/app/libs/jniLibs/arm64-v8a/
+          cp nodejs-mobile-tmp/android/armeabi-v7a/libnode.so android/app/libs/jniLibs/armeabi-v7a/
+          cp nodejs-mobile-tmp/android/x86_64/libnode.so android/app/libs/jniLibs/x86_64/
+          rm -rf nodejs-mobile.zip nodejs-mobile-tmp
+
+      - name: Copy project to Android assets
+        run: |
+          if command -v pwsh &> /dev/null; then
+            pwsh android/copy-nodejs-project.ps1
+          else
+            # Fallback: manual copy
+            rm -rf android/app/src/main/assets/nodejs-project
+            mkdir -p android/app/src/main/assets/nodejs-project
+            cp -r server.js main.js startup-port.js package.json package-lock.json android/app/src/main/assets/nodejs-project/
+            cp -r games bots public android/app/src/main/assets/nodejs-project/
+            cp -r node_modules android/app/src/main/assets/nodejs-project/
+          fi
+
+      - name: Build debug APK
+        run: |
+          cd android
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk

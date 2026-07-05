@@ -62,6 +62,21 @@
     'not_in_room': 'You are not in a room',
     'can_add_bot': 'Bots OK',
     'pvp_only': 'PvP Only',
+    'featured_label': 'Featured',
+    'featured_title': 'Start Here',
+    'browse_label': 'All Games',
+    'browse_title': 'Browse by Category',
+    'all_categories': 'All',
+    'wifi_note': 'Make sure all devices are on the same WiFi or hotspot.',
+    'discovery_hint': 'Select a game, then tap Create. Tapping the same card again also creates a room.',
+    'join_room': 'Join Room',
+    'choose_avatar': 'Choose Avatar',
+    'swap_hint_full': 'Choose a seat to swap with.',
+    'room_expired': 'Room expired. Create a new one or enter a room code.',
+    'connection_failed': 'Connection failed. Is the server running?',
+    'room_code_empty': 'Enter a room code',
+    'in_lobby': 'In Lobby',
+    'seat_label': 'Seat ',
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'en';
   // _t function only needed in zh.js; en.js expects zh.js to have defined it

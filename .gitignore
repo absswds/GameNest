@@ -13,6 +13,9 @@ yarn-error.log*
 test-results/
 coverage/
 
+# Build output
+dist/
+
 # Temp files
 tmp/
 

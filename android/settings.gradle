@@ -21,5 +21,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LocalGames"
+rootProject.name = "GameNest"
 include ':app'

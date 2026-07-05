@@ -41,7 +41,7 @@ android/app/libs/jniLibs/
 每次修改 `server.js`、`games/`、`bots/`、`public/` 后都要重新复制：
 
 ```powershell
-cd D:\binbi\Documents\Code\project\game\android
+cd android
 .\copy-nodejs-project.ps1
 ```
 
@@ -55,7 +55,7 @@ cd D:\binbi\Documents\Code\project\game\android
 ## 三、在 Android Studio 中打开项目
 
 1. 启动 Android Studio
-2. **File → Open** → 选择 `D:\binbi\Documents\Code\project\game\android` 目录
+2. **File → Open** → 选择项目下的 `android` 目录
 3. 等待 Gradle 同步完成（首次需要下载依赖，约 5-10 分钟）
 4. 如果提示 SDK 缺失，按提示安装
 
@@ -76,7 +76,7 @@ cd D:\binbi\Documents\Code\project\game\android
 
 ### 4.3 构建 Release APK
 ```powershell
-cd D:\binbi\Documents\Code\project\game\android
+cd android
 .\gradlew assembleRelease
 ```
 APK 输出位置：`app/build/outputs/apk/release/app-release-unsigned.apk`

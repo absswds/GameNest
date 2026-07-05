@@ -4,12 +4,12 @@ plugins {
 }
 
 android {
-    namespace 'com.localgames.app'
+    namespace 'com.gamenest.app'
     compileSdk 36
     ndkVersion "24.0.8215888"
 
     defaultConfig {
-        applicationId "com.localgames.app"
+        applicationId "com.gamenest.app"
         minSdk 26
         targetSdk 36
         versionCode 1

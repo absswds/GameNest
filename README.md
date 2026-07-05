@@ -1,15 +1,15 @@
-# LAN Board Games
+# GameNest
 
-> Browser-first local multiplayer board, card, and party games for people on the same WiFi.
+> Self-hosted LAN multiplayer board, card, and party games. One server, browser UI, same WiFi.
 
-[![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm%20Noncommercial-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-43853d.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-lightgrey.svg)](https://expressjs.com/)
 [![WebSocket](https://img.shields.io/badge/WebSocket-ws-111111.svg)](https://github.com/websockets/ws)
 
 [简体中文](README.zh-CN.md) | English
 
-LAN Board Games is a source-available, self-hosted tabletop game room for family, friends, classrooms, and small gatherings. Start one Node.js server, open the lobby in a browser, and let other phones or laptops join from the same WiFi through a QR code or the host IP.
+GameNest is an open-source, self-hosted tabletop game room for family, friends, classrooms, and small gatherings. Start one Node.js server, open the lobby in a browser, and let other phones or laptops join from the same WiFi through a QR code or the host IP.
 
 The project keeps the stack intentionally small: Express 4, `ws`, plain HTML/CSS/JavaScript, and optional Android packaging through nodejs-mobile.
 
@@ -105,4 +105,4 @@ Bug reports, rules fixes, AI improvements, renderer polish, and new games are we
 
 ## License
 
-[PolyForm Noncommercial 1.0.0](LICENSE). Noncommercial use is permitted; commercial use is not permitted without separate permission.
+[MIT](LICENSE).

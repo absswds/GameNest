@@ -1,7 +1,7 @@
 {
-  "name": "local-games",
+  "name": "gamenest",
   "version": "1.0.0",
-  "description": "LAN local multiplayer board/card/party game platform powered by Node.js and WebSocket.",
+  "description": "LAN multiplayer board/card/party game platform — self-hosted, browser-first, zero setup.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -16,8 +16,8 @@
     "websocket",
     "party-games"
   ],
-  "author": "",
-  "license": "PolyForm-Noncommercial-1.0.0",
+  "author": "GameNest",
+  "license": "MIT",
   "type": "commonjs",
   "dependencies": {
     "express": "^4.22.2",

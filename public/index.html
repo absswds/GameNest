@@ -221,7 +221,7 @@ function toast(msg) {
 function createRoom() {
   const ws = new WebSocket(getSocketURL());
   ws.onopen = function() {
-    ws.send(JSON.stringify({ type: 'create_room', data: { game: selectedGame } }));
+    ws.send(JSON.stringify({ type: 'create_room', data: { game: selectedGame, lang: window.__ACTIVE_LANG || 'zh' } }));
   };
   ws.onmessage = function(e) {
     const msg = JSON.parse(e.data);
@@ -253,7 +253,7 @@ document.getElementById('joinBtn').addEventListener('click', function() {
   }
   const ws = new WebSocket(getSocketURL());
   ws.onopen = function() {
-    ws.send(JSON.stringify({ type: 'join_room', data: { roomId: code } }));
+    ws.send(JSON.stringify({ type: 'join_room', data: { roomId: code, lang: window.__ACTIVE_LANG || 'zh' } }));
   };
   ws.onmessage = function(e) {
     const msg = JSON.parse(e.data);
@@ -363,6 +363,23 @@ if (sessionStorage.getItem('_returnFromGame')) {
   if (el) el.textContent = _t('resume_btn');
   // Title tag
   document.title = _t('hero_title');
+  // Additional i18n for section headers
+  el = document.querySelector('.discovery-hint');
+  if (el) el.textContent = _t('discovery_hint');
+  el = document.querySelector('.wifi-note');
+  if (el) el.textContent = _t('wifi_note');
+  var sectionTitles = document.querySelectorAll('.lobby-discovery .eyebrow');
+  if (sectionTitles.length > 0) sectionTitles[0].textContent = _t('featured_label');
+  sectionTitles = document.querySelectorAll('.lobby-browser .eyebrow');
+  if (sectionTitles.length > 0) sectionTitles[0].textContent = _t('browse_label');
+  var sectionHeadings = document.querySelectorAll('.discovery-header h2');
+  if (sectionHeadings.length > 0) sectionHeadings[0].textContent = _t('featured_title');
+  sectionHeadings = document.querySelectorAll('.browser-toolbar h2');
+  if (sectionHeadings.length > 0) sectionHeadings[0].textContent = _t('browse_title');
+  var catChips = document.querySelectorAll('.category-chip');
+  if (catChips.length > 0) catChips[0].textContent = _t('all_categories');
+  el = document.querySelector('.panel-heading');
+  if (el) el.textContent = _t('join_room');
 })();
 </script>
 </body>
