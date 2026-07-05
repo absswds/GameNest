@@ -9,6 +9,12 @@ module.exports = {
       '刺猬', '袋鼠', '考拉', '羊驼', '仓鼠', '金鱼', '乌龟', '蛇', '青蛙', '蜜蜂',
       '蚊子', '恐龙', '鲨鱼', '鲸鱼', '柯基', '哈士奇', '橘猫', '小龙虾', '大闸蟹', '水母',
     ],
+    wordsEn: [
+      'Cat', 'Dog', 'Rabbit', 'Elephant', 'Giraffe', 'Penguin', 'Owl', 'Octopus', 'Crab', 'Butterfly',
+      'Flamingo', 'Panda', 'Polar Bear', 'Dolphin', 'Crocodile', 'Tiger', 'Lion', 'Monkey', 'Peacock', 'Snail',
+      'Hedgehog', 'Kangaroo', 'Koala', 'Alpaca', 'Hamster', 'Goldfish', 'Turtle', 'Snake', 'Frog', 'Bee',
+      'Mosquito', 'Dinosaur', 'Shark', 'Whale', 'Corgi', 'Husky', 'Orange Cat', 'Crayfish', 'Crab', 'Jellyfish',
+    ],
   },
   food: {
     label: '食物',
@@ -18,6 +24,13 @@ module.exports = {
       '肉夹馍', '臭豆腐', '烤冷面', '牛排', '粽子', '月饼', '汤圆', '饺子', '油条', '豆浆',
       '咖啡', '蛋糕', '巧克力', '棒棒糖', '爆米花', '薯片', '辣条', '榴莲', '草莓', '柠檬茶',
       '串串香', '芒果', '泡面', '烧烤', '酸菜鱼',
+    ],
+    wordsEn: [
+      'Watermelon', 'Hamburger', 'Pizza', 'Sushi', 'Hot Pot', 'Ice Cream', 'Noodle Soup', 'Kebab', 'Candy Apple', 'Milk Tea',
+      'Bubble Tea', 'Fried Chicken', 'Fries', 'Cola', 'Instant Noodles', 'Dumplings', 'Pancake', 'Spicy Hot Pot', 'Oden', 'Egg Tart',
+      'Meat Pie', 'Stinky Tofu', 'Grilled Noodle', 'Steak', 'Rice Dumpling', 'Mooncake', 'Tangyuan', 'Dumpling', 'Fried Dough', 'Soy Milk',
+      'Coffee', 'Cake', 'Chocolate', 'Lollipop', 'Popcorn', 'Chips', 'Spicy Strip', 'Durian', 'Strawberry', 'Lemon Tea',
+      'Skewers', 'Mango', 'Ramen', 'BBQ', 'Pickled Fish',
     ],
   },
   daily: {
@@ -29,6 +42,13 @@ module.exports = {
       '出租车', '红绿灯', '斑马线', '快递箱', '外卖', '扫地机器人', '空调', '冰箱', '洗衣机', '微波炉',
       '马桶', '牙刷', '镜子', '枕头', '台灯', '插座', '钥匙', '钱包', '垃圾桶', '体重秤',
     ],
+    wordsEn: [
+      'Umbrella', 'Bicycle', 'Ferris Wheel', 'Helicopter', 'Submarine', 'Telescope', 'Hair Dryer', 'Fan', 'Hourglass', 'Compass',
+      'Phone', 'Power Bank', 'Headphones', 'Bluetooth Speaker', 'Selfie Stick', 'Suitcase', 'Mask', 'Glasses', 'Sunglasses', 'Hat',
+      'Scarf', 'Gloves', 'Raincoat', 'Slippers', 'High Heels', 'Electric Scooter', 'Bike Share', 'Subway', 'Bullet Train', 'Airplane',
+      'Taxi', 'Traffic Light', 'Crosswalk', 'Delivery Box', 'Takeout', 'Robot Vacuum', 'Air Conditioner', 'Refrigerator', 'Washing Machine', 'Microwave',
+      'Toilet', 'Toothbrush', 'Mirror', 'Pillow', 'Desk Lamp', 'Power Outlet', 'Key', 'Wallet', 'Trash Can', 'Scale',
+    ],
   },
   action: {
     label: '动作',
@@ -37,6 +57,12 @@ module.exports = {
       '刷牙', '洗澡', '睡懒觉', '熬夜', '加班', '跑步', '游泳', '跳舞', '唱歌', '打篮球',
       '踢足球', '打羽毛球', '瑜伽', '举重', '俯卧撑', '仰卧起坐', '跳广场舞', '钓鱼', '放风筝', '堆雪人',
       '打雪仗', '拍照', '自拍', '直播', '刷手机', '点外卖', '网购', '排队', '鼓掌', '敬礼',
+    ],
+    wordsEn: [
+      'Jump Rope', 'Surfing', 'Tai Chi', 'Horse Riding', 'Hiking', 'Sneezing', 'Tickling', 'Tug of War', 'Hide and Seek', 'Dreaming',
+      'Brushing Teeth', 'Showering', 'Sleeping In', 'Staying Up Late', 'Overtime', 'Running', 'Swimming', 'Dancing', 'Singing', 'Basketball',
+      'Soccer', 'Badminton', 'Yoga', 'Weightlifting', 'Push-ups', 'Sit-ups', 'Square Dance', 'Fishing', 'Flying Kite', 'Building Snowman',
+      'Snowball Fight', 'Taking Photo', 'Selfie', 'Live Streaming', 'Scrolling Phone', 'Ordering Food', 'Online Shopping', 'Queuing', 'Clapping', 'Saluting',
     ],
   },
   place: {
@@ -47,6 +73,12 @@ module.exports = {
       '露营', '游泳池', '滑雪场', '动物园', '水族馆', '博物馆', '学校', '医院', '办公室', '理发店',
       'KTV', '密室逃脱', '剧本杀', '演唱会', '庙会',
     ],
+    wordsEn: [
+      'Underwater World', 'Space Station', 'Ancient Castle', 'Desert Oasis', 'Rainbow', 'Cherry Blossom Avenue', 'Northern Lights', 'Volcano Eruption', 'Amusement Park', 'Cinema',
+      'Library', 'Gym', 'Internet Cafe', 'Milk Tea Shop', 'Hot Pot Restaurant', 'Vegetable Market', 'Supermarket', 'Subway Station', 'Airport', 'Beach',
+      'Camping', 'Swimming Pool', 'Ski Resort', 'Zoo', 'Aquarium', 'Museum', 'School', 'Hospital', 'Office', 'Barber Shop',
+      'Karaoke', 'Escape Room', 'Murder Mystery', 'Concert', 'Temple Fair',
+    ],
   },
   idiom: {
     label: '成语俗语',
@@ -55,6 +87,12 @@ module.exports = {
       '画龙点睛', '掩耳盗铃', '刻舟求剑', '拔苗助长', '胸有成竹', '鸡飞狗跳', '鸡同鸭讲', '马马虎虎', '九牛一毛', '如鱼得水',
       '虎头蛇尾', '狼吞虎咽', '叶公好龙', '自相矛盾', '一石二鸟', '猴子捞月', '盲人摸象', '杀鸡儆猴', '打草惊蛇', '顺手牵羊',
       '指鹿为马', '愚公移山', '精卫填海', '画饼充饥', '三心二意',
+    ],
+    wordsEn: [
+      'Lock the Stable After the Horse Has Bolted', 'Waiting for a Windfall', 'Gilding the Lily', 'Blessing in Disguise', 'Casting Pearls Before Swine', 'Futile Effort', 'Paper Tiger', 'Chameleon', 'Frog in a Well', 'Borrowing Power',
+      'Finishing Touch', 'Deceiving Yourself', 'Marking the Boat to Find the Sword', 'Pulling Seedlings to Help Them Grow', 'Confident', 'Chaos', 'Talking Past Each Other', 'Careless', 'Drop in the Bucket', 'Like a Duck in Water',
+      'Strong Start, Weak Finish', 'Wolfing Down Food', 'Superficial Interest', 'Self-Contradiction', 'Kill Two Birds with One Stone', 'Monkey Fishing the Moon', 'Blind Men Feeling an Elephant', 'Make an Example', 'Alerting the Enemy', 'Stealing on the Way',
+      'Calling a Deer a Horse', 'Foolish Old Man Moving Mountains', 'Filling the Sea', 'Drawing Cake to Satisfy Hunger', 'Half-Hearted',
     ],
   },
   movie: {
@@ -65,6 +103,12 @@ module.exports = {
       '超人', '蝙蝠侠', '哈利波特', '泰坦尼克号', '功夫熊猫', '冰雪奇缘', '疯狂动物城', '千与千寻', '龙猫', '流浪地球',
       '王者荣耀', '吃鸡', '我的世界', '植物大战僵尸', '超级玛丽', '俄罗斯方块', '贪吃蛇', '愤怒的小鸟', '羊了个羊', '原神',
     ],
+    wordsEn: [
+      'Journey to the West', 'Monkey King', 'Pigsy', 'Snow White', 'Cinderella', 'Nezha', 'Calabash Brothers', 'Black Cat Detective', 'Pleasant Goat', 'Big Big Wolf',
+      'Briar Bear', 'Vick', 'SpongeBob', 'Pikachu', 'Doraemon', 'Crayon Shin-chan', 'Detective Conan', 'Ultraman', 'Spider-Man', 'Iron Man',
+      'Superman', 'Batman', 'Harry Potter', 'Titanic', 'Kung Fu Panda', 'Frozen', 'Zootopia', 'Spirited Away', 'My Neighbor Totoro', 'Wandering Earth',
+      'Honor of Kings', 'PUBG', 'Minecraft', 'Plants vs Zombies', 'Super Mario', 'Tetris', 'Snake Game', 'Angry Birds', 'Sheep a Sheep', 'Genshin Impact',
+    ],
   },
   internet: {
     label: '网络热词',
@@ -73,6 +117,12 @@ module.exports = {
       '内卷', '摸鱼', '打工人', '社恐', '社牛', '显眼包', '电子榨菜', '吃瓜', '真香', '破防',
       '锦鲤', '凡尔赛', '剁手', '夜猫子', '起床气', '选择困难症', '拖延症', '强迫症', '柠檬精', '杠精',
       '佛系', '断舍离', '种草', '拔草', '踩坑', '薅羊毛', '搬砖', '开盲盒', '云吸猫', '反向旅游',
+    ],
+    wordsEn: [
+      'Meme', 'Like', 'Bullet Comments', 'Influencer', 'Live Commerce', "Singles' Day", 'Flash Sale', 'Group Buy', 'Help Me Slash', 'Lying Flat',
+      'Involution', 'Slacking Off', 'Working Class', 'Social Anxiety', 'Social Butterfly', 'Attention Seeker', 'Digital Pickle', 'Spectator', 'So True', 'Emotional Breakdown',
+      'Lucky Koi', 'Humble Brag', 'Impulse Buy', 'Night Owl', 'Morning Grumpiness', 'Indecision', 'Procrastination', 'OCD', 'Jealousy', 'Troll',
+      'Zen Mode', 'Minimalism', 'Planting Grass', 'Pulling Grass', 'Falling for Trap', 'Bargain Hunting', 'Working Hard', 'Blind Box', 'Cloud Cat Petting', 'Reverse Tourism',
     ],
   },
 };

@@ -9,13 +9,17 @@ exports.minPlayers = 1;
 
 const DEFAULTS = { drawTime: 90, guessTime: 45, wordChoices: 3 };
 
-function buildWordPool(options) {
+function buildWordPool(options, lang) {
   const cats = Array.isArray(options.categories) && options.categories.length > 0
     ? options.categories
     : Object.keys(WORD_LIBRARY);
   const pool = [];
+  const useEn = lang === 'en';
   for (const key of cats) {
-    if (WORD_LIBRARY[key]) pool.push(...WORD_LIBRARY[key].words);
+    const cat = WORD_LIBRARY[key];
+    if (!cat) continue;
+    const words = (useEn && cat.wordsEn && cat.wordsEn.length > 0) ? cat.wordsEn : cat.words;
+    pool.push(...words);
   }
   // 自定义词：逗号/换行/空格分隔，去重并入
   if (typeof options.customWords === 'string' && options.customWords.trim()) {
@@ -24,7 +28,10 @@ function buildWordPool(options) {
       if (t && t.length <= 12 && !pool.includes(t)) pool.push(t);
     });
   }
-  if (pool.length === 0) pool.push(...WORD_LIBRARY.animal.words);
+  if (pool.length === 0) {
+    const fallback = WORD_LIBRARY.animal;
+    pool.push(...((useEn && fallback.wordsEn) ? fallback.wordsEn : fallback.words));
+  }
   return pool;
 }
 
@@ -149,7 +156,7 @@ exports.initGame = (state, playerCount) => {
   if (isNaN(state.guessTime) || state.guessTime < 0) state.guessTime = DEFAULTS.guessTime;
 
   const wordChoices = Math.max(1, parseInt(options.wordChoices, 10) || DEFAULTS.wordChoices);
-  const pool = buildWordPool(options);
+  const pool = buildWordPool(options, state._lang);
   state.wordChoices = wordChoices;
 
   if (state.mode === 'stage') {
