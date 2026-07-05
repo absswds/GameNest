@@ -3,9 +3,10 @@
 > 同一 WiFi 下打开浏览器就能玩的本地多人桌游、卡牌和聚会游戏合集。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/absswds/GameNest/actions/workflows/ci.yml/badge.svg)](https://github.com/absswds/GameNest/actions/workflows/ci.yml)
+[![Android APK](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml/badge.svg)](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-43853d.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-lightgrey.svg)](https://expressjs.com/)
-[![WebSocket](https://img.shields.io/badge/WebSocket-ws-111111.svg)](https://github.com/websockets/ws)
 
 简体中文 | [English](README.md)
 

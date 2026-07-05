@@ -105,7 +105,7 @@ android/
     ├── libs/                             # 需手动放置 nodejs-mobile.aar 和 jniLibs/
     └── src/main/
         ├── AndroidManifest.xml           # 权限和入口
-        ├── java/com/localgames/app/
+        ├── java/com/gamenest/app/
         │   └── MainActivity.kt           # 启动 Node.js + WebView + 显示 IP
         ├── res/
         │   ├── layout/activity_main.xml  # WebView + 顶部状态栏 + Splash

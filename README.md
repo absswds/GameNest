@@ -3,9 +3,10 @@
 > Self-hosted LAN multiplayer board, card, and party games. One server, browser UI, same WiFi.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/absswds/GameNest/actions/workflows/ci.yml/badge.svg)](https://github.com/absswds/GameNest/actions/workflows/ci.yml)
+[![Android APK](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml/badge.svg)](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-43853d.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-lightgrey.svg)](https://expressjs.com/)
-[![WebSocket](https://img.shields.io/badge/WebSocket-ws-111111.svg)](https://github.com/websockets/ws)
 
 [简体中文](README.zh-CN.md) | English
 
