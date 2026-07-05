@@ -29,8 +29,72 @@
   var state, playerIndex;
   var gameOver = false;
   var initialized = false;
+  var snapshotRestored = false;
   var aimLineX = BOX_W / 2;
   var DANGER_Y = 60; // overflow line
+
+  function snapshotKey() {
+    var roomId = sessionStorage.getItem('roomId') || 'local';
+    var idx = playerIndex !== undefined && playerIndex !== null ? playerIndex : sessionStorage.getItem('playerIndex');
+    return 'suikabattle.snapshot.' + roomId + '.' + idx;
+  }
+
+  function saveSnapshot() {
+    if (!Matter || !world || playerIndex === undefined || playerIndex === null) return;
+    try {
+      var data = {
+        version: 1,
+        roomId: sessionStorage.getItem('roomId') || '',
+        playerIndex: playerIndex,
+        dropFruitType: dropFruitType,
+        nextFruitType: nextFruitType,
+        aimLineX: aimLineX,
+        gameOver: gameOver,
+        fruits: fruits.filter(function(f) { return f && f.body && !f.merged; }).map(function(f) {
+          return {
+            type: f.type,
+            x: f.body.position.x,
+            y: f.body.position.y,
+            vx: f.body.velocity.x,
+            vy: f.body.velocity.y,
+            angle: f.body.angle,
+            angularVelocity: f.body.angularVelocity,
+          };
+        }),
+      };
+      sessionStorage.setItem(snapshotKey(), JSON.stringify(data));
+    } catch (e) {}
+  }
+
+  function clearSnapshot() {
+    try { sessionStorage.removeItem(snapshotKey()); } catch (e) {}
+  }
+
+  function restoreSnapshot() {
+    if (!Matter || !world || snapshotRestored || playerIndex === undefined || playerIndex === null) return false;
+    snapshotRestored = true;
+    try {
+      var raw = sessionStorage.getItem(snapshotKey());
+      if (!raw) return false;
+      var data = JSON.parse(raw);
+      if (!data || data.version !== 1 || data.playerIndex !== playerIndex || !Array.isArray(data.fruits)) return false;
+      fruits.slice().forEach(removeFruit);
+      data.fruits.forEach(function(item) {
+        if (item.type < 0 || item.type >= FRUITS.length) return;
+        var body = addFruit(item.x, item.y, item.type);
+        Matter.Body.setVelocity(body, { x: item.vx || 0, y: item.vy || 0 });
+        Matter.Body.setAngle(body, item.angle || 0);
+        Matter.Body.setAngularVelocity(body, item.angularVelocity || 0);
+      });
+      dropFruitType = typeof data.dropFruitType === 'number' ? data.dropFruitType : 0;
+      nextFruitType = typeof data.nextFruitType === 'number' ? data.nextFruitType : nextFruitType;
+      aimLineX = typeof data.aimLineX === 'number' ? data.aimLineX : aimLineX;
+      gameOver = !!data.gameOver;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 
   function wsSend(data) {
     window.makeGameMove && window.makeGameMove(data);
@@ -82,6 +146,7 @@
           removeFruit(b);
           addFruit(mx, my, newType);
           wsSend({ type: 'merge', fruitType: newType });
+          saveSnapshot();
         }, 0);
       });
     });
@@ -115,6 +180,7 @@
     addFruit(x, DANGER_Y - FRUITS[dropFruitType].r - 5, dropFruitType);
     wsSend({ type: 'drop' });
     dropFruitType = nextFruitType;
+    saveSnapshot();
 
     // Allow next drop after 500ms
     setTimeout(function () { dropping = false; }, 600);
@@ -236,6 +302,8 @@
   window.gameRenderers.set('suikabattle', {
     init: function (container) {
       container.innerHTML = '';
+      window._beforeLeaveRoom = saveSnapshot;
+      window._beforeGameRestart = clearSnapshot;
       var wrap = document.createElement('div');
       wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;padding:6px;';
       container.appendChild(wrap);
@@ -294,6 +362,7 @@
       waitForMatter(function (M) {
         initPhysics(M);
         initialized = true;
+        restoreSnapshot();
         loop();
       });
     },
@@ -303,10 +372,14 @@
       playerIndex = pi;
 
       if (!initialized) return;
+      var restored = restoreSnapshot();
 
       // Update next fruit from server state
       if (st.next && st.next[pi] !== undefined) {
         nextFruitType = st.next[pi];
+      }
+      if (!restored && st.current && st.current[pi] !== undefined) {
+        dropFruitType = st.current[pi];
       }
 
       // Info bar

@@ -290,16 +290,26 @@ document.getElementById('gameSearch').addEventListener('input', function() {
   renderCatalog();
 });
 
-if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
+function renderResumeBanner() {
+  if (!sessionStorage.getItem('roomId') || !sessionStorage.getItem('resumeToken')) return;
   const savedGame = sessionStorage.getItem('game');
   const game = getGameInfo(savedGame);
   var roomId = sessionStorage.getItem('roomId');
-  document.getElementById('resumeRoomName').textContent = '\u300a' + game.name + '\u300b \u623f\u95f4 ' + roomId;
-  document.getElementById('resumeRoomSub').textContent = '\u4f60\u6b63\u5728\u8fd9\u95f4\u623f\u4e2d\uff0c\u70b9\u51fb\u8fd4\u56de\u7ee7\u7eed\u3002';
-  document.getElementById('resumeSection').style.display = '';
-  document.getElementById('resumeBtn').onclick = function() {
+  var title = document.getElementById('resumeRoomName');
+  var sub = document.getElementById('resumeRoomSub');
+  var section = document.getElementById('resumeSection');
+  var btn = document.getElementById('resumeBtn');
+  if (title) title.textContent = '\u300a' + game.name + '\u300b \u623f\u95f4 ' + roomId;
+  if (sub) sub.textContent = '\u4f60\u6b63\u5728\u8fd9\u95f4\u623f\u4e2d\uff0c\u70b9\u51fb\u8fd4\u56de\u7ee7\u7eed\u3002';
+  if (section) section.style.display = '';
+  if (btn) btn.onclick = function() {
     location.href = '/game.html';
   };
+}
+
+if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
+  var roomId = sessionStorage.getItem('roomId');
+  renderResumeBanner();
   // Verify the room still exists with the server
   fetch('/api/room-exists/' + encodeURIComponent(roomId)).then(function(r) { return r.json(); }).then(function(data) {
     if (!data.exists) {
@@ -365,10 +375,7 @@ if (sessionStorage.getItem('_returnFromGame')) {
   if (el) el.textContent = _t('no_results');
   el = document.getElementById('quickCreate');
   if (el) el.textContent = _t('quick_start');
-  el = document.getElementById('resumeRoomName');
-  if (el) el.textContent = _t('resume_title');
-  el = document.getElementById('resumeRoomSub');
-  if (el) el.textContent = _t('resume_subtitle');
+  renderResumeBanner();
   el = document.getElementById('resumeBtn');
   if (el) el.textContent = _t('resume_btn');
   // Title tag

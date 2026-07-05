@@ -828,6 +828,7 @@
 
   window.doRestart = function() {
     document.getElementById('overlay').style.display = 'none';
+    if (typeof window._beforeGameRestart === 'function') window._beforeGameRestart();
     ws.send(JSON.stringify({ type: 'game_restart' }));
   };
 
@@ -837,6 +838,7 @@
   };
 
   window.doLeaveRoom = function() {
+    if (typeof window._beforeLeaveRoom === 'function') window._beforeLeaveRoom();
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'leave_room' }));
     }

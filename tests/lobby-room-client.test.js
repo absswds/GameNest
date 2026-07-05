@@ -4,6 +4,15 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 
+test('resume room banner keeps game name and room id after i18n refresh', () => {
+  const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
+  assert.ok(/function renderResumeBanner\(\)/.test(html), 'resume banner renderer should exist');
+  assert.ok(
+    /renderResumeBanner\(\);[\s\S]*\/\/ Title tag/.test(html),
+    'i18n refresh should rerender saved game and room details instead of overwriting them'
+  );
+});
+
 test('resume room banner does not contain mojibake text', () => {
   const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
   const match = html.match(/<section class="hero-panel" id="resumeSection"[\s\S]*?<\/section>/);
@@ -98,6 +107,20 @@ test('resume joins broadcast a room update to other players', () => {
     /sendToRoom\(room,\s*\{[\s\S]*type:\s*'room_update'/.test(match[1]),
     'resuming a seat should notify other clients immediately'
   );
+});
+
+test('leaving the room gives renderers a chance to persist local-only state', () => {
+  const js = fs.readFileSync(path.join(root, 'public', 'js', 'room-client.js'), 'utf8');
+  const match = js.match(/window\.doLeaveRoom = function\(\) \{([\s\S]*?)\n  \};/);
+  assert.ok(match, 'doLeaveRoom should exist');
+  assert.ok(/_beforeLeaveRoom/.test(match[1]), 'leave flow should call the active renderer persistence hook');
+});
+
+test('suikabattle persists a local board snapshot across lobby round-trips', () => {
+  const js = fs.readFileSync(path.join(root, 'public', 'js', 'renderers', 'suikabattle.js'), 'utf8');
+  assert.ok(/function saveSnapshot\(\)/.test(js), 'suikabattle should save a local board snapshot');
+  assert.ok(/function restoreSnapshot\(\)/.test(js), 'suikabattle should restore a local board snapshot');
+  assert.ok(/window\._beforeLeaveRoom/.test(js), 'suikabattle should hook the shared leave flow');
 });
 
 function test(name, fn) {
