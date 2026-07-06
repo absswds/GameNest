@@ -236,6 +236,15 @@
       category: 'Party Cards',
       tags: ['Social', 'Funny'],
     },
+    hearts: {
+      name: 'Hearts',
+      subtitle: 'Avoid points, shoot the moon',
+      description: 'Classic 4-player trick-taking. Hearts = 1pt, Queen of Spades = 13pts.',
+      players: '4 Players',
+      duration: '~20 min',
+      category: 'Card Climbing',
+      tags: ['Trick-taking', 'Strategy'],
+    },
     truthdare: {
       name: 'Truth or Dare',
       subtitle: 'Pick a card, break the ice',

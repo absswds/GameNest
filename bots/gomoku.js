@@ -1,5 +1,6 @@
 // bots/gomoku.js — Gomoku AI with pattern scoring
 const { botName } = require('./lib/bot-name');
+const { getDifficulty } = require('./lib/difficulty');
 
 exports.name = 'gomoku';
 
@@ -24,7 +25,15 @@ exports.createBot = (playerIndex) => ({
 
         const atk = evaluate(board, r, c, me);
         const def = evaluate(board, r, c, opp);
-        const score = Math.max(atk, def * 1.1); // slightly prefer defense
+        var score = Math.max(atk, def * 1.1); // slightly prefer defense
+
+        // Apply difficulty modifier
+        var diff = getDifficulty(state);
+        if (diff === 'easy') {
+          score = score * 0.7 + Math.random() * score * 0.2;
+        } else if (diff === 'hard') {
+          score = score * 1.3;
+        }
 
         if (score > bestScore) {
           bestScore = score;

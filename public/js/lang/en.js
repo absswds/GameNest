@@ -206,6 +206,10 @@
     'custom_truths_placeholder': 'e.g. What was your happiest moment recently?',
     'custom_dares_placeholder': 'e.g. Compliment the person to your right for 15s',
     'dg_choices_suffix': ' choices',
+    'difficulty_label': 'AI Difficulty',
+    'difficulty_easy': 'Easy',
+    'difficulty_normal': 'Normal',
+    'difficulty_hard': 'Hard',
     // ---- Drawguess word categories ----
     'cat_animal': 'Animals',
     'cat_food': 'Food',

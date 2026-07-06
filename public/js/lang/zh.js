@@ -206,6 +206,10 @@
     'custom_truths_placeholder': '例如：最近最开心的一件事？',
     'custom_dares_placeholder': '例如：夸右手边的人 15 秒',
     'dg_choices_suffix': '词',
+    'difficulty_label': 'AI 难度',
+    'difficulty_easy': '简单',
+    'difficulty_normal': '普通',
+    'difficulty_hard': '困难',
     // ---- Drawguess word categories ----
     'cat_animal': '动物',
     'cat_food': '食物',

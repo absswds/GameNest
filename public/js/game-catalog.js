@@ -391,6 +391,21 @@
       maxPlayers: 8,
       cover: '/assets/game-covers/drawguess-party.png'
     },
+    hearts: {
+      id: 'hearts',
+      name: '红心大战',
+      icon: '♥',
+      subtitle: '避分夺分，射月逆转',
+      description: '经典 4 人吃墩牌局，红心 1 分黑桃 Q 13 分。',
+      players: '4人',
+      duration: '约20分钟',
+      category: '扑克竞技',
+      tags: ['吃墩', '策略'],
+      featured: false,
+      supportsAI: true,
+      maxPlayers: 4,
+      cover: ''
+    },
     truthdare: {
       id: 'truthdare',
       name: '真心话大冒险',
@@ -403,7 +418,7 @@
       tags: ['社交', '轻松'],
       supportsAI: false,
       maxPlayers: 10,
-      cover: ''
+      cover: '/assets/game-covers/truthdare.png'
     }
   };
 
@@ -428,6 +443,7 @@
     'rummikub',
     'liarsbar',
     'bigtwo',
+    'hearts',
     'tictactoe',
     'gomoku',
     'chinesechess',

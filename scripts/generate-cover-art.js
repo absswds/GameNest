@@ -39,6 +39,8 @@ const covers = [
   { id: 'suikabattle', palette: ['#f8f1e6', '#f0d39f', '#de874d', '#27170f'], motif: 'suikabattle' },
   { id: 'sheeptile', palette: ['#eef1e7', '#d9dfc7', '#89a36d', '#182015'], motif: 'sheeptile' },
   { id: 'drawguess', palette: ['#f6efe9', '#ddd0c2', '#c8856a', '#231816'], motif: 'drawguess' },
+  { id: 'hearts', palette: ['#f5e8e8', '#e8a0a0', '#c23030', '#1a0a0a'], motif: 'hearts' },
+  { id: 'truthdare', palette: ['#f2e8f0', '#d4a0c8', '#8a3070', '#1a1020'], motif: 'truthdare' },
 ];
 
 function ensureDir(dirPath) {
@@ -349,6 +351,18 @@ function motifSvg(cover) {
         ${line(1098, 602, 1225, 655, dark, 16)}
         <path d="M1288 815l-40-118 42-24 56 100z" fill="${accent}"/>
         ${block(920, 790, 210, 100, 22, accent, 0.16)}
+      `;
+    case 'hearts':
+      return `
+        <text x="800" y="600" text-anchor="middle" font-size="320" fill="${accent}" opacity="0.85">♥</text>
+        <text x="680" y="420" text-anchor="middle" font-size="180" fill="${dark}" opacity="0.5">♥</text>
+        <text x="950" y="750" text-anchor="middle" font-size="140" fill="${accent}" opacity="0.4">♥</text>
+      `;
+    case 'truthdare':
+      return `
+        <text x="800" y="520" text-anchor="middle" font-size="160" font-weight="bold" fill="${accent}" opacity="0.85">?</text>
+        <text x="600" y="700" text-anchor="middle" font-size="120" fill="${dark}" opacity="0.4">?</text>
+        <text x="1000" y="680" text-anchor="middle" font-size="100" fill="${accent}" opacity="0.35">?</text>
       `;
     default:
       return '';

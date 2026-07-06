@@ -3,6 +3,7 @@
 
 const Chess = require('../games/vendor/chessjs').Chess;
 const { botName } = require('./lib/bot-name');
+const { getDepth } = require('./lib/difficulty');
 
 const files = 'abcdefgh';
 
@@ -189,7 +190,7 @@ exports.createBot = (playerIndex) => ({
 
     var bestMove = moves[0];
     var bestVal = -Infinity;
-    var depth = 3; // root + 2 layers
+    var depth = getDepth(state, { easy: 1, normal: 3, hard: 4 });
 
     for (var i = 0; i < moves.length; i++) {
       c.move(moves[i]);

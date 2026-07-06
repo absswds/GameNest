@@ -4,6 +4,7 @@
 const ROWS = 10, COLS = 9;
 
 const { botName } = require('./lib/bot-name');
+const { getDepth } = require('./lib/difficulty');
 
 exports.name = 'chinesechess';
 
@@ -310,7 +311,7 @@ exports.createBot = (playerIndex) => ({
 
     let bestMove = moves[0];
     let bestVal = -Infinity;
-    const depth = 2; // depth 2 for fast response
+    const depth = getDepth(state, { easy: 1, normal: 2, hard: 3 });
 
     for (const move of moves) {
       const cap = applyMove(board, move);

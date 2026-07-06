@@ -638,6 +638,27 @@
             ' · ' + _t('draw_time_label') + ': ' + (dgDraw === 0 ? _t('unlimited') : dgDraw + _t('seconds')) + ' · ' + _t('guess_time_label') + ': ' + (dgGuess === 0 ? _t('unlimited') : dgGuess + _t('seconds')) +
             ' · ' + _t('word_count_label') + ': ' + dgChoices + ' ' + _t('dg_choices_suffix') + (customCount > 0 ? ' · ' + _t('deck_custom') + ' ' + customCount + ' ' + _t('dg_choices_suffix') : '') + '</div>';
         }
+      } else if (isHost && gameInfo.supportsAI) {
+        // AI difficulty selector for all AI-supported games
+        optionsEl.style.display = 'block';
+        var curDiff = roomOptions.difficulty || 'normal';
+        optionsEl.innerHTML =
+          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
+          '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">' +
+            _t('difficulty_label') + ': <select id="optDifficulty" onchange="window._setGameOption(\'difficulty\', this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
+              '<option value="easy"' + (curDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
+              '<option value="normal"' + (curDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
+              '<option value="hard"' + (curDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
+            '</select>' +
+          '</label>';
+      } else if (!isHost && gameInfo.supportsAI) {
+        // Non-host: show difficulty summary
+        optionsEl.style.display = 'block';
+        var curDiff2 = roomOptions.difficulty || 'normal';
+        var diffLabel = curDiff2 === 'easy' ? _t('difficulty_easy') : curDiff2 === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
+        optionsEl.innerHTML =
+          '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+          '<div style="font-size:13px;color:var(--text-muted)">' + _t('difficulty_label') + ': ' + diffLabel + '</div>';
       } else {
         optionsEl.style.display = 'none';
       }

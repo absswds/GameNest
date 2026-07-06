@@ -4,6 +4,7 @@
 
 const ROWS = 6, COLS = 7;
 const { botName } = require('./lib/bot-name');
+const { getDepth } = require('./lib/difficulty');
 
 exports.name = 'connect4';
 
@@ -197,7 +198,7 @@ exports.createBot = (playerIndex) => ({
 
     var bestMove = moves[0];
     var bestVal = -Infinity;
-    var depth = 6;
+    var depth = getDepth(state, { easy: 2, normal: 6, hard: 8 });
 
     for (var i = 0; i < moves.length; i++) {
       var col = moves[i];

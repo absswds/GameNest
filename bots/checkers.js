@@ -4,6 +4,7 @@
 const ROWS = 8, COLS = 8;
 
 const { botName } = require('./lib/bot-name');
+const { getDepth } = require('./lib/difficulty');
 
 exports.name = 'checkers';
 
@@ -222,7 +223,7 @@ exports.createBot = function(playerIndex) {
         return (b.captures ? b.captures.length : 0) - (a.captures ? a.captures.length : 0);
       });
 
-      var depth = 5;
+      var depth = getDepth(state, { easy: 2, normal: 5, hard: 7 });
       var bestMove = moves[0];
       var bestVal = -Infinity;
       for (var i = 0; i < moves.length; i++) {

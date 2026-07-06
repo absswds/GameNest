@@ -2,6 +2,7 @@
 // Minimax + alpha-beta pruning, depth 5, classic Othello heuristics
 
 const { botName } = require('./lib/bot-name');
+const { getDepth } = require('./lib/difficulty');
 
 const ROWS = 8, COLS = 8;
 const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
@@ -188,7 +189,7 @@ exports.createBot = (playerIndex) => ({
       return vb - va;
     });
 
-    const depth = 5;
+    const depth = getDepth(state, { easy: 2, normal: 5, hard: 7 });
     let bestMove = moves[0];
     let bestVal = -Infinity;
 

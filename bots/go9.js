@@ -3,6 +3,7 @@ const SIZE = 9;
 const EMPTY = 0, BLACK = 1, WHITE = 2;
 
 const { botName } = require('./lib/bot-name');
+const { getDifficulty } = require('./lib/difficulty');
 
 exports.name = 'go9';
 
@@ -92,8 +93,10 @@ exports.createBot = pi => ({
       }
     }
     if (cands.length===0) return { pass: true };
+    var diff = getDifficulty(state);
+    var topN = diff === 'easy' ? 8 : diff === 'hard' ? 1 : 3;
     cands.sort((a,b) => b.score-a.score);
-    const top = Math.min(3, cands.length);
+    const top = Math.min(topN, cands.length);
     return cands[Math.floor(Math.random() * top)];
   }
 });

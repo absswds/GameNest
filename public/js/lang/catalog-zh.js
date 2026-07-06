@@ -236,6 +236,15 @@
       category: '派对卡牌',
       tags: ['社交', '欢乐'],
     },
+    hearts: {
+      name: '红心大战',
+      subtitle: '避分夺分，射月逆转',
+      description: '经典 4 人吃墩牌局，红心 1 分黑桃 Q 13 分。',
+      players: '4人',
+      duration: '约20分钟',
+      category: '扑克竞技',
+      tags: ['吃墩', '策略'],
+    },
     truthdare: {
       name: '真心话大冒险',
       subtitle: '抽卡问答，派对破冰',
