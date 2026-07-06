@@ -41,6 +41,8 @@ const covers = [
   { id: 'drawguess', palette: ['#f6efe9', '#ddd0c2', '#c8856a', '#231816'], motif: 'drawguess' },
   { id: 'hearts', palette: ['#f5e8e8', '#e8a0a0', '#c23030', '#1a0a0a'], motif: 'hearts' },
   { id: 'truthdare', palette: ['#f2e8f0', '#d4a0c8', '#8a3070', '#1a1020'], motif: 'truthdare' },
+  { id: 'battleship', palette: ['#e8eef4', '#7cafc2', '#2a6f8a', '#142a35'], motif: 'battleship' },
+  { id: 'backgammon', palette: ['#f0e8d8', '#c8a878', '#1a5c2a', '#3a2210'], motif: 'backgammon' },
 ];
 
 function ensureDir(dirPath) {
@@ -363,6 +365,39 @@ function motifSvg(cover) {
         <text x="800" y="520" text-anchor="middle" font-size="160" font-weight="bold" fill="${accent}" opacity="0.85">?</text>
         <text x="600" y="700" text-anchor="middle" font-size="120" fill="${dark}" opacity="0.4">?</text>
         <text x="1000" y="680" text-anchor="middle" font-size="100" fill="${accent}" opacity="0.35">?</text>
+      `;
+    case 'battleship':
+      return `
+        ${block(920, 260, 200, 200, 18, '#f0f4f8', 0.85)}
+        ${block(1160, 360, 200, 200, 18, '#f0f4f8', 0.85)}
+        ${Array.from({ length: 5 }, (_, i) => line(920 + i * 50, 260, 920 + i * 50, 460, accent, 6, 0.3)).join('')}
+        ${Array.from({ length: 5 }, (_, i) => line(920, 260 + i * 50, 1120, 260 + i * 50, accent, 6, 0.3)).join('')}
+        ${Array.from({ length: 5 }, (_, i) => line(1160 + i * 50, 360, 1160 + i * 50, 560, accent, 6, 0.3)).join('')}
+        ${Array.from({ length: 5 }, (_, i) => line(1160, 360 + i * 50, 1360, 360 + i * 50, accent, 6, 0.3)).join('')}
+        ${block(930, 270, 150, 30, 8, '#2a6f8a', 0.7)}
+        ${block(930, 310, 120, 30, 8, '#2a6f8a', 0.6)}
+        ${circle(1260, 460, 16, '#c62828')}
+        <line x1="1250" y1="450" x2="1270" y2="470" stroke="#c62828" stroke-width="6" stroke-linecap="round"/>
+        <line x1="1270" y1="450" x2="1250" y2="470" stroke="#c62828" stroke-width="6" stroke-linecap="round"/>
+        ${circle(1310, 510, 8, '#90a4ae')}
+      `;
+    case 'backgammon':
+      return `
+        ${block(920, 280, 520, 380, 24, '#1a5c2a')}
+        ${Array.from({ length: 6 }, (_, i) => {
+          const x = 940 + i * 42;
+          return `<path d="M${x} 280 L${x + 42} 280 L${x + 21} 480 Z" fill="${i % 2 === 0 ? '#5a3a1a' : '#e8d5a8'}"/>`;
+        }).join('')}
+        ${Array.from({ length: 6 }, (_, i) => {
+          const x = 940 + i * 42;
+          return `<path d="M${x} 660 L${x + 42} 660 L${x + 21} 460 Z" fill="${i % 2 === 0 ? '#e8d5a8' : '#5a3a1a'}"/>`;
+        }).join('')}
+        ${circle(1050, 340, 22, '#f5f0e0')}
+        ${circle(1050, 390, 22, '#f5f0e0')}
+        ${circle(1120, 560, 22, '#2a2a2a')}
+        ${circle(1120, 610, 22, '#2a2a2a')}
+        ${circle(1200, 310, 18, '#f5f0e0')}
+        ${circle(1280, 580, 18, '#2a2a2a')}
       `;
     default:
       return '';

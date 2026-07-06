@@ -314,7 +314,7 @@
         W = Math.min(avW, avH, 960);
         W = Math.max(W, 240);
         var dpr = window.devicePixelRatio || 1;
-        cs = (W - 60) / (COLS - 1);
+        cs = (W - 30) / COLS;
         margin = 30 + cs * 0.5;
         var H = margin * 2 + cs * (ROWS - 1);
         canvas.width = W * dpr; canvas.height = H * dpr;

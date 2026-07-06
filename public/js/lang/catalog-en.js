@@ -236,6 +236,15 @@
       category: 'Party Cards',
       tags: ['Social', 'Funny'],
     },
+    battleship: {
+      name: 'Battleship',
+      subtitle: 'Deploy, hunt, sink the fleet',
+      description: 'Classic two-player naval strategy on a 10×10 grid. Hide your ships and hunt theirs.',
+      players: '2 Players',
+      duration: '~15 min',
+      category: 'Classic Board',
+      tags: ['Strategy', 'Duel'],
+    },
     hearts: {
       name: 'Hearts',
       subtitle: 'Avoid points, shoot the moon',
@@ -253,6 +262,15 @@
       duration: '~15 min',
       category: 'Party',
       tags: ['Social', 'Casual'],
+    },
+    backgammon: {
+      name: 'Backgammon',
+      subtitle: 'Roll, move, race home',
+      description: 'Classic backgammon — luck meets strategy.',
+      players: '2 Players',
+      duration: '~20 min',
+      category: 'Classic Board',
+      tags: ['Strategy', 'Classic'],
     },
   };
 })();

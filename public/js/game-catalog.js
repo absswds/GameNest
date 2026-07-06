@@ -391,6 +391,21 @@
       maxPlayers: 8,
       cover: '/assets/game-covers/drawguess-party.png'
     },
+    battleship: {
+      id: 'battleship',
+      name: '战舰',
+      icon: '⚓',
+      subtitle: '排兵布阵，击沉敌舰',
+      description: '经典双人海战策略，在10×10棋盘上隐藏与猎杀。',
+      players: '2人',
+      duration: '约15分钟',
+      category: '经典棋盘',
+      tags: ['策略', '对弈'],
+      featured: false,
+      supportsAI: true,
+      maxPlayers: 2,
+      cover: ''
+    },
     hearts: {
       id: 'hearts',
       name: '红心大战',
@@ -419,6 +434,21 @@
       supportsAI: false,
       maxPlayers: 10,
       cover: '/assets/game-covers/truthdare.png'
+    },
+    backgammon: {
+      id: 'backgammon',
+      name: '西洋双陆',
+      icon: '◈',
+      subtitle: '掷骰走子，策略竞速',
+      description: '经典双陆棋，运气与策略的完美结合。',
+      players: '2人',
+      duration: '约20分钟',
+      category: '经典棋盘',
+      tags: ['策略', '经典'],
+      featured: false,
+      supportsAI: true,
+      maxPlayers: 2,
+      cover: ''
     }
   };
 
@@ -458,7 +488,9 @@
     'oldmaid',
     'exploding-kittens',
     'truthdare',
-    'snakebattle'
+    'backgammon',
+    'snakebattle',
+    'battleship'
   ];
 
   function getLangPack() {

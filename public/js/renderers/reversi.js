@@ -338,7 +338,7 @@
       var resize = function() {
         var avW = window.innerWidth - (window.innerWidth > 600 ? 80 : 32);
         var avH = window.innerHeight - 240;
-        W = Math.min(avW, avH, 560);
+        W = Math.min(avW, avH, 720);
         W = Math.max(W, 240);
         var dpr = window.devicePixelRatio || 1;
         cs = (W - 80) / COLS;
