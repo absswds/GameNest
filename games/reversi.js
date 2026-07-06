@@ -1,73 +1,85 @@
 // games/reversi.js — 黑白棋 (2 players)
-// 8×8 board, flip mechanics, pass/end detection
+// Variable board size 8×8 / 10×10 / 12×12
 
 exports.name = 'reversi';
 exports.maxPlayers = 2;
 
-const ROWS = 8, COLS = 8;
 const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 
+function getSize(state) {
+  var bs = (state._options && state._options.boardSize) || 8;
+  return { ROWS: bs, COLS: bs };
+}
+
 exports.createState = () => ({
-  currentPlayer: 0,    // 0=black 1=white, black first
-  winner: null,        // null|0|1|-1(draw)
+  currentPlayer: 0,
+  winner: null,
   board: null,
   passCount: 0,
   lastMove: null,
   scores: { 0: 2, 1: 2 },
   moveHistory: [],
   _playerCount: 2,
+  _options: {},
 });
 
 exports.initGame = (state) => {
+  var sz = getSize(state);
+  var ROWS = sz.ROWS, COLS = sz.COLS;
   state.board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-  state.board[3][3] = 1; state.board[4][4] = 1; // white
-  state.board[3][4] = 0; state.board[4][3] = 0; // black
+  var mid = Math.floor(ROWS / 2);
+  state.board[mid - 1][mid - 1] = 1;
+  state.board[mid][mid] = 1;
+  state.board[mid - 1][mid] = 0;
+  state.board[mid][mid - 1] = 0;
   state.scores = { 0: 2, 1: 2 };
   state.passCount = 0;
   state.lastMove = null;
   state.moveHistory = [];
+  state._playerCount = 2;
 };
 
-function inBounds(r, c) {
+function inBounds(r, c, ROWS, COLS) {
   return r >= 0 && r < ROWS && c >= 0 && c < COLS;
 }
 
-function getFlips(board, row, col, side) {
+function getFlips(board, row, col, side, ROWS, COLS) {
   if (board[row][col] !== null) return [];
-  const enemy = 1 - side;
-  const allFlips = [];
-  for (const [dr, dc] of DIRS) {
-    const dirFlips = [];
-    let r = row + dr, c = col + dc;
-    while (inBounds(r, c) && board[r][c] === enemy) {
+  var enemy = 1 - side;
+  var allFlips = [];
+  for (var d = 0; d < DIRS.length; d++) {
+    var dr = DIRS[d][0], dc = DIRS[d][1];
+    var dirFlips = [];
+    var r = row + dr, c = col + dc;
+    while (inBounds(r, c, ROWS, COLS) && board[r][c] === enemy) {
       dirFlips.push({ row: r, col: c });
       r += dr; c += dc;
     }
-    if (dirFlips.length > 0 && inBounds(r, c) && board[r][c] === side) {
-      allFlips.push(...dirFlips);
+    if (dirFlips.length > 0 && inBounds(r, c, ROWS, COLS) && board[r][c] === side) {
+      for (var f = 0; f < dirFlips.length; f++) allFlips.push(dirFlips[f]);
     }
   }
   return allFlips;
 }
 
-function getLegalMoves(board, side) {
-  const moves = [];
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
+function getLegalMoves(board, side, ROWS, COLS) {
+  var moves = [];
+  for (var r = 0; r < ROWS; r++) {
+    for (var c = 0; c < COLS; c++) {
       if (board[r][c] !== null) continue;
-      const flips = getFlips(board, r, c, side);
+      var flips = getFlips(board, r, c, side, ROWS, COLS);
       if (flips.length > 0) {
-        moves.push({ row: r, col: c, flips });
+        moves.push({ row: r, col: c, flips: flips });
       }
     }
   }
   return moves;
 }
 
-function countPieces(board) {
-  let c0 = 0, c1 = 0;
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
+function countPieces(board, ROWS, COLS) {
+  var c0 = 0, c1 = 0;
+  for (var r = 0; r < ROWS; r++) {
+    for (var c = 0; c < COLS; c++) {
       if (board[r][c] === 0) c0++;
       else if (board[r][c] === 1) c1++;
     }
@@ -79,10 +91,13 @@ exports.handleMove = (data, state, playerIndex) => {
   if (state.winner !== null) return '游戏已结束';
   if (state.currentPlayer !== playerIndex) return '不是你的回合';
 
+  var sz = getSize(state);
+  var ROWS = sz.ROWS, COLS = sz.COLS;
+
   if (data && data.pass) {
     state.passCount++;
     if (state.passCount >= 2) {
-      const scores = countPieces(state.board);
+      var scores = countPieces(state.board, ROWS, COLS);
       state.scores = scores;
       state.winner = scores[0] > scores[1] ? 0 : scores[1] > scores[0] ? 1 : -1;
       return null;
@@ -91,40 +106,42 @@ exports.handleMove = (data, state, playerIndex) => {
     return null;
   }
 
-  const { row, col } = data || {};
+  var row = data && data.row, col = data && data.col;
   if (row === undefined || col === undefined) return '无效的操作';
-  if (!inBounds(row, col)) return '超出棋盘范围';
+  if (!inBounds(row, col, ROWS, COLS)) return '超出棋盘范围';
   if (state.board[row][col] !== null) return '该位置已有棋子';
 
-  const legalMoves = getLegalMoves(state.board, playerIndex);
-  const matched = legalMoves.find(m => m.row === row && m.col === col);
+  var legalMoves = getLegalMoves(state.board, playerIndex, ROWS, COLS);
+  var matched = null;
+  for (var i = 0; i < legalMoves.length; i++) {
+    if (legalMoves[i].row === row && legalMoves[i].col === col) {
+      matched = legalMoves[i];
+      break;
+    }
+  }
   if (!matched) return '不合法的走法';
 
-  // Place piece and flip
   state.board[row][col] = playerIndex;
-  for (const f of matched.flips) {
+  for (var fi = 0; fi < matched.flips.length; fi++) {
+    var f = matched.flips[fi];
     state.board[f.row][f.col] = playerIndex;
   }
-  state.lastMove = { row, col };
-  state.scores = countPieces(state.board);
+  state.lastMove = { row: row, col: col };
+  state.scores = countPieces(state.board, ROWS, COLS);
   state.passCount = 0;
-  state.moveHistory.push({ row, col, flips: matched.flips, player: playerIndex });
+  state.moveHistory.push({ row: row, col: col, flips: matched.flips, player: playerIndex });
 
-  // Check if opponent has legal moves
-  const opponent = 1 - playerIndex;
-  const opponentMoves = getLegalMoves(state.board, opponent);
+  var opponent = 1 - playerIndex;
+  var opponentMoves = getLegalMoves(state.board, opponent, ROWS, COLS);
   if (opponentMoves.length > 0) {
     state.currentPlayer = opponent;
   } else {
-    // Opponent must pass; check if current player also has no moves
-    const myMoves = getLegalMoves(state.board, playerIndex);
+    var myMoves = getLegalMoves(state.board, playerIndex, ROWS, COLS);
     if (myMoves.length === 0) {
-      // Both sides have no moves → game over
-      const scores = countPieces(state.board);
-      state.scores = scores;
-      state.winner = scores[0] > scores[1] ? 0 : scores[1] > scores[0] ? 1 : -1;
+      var finalScores = countPieces(state.board, ROWS, COLS);
+      state.scores = finalScores;
+      state.winner = finalScores[0] > finalScores[1] ? 0 : finalScores[1] > finalScores[0] ? 1 : -1;
     }
-    // Otherwise keep currentPlayer same (opponent will pass next)
     state.currentPlayer = playerIndex;
   }
 
@@ -132,6 +149,8 @@ exports.handleMove = (data, state, playerIndex) => {
 };
 
 exports.playerView = function(state, playerIndex) {
+  var sz = getSize(state);
+  var ROWS = sz.ROWS, COLS = sz.COLS;
   var view = {
     currentPlayer: state.currentPlayer,
     winner: state.winner,
@@ -141,9 +160,10 @@ exports.playerView = function(state, playerIndex) {
     lastMove: state.lastMove,
     moveHistory: state.moveHistory,
     _playerCount: state._playerCount,
+    boardSize: sz.ROWS,
   };
   if (state.winner === null && state.currentPlayer === playerIndex) {
-    view.legalMoves = getLegalMoves(state.board, playerIndex);
+    view.legalMoves = getLegalMoves(state.board, playerIndex, ROWS, COLS);
   } else {
     view.legalMoves = [];
   }

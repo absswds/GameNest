@@ -42,7 +42,6 @@ const covers = [
   { id: 'hearts', palette: ['#f5e8e8', '#e8a0a0', '#c23030', '#1a0a0a'], motif: 'hearts' },
   { id: 'truthdare', palette: ['#f2e8f0', '#d4a0c8', '#8a3070', '#1a1020'], motif: 'truthdare' },
   { id: 'battleship', palette: ['#e8eef4', '#7cafc2', '#2a6f8a', '#142a35'], motif: 'battleship' },
-  { id: 'backgammon', palette: ['#f0e8d8', '#c8a878', '#1a5c2a', '#3a2210'], motif: 'backgammon' },
 ];
 
 function ensureDir(dirPath) {
@@ -380,24 +379,6 @@ function motifSvg(cover) {
         <line x1="1250" y1="450" x2="1270" y2="470" stroke="#c62828" stroke-width="6" stroke-linecap="round"/>
         <line x1="1270" y1="450" x2="1250" y2="470" stroke="#c62828" stroke-width="6" stroke-linecap="round"/>
         ${circle(1310, 510, 8, '#90a4ae')}
-      `;
-    case 'backgammon':
-      return `
-        ${block(920, 280, 520, 380, 24, '#1a5c2a')}
-        ${Array.from({ length: 6 }, (_, i) => {
-          const x = 940 + i * 42;
-          return `<path d="M${x} 280 L${x + 42} 280 L${x + 21} 480 Z" fill="${i % 2 === 0 ? '#5a3a1a' : '#e8d5a8'}"/>`;
-        }).join('')}
-        ${Array.from({ length: 6 }, (_, i) => {
-          const x = 940 + i * 42;
-          return `<path d="M${x} 660 L${x + 42} 660 L${x + 21} 460 Z" fill="${i % 2 === 0 ? '#e8d5a8' : '#5a3a1a'}"/>`;
-        }).join('')}
-        ${circle(1050, 340, 22, '#f5f0e0')}
-        ${circle(1050, 390, 22, '#f5f0e0')}
-        ${circle(1120, 560, 22, '#2a2a2a')}
-        ${circle(1120, 610, 22, '#2a2a2a')}
-        ${circle(1200, 310, 18, '#f5f0e0')}
-        ${circle(1280, 580, 18, '#2a2a2a')}
       `;
     default:
       return '';

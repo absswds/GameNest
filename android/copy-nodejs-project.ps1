@@ -2,7 +2,7 @@
 # Run this from PowerShell whenever you modify server.js, games/, bots/, public/, etc.
 #
 # Usage:
-#   cd D:\binbi\Documents\Code\project\game\android
+#   cd .\android
 #   .\copy-nodejs-project.ps1
 
 $ErrorActionPreference = "Stop"

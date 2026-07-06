@@ -263,14 +263,5 @@
       category: 'Party',
       tags: ['Social', 'Casual'],
     },
-    backgammon: {
-      name: 'Backgammon',
-      subtitle: 'Roll, move, race home',
-      description: 'Classic backgammon — luck meets strategy.',
-      players: '2 Players',
-      duration: '~20 min',
-      category: 'Classic Board',
-      tags: ['Strategy', 'Classic'],
-    },
   };
 })();

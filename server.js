@@ -441,6 +441,12 @@ function scheduleBotMove(room) {
   if (!gameMod) return;
   if (gameMod.realtime) return;
 
+  // Battleship placing phase: all bots place simultaneously (not turn-based)
+  if (room.game === 'battleship' && state.phase === 'placing') {
+    scheduleBattleshipPlacements(room);
+    return;
+  }
+
   // 24 game: all bots race simultaneously, no turn order
   if (room.game === 'twentyfour') {
     scheduleTwentyFourBots(room);
@@ -470,6 +476,40 @@ function scheduleBotMove(room) {
       broadcastGameView(room);
       scheduleBotMove(room);
     } catch(e) { console.error('Bot exception:', e.message); }
+  }, delay);
+}
+
+function scheduleBattleshipPlacements(room) {
+  const state = room.state;
+  if (state.phase !== 'placing') { scheduleBotMove(room); return; }
+
+  const gameMod = gameRegistry[room.game];
+  if (!gameMod) return;
+
+  // Find a bot that still needs to place ships
+  var nextBotIdx = null, nextBot = null;
+  for (const [idx, bot] of room.bots) {
+    if (state.placedCount[idx] < state.shipSizes.length) {
+      nextBotIdx = idx;
+      nextBot = bot;
+      break;
+    }
+  }
+  if (!nextBot) { scheduleBotMove(room); return; }
+
+  const delay = 250 + Math.random() * 500;
+  clearTimeout(room._botTimer);
+  room._botTimer = setTimeout(() => {
+    if (!rooms.has(room._roomId)) return;
+    try {
+      const moveData = nextBot.getMove(state);
+      const err = gameMod.handleMove(moveData, state, nextBotIdx);
+      if (err) {
+        console.error('Battleship bot placement error:', err);
+      }
+      broadcastGameView(room);
+      scheduleBattleshipPlacements(room);
+    } catch(e) { console.error('Battleship bot exception:', e.message); }
   }, delay);
 }
 

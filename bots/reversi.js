@@ -1,61 +1,79 @@
 // bots/reversi.js — AI for 黑白棋
-// Minimax + alpha-beta pruning, depth 5, classic Othello heuristics
+// Minimax + alpha-beta pruning, variable board size (8/10/12)
+// Standard Othello heuristics with dynamic PST generation
 
 const { botName } = require('./lib/bot-name');
 const { getDepth } = require('./lib/difficulty');
 
-const ROWS = 8, COLS = 8;
-const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-
 exports.name = 'reversi';
 
-// Standard Othello position weight table
-const PST = [
-  [120,-20, 20,  5,  5, 20,-20,120],
-  [-20,-40, -5, -5, -5, -5,-40,-20],
-  [ 20, -5, 15,  3,  3, 15, -5, 20],
-  [  5, -5,  3,  3,  3,  3, -5,  5],
-  [  5, -5,  3,  3,  3,  3, -5,  5],
-  [ 20, -5, 15,  3,  3, 15, -5, 20],
-  [-20,-40, -5, -5, -5, -5,-40,-20],
-  [120,-20, 20,  5,  5, 20,-20,120],
-];
+const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 
-// Corner positions
-const CORNERS = [[0,0],[0,7],[7,0],[7,7]];
-// X-squares (diagonal neighbors of corners, dangerous)
-const X_SQUARES = [[1,1],[1,6],[6,1],[6,6]];
+function getSize(state) {
+  var bs = (state._options && state._options.boardSize) || 8;
+  return { ROWS: bs, COLS: bs };
+}
 
-function inBounds(r, c) {
+function generateWeights(n) {
+  var w = [];
+  for (var r = 0; r < n; r++) {
+    w[r] = [];
+    for (var c = 0; c < n; c++) {
+      var cornerDist = Math.min(r, c, n - 1 - r, n - 1 - c);
+      if (cornerDist === 0) {
+        w[r][c] = 120;
+      } else if (cornerDist === 1) {
+        var edgeDist = Math.min(r, n - 1 - r, c, n - 1 - c);
+        w[r][c] = edgeDist === 0 ? -20 : -40;
+      } else {
+        w[r][c] = Math.max(0, 20 - cornerDist * 3);
+      }
+    }
+  }
+  return w;
+}
+
+var cachedPST = null;
+var cachedN = 0;
+
+function getPST(n) {
+  if (cachedN === n && cachedPST) return cachedPST;
+  cachedPST = generateWeights(n);
+  cachedN = n;
+  return cachedPST;
+}
+
+function inBounds(r, c, ROWS, COLS) {
   return r >= 0 && r < ROWS && c >= 0 && c < COLS;
 }
 
-function getFlips(board, row, col, side) {
+function getFlips(board, row, col, side, ROWS, COLS) {
   if (board[row][col] !== null) return [];
-  const enemy = 1 - side;
-  const allFlips = [];
-  for (const [dr, dc] of DIRS) {
-    const dirFlips = [];
-    let r = row + dr, c = col + dc;
-    while (inBounds(r, c) && board[r][c] === enemy) {
+  var enemy = 1 - side;
+  var allFlips = [];
+  for (var d = 0; d < DIRS.length; d++) {
+    var dr = DIRS[d][0], dc = DIRS[d][1];
+    var dirFlips = [];
+    var r = row + dr, c = col + dc;
+    while (inBounds(r, c, ROWS, COLS) && board[r][c] === enemy) {
       dirFlips.push({ row: r, col: c });
       r += dr; c += dc;
     }
-    if (dirFlips.length > 0 && inBounds(r, c) && board[r][c] === side) {
-      allFlips.push(...dirFlips);
+    if (dirFlips.length > 0 && inBounds(r, c, ROWS, COLS) && board[r][c] === side) {
+      for (var f = 0; f < dirFlips.length; f++) allFlips.push(dirFlips[f]);
     }
   }
   return allFlips;
 }
 
-function getLegalMoves(board, side) {
-  const moves = [];
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
+function getLegalMoves(board, side, ROWS, COLS) {
+  var moves = [];
+  for (var r = 0; r < ROWS; r++) {
+    for (var c = 0; c < COLS; c++) {
       if (board[r][c] !== null) continue;
-      const flips = getFlips(board, r, c, side);
+      var flips = getFlips(board, r, c, side, ROWS, COLS);
       if (flips.length > 0) {
-        moves.push({ row: r, col: c, flips });
+        moves.push({ row: r, col: c, flips: flips });
       }
     }
   }
@@ -63,13 +81,14 @@ function getLegalMoves(board, side) {
 }
 
 function cloneBoard(board) {
-  return board.map(row => row.slice());
+  return board.map(function(row) { return row.slice(); });
 }
 
 function applyMove(board, move, side) {
-  const flipped = [];
+  var flipped = [];
   board[move.row][move.col] = side;
-  for (const f of move.flips) {
+  for (var i = 0; i < move.flips.length; i++) {
+    var f = move.flips[i];
     flipped.push({ row: f.row, col: f.col, prev: board[f.row][f.col] });
     board[f.row][f.col] = side;
   }
@@ -78,19 +97,20 @@ function applyMove(board, move, side) {
 
 function undoMove(board, move, flipped) {
   board[move.row][move.col] = null;
-  for (const f of flipped) {
+  for (var i = 0; i < flipped.length; i++) {
+    var f = flipped[i];
     board[f.row][f.col] = f.prev;
   }
 }
 
-function evaluate(board, side) {
-  const enemy = 1 - side;
-  let score = 0;
-  let myCount = 0, oppCount = 0;
+function evaluate(board, side, ROWS, COLS, PST) {
+  var enemy = 1 - side;
+  var score = 0;
+  var myCount = 0, oppCount = 0;
 
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      const v = board[r][c];
+  for (var r = 0; r < ROWS; r++) {
+    for (var c = 0; c < COLS; c++) {
+      var v = board[r][c];
       if (v === null) continue;
       if (v === side) {
         myCount++;
@@ -102,55 +122,54 @@ function evaluate(board, side) {
     }
   }
 
-  // Corner occupancy bonus
-  for (const [cr, cc] of CORNERS) {
+  var last = ROWS - 1;
+  var corners = [[0,0],[0,last],[last,0],[last,last]];
+  for (var ci = 0; ci < corners.length; ci++) {
+    var cr = corners[ci][0], cc = corners[ci][1];
     if (board[cr][cc] === side) score += 25;
     else if (board[cr][cc] === enemy) score -= 25;
   }
 
-  // X-square penalty (only if corner is empty)
-  for (const [xr, xc] of X_SQUARES) {
+  var xSquares = [[1,1],[1,last-1],[last-1,1],[last-1,last-1]];
+  for (var xi = 0; xi < xSquares.length; xi++) {
+    var xr = xSquares[xi][0], xc = xSquares[xi][1];
+    var cornerR = xr === 1 ? 0 : last;
+    var cornerC = xc === 1 ? 0 : last;
     if (board[xr][xc] === side) {
-      // Check if adjacent corner is empty
-      const cr = xr === 0 ? 0 : 7;
-      const cc = xc === 0 ? 0 : 7;
-      if (board[cr][cc] === null) score -= 10;
+      if (board[cornerR][cornerC] === null) score -= 10;
     } else if (board[xr][xc] === enemy) {
-      const cr = xr === 0 ? 0 : 7;
-      const cc = xc === 0 ? 0 : 7;
-      if (board[cr][cc] === null) score += 10;
+      if (board[cornerR][cornerC] === null) score += 10;
     }
   }
 
-  // Mobility
-  const myMoves = getLegalMoves(board, side).length;
-  const oppMoves = getLegalMoves(board, enemy).length;
+  var myMoves = getLegalMoves(board, side, ROWS, COLS).length;
+  var oppMoves = getLegalMoves(board, enemy, ROWS, COLS).length;
   score += (myMoves - oppMoves) * 5;
 
-  // Endgame: piece count dominance when board is nearly full
-  if (myCount + oppCount > 50) {
+  var totalCells = ROWS * COLS;
+  if (myCount + oppCount > totalCells * 0.8) {
     score += (myCount - oppCount) * 20;
   }
 
   return score;
 }
 
-function minimax(board, depth, alpha, beta, maximizing, side) {
-  if (depth === 0) return evaluate(board, side);
+function minimax(board, depth, alpha, beta, maximizing, side, ROWS, COLS, PST) {
+  if (depth === 0) return evaluate(board, side, ROWS, COLS, PST);
 
-  const currentSide = maximizing ? side : (1 - side);
-  const moves = getLegalMoves(board, currentSide);
+  var currentSide = maximizing ? side : (1 - side);
+  var moves = getLegalMoves(board, currentSide, ROWS, COLS);
 
   if (moves.length === 0) {
-    // Pass — opponent gets to move
-    return minimax(board, depth - 1, alpha, beta, !maximizing, side);
+    return minimax(board, depth - 1, alpha, beta, !maximizing, side, ROWS, COLS, PST);
   }
 
   if (maximizing) {
-    let best = -Infinity;
-    for (const move of moves) {
-      const flipped = applyMove(board, move, currentSide);
-      const val = minimax(board, depth - 1, alpha, beta, false, side);
+    var best = -Infinity;
+    for (var i = 0; i < moves.length; i++) {
+      var move = moves[i];
+      var flipped = applyMove(board, move, currentSide);
+      var val = minimax(board, depth - 1, alpha, beta, false, side, ROWS, COLS, PST);
       undoMove(board, move, flipped);
       if (val > best) best = val;
       if (best > alpha) alpha = best;
@@ -158,10 +177,11 @@ function minimax(board, depth, alpha, beta, maximizing, side) {
     }
     return best;
   } else {
-    let best = Infinity;
-    for (const move of moves) {
-      const flipped = applyMove(board, move, currentSide);
-      const val = minimax(board, depth - 1, alpha, beta, true, side);
+    var best = Infinity;
+    for (var i = 0; i < moves.length; i++) {
+      var move = moves[i];
+      var flipped = applyMove(board, move, currentSide);
+      var val = minimax(board, depth - 1, alpha, beta, true, side, ROWS, COLS, PST);
       undoMove(board, move, flipped);
       if (val > best) best = val;
       if (best < beta) beta = best;
@@ -175,27 +195,30 @@ exports.createBot = (playerIndex) => ({
   name: botName(playerIndex, 'zh'),
   playerIndex,
   getMove(state) {
-    const board = cloneBoard(state.board);
-    const side = playerIndex;
-    const moves = getLegalMoves(board, side);
+    var sz = getSize(state);
+    var ROWS = sz.ROWS, COLS = sz.COLS;
+    var PST = getPST(ROWS);
+    var board = cloneBoard(state.board);
+    var side = playerIndex;
+    var moves = getLegalMoves(board, side, ROWS, COLS);
 
     if (moves.length === 0) return { pass: true };
     if (moves.length === 1) return { row: moves[0].row, col: moves[0].col };
 
-    // Sort moves by heuristic value for better pruning
-    moves.sort((a, b) => {
-      const va = PST[a.row][a.col] + a.flips.length * 2;
-      const vb = PST[b.row][b.col] + b.flips.length * 2;
+    moves.sort(function(a, b) {
+      var va = PST[a.row][a.col] + a.flips.length * 2;
+      var vb = PST[b.row][b.col] + b.flips.length * 2;
       return vb - va;
     });
 
-    const depth = getDepth(state, { easy: 2, normal: 5, hard: 7 });
-    let bestMove = moves[0];
-    let bestVal = -Infinity;
+    var depth = getDepth(state, { easy: 2, normal: 4, hard: 6 });
+    var bestMove = moves[0];
+    var bestVal = -Infinity;
 
-    for (const move of moves) {
-      const flipped = applyMove(board, move, side);
-      const val = minimax(board, depth - 1, -Infinity, Infinity, false, side);
+    for (var i = 0; i < moves.length; i++) {
+      var move = moves[i];
+      var flipped = applyMove(board, move, side);
+      var val = minimax(board, depth - 1, -Infinity, Infinity, false, side, ROWS, COLS, PST);
       undoMove(board, move, flipped);
       if (val > bestVal) {
         bestVal = val;

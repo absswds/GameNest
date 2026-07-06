@@ -435,22 +435,8 @@
       maxPlayers: 10,
       cover: '/assets/game-covers/truthdare.png'
     },
-    backgammon: {
-      id: 'backgammon',
-      name: '西洋双陆',
-      icon: '◈',
-      subtitle: '掷骰走子，策略竞速',
-      description: '经典双陆棋，运气与策略的完美结合。',
-      players: '2人',
-      duration: '约20分钟',
-      category: '经典棋盘',
-      tags: ['策略', '经典'],
-      featured: false,
-      supportsAI: true,
-      maxPlayers: 2,
-      cover: ''
-    }
   };
+
 
   var catalog = zhCatalog;
 
@@ -488,7 +474,6 @@
     'oldmaid',
     'exploding-kittens',
     'truthdare',
-    'backgammon',
     'snakebattle',
     'battleship'
   ];

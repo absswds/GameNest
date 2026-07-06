@@ -184,3 +184,63 @@ test('bot returns pass when no legal moves', () => {
   const move = botInstance.getMove(state);
   assert.deepEqual(move, { pass: true });
 });
+
+test('10×10 board: initial pieces at center', () => {
+  const state = reversi.createState();
+  state._options = { boardSize: 10 };
+  reversi.initGame(state);
+  assert.equal(state.board.length, 10);
+  assert.equal(state.board[0].length, 10);
+  // Initial 4 pieces at center: (4,4),(4,5),(5,4),(5,5)
+  assert.equal(state.board[4][4], 1);
+  assert.equal(state.board[5][5], 1);
+  assert.equal(state.board[4][5], 0);
+  assert.equal(state.board[5][4], 0);
+  assert.equal(state.scores[0], 2);
+  assert.equal(state.scores[1], 2);
+});
+
+test('10×10 board: opening legal moves for black', () => {
+  const state = reversi.createState();
+  state._options = { boardSize: 10 };
+  reversi.initGame(state);
+  const view = reversi.playerView(state, 0);
+  assert.equal(view.legalMoves.length, 4);
+  // (3,4), (4,3), (5,6), (6,5)
+  const positions = view.legalMoves.map(m => m.row + ',' + m.col).sort();
+  assert.deepEqual(positions, ['3,4', '4,3', '5,6', '6,5']);
+});
+
+test('12×12 board: initial pieces at center', () => {
+  const state = reversi.createState();
+  state._options = { boardSize: 12 };
+  reversi.initGame(state);
+  assert.equal(state.board.length, 12);
+  assert.equal(state.board[0].length, 12);
+  // Initial 4 pieces at center: (5,5),(5,6),(6,5),(6,6)
+  assert.equal(state.board[5][5], 1);
+  assert.equal(state.board[6][6], 1);
+  assert.equal(state.board[5][6], 0);
+  assert.equal(state.board[6][5], 0);
+});
+
+test('10×10 bot can generate a move from opening position', () => {
+  const bot = require('../bots/reversi');
+  const botInstance = bot.createBot(0);
+  const state = reversi.createState();
+  state._options = { boardSize: 10 };
+  reversi.initGame(state);
+  const move = botInstance.getMove(state);
+  assert.ok(move, 'bot should return a move');
+  // Bot's move should be one of the 4 legal opening moves
+  const legalPositions = ['3,4', '4,3', '5,6', '6,5'];
+  assert.ok(legalPositions.includes(move.row + ',' + move.col), 'bot move is legal for 10x10');
+});
+
+test('boardSize appears in playerView', () => {
+  const state = reversi.createState();
+  state._options = { boardSize: 10 };
+  reversi.initGame(state);
+  const view = reversi.playerView(state, 0);
+  assert.equal(view.boardSize, 10);
+});

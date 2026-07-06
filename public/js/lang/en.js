@@ -178,6 +178,7 @@
     'break_off': 'Off',
     'board_label': 'Board',
     'same_board': 'Same board (fair race)',
+    'ec_board_size': 'Board Size',
     'random_boards': 'Random each',
     'enable_decks': 'Enable Decks',
     'deck_icebreaker': 'Icebreaker',

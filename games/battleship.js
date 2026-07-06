@@ -94,6 +94,7 @@ exports.handleMove = function (data, state, playerIndex) {
 
 function handlePlacing(data, state, playerIndex) {
   if (playerIndex !== 0 && playerIndex !== 1) return 'Invalid player';
+  if (data.pass) return null; // Already done placing — skip
 
   var r = data.r;
   var c = data.c;

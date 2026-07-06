@@ -178,6 +178,7 @@
     'break_off': '关闭',
     'board_label': '棋盘',
     'same_board': '同一张（公平竞速）',
+    'ec_board_size': '棋盘大小',
     'random_boards': '各自随机',
     'enable_decks': '启用牌库',
     'deck_icebreaker': '轻松破冰',

@@ -256,18 +256,6 @@
         { h: '小建议', p: '如果不想太刺激，就先开轻松破冰和朋友聚会；熟人局再加入深度真心话或大冒险挑战。' },
       ]
     },
-    backgammon: {
-      sections: [
-        { h: '游戏目标', p: '将自己所有 15 颗棋子移入己方主场（home board），然后全部移出棋盘（bear off）。先完成的玩家获胜。' },
-        { h: '棋盘布局', p: '24 个三角形点（point），分上下两排。左半部分是主场（home），右半部分是外场（outer）。中间是横杠（bar）。' },
-        { h: '掷骰子', p: '每回合点击「掷骰子」按钮。掷出两个骰子，可用两个骰子分别移动不同棋子，或同一棋子移动两次。掷出双数（如 3-3）则可以走 4 步。' },
-        { h: '移动规则', p: '①点击己方棋子所在点选中，再点击目标点移动。②目标点必须为空、只有己方棋子、或只有对方 1 颗棋子（可吃子）。③不能落在对方 2 颗及以上棋子的点。' },
-        { h: '横杠规则', p: '棋子被吃会送到横杠（bar）。有棋子在横杠时，必须先把横杠上的棋子重新入场才能移动其他棋子。入场点由骰子点数决定。' },
-        { h: '吃子', p: '落在只有对方 1 颗棋子的点时，该棋子被吃并送到对方的横杠。' },
-        { h: '移出棋子（Bear Off）', p: '当所有棋子都在己方主场内时，可以开始移出棋子。骰子点数必须恰好等于棋子所在点的编号，或者大于编号且主场更高编号点无己方棋子。' },
-        { h: '胜负', p: '最先将所有 15 颗棋子移出棋盘的玩家获胜。' },
-      ]
-    },
     battleship: {
       sections: [
         { h: '游戏目标', p: '在 10×10 的海战棋盘上，先击沉对方所有 5 艘战舰的一方获胜。' },
@@ -532,18 +520,6 @@
         { h: 'Deck Types', p: 'The host can enable different deck types: Light Icebreaker, Friends Party, Deep Truth, Dare Challenge, and more.' },
         { h: 'Custom Decks', p: 'The host can add custom Truth and Dare prompts in the waiting room (one per line). After saving, check the "Custom" deck to include them in the pool.' },
         { h: 'Tip', p: 'For a gentler game, start with Light Icebreaker and Friends Party. Save Deep Truth and Dare Challenge for close friends.' },
-      ]
-    },
-    backgammon: {
-      sections: [
-        { h: 'Objective', p: 'Move all 15 of your pieces into your home board, then bear them all off the board. The first player to do so wins.' },
-        { h: 'Board Layout', p: '24 triangular points arranged in two rows. The left half is your home board, the right half is the outer board. The bar separates the two halves.' },
-        { h: 'Rolling Dice', p: 'Click "Roll Dice" each turn. You get two dice values. Use them to move two different pieces, or move one piece twice. Doubles (e.g. 3-3) give you 4 moves.' },
-        { h: 'Movement Rules', p: '①Click your piece to select, then click the destination. ②The destination must be empty, have your own pieces, or have exactly 1 opponent piece (a blot). ③You cannot land on a point with 2+ opponent pieces.' },
-        { h: 'The Bar', p: 'When your piece lands on a blot (single opponent piece), that piece is sent to the bar. If you have pieces on the bar, you must re-enter them before moving other pieces. Re-entry point is determined by the die value.' },
-        { h: 'Hitting', p: 'Landing on a point with exactly 1 opponent piece sends that piece to the bar.' },
-        { h: 'Bearing Off', p: 'When all your pieces are in your home board, you can bear them off. The die must match the point number exactly, or be higher if no pieces remain on higher home board points.' },
-        { h: 'Winning', p: 'The first player to bear off all 15 pieces wins.' },
       ]
     },
     battleship: {

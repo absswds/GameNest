@@ -263,14 +263,5 @@
       category: '派对聚会',
       tags: ['社交', '轻松'],
     },
-    backgammon: {
-      name: '西洋双陆',
-      subtitle: '掷骰走子，策略竞速',
-      description: '经典双陆棋，运气与策略的完美结合。',
-      players: '2人',
-      duration: '约20分钟',
-      category: '经典棋盘',
-      tags: ['策略', '经典'],
-    },
   };
 })();

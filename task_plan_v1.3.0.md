@@ -1,7 +1,7 @@
 # GameNest v1.3.0 执行计划：经典棋盘包 + GitHub 涨星
 
 > 本文件是自包含的执行计划，可直接转交 AI agent 按"执行顺序"逐步实现。
-> 仓库：`D:\binbi\Documents\Code\project\game`（GitHub: absswds/GameNest）
+> 仓库：`<repo-root>`（GitHub: absswds/GameNest）
 > 参考文档：`AGENTS.md`（架构/坑点）、`CONTRIBUTING.md`（新游戏流程）、`docs/ARCHITECTURE.md`
 
 ---

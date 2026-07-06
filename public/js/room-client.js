@@ -23,6 +23,9 @@
 
   el.roomBadge.textContent = roomId;
 
+  // Games whose bots read state._options.difficulty (via difficulty.js)
+  window._gamesWithDifficulty = ['reversi','gomoku','chess','connect4','checkers','chinesechess','go9','hearts','battleship'];
+
   // ---- Game name lookup ----
   function _gt(id) {
     return window.gameCatalog && window.gameCatalog.byId(id)
@@ -638,8 +641,38 @@
             ' · ' + _t('draw_time_label') + ': ' + (dgDraw === 0 ? _t('unlimited') : dgDraw + _t('seconds')) + ' · ' + _t('guess_time_label') + ': ' + (dgGuess === 0 ? _t('unlimited') : dgGuess + _t('seconds')) +
             ' · ' + _t('word_count_label') + ': ' + dgChoices + ' ' + _t('dg_choices_suffix') + (customCount > 0 ? ' · ' + _t('deck_custom') + ' ' + customCount + ' ' + _t('dg_choices_suffix') : '') + '</div>';
         }
-      } else if (isHost && gameInfo.supportsAI) {
-        // AI difficulty selector for all AI-supported games
+      } else if (isHost && game === 'reversi') {
+        optionsEl.style.display = 'block';
+        var bs = roomOptions.boardSize || 8;
+        var rvDiff = roomOptions.difficulty || 'normal';
+        optionsEl.innerHTML =
+          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
+            '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
+              _t('ec_board_size') + ': <select onchange="window._setGameOption(\'boardSize\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
+                '<option value="8"' + (bs === 8 ? ' selected' : '') + '>8×8</option>' +
+                '<option value="10"' + (bs === 10 ? ' selected' : '') + '>10×10</option>' +
+                '<option value="12"' + (bs === 12 ? ' selected' : '') + '>12×12</option>' +
+              '</select>' +
+            '</label>' +
+            '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
+              _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
+                '<option value="easy"' + (rvDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
+                '<option value="normal"' + (rvDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
+                '<option value="hard"' + (rvDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
+              '</select>' +
+            '</label>' +
+          '</div>';
+      } else if (game === 'reversi') {
+        optionsEl.style.display = 'block';
+        var bs2 = roomOptions.boardSize || 8;
+        var rvDiff2 = roomOptions.difficulty || 'normal';
+        var rvDiffLabel2 = rvDiff2 === 'easy' ? _t('difficulty_easy') : rvDiff2 === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
+        optionsEl.innerHTML =
+          '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+          '<div style="font-size:13px;color:var(--text-muted)">' + _t('ec_board_size') + ': ' + bs2 + '×' + bs2 + ' · ' + _t('difficulty_label') + ': ' + rvDiffLabel2 + '</div>';
+      } else if (isHost && gameInfo.supportsAI && window._gamesWithDifficulty.indexOf(game) >= 0) {
+        // AI difficulty selector only for games whose bots actually read it
         optionsEl.style.display = 'block';
         var curDiff = roomOptions.difficulty || 'normal';
         optionsEl.innerHTML =
@@ -651,7 +684,7 @@
               '<option value="hard"' + (curDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
             '</select>' +
           '</label>';
-      } else if (!isHost && gameInfo.supportsAI) {
+      } else if (!isHost && gameInfo.supportsAI && window._gamesWithDifficulty.indexOf(game) >= 0) {
         // Non-host: show difficulty summary
         optionsEl.style.display = 'block';
         var curDiff2 = roomOptions.difficulty || 'normal';
@@ -734,17 +767,57 @@
   }
 
   // ---- Player Bar (during game) ----
+  let _playerTooltip = null;
+  let _playerTooltipTimer = null;
+
+  function ensurePlayerTooltip() {
+    if (_playerTooltip) return;
+    _playerTooltip = document.createElement('div');
+    _playerTooltip.id = 'playerTooltip';
+    _playerTooltip.style.cssText = 'position:fixed;z-index:9999;padding:6px 14px;background:#333;color:#fff;font-size:13px;font-weight:600;border-radius:16px;pointer-events:none;opacity:0;transition:opacity 0.15s;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+    document.body.appendChild(_playerTooltip);
+    // Hide on scroll or tap elsewhere
+    document.addEventListener('click', hidePlayerTooltip, true);
+    document.addEventListener('touchstart', hidePlayerTooltip, true);
+  }
+
+  function showPlayerTooltip(name, el) {
+    if (_playerTooltipTimer) clearTimeout(_playerTooltipTimer);
+    var rect = el.getBoundingClientRect();
+    _playerTooltip.textContent = name;
+    _playerTooltip.style.opacity = '1';
+    // Position above the element
+    var tx = rect.left + rect.width / 2;
+    var ty = rect.top - 36;
+    _playerTooltip.style.left = tx + 'px';
+    _playerTooltip.style.top = ty + 'px';
+    _playerTooltip.style.transform = 'translateX(-50%)';
+    _playerTooltipTimer = setTimeout(hidePlayerTooltip, 2000);
+  }
+
+  function hidePlayerTooltip() {
+    if (_playerTooltip) _playerTooltip.style.opacity = '0';
+    if (_playerTooltipTimer) { clearTimeout(_playerTooltipTimer); _playerTooltipTimer = null; }
+  }
+
   function updatePlayerBar() {
     const bar = el.playerBar;
     bar.innerHTML = '';
     if (!players) return;
+    // Ensure the tooltip div exists once
+    ensurePlayerTooltip();
     for (let i = 0; i < players.length; i++) {
       const p = players[i];
       const tag = document.createElement('div');
       tag.className = 'player-tag p' + p.index;
       if (state && state.currentPlayer === p.index) tag.classList.add('active');
       const avatar = p.avatar || (p.isBot ? '\u{1F916}' : '\u{1F60A}');
-      tag.innerHTML = '<span class="dot"></span><span class="player-tag-avatar">' + avatar + '</span><span>' + p.name + (p.isBot ? ' \u{1F916}' : '') + '</span>';
+      tag.innerHTML = '<span class="dot"></span><span class="player-tag-avatar">' + avatar + '</span><span class="player-tag-name">' + p.name + (p.isBot ? ' \u{1F916}' : '') + '</span>';
+      // Tap to show name tooltip (works on touch + mouse)
+      tag.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showPlayerTooltip(p.name, tag);
+      });
       bar.appendChild(tag);
       if (i < players.length - 1) {
         const vs = document.createElement('span');

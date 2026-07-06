@@ -849,6 +849,26 @@ button, input { font-family: inherit; font-size: inherit; }
     font-size: 14px;
     border-radius: 14px;
   }
+  /* Player bar compact: scrollable avatar row, tap for name */
+  .player-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 2px;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+    justify-content: flex-start;
+  }
+  .player-bar::-webkit-scrollbar { display: none; }
+  .player-tag-name { display: none; }
+  .player-tag {
+    flex: 0 0 auto; min-width: 32px;
+    padding: 6px 4px; gap: 3px;
+  }
+  .player-tag-avatar { font-size: 17px; }
+  .player-tag .dot { width: 6px; height: 6px; }
+  .vs-text { font-size: 9px; padding: 0 1px; flex: 0 0 auto; }
+  .player-bar { gap: 2px; margin-bottom: 8px; }
 }
 
 @media (min-width: 768px) {

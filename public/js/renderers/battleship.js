@@ -1,4 +1,4 @@
-// Battleship renderer — dual 10×10 grids, placing + shooting phases
+// Battleship renderer — responsive dual/single 10×10 grids, placing + shooting phases
 (function () {
   window.gameRenderers = window.gameRenderers || new Map();
 
@@ -8,16 +8,14 @@
   var SHIP_LABELS_EN = { carrier: 'Carrier', battleship: 'Battleship', cruiser: 'Cruiser', submarine: 'Submarine', destroyer: 'Destroyer' };
 
   var canvas, ctx, W, H;
-  var cs; // cell size
-  var margin = 40;
-  var boardGap = 50;
+  var cs;
+  var margin = 32;
+  var boardGap = 40;
 
-  // Placing state
-  var placePhase = 'orientation'; // 'orientation' | 'origin'
   var placeOrientation = 'h';
-  var placePreview = null; // {r,c}
+  var placePreview = null;
+  var viewMode = 'both'; // 'my' | 'enemy' | 'both'
 
-  // Animation state machine
   var animState = {
     running: false,
     rafId: null,
@@ -28,9 +26,6 @@
     shotProgress: 0,
     shotBoard: 'enemy',
   };
-
-  var prevEnemyBoard = null;
-  var prevMyBoard = null;
 
   function getLang() {
     return (window.__ACTIVE_LANG === 'en') ? 'en' : 'zh';
@@ -58,12 +53,10 @@
   }
 
   function drawGrid(ox, oy, label, boardData, isEnemy, state, pi) {
-    // Board background
     ctx.fillStyle = '#e8edf2';
     rrect(ox - 4, oy - 4, cs * COLS + 8, cs * ROWS + 8, 6);
     ctx.fill();
 
-    // Grid lines
     ctx.strokeStyle = '#b0bec5';
     ctx.lineWidth = 0.8;
     for (var r = 0; r <= ROWS; r++) {
@@ -79,7 +72,6 @@
       ctx.stroke();
     }
 
-    // Column labels A-J
     ctx.fillStyle = '#78909c';
     ctx.font = '11px "Nunito", sans-serif';
     ctx.textAlign = 'center';
@@ -87,12 +79,10 @@
     for (var c2 = 0; c2 < COLS; c2++) {
       ctx.fillText(String.fromCharCode(65 + c2), ox + c2 * cs + cs / 2, oy - 14);
     }
-    // Row labels 1-10
     for (var r2 = 0; r2 < ROWS; r2++) {
       ctx.fillText(String(r2 + 1), ox - 14, oy + r2 * cs + cs / 2);
     }
 
-    // Title
     ctx.fillStyle = '#37474f';
     ctx.font = 'bold 14px "Nunito", sans-serif';
     ctx.textAlign = 'center';
@@ -100,7 +90,6 @@
 
     if (!boardData) return;
 
-    // Draw cells
     for (var r3 = 0; r3 < ROWS; r3++) {
       for (var c3 = 0; c3 < COLS; c3++) {
         var x = ox + c3 * cs;
@@ -108,11 +97,9 @@
         var cell = boardData[r3] && boardData[r3][c3];
 
         if (isEnemy) {
-          // Enemy board: show shot results
           if (cell && cell.shot === 'hit') {
             ctx.fillStyle = 'rgba(244,67,54,0.25)';
             ctx.fillRect(x + 1, y + 1, cs - 2, cs - 2);
-            // Red X
             ctx.strokeStyle = '#c62828';
             ctx.lineWidth = 2.5;
             ctx.beginPath();
@@ -126,7 +113,6 @@
           } else if (cell && cell.shot === 'sunk') {
             ctx.fillStyle = 'rgba(183,28,28,0.3)';
             ctx.fillRect(x + 1, y + 1, cs - 2, cs - 2);
-            // Bold red X
             ctx.strokeStyle = '#b71c1c';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -138,18 +124,15 @@
             ctx.lineTo(x + cs * 0.2, y + cs * 0.8);
             ctx.stroke();
           } else if (cell && cell.shot === 'miss') {
-            // Small dot for miss
             ctx.fillStyle = '#90a4ae';
             ctx.beginPath();
             ctx.arc(x + cs / 2, y + cs / 2, cs * 0.12, 0, Math.PI * 2);
             ctx.fill();
           }
         } else {
-          // My board: show ships and incoming shots
           if (cell && cell.hasShip) {
             ctx.fillStyle = cell.shot === 'hit' ? 'rgba(244,67,54,0.35)' : 'rgba(33,150,243,0.25)';
             ctx.fillRect(x + 1, y + 1, cs - 2, cs - 2);
-            // Ship cell border
             ctx.strokeStyle = cell.shot === 'hit' ? '#c62828' : '#1565c0';
             ctx.lineWidth = 1.5;
             ctx.strokeRect(x + 2, y + 2, cs - 4, cs - 4);
@@ -192,8 +175,52 @@
     }
   }
 
-  // ---- Animation ----
+  // ---- Layout helpers ----
+  function getBoardOx() {
+    if (viewMode === 'both') return margin;
+    var boardW = cs * COLS;
+    return (W - boardW) / 2;
+  }
 
+  var bsBtnX, bsBtnY, bsBtnW, bsBtnH;
+
+  function layoutButton() {
+    var boardH = cs * ROWS;
+    var oy = margin + 22;
+    bsBtnW = 80; bsBtnH = 28;
+    bsBtnX = (W - bsBtnW) / 2;
+    bsBtnY = oy + boardH + 6;
+  }
+
+  function bsBtnHit(mx, my) {
+    return mx >= bsBtnX && mx <= bsBtnX + bsBtnW && my >= bsBtnY && my <= bsBtnY + bsBtnH;
+  }
+
+  function drawControlButton(state, pi) {
+    var isZh = getLang() === 'zh';
+    var label;
+    if (state.phase === 'placing' && state.currentPlayer === pi) {
+      label = isZh ? ('\u27F3 ' + (placeOrientation === 'h' ? '横' : '竖')) : ('\u27F3 ' + (placeOrientation === 'h' ? 'Horiz' : 'Vert'));
+    } else if (viewMode === 'both') {
+      return;
+    } else if (viewMode === 'my') {
+      label = isZh ? '\u{1F6E1}\uFE0F 查看敌方' : '\u{1F6E1}\uFE0F View Enemy';
+    } else {
+      label = isZh ? '\u{1F3F4}\uFE0F 查看我方' : '\u{1F3F4}\uFE0F View Mine';
+    }
+
+    ctx.fillStyle = '#c8a45c';
+    ctx.beginPath();
+    ctx.roundRect(bsBtnX, bsBtnY, bsBtnW, bsBtnH, 14);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px "Nunito", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, bsBtnX + bsBtnW / 2, bsBtnY + bsBtnH / 2);
+  }
+
+  // ---- Animation ----
   function startAnimLoop() {
     if (animState.running) return;
     animState.running = true;
@@ -245,7 +272,6 @@
     var progress = animState.shotProgress;
 
     if (animState.shotResult === 'miss') {
-      // Ripple effect
       var maxR = cs * 0.6;
       ctx.strokeStyle = 'rgba(144,164,174,' + (0.8 * (1 - progress)) + ')';
       ctx.lineWidth = 2;
@@ -253,7 +279,6 @@
       ctx.arc(x, y, maxR * progress, 0, Math.PI * 2);
       ctx.stroke();
     } else {
-      // Hit/sunk explosion
       var radius = cs * 0.4 * (1 - progress * 0.5);
       var alpha = 0.7 * (1 - progress);
       ctx.fillStyle = animState.shotResult === 'sunk'
@@ -263,7 +288,6 @@
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fill();
 
-      // Sparks
       for (var i = 0; i < 6; i++) {
         var angle = (i / 6) * Math.PI * 2 + progress * 2;
         var dist = cs * 0.5 * progress;
@@ -278,7 +302,6 @@
   }
 
   // ---- Main draw ----
-
   function drawFrame(now) {
     var state = window._bsState;
     var pi = window._bsPI;
@@ -287,41 +310,49 @@
     var dpr = window.devicePixelRatio || 1;
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
-    // Calculate cell size
-    var totalWidth = W - margin * 2;
-    cs = Math.floor((totalWidth - boardGap) / COLS / 2);
-    cs = Math.max(20, Math.min(cs, 38));
+    if (viewMode === 'both') {
+      cs = Math.floor((W - margin * 2 - boardGap) / COLS / 2);
+    } else {
+      cs = Math.floor((W - margin * 2) / COLS);
+    }
+    cs = Math.max(18, Math.min(cs, 38));
 
     var boardW = cs * COLS;
     var boardH = cs * ROWS;
-    var leftOx = margin;
-    var rightOx = margin + boardW + boardGap;
-    var oy = margin + 30;
+    var oy = margin + 22;
+    var lox = viewMode === 'both' ? margin : (W - boardW) / 2;
+    var rox = viewMode === 'both' ? margin + boardW + boardGap : lox;
 
-    // Left board: my ships
     var myLabel = getLang() === 'en' ? 'My Fleet' : '我的舰队';
-    drawGrid(leftOx, oy, myLabel, state.myBoard, false, state, pi);
-
-    // Right board: enemy
     var enemyLabel = getLang() === 'en' ? 'Enemy Waters' : '敌方海域';
-    drawGrid(rightOx, oy, enemyLabel, state.enemyBoard, true, state, pi);
+
+    if (viewMode === 'both' || viewMode === 'my') {
+      drawGrid(lox, oy, myLabel, state.myBoard, false, state, pi);
+    }
+    if (viewMode === 'both' || viewMode === 'enemy') {
+      drawGrid(rox, oy, enemyLabel, state.enemyBoard, true, state, pi);
+    }
 
     // Placing phase preview
     if (state.phase === 'placing' && state.currentPlayer === pi && placePreview) {
       var valid = canPlacePreview(state, placePreview.r, placePreview.c, placeOrientation);
       var size = SHIP_SIZES[state.placedCount[pi]];
-      drawPlacingPreview(leftOx, oy, placePreview.r, placePreview.c, placeOrientation, size, valid);
+      drawPlacingPreview(lox, oy, placePreview.r, placePreview.c, placeOrientation, size, valid);
     }
 
     // Shot animation overlay
     if (animState.type === 'shot') {
-      var aOx = animState.shotBoard === 'enemy' ? rightOx : leftOx;
-      var aBoard = animState.shotBoard === 'enemy' ? state.enemyBoard : state.myBoard;
-      drawShotAnimation(aOx, oy, aBoard);
+      var aOx = animState.shotBoard === 'enemy' ? rox : lox;
+      drawShotAnimation(aOx, oy);
     }
 
-    // Ship status bar at bottom
-    drawShipStatus(state, pi, leftOx, oy + boardH + 16, rightOx);
+    layoutButton();
+
+    // Ship status bar
+    drawShipStatus(state, pi, lox, oy + boardH + 8, rox);
+
+    // Control button
+    drawControlButton(state, pi);
 
     // Phase indicator
     ctx.fillStyle = '#37474f';
@@ -330,16 +361,21 @@
 
     if (state.phase === 'placing') {
       var isMyTurn = state.currentPlayer === pi;
+      var placing = getLang() === 'en' ? 'Place your ' : '放置 ';
+      var shipType = shipLabel(SHIP_SIZES[state.placedCount[pi]] >= 5 ? 'carrier' :
+        SHIP_SIZES[state.placedCount[pi]] >= 4 ? 'battleship' :
+        SHIP_SIZES[state.placedCount[pi]] >= 3 ? (state.placedCount[pi] < 3 ? 'cruiser' : 'submarine') : 'destroyer');
+      var sizeStr = ' (' + String(SHIP_SIZES[state.placedCount[pi]]) + ')';
       var txt = isMyTurn
-        ? (getLang() === 'en' ? 'Your turn to place ships' : '轮到你放置战舰')
+        ? placing + shipType + sizeStr
         : (getLang() === 'en' ? 'Waiting for opponent to place...' : '等待对手放置...');
-      ctx.fillText(txt, W / 2, oy - 8);
+      ctx.fillText(txt, W / 2, oy - 10);
     } else if (state.phase === 'shooting') {
       var isMyTurn2 = state.currentPlayer === pi;
       var txt2 = isMyTurn2
         ? (getLang() === 'en' ? 'Your turn — click enemy grid to fire!' : '轮到你 — 点击敌方海域开火！')
         : (getLang() === 'en' ? 'Waiting for opponent to fire...' : '等待对手开火...');
-      ctx.fillText(txt2, W / 2, oy - 8);
+      ctx.fillText(txt2, W / 2, oy - 10);
     } else if (state.phase === 'over') {
       var won = state.winner === pi;
       var txt3 = won
@@ -347,7 +383,7 @@
         : (getLang() === 'en' ? 'Defeat' : '败北');
       ctx.fillStyle = won ? '#2e7d32' : '#c62828';
       ctx.font = 'bold 16px "Nunito", sans-serif';
-      ctx.fillText(txt3, W / 2, oy - 8);
+      ctx.fillText(txt3, W / 2, oy - 10);
     }
   }
 
@@ -355,43 +391,39 @@
     var sizes = state.shipSizes;
     var placed = state.placedCount[pi];
     var myShips = state.myShips || [];
-    var totalW = cs * COLS;
-    var y = topY;
+    var boardW = cs * COLS;
 
     ctx.font = '11px "Nunito", sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
 
-    // My fleet status (left)
     ctx.fillStyle = '#546e7a';
     var label = getLang() === 'en' ? 'Fleet:' : '舰队:';
-    ctx.fillText(label, leftOx, y);
+    ctx.fillText(label, leftOx, topY);
 
     for (var i = 0; i < sizes.length; i++) {
-      var x = leftOx + (i < 3 ? 0 : (i === 3 ? totalW * 0.4 : totalW * 0.7));
       var row = i < 3 ? 0 : 1;
-      var cellY = y + 14 + row * 16;
-      var cellX = leftOx + (i % 3) * (totalW / 3);
+      var cellY = topY + 14 + row * 16;
+      var cellX = leftOx + (i % 3) * (boardW / 3);
 
       var shipInfo = myShips[i];
       var sunk = shipInfo && shipInfo.cells && shipInfo.cells.every(function (c) { return c.hit; });
 
       if (i < placed && shipInfo) {
         ctx.fillStyle = sunk ? '#c62828' : '#1565c0';
-        // Draw small ship icon
-        for (var j = 0; j < sizes[i]; j++) {
+        for (var j = 0; j < Math.min(sizes[i], 5); j++) {
           ctx.fillRect(cellX + j * 10, cellY, 8, 12);
         }
         ctx.fillStyle = sunk ? '#c62828' : '#37474f';
-        ctx.fillText(shipLabel(shipInfo.type) + (sunk ? ' ✕' : ''), cellX + sizes[i] * 10 + 4, cellY);
+        ctx.fillText(shipLabel(shipInfo.type) + (sunk ? ' ✕' : ''), cellX + Math.min(sizes[i], 5) * 10 + 4, cellY);
       } else if (i < placed) {
         ctx.fillStyle = '#90a4ae';
-        for (var j2 = 0; j2 < sizes[i]; j2++) {
+        for (var j2 = 0; j2 < Math.min(sizes[i], 5); j2++) {
           ctx.fillRect(cellX + j2 * 10, cellY, 8, 12);
         }
       } else {
         ctx.fillStyle = '#b0bec5';
-        for (var j3 = 0; j3 < sizes[i]; j3++) {
+        for (var j3 = 0; j3 < Math.min(sizes[i], 5); j3++) {
           ctx.fillRect(cellX + j3 * 10, cellY, 8, 12);
         }
       }
@@ -413,8 +445,9 @@
 
   function getCellFromEvent(e, ox, oy) {
     var rect = canvas.getBoundingClientRect();
-    var mx = e.clientX - rect.left;
-    var my = e.clientY - rect.top;
+    var dpr = window.devicePixelRatio || 1;
+    var mx = (e.clientX - rect.left);
+    var my = (e.clientY - rect.top);
     var c = Math.floor((mx - ox) / cs);
     var r = Math.floor((my - oy) / cs);
     if (r >= 0 && r < ROWS && c >= 0 && c < COLS) return { r: r, c: c };
@@ -422,11 +455,9 @@
   }
 
   // ---- Renderer registration ----
-
   window.gameRenderers.set('battleship', {
     init: function (container) {
       canvas = document.createElement('canvas');
-      canvas.style.width = '100%';
       canvas.style.touchAction = 'none';
       container.appendChild(canvas);
       ctx = canvas.getContext('2d');
@@ -434,119 +465,87 @@
       function resize() {
         var dpr = window.devicePixelRatio || 1;
         W = Math.min(window.innerWidth, 900);
-        H = Math.min(window.innerHeight - 120, 680);
+        H = Math.min(window.innerHeight - 150, 680);
         canvas.width = W * dpr;
         canvas.height = H * dpr;
         canvas.style.width = W + 'px';
         canvas.style.height = H + 'px';
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        viewMode = W < 560 ? 'my' : 'both';
         drawFrame(null);
       }
       resize();
       window.addEventListener('resize', resize);
 
-      // Click handler
       canvas.addEventListener('click', function (e) {
         var state = window._bsState;
         var pi = window._bsPI;
         if (!state || pi === undefined) return;
 
-        var totalWidth = W - margin * 2;
-        var cellSize = Math.floor((totalWidth - boardGap) / COLS / 2);
-        cellSize = Math.max(20, Math.min(cellSize, 38));
-        var boardW = cellSize * COLS;
-        var leftOx = margin;
-        var rightOx = margin + boardW + boardGap;
-        var oy = margin + 30;
+        // Control button
+        if (bsBtnHit(e.clientX - canvas.getBoundingClientRect().left, e.clientY - canvas.getBoundingClientRect().top)) {
+          if (state.phase === 'placing' && state.currentPlayer === pi) {
+            placeOrientation = placeOrientation === 'h' ? 'v' : 'h';
+          } else if (viewMode === 'my') {
+            viewMode = 'enemy';
+          } else if (viewMode === 'enemy') {
+            viewMode = 'my';
+          }
+          drawFrame(null);
+          return;
+        }
+
+        var lox = getBoardOx();
+        var oy = margin + 22;
 
         if (state.phase === 'placing' && state.currentPlayer === pi) {
-          var cell = getCellFromEvent(e, leftOx, oy);
+          var cell = getCellFromEvent(e, lox, oy);
           if (!cell) return;
-
           var size = SHIP_SIZES[state.placedCount[pi]];
-          if (placePhase === 'orientation') {
-            // Toggle orientation on click
-            placeOrientation = placeOrientation === 'h' ? 'v' : 'h';
-            placePreview = { r: cell.r, c: cell.c };
-            placePhase = 'origin';
-            drawFrame(null);
-            return;
-          }
-
-          // placePhase === 'origin'
-          if (!placePreview) {
-            placePreview = { r: cell.r, c: cell.c };
-            drawFrame(null);
-            return;
-          }
-
-          // Try to place at clicked cell
           var valid = canPlacePreview(state, cell.r, cell.c, placeOrientation);
           if (valid) {
-            window.makeGameMove({
-              r: cell.r,
-              c: cell.c,
-              orientation: placeOrientation,
-              size: size,
-            });
-            placePhase = 'orientation';
+            window.makeGameMove({ r: cell.r, c: cell.c, orientation: placeOrientation, size: size });
             placePreview = null;
-          } else {
-            // Reset and start over
-            placePreview = { r: cell.r, c: cell.c };
-            drawFrame(null);
           }
-        } else if (state.phase === 'shooting' && state.currentPlayer === pi) {
-          var cell2 = getCellFromEvent(e, rightOx, oy);
+          drawFrame(null);
+        } else if (state.phase === 'shooting' && state.currentPlayer === pi && viewMode !== 'my') {
+          var rox = viewMode === 'both' ? (margin + cs * COLS + boardGap) : lox;
+          var cell2 = getCellFromEvent(e, rox, oy);
           if (!cell2) return;
-
-          // Check if already shot
           if (state.enemyBoard[cell2.r] && state.enemyBoard[cell2.r][cell2.c] &&
               state.enemyBoard[cell2.r][cell2.c].shot) return;
 
-          // Start shot animation
-          var result = state.enemyBoard[cell2.r] && state.enemyBoard[cell2.r][cell2.c]
-            ? state.enemyBoard[cell2.r][cell2.c].shot : null;
           stopAnimLoop();
           animState.type = 'shot';
           animState.shotR = cell2.r;
           animState.shotC = cell2.c;
-          animState.shotResult = 'hit'; // optimistic, server will confirm
+          animState.shotResult = 'hit';
           animState.shotProgress = 0;
           animState.shotBoard = 'enemy';
           startAnimLoop();
-
           window.makeGameMove({ r: cell2.r, c: cell2.c });
         }
       });
 
-      // Right-click to cancel placing
       canvas.addEventListener('contextmenu', function (e) {
         e.preventDefault();
         var state = window._bsState;
         if (state && state.phase === 'placing' && state.currentPlayer === window._bsPI) {
-          placePhase = 'orientation';
+          placeOrientation = placeOrientation === 'h' ? 'v' : 'h';
           placePreview = null;
-          placeOrientation = 'h';
           drawFrame(null);
         }
       });
 
-      // Hover for placing preview
       canvas.addEventListener('mousemove', function (e) {
         var state = window._bsState;
         var pi = window._bsPI;
         if (!state || pi === undefined) return;
         if (state.phase !== 'placing' || state.currentPlayer !== pi) return;
 
-        var totalWidth = W - margin * 2;
-        var cellSize = Math.floor((totalWidth - boardGap) / COLS / 2);
-        cellSize = Math.max(20, Math.min(cellSize, 38));
-        var boardW = cellSize * COLS;
-        var leftOx = margin;
-        var oy = margin + 30;
-
-        var cell = getCellFromEvent(e, leftOx, oy);
+        var lox = getBoardOx();
+        var oy = margin + 22;
+        var cell = getCellFromEvent(e, lox, oy);
         if (cell) {
           placePreview = { r: cell.r, c: cell.c };
         } else {
@@ -561,9 +560,13 @@
       window._bsPI = playerIndex;
 
       if (!canvas || !state) return;
-
-      // If animation is running, animTick handles drawing
       if (animState.running) return;
+
+      // Auto-switch view on phase change
+      if (viewMode !== 'both') {
+        if (state.phase === 'placing') viewMode = 'my';
+        else if (state.phase === 'shooting' && state.currentPlayer === playerIndex) viewMode = 'enemy';
+      }
 
       drawFrame(null);
     },
