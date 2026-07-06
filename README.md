@@ -1,12 +1,18 @@
 # GameNest
 
-> 23 self-hosted LAN board, card, party, puzzle, and real-time games. Start one server, share one room code or QR code, and play from any browser on the same WiFi.
+> 27 self-hosted LAN board, card, party, puzzle, and real-time games. Start one server, share one room code or QR code, and play from any browser on the same WiFi.
+
+**[🚀 Live Demo](https://game-production-03da.up.railway.app/) — try it without installing.**
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/absswds/GameNest/actions/workflows/ci.yml/badge.svg)](https://github.com/absswds/GameNest/actions/workflows/ci.yml)
 [![Android APK](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml/badge.svg)](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-43853d.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-lightgrey.svg)](https://expressjs.com/)
+[![Games](https://img.shields.io/badge/Games-27-blue.svg)](#game-catalog)
+[![No account](https://img.shields.io/badge/Account-Not_Required-green.svg)](#highlights)
+[![Offline](https://img.shields.io/badge/Network-LAN/Offline-orange.svg)](#highlights)
+[![Android](https://img.shields.io/badge/Host-Android_✓-brightgreen.svg)](#android-host)
 
 [简体中文](README.zh-CN.md) | English
 
@@ -21,6 +27,8 @@ GameNest is a lightweight open-source tabletop game room for family nights, dorm
 - AI opponents for most turn-based games, useful for solo testing or small groups.
 - Browser-first renderers with hidden-information views, legal-move hints, canvas boards, and lightweight animations.
 - Optional Android host wrapper powered by nodejs-mobile, so the same project can run as a portable local server.
+
+> If GameNest saved your game night, please ⭐ it so others can find it.
 
 ## Screenshots
 
@@ -78,7 +86,7 @@ taskkill /f /im node.exe
 
 | Category | Games |
 | --- | --- |
-| Classic board | Tic-Tac-Toe, Gomoku, Flight Chess, Chinese Chess, Go 9x9 |
+| Classic board | Tic-Tac-Toe, Gomoku, Flight Chess, Chinese Chess, Chess, Checkers, Connect Four, Reversi, Go 9x9 |
 | Party cards | UNO, Exploding Kittens, Number Bomb, Old Maid, Draw & Guess, Truth or Dare |
 | Deduction | Davinci Code, Liar's Bar |
 | Poker | Dou Dizhu, Big Two, Texas Hold'em |
@@ -146,6 +154,10 @@ More details:
 ## Contributing
 
 Bug reports, rules fixes, AI improvements, renderer polish, and new games are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=absswds/GameNest&type=Date)](https://star-history.com/#absswds/GameNest&Date)
 
 ## License
 

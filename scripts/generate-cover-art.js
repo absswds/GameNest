@@ -30,6 +30,10 @@ const covers = [
   { id: 'flightchess', palette: ['#f4eee4', '#d1d9e4', '#678db8', '#192637'], motif: 'flightchess' },
   { id: 'snakebattle', palette: ['#edf3ed', '#c6d7c7', '#6f9b68', '#152018'], motif: 'snakebattle' },
   { id: 'chinesechess', palette: ['#f3ebe1', '#e0c7a8', '#b76c53', '#261611'], motif: 'chinesechess' },
+  { id: 'chess', palette: ['#f0d9b5', '#b58863', '#3b2a1a', '#1a1208'], motif: 'chess' },
+  { id: 'checkers', palette: ['#eeeed2', '#769656', '#3a5a1c', '#1a2a0a'], motif: 'checkers' },
+  { id: 'connect4', palette: ['#f5f5f5', '#2e7dcc', '#e8c623', '#cc3333'], motif: 'connect4' },
+  { id: 'reversi', palette: ['#2a8a3a', '#1a5a2a', '#ffffff', '#111111'], motif: 'reversi' },
   { id: 'go9', palette: ['#eee8dd', '#d4bc95', '#967145', '#1d140e'], motif: 'go9' },
   { id: 'monopoly', palette: ['#f5f0e5', '#d2c7b4', '#90aab4', '#1c2228'], motif: 'monopoly' },
   { id: 'suikabattle', palette: ['#f8f1e6', '#f0d39f', '#de874d', '#27170f'], motif: 'suikabattle' },
@@ -232,6 +236,72 @@ function motifSvg(cover) {
         ${line(1280, 360, 1040, 590, accent, 16)}
         ${circle(1075, 720, 64, '#fff7ef')}
         ${circle(1240, 720, 64, '#fff7ef')}
+      `;
+    case 'chess':
+      return `
+        ${block(955, 260, 410, 410, 12, '#f0d9b5')}
+        ${Array.from({ length: 8 }, (_, row) =>
+          Array.from({ length: 8 }, (_, col) => {
+            if ((row + col) % 2 === 1) {
+              return block(955 + col * 51.25, 260 + row * 51.25, 51.25, 51.25, 0, '#b58863');
+            }
+            return '';
+          }).join('')
+        ).join('')}
+        <text x="985" y="315" font-size="38" fill="${dark}" font-family="serif" opacity="0.85">♔</text>
+        <text x="1135" y="415" font-size="42" fill="#fff8ef" font-family="serif" opacity="0.9">♚</text>
+        <text x="1250" y="510" font-size="34" fill="${dark}" font-family="serif" opacity="0.8">♕</text>
+        <text x="1050" y="560" font-size="30" fill="#fff8ef" font-family="serif" opacity="0.85">♞</text>
+      `;
+    case 'checkers':
+      return `
+        ${block(955, 260, 410, 410, 12, '#eeeed2')}
+        ${Array.from({ length: 8 }, (_, row) =>
+          Array.from({ length: 8 }, (_, col) => {
+            if ((row + col) % 2 === 1) {
+              return block(955 + col * 51.25, 260 + row * 51.25, 51.25, 51.25, 0, '#769656');
+            }
+            return '';
+          }).join('')
+        ).join('')}
+        ${circle(1010, 310, 18, dark)}
+        ${circle(1112, 310, 18, dark)}
+        ${circle(1215, 310, 18, dark)}
+        ${circle(1060, 415, 18, '#fff8ef')}
+        ${circle(1165, 415, 18, '#fff8ef')}
+        <circle cx="1010" cy="310" r="18" stroke="#fff8ef" stroke-width="4" fill="none"/>
+        <circle cx="1215" cy="310" r="18" stroke="#fff8ef" stroke-width="4" fill="none"/>
+      `;
+    case 'connect4':
+      return `
+        ${block(960, 255, 400, 400, 28, '#2e7dcc')}
+        ${Array.from({ length: 6 }, (_, row) =>
+          Array.from({ length: 7 }, (_, col) => circle(1016 + col * 54, 310 + row * 58, 22, '#f5f5f5', 0.2)).join('')
+        ).join('')}
+        ${circle(1070, 368, 22, '#e8c623')}
+        ${circle(1124, 368, 22, '#e8c623')}
+        ${circle(1178, 368, 22, '#e8c623')}
+        ${circle(1232, 368, 22, '#e8c623')}
+        ${circle(1124, 426, 22, '#cc3333')}
+        ${circle(1178, 426, 22, '#e8c623')}
+        ${circle(1178, 484, 22, '#cc3333')}
+      `;
+    case 'reversi':
+      return `
+        ${block(955, 260, 410, 410, 14, '#2a8a3a')}
+        ${Array.from({ length: 8 }, (_, row) =>
+          Array.from({ length: 8 }, (_, col) => {
+            const x = 980 + col * 48;
+            const y = 285 + row * 48;
+            if (row === 3 && col === 3) return circle(x + 24, y + 24, 16, '#ffffff');
+            if (row === 3 && col === 4) return circle(x + 24, y + 24, 16, '#111111');
+            if (row === 4 && col === 3) return circle(x + 24, y + 24, 16, '#111111');
+            if (row === 4 && col === 4) return circle(x + 24, y + 24, 16, '#ffffff');
+            return '';
+          }).join('')
+        ).join('')}
+        <circle cx="1004" cy="309" r="16" stroke="#1a5a2a" stroke-width="3" fill="none"/>
+        <circle cx="1100" cy="405" r="16" stroke="#1a5a2a" stroke-width="3" fill="none"/>
       `;
     case 'go9':
       return `

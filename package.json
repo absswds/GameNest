@@ -1,6 +1,6 @@
 {
   "name": "gamenest",
-  "version": "1.0.0",
+  "version": "1.3.0",
   "description": "LAN multiplayer board/card/party game platform - self-hosted, browser-first, zero setup.",
   "main": "server.js",
   "engines": {

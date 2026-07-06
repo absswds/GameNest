@@ -160,6 +160,39 @@
         { h: '操作', p: '点击己方棋子选中，再点击目标位置落子。非法走法会被服务器拒绝。' },
       ]
     },
+    chess: {
+      sections: [
+        { h: '游戏目标', p: '将死对方的王（King）即获胜。8×8 黑白格棋盘，双方各 16 子。' },
+        { h: '棋子走法', p: '王(K)：任意方向一格。后(Q)：任意直线任意距离。车(R)：横竖直线。象(B)：斜线。马(N)：L形（日字，无蹩腿）。兵(P)：向前一格，首步可走两格，斜吃。' },
+        { h: '特殊规则', p: '王车易位：王和车之间无子且未被将军时可同时移动。吃过路兵：兵首步走两格后，相邻对方兵可斜吃。升变：兵到底线可变为后/车/象/马。' },
+        { h: '胜负判定', p: '将死对方王获胜。困毙（无合法走法但未被将军）为和棋。50步无吃子/三次重复局面/子力不足也可和棋。' },
+        { h: '操作', p: '点击己方棋子选中（显示绿色走法点），再点击目标位置落子。红色圈表示可吃子。兵到底线弹出升变选择。' },
+      ]
+    },
+    checkers: {
+      sections: [
+        { h: '游戏目标', p: '吃掉对方所有棋子或使其无路可走。8×8 棋盘，仅用深色格，双方各 12 子。' },
+        { h: '棋子走法', p: '普通子(m)：向前斜走一格。王(k)：前后斜走均可。吃子：跳过相邻敌方子落到其后空格。' },
+        { h: '强制吃子', p: '有吃子选项时必须吃子。可连吃（跳过多个敌方子）。普通子到底线升为王。' },
+        { h: '操作', p: '点击己方棋子选中，再点击目标位置落子。红色圈表示可吃子位置。' },
+      ]
+    },
+    connect4: {
+      sections: [
+        { h: '游戏目标', p: '先在横/竖/斜方向连成 4 子即获胜。7 列 × 6 行棋盘。' },
+        { h: '落子规则', p: '选一列投入棋子，棋子自动落到底部空位。黄色先手，红色后手。' },
+        { h: '胜负判定', p: '横/竖/斜任意方向 4 子连珠获胜。棋盘满无连珠则平局。' },
+        { h: '操作', p: '点击列顶部或直接点击列中任意位置即可落子。' },
+      ]
+    },
+    reversi: {
+      sections: [
+        { h: '游戏目标', p: '棋盘上棋子多的一方获胜。8×8 棋盘，开局中心 4 子（黑先）。' },
+        { h: '落子规则', p: '落子必须能夹住至少一个对方子（8 方向直线）。被夹的对方子全部翻转为己方。' },
+        { h: 'Pass 与结束', p: '无合法走法则跳过(pass)。双方都 pass 或棋盘满时结束，数子定胜负。' },
+        { h: '操作', p: '点击空格落子。半透明圆点表示可落子位置。' },
+      ]
+    },
     go9: {
       sections: [
         { h: '游戏目标', p: '在 9×9 棋盘上围地。终局时，占地（棋子+所围空）多的一方获胜。白方有 6.5 目贴目。' },
@@ -382,6 +415,39 @@
         { h: 'Piece Moves', p: 'Rook (Chariot): straight lines, any distance. Knight (Horse): L-shape (日), can be blocked. Cannon: straight lines, but must jump a piece to capture. Elephant/Bishop: diagonal 2×2 (田), blocked by center piece, cannot cross river. Advisor: one diagonal step within the palace. General/King: one orthogonal step within the palace, cannot face the opposing General. Pawn/Soldier: one step forward, after crossing the river also one step sideways.' },
         { h: 'Check & Checkmate', p: 'You cannot leave your General in check after a move. If a player has no legal moves and is in check, it\'s checkmate — opponent wins. No legal moves without being in check is also a loss (stalemate = loss in Xiangqi).' },
         { h: 'Controls', p: 'Click your piece to select it, then click the destination. Illegal moves are rejected by the server.' },
+      ]
+    },
+    chess: {
+      sections: [
+        { h: 'Objective', p: 'Checkmate the opponent\'s King. 8×8 checkered board, 16 pieces per side.' },
+        { h: 'Piece Moves', p: 'King: one square any direction. Queen: any straight line any distance. Rook: straight lines. Bishop: diagonals. Knight: L-shape (no blocking). Pawn: forward one, first move two, captures diagonally.' },
+        { h: 'Special Rules', p: 'Castling: king and rook move together when unblocked and not in check. En passant: capture a pawn that just moved two squares. Promotion: pawn reaching the back rank becomes Q/R/B/N.' },
+        { h: 'Win/Draw', p: 'Checkmate wins. Stalemate (no legal moves, not in check) is a draw. 50-move rule, threefold repetition, and insufficient material also draw.' },
+        { h: 'Controls', p: 'Click a piece to select (green dots show legal moves), then click destination. Red circles show captures. Promotion triggers a piece selection dialog.' },
+      ]
+    },
+    checkers: {
+      sections: [
+        { h: 'Objective', p: 'Capture all opponent pieces or leave them with no legal moves. 8×8 board using dark squares only, 12 pieces per side.' },
+        { h: 'Piece Moves', p: 'Man (m): forward diagonal one square. King (k): forward and backward diagonal. Capture: jump over an adjacent opponent piece to the empty square beyond.' },
+        { h: 'Forced Captures', p: 'If a capture is available, you must take it. Multi-jumps are required. Men reaching the opposite baseline become kings.' },
+        { h: 'Controls', p: 'Click a piece to select, then click destination. Red circles show capture squares.' },
+      ]
+    },
+    connect4: {
+      sections: [
+        { h: 'Objective', p: 'Be the first to connect 4 pieces in a row (horizontal, vertical, or diagonal). 7 columns × 6 rows.' },
+        { h: 'Dropping Pieces', p: 'Choose a column and drop a piece — it falls to the lowest empty row. Yellow goes first.' },
+        { h: 'Win/Draw', p: 'Four in a row wins. Board full with no winner is a draw.' },
+        { h: 'Controls', p: 'Click a column to drop your piece. A preview appears at the top on hover.' },
+      ]
+    },
+    reversi: {
+      sections: [
+        { h: 'Objective', p: 'Have the most pieces on the board when the game ends. 8×8 board, starts with 4 pieces in the center (black goes first).' },
+        { h: 'Placing Pieces', p: 'Place a piece to flank one or more opponent pieces in a straight line (8 directions). All flanked pieces flip to your color.' },
+        { h: 'Pass & End', p: 'Pass if you have no legal moves. Game ends when both players pass or the board is full. Most pieces wins.' },
+        { h: 'Controls', p: 'Click an empty square to place. Translucent dots show legal positions.' },
       ]
     },
     go9: {
