@@ -43,11 +43,7 @@
     init: function(container) {
       _expr = '';
       _usedNums = [];
-      if (!document.getElementById('tfStyles')) {
-        var s = document.createElement('style');
-        s.id = 'tfStyles'; s.textContent = STYLES;
-        document.head.appendChild(s);
-      }
+      injectStylesOnce('tfStyles', STYLES);
 
       container.innerHTML =
         '<div class="tf-wrap">' +

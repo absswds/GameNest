@@ -1,10 +1,12 @@
 // bots/flightchess.js — AI for 飞行棋
 // Simple greedy strategy: prioritize launching > capturing > advancing furthest plane
 
+const { botName } = require('./lib/bot-name');
+
 exports.name = 'flightchess';
 
 exports.createBot = (playerIndex) => ({
-  name: `电脑${playerIndex + 1}`,
+  name: botName(playerIndex, 'zh'),
   playerIndex,
   getMove(state) {
     const pData = state.players[playerIndex];

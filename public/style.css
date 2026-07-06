@@ -41,6 +41,11 @@
   50% { box-shadow: 0 0 0 6px transparent; }
 }
 
+.is-active-turn {
+  border: 2px solid var(--accent, #c8a45c);
+  animation: pulse 2s ease infinite;
+}
+
 @keyframes breathe {
   0%, 100% { border-color: var(--border); }
   50% { border-color: #ccc; }

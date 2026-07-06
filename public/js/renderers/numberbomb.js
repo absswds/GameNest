@@ -42,10 +42,7 @@
           '<div class="nb-boom" id="nbBoom"><div class="nb-boom-text">💥</div></div>' +
         '</div>';
 
-      if (!document.getElementById('nb-styles')) {
-        var s = document.createElement('style');
-        s.id = 'nb-styles';
-        s.textContent = '' +
+      injectStylesOnce('nb-styles', '' +
           // Shell
           '.nb-shell{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:360px;margin:0 auto;}' +
           // Lives row — pill badges
@@ -108,9 +105,7 @@
           '@keyframes nbPillHit{0%{transform:scale(1);background:#ffe0e0;}30%{transform:scale(1.08);}100%{transform:scale(1);}}' +
           '@keyframes nbLogHit{0%{background:rgba(231,76,60,.25);}100%{background:rgba(231,76,60,.06);}}' +
           '@keyframes nbIconBounce{0%{transform:scale(1);}30%{transform:scale(1.2) rotate(-10deg);}60%{transform:scale(.9);}100%{transform:scale(1);}}' +
-          '@media(max-width:400px){.nb-card{padding:18px 14px 16px;}.nb-range{font-size:24px;}.nb-key{font-size:19px;}.nb-icon{font-size:44px;}}';
-        document.head.appendChild(s);
-      }
+          '@media(max-width:400px){.nb-card{padding:18px 14px 16px;}.nb-range{font-size:24px;}.nb-key{font-size:19px;}.nb-icon{font-size:44px;}}');
 
       var input = document.getElementById('nbInput');
       input.addEventListener('keydown', function(e) {

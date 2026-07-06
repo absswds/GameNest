@@ -22,8 +22,8 @@ test('resume room banner does not contain mojibake text', () => {
 
 test('seat swap player index update refreshes host controls', () => {
   const js = fs.readFileSync(path.join(root, 'public', 'js', 'room-client.js'), 'utf8');
-  const match = js.match(/if \(msg\.type === 'player_index_updated'\) \{([\s\S]*?)\n      \}/);
-  assert.ok(match, 'player_index_updated handler should exist');
+  const match = js.match(/player_index_updated\s*\(\s*msg\s*\)\s*\{([\s\S]*?)\n\s*\}/);
+  assert.ok(match, 'player_index_updated handler should exist (handler map pattern)');
   assert.ok(
     /updateWaitingRoom\(\)/.test(match[1]),
     'player_index_updated should rerender the waiting room after changing playerIndex'

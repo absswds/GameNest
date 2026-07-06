@@ -63,8 +63,8 @@
           ? '<span style="margin-left:6px;background:#e74c3c;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700;vertical-align:middle;">' + _t('ddz_passed_badge') + '</span>'
           : '';
         html +=
-          '<div style="text-align:center;padding:8px 16px;background:var(--bg,#f8f9fa);border-radius:var(--radius-sm,16px);' +
-          (isActive ? 'border:2px solid var(--accent,#c8a45c);animation:pulse 2s ease infinite;' : 'border:1px solid var(--border,#eee);') + '">' +
+          '<div class="' + (isActive ? 'is-active-turn' : '') + '" style="text-align:center;padding:8px 16px;background:var(--bg,#f8f9fa);border-radius:var(--radius-sm,16px);' +
+          (isActive ? '' : 'border:1px solid var(--border,#eee);') + '">' +
           '<div style="font-size:13px;font-weight:600;">' +
           (isLandlord ? '<span style="color:#c0392b;">&#x1F451;</span> ' : '') +
           ((window.gamePlayers && window.gamePlayers[i]) ? window.gamePlayers[i].name : (_t('ddz_player_fallback') + ' ' + (i + 1))) +

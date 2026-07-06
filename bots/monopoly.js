@@ -1,7 +1,9 @@
 // bots/monopoly.js — 大富翁 AI (贪心 + 会建房)
+const { botName } = require('./lib/bot-name');
+
 exports.name = 'monopoly';
 exports.createBot = (playerIndex) => ({
-  name: '电脑' + (playerIndex + 1),
+  name: botName(playerIndex, 'zh'),
   getMove(state) {
     if (!state || state.currentPlayer !== playerIndex) return { pass: true };
     if (state.eliminated && state.eliminated[playerIndex]) return { pass: true };

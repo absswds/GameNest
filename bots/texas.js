@@ -1,5 +1,7 @@
 exports.name = 'texas';
 
+const { botName } = require('./lib/bot-name');
+
 function rankVal(rank) {
   return ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'].indexOf(rank);
 }
@@ -32,7 +34,7 @@ function handStrength(holeCards, communityCards) {
 
 exports.createBot = function(playerIndex) {
   return {
-    name: '电脑' + (playerIndex + 1),
+    name: botName(playerIndex, 'zh'),
     playerIndex: playerIndex,
     getMove: function(state) {
       const chips = state.chips[playerIndex];

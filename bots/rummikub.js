@@ -1,8 +1,10 @@
 // bots/rummikub.js — Rummikub AI with wild card support
+const { botName } = require('./lib/bot-name');
+
 exports.name = 'rummikub';
 
 exports.createBot = (playerIndex) => ({
-  name: `电脑${playerIndex + 1}`,
+  name: botName(playerIndex, 'zh'),
   getMove(state) {
     if (state.playedThisTurn[playerIndex]) return { endTurn: true };
     const hand = state.hands[playerIndex];

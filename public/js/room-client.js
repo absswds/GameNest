@@ -1,10 +1,18 @@
 // public/js/room-client.js
 (function() {
+  const el = {};
+  function cacheElements() {
+    ['notifyBar','status','overlay','boardArea','waitingRoom','waitingSlots','waitingStatus','playerBar','resultOverlay','resultText','resultSub','gameStage','gameActions','profileEdit','emojiRow','avatarDrawer','readyBtn','startGameBtn','addBotBtn','gameOptions','seatSwapModal','seatSwapGrid','seatSwapHint','nameInput','avatarEmoji','qrImage','qrRoomCode','roomBadge'].forEach(function(id) {
+      el[id] = document.getElementById(id);
+    });
+  }
+  cacheElements();
+
   let game = sessionStorage.getItem('game');
   const roomId = sessionStorage.getItem('roomId');
   let playerIndex = parseInt(sessionStorage.getItem('playerIndex'));
   const resumeToken = sessionStorage.getItem('resumeToken');
-  const NO_AI_GAMES = new Set(['truthdare', 'drawguess', 'minesweeper', 'suikabattle']);
+
 
   let ws, state, players, currentRenderer;
   let roomPhase = 'lobby';   // 'lobby' | 'ready' | 'playing'
@@ -13,47 +21,20 @@
   let terminalRoomError = false;
   let seatSwapFromIndex = null;
 
-  document.getElementById('roomBadge').textContent = roomId;
+  el.roomBadge.textContent = roomId;
 
   // ---- Game name lookup ----
   function _gt(id) {
-    var g = window.gameCatalog && window.gameCatalog.byId(id);
-    return g ? { name: g.name, icon: g.icon } : null;
+    return window.gameCatalog && window.gameCatalog.byId(id)
+      || { name: id, icon: '?', maxPlayers: 4, supportsAI: true };
   }
-  const gameNames = {
-    tictactoe: _gt('tictactoe') || { name: 'Tic Tac Toe', icon: '✦' },
-    gomoku: _gt('gomoku') || { name: 'Gomoku', icon: '●' },
-    davinci: _gt('davinci') || { name: 'Davinci Code', icon: '🧠' },
-    uno: _gt('uno') || { name: 'UNO', icon: '🃏' },
-    doudizhu: _gt('doudizhu') || { name: 'Dou Dizhu', icon: '♠' },
-    'exploding-kittens': _gt('exploding-kittens') || { name: 'Exploding Kittens', icon: '💣' },
-    rummikub: _gt('rummikub') || { name: 'Rummikub', icon: '▦' },
-    twentyfour: _gt('twentyfour') || { name: '24 Game', icon: '24' },
-    minesweeper: _gt('minesweeper') || { name: 'Minesweeper', icon: '✹' },
-    numberbomb: _gt('numberbomb') || { name: 'Number Bomb', icon: '#' },
-    oldmaid: _gt('oldmaid') || { name: 'Old Maid', icon: '👻' },
-    liarsbar: _gt('liarsbar') || { name: "Liar's Bar", icon: '♣' },
-    bigtwo: _gt('bigtwo') || { name: 'Big Two', icon: '♠' },
-    texas: _gt('texas') || { name: "Texas Hold'em", icon: 'A' },
-    flightchess: _gt('flightchess') || { name: 'Flight Chess', icon: '✈' },
-    snakebattle: _gt('snakebattle') || { name: 'Snake Battle', icon: 'S' },
-    chinesechess: _gt('chinesechess') || { name: 'Chinese Chess', icon: '楚' },
-    go9: _gt('go9') || { name: 'Go 9x9', icon: '○' },
-    monopoly: _gt('monopoly') || { name: 'Monopoly', icon: 'M' },
-    suikabattle: _gt('suikabattle') || { name: 'Suika Battle', icon: '◔' },
-    sheeptile: _gt('sheeptile') || { name: 'Sheep Tile', icon: 'Y' },
-    truthdare: _gt('truthdare') || { name: 'Truth or Dare', icon: '?' },
-    drawguess: _gt('drawguess') || { name: 'Draw & Guess', icon: '✎' },
-  };
 
   let roomOptions = {};
   let prevPlayerCount = 0;
-  const gameInfo = (window.gameCatalog && window.gameCatalog.byId(game))
-    || gameNames[game]
-    || { name: game, icon: '?', subtitle: '', description: '', players: '', duration: '', category: '', tags: [], cover: '', maxPlayers: 4, supportsAI: !NO_AI_GAMES.has(game) };
+  const gameInfo = _gt(game);
 
   function notify(msg) {
-    const bar = document.getElementById('notifyBar');
+    const bar = el.notifyBar;
     if (!bar) return;
     bar.textContent = msg;
     bar.style.transform = 'translateY(0)';
@@ -83,22 +64,22 @@
   }
 
   function setText(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value || '';
+    var nd = document.getElementById(id);
+    if (nd) nd.textContent = value || '';
   }
 
   function renderFacts(id, values) {
-    const root = document.getElementById(id);
-    if (!root) return;
-    root.innerHTML = values.filter(Boolean).map(function(value) {
+    var nd = document.getElementById(id);
+    if (!nd) return;
+    nd.innerHTML = values.filter(Boolean).map(function(value) {
       return '<span>' + value + '</span>';
     }).join('');
   }
 
   function renderMetaPills(id, values) {
-    const root = document.getElementById(id);
-    if (!root) return;
-    root.innerHTML = values.filter(Boolean).map(function(value) {
+    var nd = document.getElementById(id);
+    if (!nd) return;
+    nd.innerHTML = values.filter(Boolean).map(function(value) {
       return '<span class="meta-pill">' + value + '</span>';
     }).join('');
   }
@@ -122,9 +103,9 @@
 
   function openSeatSwapModal(fromIndex, maxSlots) {
     seatSwapFromIndex = fromIndex;
-    const modal = document.getElementById('seatSwapModal');
-    const grid = document.getElementById('seatSwapGrid');
-    const hint = document.getElementById('seatSwapHint');
+    const modal = el.seatSwapModal;
+    const grid = el.seatSwapGrid;
+    const hint = el.seatSwapHint;
     if (!modal || !grid || !hint) return;
 
     const origin = seatSummary(fromIndex);
@@ -144,7 +125,7 @@
       btn.addEventListener('click', function() {
         const toIdx = parseInt(this.dataset.seatIndex, 10);
         if (Number.isNaN(toIdx) || toIdx === seatSwapFromIndex) return;
-        ws.send(JSON.stringify({ type: 'swap_seat', data: { fromIndex: seatSwapFromIndex, toIndex: toIdx } }));
+        send('swap_seat', { fromIndex: seatSwapFromIndex, toIndex: toIdx });
         closeSeatSwapModal();
       });
       grid.appendChild(btn);
@@ -154,7 +135,7 @@
   }
 
   function closeSeatSwapModal() {
-    const modal = document.getElementById('seatSwapModal');
+    const modal = el.seatSwapModal;
     if (modal) modal.style.display = 'none';
     seatSwapFromIndex = null;
   }
@@ -174,43 +155,43 @@
     renderMetaPills('waitingMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
     renderFacts('stageMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
     // Show connecting status until first server response arrives
-    document.getElementById('waitingStatus').textContent = _t('connecting_room');
+    el.waitingStatus.textContent = _t('connecting_room');
   }
 
   // ---- WebSocket ----
+  function send(type, data) {
+    if (ws && ws.readyState === 1) {
+      ws.send(JSON.stringify(data === undefined ? { type } : { type, data }));
+    }
+  }
+
   function i18nStatic() {
     if (typeof _t !== 'function') return;
-    var el;
-    el = document.getElementById('tutorialBtn');
-    if (el) el.textContent = _t('view_rules');
-    el = document.querySelector('.qr-hint');
-    if (el) el.textContent = _t('scan_join');
-    el = document.getElementById('readyBtn');
-    if (el) el.textContent = _t('ready');
-    el = document.getElementById('addBotBtn');
-    if (el) el.textContent = _t('add_bot');
-    el = document.getElementById('startGameBtn');
-    if (el) el.textContent = _t('start_game');
-    el = document.querySelector('.back-btn');
-    if (el) el.textContent = _t('back_to_lobby');
-    el = document.querySelector('.seat-swap-close');
-    if (el) el.textContent = _t('cancel');
-    el = document.querySelector('.seat-swap-card strong');
-    if (el) el.textContent = _t('swap_seat');
-    el = document.getElementById('seatSwapHint');
-    if (el) el.textContent = _t('swap_hint_full');
-    el = document.querySelector('.avatar-drawer-title');
-    if (el) el.textContent = _t('choose_avatar');
-    el = document.getElementById('nameInput');
-    if (el) el.placeholder = _t('name_placeholder');
-    var overlay = document.getElementById('overlay');
-    if (overlay) {
-      var btns = overlay.querySelectorAll('.btn-outline');
+    var nd;
+    nd = document.getElementById('tutorialBtn');
+    if (nd) nd.textContent = _t('view_rules');
+    nd = document.querySelector('.qr-hint');
+    if (nd) nd.textContent = _t('scan_join');
+    if (el.readyBtn) el.readyBtn.textContent = _t('ready');
+    if (el.addBotBtn) el.addBotBtn.textContent = _t('add_bot');
+    if (el.startGameBtn) el.startGameBtn.textContent = _t('start_game');
+    nd = document.querySelector('.back-btn');
+    if (nd) nd.textContent = _t('back_to_lobby');
+    nd = document.querySelector('.seat-swap-close');
+    if (nd) nd.textContent = _t('cancel');
+    nd = document.querySelector('.seat-swap-card strong');
+    if (nd) nd.textContent = _t('swap_seat');
+    if (el.seatSwapHint) el.seatSwapHint.textContent = _t('swap_hint_full');
+    nd = document.querySelector('.avatar-drawer-title');
+    if (nd) nd.textContent = _t('choose_avatar');
+    if (el.nameInput) el.nameInput.placeholder = _t('name_placeholder');
+    if (el.overlay) {
+      var btns = el.overlay.querySelectorAll('.btn-outline');
       if (btns.length >= 2) {
         btns[0].textContent = _t('return_to_room');
         btns[1].textContent = _t('back_to_lobby');
       }
-      var accentBtn = overlay.querySelector('.btn-accent');
+      var accentBtn = el.overlay.querySelector('.btn-accent');
       if (accentBtn) accentBtn.textContent = _t('play_again');
     }
     var restartBtns = document.querySelectorAll('#gameActions .btn-outline');
@@ -222,41 +203,21 @@
   function connect() {
     if (ws) { try { ws.close(); } catch(e) {} }
     ws = new WebSocket(getSocketURL());
-    ws.onopen = () => ws.send(JSON.stringify({ type: 'join_room', data: { roomId, resumeToken, lang: window.__ACTIVE_LANG || 'zh' } }));
-    ws.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
+    ws.onopen = () => send('join_room', { roomId, resumeToken, lang: window.__ACTIVE_LANG || 'zh' });
 
-      // Clear reconnecting indicator on any successful message
-      if (msg.type !== 'error') {
-        var bar = document.getElementById('notifyBar');
-        if (bar && bar._timer === 0) {
-          bar.style.transform = 'translateY(-100%)';
-          bar._timer = null;
-        }
-      }
-
-      // room_joined / room_created (initial connection)
-      if (msg.type === 'room_joined' || msg.type === 'room_created') {
-        state = msg.state || state;
-        players = msg.players || players;
-        window._players = players;
-        roomPhase = msg.phase || 'lobby';
-        if (msg.options) roomOptions = msg.options;
-        if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
-        updateWaitingRoom();
-        if (roomPhase === 'playing') {
-          showGame();
-          renderGame();
-        }
-      }
-
-      // game_state
-      if (msg.type === 'game_state') {
-        // Detect game restart: winner was set, now cleared
+    const handlers = {
+      room_joined(msg) {
+        handleRoomJoined(msg);
+      },
+      room_created(msg) {
+        handleRoomJoined(msg);
+      },
+      game_state(msg) {
         if (state && state.winner != null && msg.state &&
             (msg.state.winner === null || msg.state.winner === undefined)) {
+          if (typeof unregisterAllActions === 'function') unregisterAllActions();
           currentRenderer = null;
-          const container = document.getElementById('boardArea');
+          const container = el.boardArea;
           if (container) container.innerHTML = '';
         }
         state = msg.state || state;
@@ -266,10 +227,8 @@
         showGame();
         updatePlayerBar();
         renderGame();
-      }
-
-      // game_started
-      if (msg.type === 'game_started') {
+      },
+      game_started(msg) {
         state = msg.state;
         players = msg.players;
         window._players = players;
@@ -277,76 +236,99 @@
         showGame();
         updatePlayerBar();
         renderGame();
-        document.getElementById('status').textContent = '';
-      }
-
-      // room_update (lobby state change)
-      if (msg.type === 'room_update') {
+        el.status.textContent = '';
+      },
+      room_update(msg) {
         players = msg.players || players;
         roomPhase = msg.phase || roomPhase;
         if (msg.options) roomOptions = msg.options;
         updateWaitingRoom();
-      }
-
-      // player_index_updated (after seat swap — update local playerIndex)
-      if (msg.type === 'player_index_updated') {
+      },
+      player_index_updated(msg) {
         playerIndex = msg.playerIndex;
         sessionStorage.setItem('playerIndex', msg.playerIndex);
         updateWaitingRoom();
-      }
-
-      // player_joined / player_left
-      if (msg.type === 'player_joined' || msg.type === 'player_left') {
-        const newCount = (msg.players || players || []).length;
-        const humanPlayers = (msg.players || []).filter(function(p) { return !p.isBot; });
-
-        if (msg.type === 'player_joined' && newCount > prevPlayerCount) {
-          const latest = humanPlayers[humanPlayers.length - 1];
-          if (latest && latest.index !== playerIndex) {
-            notify('👋 ' + latest.name + ' ' + _t('joined_room'));
-          }
-        } else if (msg.type === 'player_left') {
-          if (newCount < prevPlayerCount) {
-            notify('🚪 ' + _t('left_room'));
-          }
-        }
-        prevPlayerCount = newCount;
-        players = msg.players || players;
-        roomPhase = msg.phase || roomPhase;
-        if (roomPhase === 'playing') {
-          showGame();
-          updatePlayerBar();
-          renderGame();
-        } else {
-          updateWaitingRoom();
-        }
-        if (msg.type === 'player_left') {
-          document.getElementById('status').textContent = _t('opponent_left');
-          document.getElementById('overlay').style.display = 'none';
-        }
-      }
-
-      // Error
-      if (msg.type === 'error') {
+      },
+      player_joined(msg) {
+        handlePlayerChange(msg, 'player_joined');
+      },
+      player_left(msg) {
+        handlePlayerChange(msg, 'player_left');
+      },
+      error(msg) {
         if (msg.code === 'ROOM_NOT_FOUND' || (!state && /房间不存在|房间已结束/.test(msg.message || ''))) {
           clearExpiredRoomAndReturn();
           return;
         }
-        const ws2 = document.getElementById('waitingStatus');
+        const ws2 = el.waitingStatus;
         if (ws2) {
           ws2.textContent = msg.message;
           setTimeout(() => {
-            if (document.getElementById('waitingStatus'))
-              document.getElementById('waitingStatus').textContent = '';
+            if (el.waitingStatus) el.waitingStatus.textContent = '';
           }, 3000);
         }
-        // Let the active game renderer surface the error in-board (e.g. 24-point computed result)
         if (typeof window._gameErrorHandler === 'function') window._gameErrorHandler(msg.message);
       }
     };
+
+    function handleRoomJoined(msg) {
+      state = msg.state || state;
+      players = msg.players || players;
+      window._players = players;
+      roomPhase = msg.phase || 'lobby';
+      if (msg.options) roomOptions = msg.options;
+      if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
+      updateWaitingRoom();
+      if (roomPhase === 'playing') {
+        showGame();
+        renderGame();
+      }
+    }
+
+    function handlePlayerChange(msg, type) {
+      const newCount = (msg.players || players || []).length;
+      const humanPlayers = (msg.players || []).filter(function(p) { return !p.isBot; });
+      if (type === 'player_joined' && newCount > prevPlayerCount) {
+        const latest = humanPlayers[humanPlayers.length - 1];
+        if (latest && latest.index !== playerIndex) {
+          notify('👋 ' + latest.name + ' ' + _t('joined_room'));
+        }
+      } else if (type === 'player_left' && newCount < prevPlayerCount) {
+        notify('🚪 ' + _t('left_room'));
+      }
+      prevPlayerCount = newCount;
+      players = msg.players || players;
+      roomPhase = msg.phase || roomPhase;
+      if (roomPhase === 'playing') {
+        showGame();
+        updatePlayerBar();
+        renderGame();
+      } else {
+        updateWaitingRoom();
+      }
+      if (type === 'player_left') {
+        el.status.textContent = _t('opponent_left');
+        el.overlay.style.display = 'none';
+      }
+    }
+
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+
+      if (msg.type !== 'error') {
+        var bar = el.notifyBar;
+        if (bar && bar._timer === 0) {
+          bar.style.transform = 'translateY(-100%)';
+          bar._timer = null;
+        }
+      }
+
+      const handler = handlers[msg.type];
+      if (handler) handler(msg);
+    };
     ws.onclose = () => {
       if (!terminalRoomError) {
-        var bar = document.getElementById('notifyBar');
+        var bar = el.notifyBar;
         if (bar) {
           bar.textContent = _t('reconnecting') || 'Disconnected. Reconnecting…';
           bar.style.transform = 'translateY(0)';
@@ -361,31 +343,26 @@
 
   // ---- UI Toggle ----
   function showGame() {
-    document.getElementById('waitingRoom').style.display = 'none';
-    document.getElementById('profileEdit').style.display = 'none';
-    document.getElementById('emojiRow').style.display = 'none';
-    document.getElementById('gameStage').style.display = '';
-    document.getElementById('playerBar').style.display = '';
-    document.getElementById('status').style.display = '';
-    document.getElementById('gameActions').style.display = '';
+    el.waitingRoom.style.display = 'none';
+    el.profileEdit.style.display = 'none';
+    el.emojiRow.style.display = 'none';
+    el.gameStage.style.display = '';
+    el.playerBar.style.display = '';
+    el.status.style.display = '';
+    el.gameActions.style.display = '';
   }
 
   function showLobby() {
-    document.getElementById('waitingRoom').style.display = '';
-    document.getElementById('profileEdit').style.display = 'flex';
-    document.getElementById('emojiRow').style.display = '';
-    document.getElementById('gameStage').style.display = 'none';
-    // Generate QR code via server endpoint (server uses LAN IP)
-    var qrImg = document.getElementById('qrImage');
-    if (qrImg && roomId) {
-      qrImg.src = '/qr?room=' + roomId;
-    }
-    var qrCode = document.getElementById('qrRoomCode');
-    if (qrCode && roomId) qrCode.textContent = roomId;
-    document.getElementById('playerBar').style.display = 'none';
-    document.getElementById('status').style.display = 'none';
-    document.getElementById('gameActions').style.display = 'none';
-    document.getElementById('overlay').style.display = 'none';
+    el.waitingRoom.style.display = '';
+    el.profileEdit.style.display = 'flex';
+    el.emojiRow.style.display = '';
+    el.gameStage.style.display = 'none';
+    if (el.qrImage && roomId) el.qrImage.src = '/qr?room=' + roomId;
+    if (el.qrRoomCode && roomId) el.qrRoomCode.textContent = roomId;
+    el.playerBar.style.display = 'none';
+    el.status.style.display = 'none';
+    el.gameActions.style.display = 'none';
+    el.overlay.style.display = 'none';
   }
 
   // ---- Waiting Room ----
@@ -407,9 +384,9 @@
     myReady = myInfo ? myInfo.ready : false;
 
     // Profile: name + avatar
-    var avatarEmoji = document.getElementById('avatarEmoji');
-    var nameInput = document.getElementById('nameInput');
-    var emojiRow = document.getElementById('emojiRow');
+    var avatarEmoji = el.avatarEmoji;
+    var nameInput = el.nameInput;
+    var emojiRow = el.emojiRow;
     if (myInfo) {
       if (avatarEmoji) avatarEmoji.textContent = myInfo.avatar || '😊';
       if (nameInput && nameInput !== document.activeElement) nameInput.value = myInfo.name || '';
@@ -427,7 +404,7 @@
             if (avatarEmoji) avatarEmoji.textContent = emoji;
             emojiRow.querySelectorAll('.emoji-btn').forEach(function(b) { b.classList.remove('selected'); });
             btn.classList.add('selected');
-            ws.send(JSON.stringify({ type: 'set_avatar', data: { avatar: emoji } }));
+            send('set_avatar', { avatar: emoji });
             if (window.closeAvatarDrawer) window.closeAvatarDrawer();
           });
           emojiRow.appendChild(btn);
@@ -448,19 +425,19 @@
       nameInput.onchange = function() {
         var val = nameInput.value.trim();
         if (val && val.length > 0) {
-          ws.send(JSON.stringify({ type: 'set_name', data: { name: val } }));
+          send('set_name', { name: val });
         }
       };
     }
 
     // Determine max slots
-    const defaultSlots = gameInfo.maxPlayers || (game === 'doudizhu' ? 3 : game === 'tictactoe' || game === 'gomoku' || game === 'chinesechess' || game === 'go9' ? 2 : game === 'truthdare' ? 10 : game === 'twentyfour' ? 6 : 4);
+    const defaultSlots = gameInfo.maxPlayers || 4;
     const maxSlots = players && players.length > 0
       ? Math.max(players.length, defaultSlots)
       : defaultSlots;
 
     // Build slots
-    const slots = document.getElementById('waitingSlots');
+    const slots = el.waitingSlots;
     let html = '';
     for (let i = 0; i < maxSlots; i++) {
       const player = players ? players.find(p => p.index === i) : null;
@@ -512,7 +489,7 @@
     });
 
     // ---- Game Options (host-only settings) ----
-    var optionsEl = document.getElementById('gameOptions');
+    var optionsEl = el.gameOptions;
     if (optionsEl) {
       // Twentyfour: round time option
       if (isHost && game === 'twentyfour') {
@@ -667,10 +644,10 @@
     }
 
     // Toggle action buttons
-    const readyBtn = document.getElementById('readyBtn');
-    const startBtn = document.getElementById('startGameBtn');
-    const addBotBtn = document.getElementById('addBotBtn');
-    const waitingStatus = document.getElementById('waitingStatus');
+    const readyBtn = el.readyBtn;
+    const startBtn = el.startGameBtn;
+    const addBotBtn = el.addBotBtn;
+    const waitingStatus = el.waitingStatus;
 
     // Ready button
     if (readyBtn) {
@@ -683,7 +660,7 @@
         readyBtn.classList.remove('ready-active');
       }
       readyBtn.onclick = function() {
-        ws.send(JSON.stringify({ type: 'player_ready' }));
+        send('player_ready');
         myReady = !myReady;
         // Optimistic update
         if (players) {
@@ -706,20 +683,20 @@
         startBtn.classList.toggle('disabled', !canStart);
       }
       startBtn.onclick = function() {
-        ws.send(JSON.stringify({ type: 'start_game' }));
+        send('start_game');
       };
     }
 
     // Add bot button (host only)
     if (addBotBtn) {
-      const supportsAI = gameInfo.supportsAI !== undefined ? gameInfo.supportsAI : !NO_AI_GAMES.has(game);
+      const supportsAI = gameInfo.supportsAI !== false;
       addBotBtn.style.display = isHost && supportsAI ? '' : 'none';
       const totalOccupied = players ? players.length : 0;
       const roomFull = totalOccupied >= maxSlots;
       addBotBtn.disabled = roomFull;
       addBotBtn.classList.toggle('disabled', roomFull);
       addBotBtn.onclick = function() {
-        ws.send(JSON.stringify({ type: 'add_bot' }));
+        send('add_bot');
       };
     }
 
@@ -737,7 +714,7 @@
 
   // ---- Player Bar (during game) ----
   function updatePlayerBar() {
-    const bar = document.getElementById('playerBar');
+    const bar = el.playerBar;
     bar.innerHTML = '';
     if (!players) return;
     for (let i = 0; i < players.length; i++) {
@@ -754,7 +731,7 @@
       }
     }
     if (!state || state.winner == null) {
-      const st = document.getElementById('status');
+      const st = el.status;
       st.classList.remove('my-turn');
       if (players.length < 2) st.textContent = _t('waiting_players');
       else if (state && state.currentPlayer === playerIndex) {
@@ -777,19 +754,19 @@
   function renderGame() {
     if (!state) return;
     if (!currentRenderer) {
+      if (typeof unregisterAllActions === 'function') unregisterAllActions();
       currentRenderer = window.gameRenderers.get(game);
-      const container = document.getElementById('boardArea');
-      container.innerHTML = '';
-      if (currentRenderer && currentRenderer.init) currentRenderer.init(container);
+      el.boardArea.innerHTML = '';
+      if (currentRenderer && currentRenderer.init) currentRenderer.init(el.boardArea);
     }
     window.gamePlayers = players;
-    if (currentRenderer) currentRenderer.render(state, document.getElementById('boardArea'), playerIndex, state.winner);
+    if (currentRenderer) currentRenderer.render(state, el.boardArea, playerIndex, state.winner);
     if (state.winner !== null && state.winner !== undefined) showResult(state.winner);
   }
 
   function showResult(winner) {
-    const overlay = document.getElementById('overlay');
-    const resultEl = document.getElementById('resultText');
+    const overlay = el.overlay;
+    const resultEl = el.resultText;
     let txt, sub, isWin = false;
     if (winner === -1) {
       txt = _t('draw'); sub = '';
@@ -815,33 +792,31 @@
     }
     resultEl.textContent = txt;
     resultEl.classList.toggle('win-text', isWin);
-    document.getElementById('resultSub').textContent = sub;
+    el.resultSub.textContent = sub;
     overlay.style.display = 'flex';
-    var st = document.getElementById('status');
+    var st = el.status;
     st.classList.remove('my-turn');
     st.textContent = isWin ? _t('you_win') : winner === -1 ? _t('draw') : _t('opponent_wins');
   }
 
   window.makeGameMove = function(data) {
-    ws.send(JSON.stringify({ type: 'game_move', data }));
+    send('game_move', data);
   };
 
   window.doRestart = function() {
-    document.getElementById('overlay').style.display = 'none';
+    el.overlay.style.display = 'none';
     if (typeof window._beforeGameRestart === 'function') window._beforeGameRestart();
-    ws.send(JSON.stringify({ type: 'game_restart' }));
+    send('game_restart');
   };
 
   window.doReturnToRoom = function() {
-    document.getElementById('overlay').style.display = 'none';
-    ws.send(JSON.stringify({ type: 'return_to_room' }));
+    el.overlay.style.display = 'none';
+    send('return_to_room');
   };
 
   window.doLeaveRoom = function() {
     if (typeof window._beforeLeaveRoom === 'function') window._beforeLeaveRoom();
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'leave_room' }));
-    }
+    send('leave_room');
     // Keep roomId + resumeToken in sessionStorage so lobby shows the resume banner
     sessionStorage.setItem('_returnFromGame', '1');
     var shell = document.querySelector('.game-page-shell');
@@ -854,23 +829,21 @@
   window._leaveRoom = window.doLeaveRoom;
 
   window.openAvatarDrawer = function() {
-    var d = document.getElementById('avatarDrawer');
-    if (d) d.style.display = 'flex';
+    if (el.avatarDrawer) el.avatarDrawer.style.display = 'flex';
   };
 
   window.closeAvatarDrawer = function() {
-    var d = document.getElementById('avatarDrawer');
-    if (d) d.style.display = 'none';
+    if (el.avatarDrawer) el.avatarDrawer.style.display = 'none';
   };
   window.closeSeatSwapModal = closeSeatSwapModal;
 
   window._sendNextRound = function() {
-    ws.send(JSON.stringify({ type: 'next_round' }));
+    send('next_round');
   };
 
   window._setGameOption = function(key, value) {
     roomOptions[key] = value;
-    ws.send(JSON.stringify({ type: 'set_option', data: { key, value } }));
+    send('set_option', { key, value });
   };
 
   window._tdCollectDecks = function() {

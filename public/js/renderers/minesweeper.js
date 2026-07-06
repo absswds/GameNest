@@ -143,11 +143,7 @@
 
   window.gameRenderers.set('minesweeper', {
     init: function(container) {
-      if (!document.getElementById('msStyles')) {
-        var s = document.createElement('style');
-        s.id = 'msStyles'; s.textContent = STYLES;
-        document.head.appendChild(s);
-      }
+      injectStylesOnce('msStyles', STYLES);
       container.innerHTML = '' +
         '<div class="ms-wrap">' +
           '<div class="ms-players" id="msPlayers"></div>' +

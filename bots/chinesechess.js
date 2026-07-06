@@ -3,6 +3,8 @@
 
 const ROWS = 10, COLS = 9;
 
+const { botName } = require('./lib/bot-name');
+
 exports.name = 'chinesechess';
 
 // Piece values for evaluation
@@ -287,7 +289,7 @@ function minimax(board, depth, alpha, beta, maximizing, side) {
 }
 
 exports.createBot = (playerIndex) => ({
-  name: `电脑${playerIndex + 1}`,
+  name: botName(playerIndex, 'zh'),
   playerIndex,
   getMove(state) {
     // Clear TT to prevent memory issues

@@ -3,7 +3,6 @@
 (function() {
   var TUTORIALS_ZH = {
     tictactoe: {
-      title: '井字棋',
       sections: [
         { h: '游戏目标', p: '在 3×3 的网格中，先将自己的三个棋子连成一线（横、竖、斜均可）获胜。' },
         { h: '回合流程', p: '双方轮流在空格中落子。先手为 ⨉，后手为 ○。' },
@@ -11,7 +10,6 @@
       ]
     },
     gomoku: {
-      title: '五子棋',
       sections: [
         { h: '游戏目标', p: '在 15×15 的棋盘上，先将五颗棋子连成一线（横、竖、斜均可）获胜。' },
         { h: '回合流程', p: '双方轮流落子。黑棋先手，白棋后手。落子后不能移动。' },
@@ -19,7 +17,6 @@
       ]
     },
     davinci: {
-      title: '达芬奇密码',
       sections: [
         { h: '游戏目标', p: '猜出所有对手的牌，成为最后存活的玩家。' },
         { h: '牌组', p: '26张牌：黑色 0-11、白色 0-11，外加 2 张万能牌（★）。万能牌可放在任意位置。' },
@@ -30,7 +27,6 @@
       ]
     },
     uno: {
-      title: 'UNO',
       sections: [
         { h: '游戏目标', p: '尽快出完手中所有牌，出完时喊"UNO"。' },
         { h: '出牌规则', p: '可以出与弃牌堆顶牌颜色相同或数字相同的牌。万能牌可随时出。' },
@@ -41,7 +37,6 @@
       ]
     },
     doudizhu: {
-      title: '斗地主',
       sections: [
         { h: '游戏目标', p: '地主需先出完所有牌，农民方任意一人先出完则农民胜。' },
         { h: '发牌', p: '每人17张，底牌3张。叫分最高者成为地主，获得底牌。' },
@@ -52,7 +47,6 @@
       ]
     },
     'exploding-kittens': {
-      title: '爆炸猫',
       sections: [
         { h: '游戏目标', p: '活到最后！避免抽到爆炸猫，成为唯一的幸存者。' },
         { h: '牌组', p: '💣爆炸猫（抽到则淘汰）、🔧拆除（化解爆炸）、⏭跳过（不抽牌结束回合）、⚔甩锅（指定一名玩家连玩两回合）、🔮预言（偷看牌堆顶3张）、🔀洗混（洗牌）、🎁/👋偷牌（随机偷取对手一张牌）。' },
@@ -62,7 +56,6 @@
       ]
     },
     rummikub: {
-      title: '魔力桥（拉密）',
       sections: [
         { h: '游戏目标', p: '最先出完手中所有牌。出完时喊一声"拉密！"。' },
         { h: '牌组', p: '106张牌：4种颜色（黑蓝红橙）× 数字1-13 各2张 + 2张百搭牌（★）。每人发14张。' },
@@ -74,7 +67,6 @@
       ]
     },
     twentyfour: {
-      title: '24点',
       sections: [
         { h: '游戏目标', p: '用给出的 4 个数字（每个用且仅用一次），通过加减乘除和括号算出 24。多轮比拼，胜场最多者夺冠。' },
         { h: '操作', p: '点击数字和运算符（+ − × ÷ 与括号）组合算式，点"提交"。可用"撤销/清空"修改。' },
@@ -84,7 +76,6 @@
       ]
     },
     minesweeper: {
-      title: '扫雷竞速',
       sections: [
         { h: '游戏目标', p: '在同一张扫雷图上与其他玩家竞速！抢先翻开所有安全格即可获胜。翻到地雷则立即出局。' },
         { h: '操作方式', p: '🖱️ 电脑：左键翻格格、右键标旗。📱 手机/平板：点按翻格、长按 0.5 秒标旗。数字表示周围 8 格有几颗雷，空白区域（数字0）自动展开。' },
@@ -93,7 +84,6 @@
       ]
     },
     numberbomb: {
-      title: '数字炸弹',
       sections: [
         { h: '游戏目标', p: '在 1-100 之间轮流猜数字，避免踩中炸弹！踩中炸弹扣一条命，最后存活者获胜。' },
         { h: '回合流程', p: '系统随机设定炸弹数字。玩家轮流猜，猜完后范围自动缩小。猜到炸弹数字的人扣一条命并进入下一轮，炸弹重新随机。' },
@@ -103,7 +93,6 @@
       ]
     },
     oldmaid: {
-      title: '抽鬼牌',
       sections: [
         { h: '游戏目标', p: '尽快丢掉手中所有牌。游戏结束时手拿鬼牌的人输！' },
         { h: '发牌与配对', p: '一副 53 张（52 张正常牌 + 1 张鬼牌👻）均发给所有人。发牌后每人先自动弃掉手中数字相同的对子。鬼牌无法配对。' },
@@ -113,7 +102,6 @@
       ]
     },
     liarsbar: {
-      title: '骗子酒馆',
       sections: [
         { h: '游戏目标', p: '出牌面朝下声称牌面，可以说谎也可以说真话。活到最后即是赢家！' },
         { h: '牌堆', p: 'J、Q、K（每花色各 2 张 = 24 张）+ 万能牌★（4 张）+ 鬼牌👻（1 张）。万能牌永远是"真话"，鬼牌被质疑时除出牌者外所有人开枪。' },
@@ -126,7 +114,6 @@
       ]
     },
     bigtwo: {
-      title: '大老二（锄大地）',
       sections: [
         { h: '游戏目标', p: '最先出完手中所有牌即为赢家。' },
         { h: '牌型', p: '单张、对子、三条、顺子（≥5张连续）、同花（5张同花色）、葫芦（三条+对子）、铁支（四条+单张）、同花顺（5张连续同花）。' },
@@ -136,7 +123,6 @@
       ]
     },
     texas: {
-      title: '德州扑克',
       sections: [
         { h: '游戏目标', p: '通过下注、加注、弃牌等策略，在摊牌时用最好的五张牌赢得彩池。' },
         { h: '发牌', p: '每人 2 张底牌（仅自己可见）。系统分三轮发出 5 张公共牌：翻牌(3张)→转牌(1张)→河牌(1张)。' },
@@ -147,7 +133,6 @@
       ]
     },
     flightchess: {
-      title: '飞行棋',
       sections: [
         { h: '游戏目标', p: '将自己的 4 架飞机从基地出发，绕棋盘一圈并回到终点。最先完成所有 4 架飞机的玩家获胜。' },
         { h: '起飞', p: '掷到 6 才能将一架飞机从基地放到起点格。掷到 6 后可以再掷一次。' },
@@ -159,7 +144,6 @@
       ]
     },
     snakebattle: {
-      title: '贪吃蛇大乱斗',
       sections: [
         { h: '游戏目标', p: '所有人进入同一张地图操控自己的蛇。撞墙、撞到蛇身或和其他蛇同时抢到同一格都会淘汰，最后存活者获胜。' },
         { h: '怎么移动', p: '手机可在棋盘上滑动或点击下方方向键；电脑可用方向键或 WASD。每次操作只改变下一步方向，不能原地掉头。' },
@@ -169,7 +153,6 @@
       ]
     },
     chinesechess: {
-      title: '中国象棋',
       sections: [
         { h: '游戏目标', p: '将死对方的将/帅（让对方无路可逃）即获胜。9×10 棋盘，红黑各 16 子。' },
         { h: '棋子走法', p: '车：直线走任意格。马：走日字（蹩马腿）。炮：直线走，吃子须隔一子。象/相：田字对角（塞象眼），不过河。士/仕：九宫斜走一格。将/帅：九宫直走一格，不能对面。兵/卒：过河前直走一格，过河后可横走。' },
@@ -178,7 +161,6 @@
       ]
     },
     go9: {
-      title: '围棋9路',
       sections: [
         { h: '游戏目标', p: '在 9×9 棋盘上围地。终局时，占地（棋子+所围空）多的一方获胜。白方有 6.5 目贴目。' },
         { h: '落子', p: '黑白交替在交叉点落子。棋子落定后不可移动。' },
@@ -190,7 +172,6 @@
       ]
     },
     drawguess: {
-      title: '你画我猜（传话链）',
       sections: [
         { h: '游戏目标', p: '和朋友一起画图、猜词与传递信息。房主可选择实时抢答的舞台猜词，或会逐步跑偏的悄悄话传画。' },
         { h: '两种玩法', p: '🎤 舞台猜词：一名画家实时作画，其余玩家同时抢答。答对得分，轮流当画家，累计积分最高者获胜。🔇 悄悄话传画：第 1 人看到词后作画 → 传给第 2 人猜词 → 第 2 人看到的词传给第 3 人作画 → 交替传递到最后一人。全部完成后逐步揭示整条传话链，全员投票选出最有趣的一步。' },
@@ -202,7 +183,6 @@
       ]
     },
     monopoly: {
-      title: '大富翁',
       sections: [
         { h: '游戏目标', p: '通过买地、收租让对手破产，成为最后存活的玩家。每人起始 1500 元。' },
         { h: '掷骰移动', p: '轮到你点「掷骰子」，棋子按点数前进。绕棋盘一圈经过起点可领 200 元。' },
@@ -214,7 +194,6 @@
       ]
     },
     suikabattle: {
-      title: '合成大西瓜',
       sections: [
         { h: '游戏目标', p: '控制水果落点，让相同水果碰撞合成为更大的水果，累积更高分数。单人可挑战自己的最高分，多人比谁坚持得更久。' },
         { h: '投放水果', p: '移动上方的水果到合适的位置后点击或松手投下。当前水果会落下，下一颗水果会显示在预告位置。' },
@@ -224,7 +203,6 @@
       ]
     },
     sheeptile: {
-      title: '羊了个羊',
       sections: [
         { h: '游戏目标', p: '把堆叠的卡牌全部消除即可通关。共两关：第 1 关轻松热身，第 2 关难度大幅提升。' },
         { h: '消除规则', p: '点击没有被上层遮挡的卡牌，它会飞入底部的 7 格槽位。槽位中集齐 3 张相同图案自动消除。' },
@@ -236,7 +214,6 @@
       ]
     },
     truthdare: {
-      title: '真心话大冒险',
       sections: [
         { h: '页面定位', p: '这是一个聚会抽题工具。场外剪刀石头布决定谁输，输的人回到页面点击抽卡。页面负责同步题目，不负责判胜负。' },
         { h: '怎么开始', p: '进入房间后所有人准备，房主点击开始。开始后可以选择「真心话」「大冒险」或「随机来一张」。' },
@@ -250,7 +227,6 @@
 
   var TUTORIALS_EN = {
     tictactoe: {
-      title: 'Tic-Tac-Toe',
       sections: [
         { h: 'Objective', p: 'Be the first to get three of your marks in a row (horizontally, vertically, or diagonally) on a 3×3 grid.' },
         { h: 'Gameplay', p: 'Players take turns placing their mark in an empty cell. First player is ⨉, second is ○.' },
@@ -258,7 +234,6 @@
       ]
     },
     gomoku: {
-      title: 'Gomoku',
       sections: [
         { h: 'Objective', p: 'Be the first to get five stones in a row (horizontally, vertically, or diagonally) on a 15×15 board.' },
         { h: 'Gameplay', p: 'Players take turns placing stones. Black goes first, White second. Stones cannot be moved once placed.' },
@@ -266,7 +241,6 @@
       ]
     },
     davinci: {
-      title: 'Da Vinci Code',
       sections: [
         { h: 'Objective', p: 'Guess all opponents\' hidden tiles to become the last player standing.' },
         { h: 'Tile Set', p: '26 tiles: Black 0-11, White 0-11, plus 2 wild tiles (★). Wild tiles can be placed anywhere in your sequence.' },
@@ -277,7 +251,6 @@
       ]
     },
     uno: {
-      title: 'UNO',
       sections: [
         { h: 'Objective', p: 'Be the first to get rid of all your cards. Shout "UNO" when you\'re down to your last card!' },
         { h: 'Play Rule', p: 'Play a card matching the color or number of the top discard. Wild cards can be played at any time.' },
@@ -288,7 +261,6 @@
       ]
     },
     doudizhu: {
-      title: 'Dou Dizhu (Fight the Landlord)',
       sections: [
         { h: 'Objective', p: 'The Landlord must play all cards first. Either Peasant getting rid of all cards means the Peasants win.' },
         { h: 'Deal', p: '17 cards per player, 3 cards in the kitty. The highest bidder becomes Landlord and takes the kitty.' },
@@ -299,7 +271,6 @@
       ]
     },
     'exploding-kittens': {
-      title: 'Exploding Kittens',
       sections: [
         { h: 'Objective', p: 'Survive to the end! Avoid drawing Exploding Kittens and be the last player standing.' },
         { h: 'Card Types', p: '💣 Exploding Kitten (draw = eliminated), 🔧 Defuse (neutralize an explosion), ⏭ Skip (end turn without drawing), ⚔ Attack (force a player to take two turns), 🔮 See the Future (peek at top 3 cards), 🔀 Shuffle (shuffle the deck), 🎁/👋 Steal (randomly steal a card from an opponent).' },
@@ -309,7 +280,6 @@
       ]
     },
     rummikub: {
-      title: 'Rummikub',
       sections: [
         { h: 'Objective', p: 'Be the first to play all your tiles. Shout "Rummikub!" when you clear your rack.' },
         { h: 'Tile Set', p: '106 tiles: 4 colors (Black, Blue, Red, Orange) × numbers 1-13 (two of each) + 2 Jokers (★). Each player starts with 14 tiles.' },
@@ -321,7 +291,6 @@
       ]
     },
     twentyfour: {
-      title: 'Twenty-Four (24 Game)',
       sections: [
         { h: 'Objective', p: 'Use all 4 given numbers exactly once each, with + − × ÷ and parentheses, to make 24. Multiple rounds — the player with the most round wins takes the crown.' },
         { h: 'Controls', p: 'Click numbers and operators ( + − × ÷ and parentheses ) to build your expression, then click "Submit". Use Undo/Clear to fix mistakes.' },
@@ -331,7 +300,6 @@
       ]
     },
     minesweeper: {
-      title: 'Minesweeper Race',
       sections: [
         { h: 'Objective', p: 'Race other players on the same minefield! Be the first to uncover all safe cells. Hitting a mine means instant elimination.' },
         { h: 'Controls', p: '🖱️ Desktop: left-click to reveal, right-click to flag. 📱 Mobile: tap to reveal, long-press (0.5s) to flag. Numbers show how many mines are in the 8 surrounding cells. Empty areas (zero) auto-expand.' },
@@ -340,7 +308,6 @@
       ]
     },
     numberbomb: {
-      title: 'Number Bomb',
       sections: [
         { h: 'Objective', p: 'Guess numbers between 1-100 without hitting the bomb! Each bomb hit costs a life — last one standing wins.' },
         { h: 'Turn Flow', p: 'The system secretly picks a bomb number. Players take turns guessing; the range narrows after each guess. Guessing the bomb number costs a life and starts a new round with a fresh bomb.' },
@@ -350,7 +317,6 @@
       ]
     },
     oldmaid: {
-      title: 'Old Maid',
       sections: [
         { h: 'Objective', p: 'Get rid of all your cards as fast as possible. Whoever holds the Joker at the end loses!' },
         { h: 'Deal & Pairs', p: 'A 53-card deck (52 standard + 1 Joker 👻) is dealt to all players. Before play starts, each player automatically discards all matching pairs. The Joker cannot be paired.' },
@@ -360,7 +326,6 @@
       ]
     },
     liarsbar: {
-      title: 'Liar\'s Bar',
       sections: [
         { h: 'Objective', p: 'Play cards face-down and declare their rank — truth or lie, your choice. Be the last one alive!' },
         { h: 'Deck', p: 'J, Q, K (2 of each suit = 24) + Wild ★ (4) + Joker 👻 (1). Wild cards are always "truth" when challenged. When the Joker is challenged, everyone except the player who played it takes a shot.' },
@@ -373,7 +338,6 @@
       ]
     },
     bigtwo: {
-      title: 'Big Two (Choi Dai Di)',
       sections: [
         { h: 'Objective', p: 'Be the first to play all your cards.' },
         { h: 'Combinations', p: 'Single, Pair, Three of a Kind, Straight (5+ consecutive), Flush (5 same suit), Full House (triple + pair), Four of a Kind (quad + single), Straight Flush (5 consecutive, same suit).' },
@@ -383,7 +347,6 @@
       ]
     },
     texas: {
-      title: 'Texas Hold\'em',
       sections: [
         { h: 'Objective', p: 'Use betting, raising, and folding strategy to win the pot with your best five-card hand at showdown.' },
         { h: 'Deal', p: 'Each player gets 2 hole cards (visible only to you). Five community cards are dealt in three stages: Flop (3) → Turn (1) → River (1).' },
@@ -394,7 +357,6 @@
       ]
     },
     flightchess: {
-      title: 'Flight Chess (Aeroplane Chess)',
       sections: [
         { h: 'Objective', p: 'Move all 4 of your planes from the hangar, around the board, and into the home base. First to land all 4 planes wins.' },
         { h: 'Takeoff', p: 'Roll a 6 to move a plane from the hangar to the starting space. Rolling a 6 grants an extra roll.' },
@@ -406,7 +368,6 @@
       ]
     },
     snakebattle: {
-      title: 'Snake Battle Royale',
       sections: [
         { h: 'Objective', p: 'All players control their own snake on a shared map. Hitting a wall, a snake body, or colliding with another snake head eliminates you. Last survivor wins.' },
         { h: 'Controls', p: 'Mobile: swipe on the board or tap the direction pad. Desktop: arrow keys or WASD. Each input only changes your next direction — you can\'t reverse into yourself.' },
@@ -416,7 +377,6 @@
       ]
     },
     chinesechess: {
-      title: 'Chinese Chess (Xiangqi)',
       sections: [
         { h: 'Objective', p: 'Checkmate the opponent\'s General (King) — leaving it no escape. 9×10 board, 16 pieces per side.' },
         { h: 'Piece Moves', p: 'Rook (Chariot): straight lines, any distance. Knight (Horse): L-shape (日), can be blocked. Cannon: straight lines, but must jump a piece to capture. Elephant/Bishop: diagonal 2×2 (田), blocked by center piece, cannot cross river. Advisor: one diagonal step within the palace. General/King: one orthogonal step within the palace, cannot face the opposing General. Pawn/Soldier: one step forward, after crossing the river also one step sideways.' },
@@ -425,7 +385,6 @@
       ]
     },
     go9: {
-      title: 'Go (9×9)',
       sections: [
         { h: 'Objective', p: 'Surround territory on a 9×9 board. At the end, the player with more territory (stones + surrounded empty points) wins. White gets 6.5 points compensation (komi).' },
         { h: 'Placement', p: 'Black and White alternate placing stones on intersections. Stones cannot be moved once placed.' },
@@ -437,7 +396,6 @@
       ]
     },
     drawguess: {
-      title: 'Draw & Guess (Telephone Game)',
       sections: [
         { h: 'Objective', p: 'Draw, guess, and pass messages with friends. The host can choose between live drawing with real-time guessing (Stage Mode) or a telephone chain where messages drift hilariously off-course.' },
         { h: 'Two Modes', p: '🎤 Stage Mode: one artist draws live while everyone races to guess. Correct guessers score points. Players rotate as artist; highest total score wins. 🔇 Telephone Chain: Player 1 sees a word and draws it → Player 2 guesses from the drawing → Player 3 draws from that guess → alternating until the last player. The full chain is revealed step by step, and everyone votes for the funniest step.' },
@@ -449,7 +407,6 @@
       ]
     },
     monopoly: {
-      title: 'Monopoly',
       sections: [
         { h: 'Objective', p: 'Bankrupt your opponents by buying properties and collecting rent. Be the last player standing. Everyone starts with $1500.' },
         { h: 'Movement', p: 'On your turn, click "Roll Dice" to advance. Passing or landing on GO collects $200.' },
@@ -461,7 +418,6 @@
       ]
     },
     suikabattle: {
-      title: 'Suika (Watermelon) Game',
       sections: [
         { h: 'Objective', p: 'Drop fruits and merge identical ones into bigger fruits to rack up a high score. Solo: beat your personal best. Multiplayer: outlast everyone.' },
         { h: 'Dropping', p: 'Drag the current fruit to the desired position, then tap or release to drop. The next fruit preview shows what\'s coming.' },
@@ -471,7 +427,6 @@
       ]
     },
     sheeptile: {
-      title: 'Sheep Tile (Yang Le Ge Yang)',
       sections: [
         { h: 'Objective', p: 'Clear all stacked tiles to win. Two stages: Stage 1 is a warm-up; Stage 2 is significantly harder.' },
         { h: 'Match Rule', p: 'Tap a tile not covered by upper layers — it flies into your 7-slot bar. Collect 3 matching tiles in the bar to clear them automatically.' },
@@ -483,7 +438,6 @@
       ]
     },
     truthdare: {
-      title: 'Truth or Dare',
       sections: [
         { h: 'What Is This', p: 'A party prompt-drawing tool. Decide winners and losers outside the app (e.g., rock-paper-scissors). The loser comes back to the page and draws a card. This page syncs the prompts — it does not judge who wins or loses.' },
         { h: 'Starting', p: 'Everyone readies up in the room, then the host clicks start. After starting, choose "Truth," "Dare," or "Random Pick."' },
@@ -512,8 +466,11 @@
       document.body.appendChild(overlay);
     }
 
+    var catalogEntry = window.gameCatalog && window.gameCatalog.byId(gameType);
+    var title = catalogEntry ? catalogEntry.name : gameType;
+
     var html = '<div style="background:var(--surface);border-radius:var(--radius);padding:24px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;">';
-    html += '<div style="font-size:24px;font-weight:700;margin-bottom:4px;">📖 ' + _tf('tutorial_title', t.title) + '</div>';
+    html += '<div style="font-size:24px;font-weight:700;margin-bottom:4px;">📖 ' + _tf('tutorial_title', title) + '</div>';
     html += '<div style="width:36px;height:2px;background:var(--accent);margin-bottom:16px;"></div>';
 
     for (var i = 0; i < t.sections.length; i++) {

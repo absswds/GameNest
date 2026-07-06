@@ -2,7 +2,7 @@
 
 > 23 self-hosted LAN board, card, party, puzzle, and real-time games. Start one server, share one room code or QR code, and play from any browser on the same WiFi.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/absswds/GameNest/actions/workflows/ci.yml/badge.svg)](https://github.com/absswds/GameNest/actions/workflows/ci.yml)
 [![Android APK](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml/badge.svg)](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-43853d.svg)](https://nodejs.org/)
@@ -39,6 +39,8 @@ Mobile and join-flow previews:
 ![Create and join flow](docs/media/join-flow.gif)
 
 ## Quick Start
+
+> Requires Node.js 18 or later.
 
 ```bash
 npm install
@@ -91,6 +93,7 @@ npm start             # start the LAN server
 npm test              # run regression tests
 npm run check         # syntax-check project JavaScript
 npm run test:monopoly # run focused Monopoly tests
+npm run build:desktop # build Windows standalone exe
 ```
 
 CI currently runs `npm run check` and `npm test` on GitHub Actions.
@@ -132,6 +135,10 @@ Then open `android/` in Android Studio and run the app. Full setup details live 
 
 More details:
 
+- `lang/` — server-side text packs
+- `public/js/lang/` — browser language packs
+- `public/js/game-catalog.js` — built-in game metadata
+- `scripts/generate-cover-art.js` — cover art generator
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains the server, WebSocket, and renderer flow.
 - [CONTRIBUTING.md](CONTRIBUTING.md) has the new-game checklist.
 - [docs/STORE_LISTING.md](docs/STORE_LISTING.md) collects app-store copy and asset planning.
@@ -142,4 +149,4 @@ Bug reports, rules fixes, AI improvements, renderer polish, and new games are we
 
 ## License
 
-[MIT](LICENSE)
+[Apache-2.0](LICENSE)

@@ -1,4 +1,5 @@
 const gameMod = require('../games/sheeptile');
+const { botName } = require('./lib/bot-name');
 
 function levelTiles(state, level) { return gameMod._internal.levelTiles(state, level); }
 function isBlocked(tile, lvTiles, removed) { return gameMod._internal.isBlockedAt(tile, lvTiles, removed); }
@@ -7,7 +8,7 @@ function eff(state, pi, tile) { return gameMod._internal.effPattern(state, pi, t
 exports.name = 'sheeptile';
 
 exports.createBot = (playerIndex) => ({
-  name: '电脑' + (playerIndex + 1),
+  name: botName(playerIndex, 'zh'),
   getMove(state) {
     const me = state.players && state.players[playerIndex];
     if (!me || me.eliminated) return { pass: true };

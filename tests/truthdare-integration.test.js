@@ -24,8 +24,9 @@ test('truthdare is registered in lobby and game shell', () => {
 });
 
 test('truthdare has waiting-room options and disables AI', () => {
+  const catalog = read('public/js/game-catalog.js');
+  assert.match(catalog, /id:\s*'truthdare'[\s\S]*?supportsAI:\s*false/);
   const roomClient = read('public/js/room-client.js');
-  assert.match(roomClient, /NO_AI_GAMES = new Set\(\[[^\]]*'truthdare'/);
   assert.match(roomClient, /game === 'truthdare'/);
   assert.match(roomClient, /_tdCollectDecks/);
 });

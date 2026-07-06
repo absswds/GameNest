@@ -214,49 +214,83 @@ function roomPlayersList(room) {
   return list;
 }
 
+function getCurrentActor(state, gameMod) {
+  if (gameMod && gameMod.getCurrentActor) return gameMod.getCurrentActor(state);
+  return state.currentPlayer;
+}
+
 function skipDisconnectedTurn(room) {
   const state = room && room.state;
-  const turnKey = state && state.phase === 'shooting' && Number.isInteger(state.currentShooter)
-    ? 'currentShooter'
-    : 'currentPlayer';
-  if (!state || !Number.isInteger(state[turnKey])) return false;
+  if (!state) return false;
+  const gameMod = gameRegistry[room.game];
+  const cp = getCurrentActor(state, gameMod);
+  if (!Number.isInteger(cp)) return false;
 
   const active = new Set();
   for (const [ws, info] of room.players) {
     if (ws.readyState === 1 && !info.disconnectedAt) active.add(info.index);
   }
   for (const index of room.bots.keys()) active.add(index);
-  if (active.has(state[turnKey]) || active.size === 0) return false;
+  if (active.has(cp) || active.size === 0) return false;
 
   const seatCount = Array.isArray(state.hands) && state.hands.length
     ? state.hands.length
     : Math.max(1, room.maxPlayers || 0, ...active);
   for (let offset = 1; offset <= seatCount; offset++) {
-    const candidate = (state[turnKey] + offset) % seatCount;
+    const candidate = (cp + offset) % seatCount;
     if (active.has(candidate)) {
-      state[turnKey] = candidate;
+      // Update whichever field the game uses for current actor
+      if (gameMod && gameMod.getCurrentActor) {
+        // Game uses custom actor — let it handle the update
+        if (gameMod.setCurrentActor) gameMod.setCurrentActor(state, candidate);
+      } else {
+        state.currentPlayer = candidate;
+      }
       return true;
     }
   }
   return false;
 }
 
-function broadcastGameState(room) {
+function broadcastGameView(room, msgType) {
+  const t = msgType || 'game_state';
   const gameMod = gameRegistry[room.game];
   const players = roomPlayersList(room);
   if (room.game === 'minesweeper' && gameMod.playerBoardView) {
     for (const [client, info] of room.players) {
       if (client.readyState === 1) {
         const viewState = Object.assign({}, room.state, { board: gameMod.playerBoardView(room.state, info.index) });
-        client.send(JSON.stringify({ type: 'game_state', state: viewState, players }));
+        client.send(JSON.stringify({ type: t, state: viewState, players }));
       }
     }
-  } else if (['texas', 'chinesechess', 'drawguess'].includes(room.game) && gameMod.playerView) {
+  } else if (gameMod.playerView) {
     for (const [client, info] of room.players) {
-      if (client.readyState === 1) client.send(JSON.stringify({ type: 'game_state', state: gameMod.playerView(room.state, info.index), players }));
+      if (client.readyState === 1) {
+        client.send(JSON.stringify({ type: t, state: gameMod.playerView(room.state, info.index), players }));
+      }
     }
   } else {
-    broadcastRoom(room, { type: 'game_state', state: room.state, players });
+    broadcastRoom(room, { type: t, state: room.state, players });
+  }
+}
+
+function applyRuntimeState(room, totalPlayers) {
+  const s = room.state;
+  s._playerCount = totalPlayers;
+  s._realPlayerCount = room.players.size;
+  s._hasBots = room.bots && room.bots.size > 0;
+  s._options = { ...room.options };
+  s._lang = room._lang || 'zh';
+}
+
+function clearAllRoomTimers(room) {
+  clearTimeout(room._botTimer);
+  clearTimeout(room._tfTimer);
+  clearTimeout(room._dgTimer);
+  stopRealtimeGame(room);
+  if (room._tfBotTimers) {
+    for (const h of room._tfBotTimers) clearTimeout(h);
+    room._tfBotTimers = [];
   }
 }
 
@@ -415,11 +449,7 @@ function scheduleBotMove(room) {
     return;
   }
 
-  // Liarsbar shooting phase: use currentShooter instead of currentPlayer
-  let cp = state.currentPlayer;
-  if (state.phase === 'shooting' && state.currentShooter >= 0) {
-    cp = state.currentShooter;
-  }
+  const cp = getCurrentActor(state, gameMod);
   const bot = room.bots.get(cp);
   if (!bot) return;
 
@@ -437,7 +467,7 @@ function scheduleBotMove(room) {
         if (fb) gameMod.handleMove({}, room.state, cp); // last resort: empty move (most games draw + advance)
       }
       skipDisconnectedTurn(room);
-      broadcastRoom(room, { type: 'game_state', state: room.state, players: roomPlayersList(room) });
+      broadcastGameView(room);
       scheduleBotMove(room);
     } catch(e) { console.error('Bot exception:', e.message); }
   }, delay);
@@ -691,56 +721,13 @@ wss.on('connection', (ws) => {
       }
 
       currentRoom.phase = 'playing';
-      currentRoom.state._playerCount = totalPlayers;
-      currentRoom.state._realPlayerCount = currentRoom.players.size;
-      currentRoom.state._hasBots = currentRoom.bots.size > 0;
-      currentRoom.state._options = { ...currentRoom.options };
-      currentRoom.state._lang = currentRoom._lang || 'zh';
+      applyRuntimeState(currentRoom, totalPlayers);
       if (gameMod && gameMod.initGame) {
         gameMod.initGame(currentRoom.state, totalPlayers);
       }
       if (currentRoom.game === 'drawguess') scheduleDrawguessTimer(currentRoom); // 在广播前写入 stepDeadline
 
-      // Minesweeper: each player gets their own board view (independent reveal/flag state)
-      if (currentRoom.game === 'minesweeper' && gameMod.playerBoardView) {
-        for (const [client, info] of currentRoom.players) {
-          if (client.readyState === 1) {
-            const viewState = Object.assign({}, currentRoom.state, {
-              board: gameMod.playerBoardView(currentRoom.state, info.index),
-            });
-            client.send(JSON.stringify({ type: 'game_started', state: viewState, players: roomPlayersList(currentRoom) }));
-          }
-        }
-      } else if (currentRoom.game === 'texas' && gameMod.playerView) {
-        // Texas: per-player view (hide other players' hole cards)
-        for (const [client, info] of currentRoom.players) {
-          if (client.readyState === 1) {
-            const viewState = gameMod.playerView(currentRoom.state, info.index);
-            client.send(JSON.stringify({ type: 'game_started', state: viewState, players: roomPlayersList(currentRoom) }));
-          }
-        }
-      } else if (currentRoom.game === 'chinesechess' && gameMod.playerView) {
-        // Chinese Chess: per-player view (legal moves only for current player)
-        for (const [client, info] of currentRoom.players) {
-          if (client.readyState === 1) {
-            const viewState = gameMod.playerView(currentRoom.state, info.index);
-            client.send(JSON.stringify({ type: 'game_started', state: viewState, players: roomPlayersList(currentRoom) }));
-          }
-        }
-      } else if (currentRoom.game === 'drawguess' && gameMod.playerView) {
-        for (const [client, info] of currentRoom.players) {
-          if (client.readyState === 1) {
-            const viewState = gameMod.playerView(currentRoom.state, info.index);
-            client.send(JSON.stringify({ type: 'game_started', state: viewState, players: roomPlayersList(currentRoom) }));
-          }
-        }
-      } else {
-        broadcastRoom(currentRoom, {
-          type: 'game_started',
-          state: currentRoom.state,
-          players: roomPlayersList(currentRoom),
-        });
-      }
+      broadcastGameView(currentRoom, 'game_started');
       if (currentRoom.game === 'twentyfour') scheduleTwentyFourTimer(currentRoom);
       scheduleRealtimeGame(currentRoom);
       scheduleBotMove(currentRoom);
@@ -884,48 +871,7 @@ wss.on('connection', (ws) => {
       const isStageLiveAction = currentRoom.game === 'drawguess' && (data.type === 'stage_stroke' || data.type === 'stage_guess');
       if (currentRoom.game === 'drawguess' && !isStageLiveAction) scheduleDrawguessTimer(currentRoom);
 
-      // Minesweeper: each player gets their own board view (independent reveal/flag state)
-      if (currentRoom.game === 'minesweeper' && gameMod.playerBoardView) {
-        const basePayload = { type: 'game_state', state: currentRoom.state, players: roomPlayersList(currentRoom) };
-        // Send per-player views
-        for (const [client, info] of currentRoom.players) {
-          if (client.readyState === 1) {
-            const viewState = Object.assign({}, currentRoom.state, {
-              board: gameMod.playerBoardView(currentRoom.state, info.index),
-            });
-            client.send(JSON.stringify({ type: 'game_state', state: viewState, players: roomPlayersList(currentRoom) }));
-          }
-        }
-      } else if (currentRoom.game === 'texas' && gameMod.playerView) {
-        // Texas: per-player view (hide other players' hole cards)
-        for (const [client, info] of currentRoom.players) {
-          if (client.readyState === 1) {
-            const viewState = gameMod.playerView(currentRoom.state, info.index);
-            client.send(JSON.stringify({ type: 'game_state', state: viewState, players: roomPlayersList(currentRoom) }));
-          }
-        }
-      } else if (currentRoom.game === 'chinesechess' && gameMod.playerView) {
-        // Chinese Chess: per-player view (legal moves only for current player)
-        for (const [client, info] of currentRoom.players) {
-          if (client.readyState === 1) {
-            const viewState = gameMod.playerView(currentRoom.state, info.index);
-            client.send(JSON.stringify({ type: 'game_state', state: viewState, players: roomPlayersList(currentRoom) }));
-          }
-        }
-      } else if (currentRoom.game === 'drawguess' && gameMod.playerView) {
-        for (const [client, info] of currentRoom.players) {
-          if (client.readyState === 1) {
-            const viewState = gameMod.playerView(currentRoom.state, info.index);
-            client.send(JSON.stringify({ type: 'game_state', state: viewState, players: roomPlayersList(currentRoom) }));
-          }
-        }
-      } else {
-        broadcastRoom(currentRoom, {
-          type: 'game_state',
-          state: currentRoom.state,
-          players: roomPlayersList(currentRoom),
-        });
-      }
+      broadcastGameView(currentRoom, 'game_state');
       scheduleBotMove(currentRoom);
       return;
     }
@@ -941,56 +887,14 @@ wss.on('connection', (ws) => {
       if (!gameMod) return;
       const totalPlayers = currentRoom.players.size + (currentRoom.bots ? currentRoom.bots.size : 0);
       currentRoom.state = gameMod.createState();
-      currentRoom.state._playerCount = totalPlayers;
-      currentRoom.state._realPlayerCount = currentRoom.players.size;
-      currentRoom.state._hasBots = currentRoom.bots.size > 0;
-      currentRoom.state._options = { ...currentRoom.options };
-      currentRoom.state._lang = currentRoom._lang || 'zh';
+      applyRuntimeState(currentRoom, totalPlayers);
       if (gameMod && gameMod.initGame) {
         gameMod.initGame(currentRoom.state, totalPlayers);
       }
       if (currentRoom.game === 'drawguess') scheduleDrawguessTimer(currentRoom);
       currentRoom.phase = 'playing';
 
-      // Minesweeper: per-player board views on restart too
-      if (currentRoom.game === 'minesweeper' && gameMod.playerBoardView) {
-        for (const [client, info] of currentRoom.players) {
-          if (client.readyState === 1) {
-            const viewState = Object.assign({}, currentRoom.state, {
-              board: gameMod.playerBoardView(currentRoom.state, info.index),
-            });
-            client.send(JSON.stringify({ type: 'game_state', state: viewState, players: roomPlayersList(currentRoom) }));
-          }
-        }
-      } else if (currentRoom.game === 'texas' && gameMod.playerView) {
-        for (const [client, info] of currentRoom.players) {
-          if (client.readyState === 1) {
-            const viewState = gameMod.playerView(currentRoom.state, info.index);
-            client.send(JSON.stringify({ type: 'game_state', state: viewState, players: roomPlayersList(currentRoom) }));
-          }
-        }
-      } else if (currentRoom.game === 'chinesechess' && gameMod.playerView) {
-        // Chinese Chess: per-player view (legal moves only for current player)
-        for (const [client, info] of currentRoom.players) {
-          if (client.readyState === 1) {
-            const viewState = gameMod.playerView(currentRoom.state, info.index);
-            client.send(JSON.stringify({ type: 'game_state', state: viewState, players: roomPlayersList(currentRoom) }));
-          }
-        }
-      } else if (currentRoom.game === 'drawguess' && gameMod.playerView) {
-        for (const [client, info] of currentRoom.players) {
-          if (client.readyState === 1) {
-            const viewState = gameMod.playerView(currentRoom.state, info.index);
-            client.send(JSON.stringify({ type: 'game_state', state: viewState, players: roomPlayersList(currentRoom) }));
-          }
-        }
-      } else {
-        broadcastRoom(currentRoom, {
-          type: 'game_state',
-          state: currentRoom.state,
-          players: roomPlayersList(currentRoom),
-        });
-      }
+      broadcastGameView(currentRoom, 'game_state');
       if (currentRoom.game === 'twentyfour') scheduleTwentyFourTimer(currentRoom);
       scheduleRealtimeGame(currentRoom);
       scheduleBotMove(currentRoom);
@@ -1013,7 +917,7 @@ wss.on('connection', (ws) => {
             currentRoom.hostWS = Array.from(currentRoom.players.keys()).find(client => client.readyState === 1) || null;
           }
           if (currentRoom.players.size === 0) {
-            stopRealtimeGame(currentRoom);
+            clearAllRoomTimers(currentRoom);
             rooms.delete(currentRoomId);
           } else {
             broadcastRoom(currentRoom, { type: 'player_left', players: roomPlayersList(currentRoom), phase: currentRoom.phase });
@@ -1031,9 +935,7 @@ wss.on('connection', (ws) => {
       currentRoom.phase = 'lobby';
       currentRoom.readyPlayers = new Set();
       currentRoom.state = null;
-      clearTimeout(currentRoom._tfTimer);
-      clearTimeout(currentRoom._dgTimer);
-      stopRealtimeGame(currentRoom);
+      clearAllRoomTimers(currentRoom);
       broadcastRoom(currentRoom, {
         type: 'room_update',
         phase: 'lobby',
@@ -1066,11 +968,10 @@ wss.on('connection', (ws) => {
       state.roundWinner = null;
       state.solutions = [];
       state.playerSubmissions = {};
-      state._realPlayerCount = currentRoom.players.size;
-      state._hasBots = currentRoom.bots.size > 0;
+      applyRuntimeState(currentRoom, totalPlayers);
       // Generate new numbers (use the game module's function)
       gameRegistry['twentyfour'].initGame(state, totalPlayers);
-      broadcastRoom(currentRoom, { type: 'game_state', state: state, players: roomPlayersList(currentRoom) });
+      broadcastGameView(currentRoom, 'game_state');
       scheduleTwentyFourTimer(currentRoom);
       scheduleBotMove(currentRoom);
       return;
@@ -1092,12 +993,12 @@ wss.on('connection', (ws) => {
           }
           const skipped = skipDisconnectedTurn(currentRoom);
           if (currentRoom.players.size === 0) {
-            stopRealtimeGame(currentRoom);
+            clearAllRoomTimers(currentRoom);
             rooms.delete(currentRoomId);
             return;
           }
           broadcastRoom(currentRoom, { type: 'player_left', players: roomPlayersList(currentRoom), phase: currentRoom.phase });
-          if (currentRoom.phase === 'playing' && currentRoom.state && skipped) broadcastGameState(currentRoom);
+          if (currentRoom.phase === 'playing' && currentRoom.state && skipped) broadcastGameView(currentRoom);
           scheduleBotMove(currentRoom);
         }
       }, DISCONNECT_GRACE_MS);

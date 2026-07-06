@@ -22,15 +22,14 @@ npm test
 
 A normal game touches these places:
 
-1. `games/<id>.js` for game state, rules, and move handling.
-2. `bots/<id>.js` if the game supports AI.
-3. `public/js/renderers/<id>.js` for the browser UI.
-4. `public/game.html` to load the renderer.
-5. `public/js/game-catalog.js` and language packs for lobby metadata.
-6. `public/js/room-client.js` for max slots, waiting-room options, or AI availability.
-7. `server.js` only when the game needs per-player hidden information or special scheduling.
-8. `public/js/tutorials.js` for the rules button.
-9. `tests/` for focused rule, bot, catalog, or integration coverage.
+1. `games/<name>.js` — game rules and state transitions.
+2. `bots/<name>.js` — AI bot (skip for pure PvP games).
+3. `public/js/renderers/<name>.js` — browser renderer.
+4. `public/game.html` — `<script>` tag for the renderer.
+5. `public/js/game-catalog.js` + `public/js/lang/zh.js` + `public/js/lang/en.js` — lobby metadata and translations.
+6. `server.js` — only if the game needs per-player hidden information or special scheduling.
+
+Optional extras: `public/js/tutorials.js` for the rules button, `tests/` for focused coverage.
 
 ## Game Module Contract
 

@@ -2,6 +2,8 @@
 const SIZE = 9;
 const EMPTY = 0, BLACK = 1, WHITE = 2;
 
+const { botName } = require('./lib/bot-name');
+
 exports.name = 'go9';
 
 function getGroup(board, row, col) {
@@ -59,7 +61,7 @@ function scoreMove(board, side, r, c) {
 }
 
 exports.createBot = pi => ({
-  name: `电脑${pi + 1}`,
+  name: botName(pi, 'zh'),
   playerIndex: pi,
   getMove(state) {
     const board = state.board;

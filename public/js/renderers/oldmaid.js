@@ -101,11 +101,7 @@
 
   window.gameRenderers.set('oldmaid', {
     init: function(container) {
-      if (!document.getElementById('omStyles')) {
-        var s = document.createElement('style');
-        s.id = 'omStyles'; s.textContent = STYLES;
-        document.head.appendChild(s);
-      }
+      injectStylesOnce('omStyles', STYLES);
       container.innerHTML = '' +
         '<div class="om-wrap">' +
           '<div class="om-others" id="omOthers"></div>' +

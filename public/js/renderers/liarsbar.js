@@ -63,8 +63,8 @@
         }
 
         html +=
-          '<div style="text-align:center;padding:6px 10px;background:var(--bg);border-radius:12px;' +
-          (isActive ? 'border:2px solid var(--accent);animation:pulse 2s ease infinite;' : 'border:1px solid var(--border);') +
+          '<div class="' + (isActive ? 'is-active-turn' : '') + '" style="text-align:center;padding:6px 10px;background:var(--bg);border-radius:12px;' +
+          (isActive ? '' : 'border:1px solid var(--border);') +
           (isShooting ? 'border-color:#e74c3c;box-shadow:0 0 12px rgba(212,105,90,0.35);' : '') +
           (!isAlive ? 'opacity:0.45;' : '') + '">' +
           '<div style="font-size:12px;font-weight:600;">' + (isMe ? '⭐' : '') + name + '</div>' +

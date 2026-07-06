@@ -13,8 +13,7 @@
   function addStyles() {
     if (_cssAdded) return;
     _cssAdded = true;
-    var s = document.createElement('style');
-    s.textContent =
+    injectStylesOnce('davinci-styles',
 '.dv-game{width:100%;display:flex;flex-direction:column;gap:10px;}' +
 '.dv-player-section{padding:10px 12px;background:var(--bg);border-radius:16px;transition:opacity .2s;}' +
 '.dv-player-section.dv-eliminated{opacity:.45;}' +
@@ -58,8 +57,7 @@
 '.dv-status{text-align:center;font-size:14px;color:var(--text-muted);padding:4px 0;min-height:22px;}' +
 '.dv-target-info{text-align:center;font-size:14px;font-weight:500;margin-bottom:8px;color:var(--accent);}' +
 '.dv-penalty-msg{text-align:center;font-size:15px;font-weight:700;color:#e74c3c;padding:8px 0;}' +
-'.dv-penalty-hint{text-align:center;font-size:12px;color:var(--text-muted);}';
-    document.head.appendChild(s);
+'.dv-penalty-hint{text-align:center;font-size:12px;color:var(--text-muted);}');
   }
 
   function tileClass(tile) {

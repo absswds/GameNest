@@ -26,7 +26,7 @@
     "party-games"
   ],
   "author": "GameNest",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "commonjs",
   "dependencies": {
     "express": "^4.22.2",

@@ -1,7 +1,9 @@
 // bots/doudizhu.js
 exports.name = 'doudizhu';
 
-const RANKS = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
+const { RANKS, rankGroups } = require('./lib/cards');
+const { botName } = require('./lib/bot-name');
+
 function rankVal(rank) {
   if (rank === '小王') return 13;
   if (rank === '大王') return 14;
@@ -15,15 +17,6 @@ function countBombs(hand) {
   for (const [r, c] of m) if (c === 4) bombs++;
   if (hand.some(c => c.id === 'SJ') && hand.some(c => c.id === 'BJ')) bombs++;
   return bombs;
-}
-
-function rankGroups(hand) {
-  const m = new Map();
-  for (const c of hand) {
-    if (!m.has(c.rank)) m.set(c.rank, []);
-    m.get(c.rank).push(c);
-  }
-  return m;
 }
 
 function findBeat(hand, lastPlay) {
@@ -87,7 +80,7 @@ function findBeat(hand, lastPlay) {
 
 exports.createBot = function(playerIndex) {
   return {
-    name: '电脑' + (playerIndex + 1),
+    name: botName(playerIndex, 'zh'),
     playerIndex: playerIndex,
     getMove: function(state) {
       if (state.phase === 'bidding') {

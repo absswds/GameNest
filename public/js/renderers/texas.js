@@ -70,8 +70,8 @@
         if (isSB && !isFolded) blindTag = ' SB';
 
         html +=
-          '<div style="text-align:center;padding:6px 10px;background:var(--bg);border-radius:12px;' +
-          (isActive ? 'border:2px solid var(--accent);animation:pulse 2s ease infinite;' : 'border:1px solid var(--border);') +
+          '<div class="' + (isActive ? 'is-active-turn' : '') + '" style="text-align:center;padding:6px 10px;background:var(--bg);border-radius:12px;' +
+          (isActive ? '' : 'border:1px solid var(--border);') +
           (isFolded ? 'opacity:0.5;' : '') + '">' +
           '<div style="font-size:12px;font-weight:600;">' + name + blindTag + '</div>' +
           '<div style="font-size:11px;color:var(--text-muted);">$' + (chips[i] || 0) + '</div>' +

@@ -1,7 +1,9 @@
+const { botName } = require('./lib/bot-name');
+
 exports.name = 'uno';
 
 exports.createBot = (playerIndex) => ({
-  name: `电脑${playerIndex + 1}`,
+  name: botName(playerIndex, 'zh'),
   getMove(state) {
     const hand = state.hands[playerIndex];
     if (!hand || hand.length === 0) return {};

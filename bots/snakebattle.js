@@ -5,6 +5,8 @@ const VECTORS = {
   right: { x: 1, y: 0, opposite: 'left' },
 };
 
+const { botName } = require('./lib/bot-name');
+
 exports.name = 'snakebattle';
 
 function cellKey(cell) {
@@ -12,7 +14,7 @@ function cellKey(cell) {
 }
 
 exports.createBot = playerIndex => ({
-  name: `电脑${playerIndex + 1}`,
+  name: botName(playerIndex, 'zh'),
   playerIndex,
   getMove(state) {
     const snake = state.snakes[playerIndex];

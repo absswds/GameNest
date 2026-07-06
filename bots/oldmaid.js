@@ -1,3 +1,5 @@
+const { botName } = require('./lib/bot-name');
+
 exports.name = 'oldmaid';
 
 function scoreKnownDraw(myRanks, targetHand, card, cardIndex) {
@@ -10,7 +12,7 @@ function scoreKnownDraw(myRanks, targetHand, card, cardIndex) {
 }
 
 exports.createBot = (playerIndex) => ({
-  name: `电脑${playerIndex + 1}`,
+  name: botName(playerIndex, 'zh'),
   playerIndex,
   getMove(state) {
     const hands = state.hands || [];

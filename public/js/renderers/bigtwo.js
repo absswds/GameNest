@@ -45,8 +45,8 @@
         var didPass = s.passed && s.passed[i];
 
         html +=
-          '<div style="text-align:center;padding:8px 14px;background:var(--bg);border-radius:var(--radius-sm);' +
-          (isActive ? 'border:2px solid var(--accent);animation:pulse 2s ease infinite;' : 'border:1px solid var(--border);') + '">' +
+          '<div class="' + (isActive ? 'is-active-turn' : '') + '" style="text-align:center;padding:8px 14px;background:var(--bg);border-radius:var(--radius-sm);' +
+          (isActive ? '' : 'border:1px solid var(--border);') + '">' +
           '<div style="font-size:13px;font-weight:600;">' +
           (window.getPlayerName ? window.getPlayerName(i) : (_t('bt_player_fallback') + (i + 1))) +
           '</div>' +

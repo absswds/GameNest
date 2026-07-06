@@ -108,12 +108,7 @@
 
     init: function(container) {
       // Inject styles once
-      if (!document.getElementById('unoRendererStyles')) {
-        var el = document.createElement('style');
-        el.id = 'unoRendererStyles';
-        el.textContent = STYLES;
-        document.head.appendChild(el);
-      }
+      injectStylesOnce('unoRendererStyles', STYLES);
 
       container.innerHTML = '' +
         '<div class="uno-table">' +

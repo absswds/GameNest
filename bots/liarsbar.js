@@ -1,8 +1,10 @@
+const { botName } = require('./lib/bot-name');
+
 exports.name = 'liarsbar';
 
 exports.createBot = function(playerIndex) {
   return {
-    name: '电脑' + (playerIndex + 1),
+    name: botName(playerIndex, 'zh'),
     playerIndex: playerIndex,
     getMove: function(state) {
       const hand = state.hands[playerIndex] || [];

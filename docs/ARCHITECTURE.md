@@ -26,8 +26,9 @@ HTTP and WebSocket share port `3000`.
 | `public/game.html` | Room shell and renderer host |
 | `public/js/room-client.js` | WebSocket client, waiting room, game options, renderer scheduling |
 | `public/js/renderers/` | Game-specific DOM or Canvas rendering |
-| `public/js/game-catalog.js` | Built-in game metadata |
+| `public/js/game-catalog.js` | Built-in game metadata (single source of truth for lobby) |
 | `public/js/lang/` | Browser language packs |
+| `lang/` | Server-side text packs |
 | `tests/` | Regression tests for rules, bots, catalog, and client assumptions |
 | `android/` | Android WebView wrapper using nodejs-mobile |
 
@@ -52,6 +53,20 @@ Examples:
 - Minesweeper Race uses per-player board views.
 - Texas Hold'em hides opponents' hole cards.
 - Chinese Chess sends legal move hints to the current player.
+- Draw & Guess hides the drawing stroke endpoint from guessing players.
+
+Games export `playerView(state, playerIndex)` or `playerBoardView(state, playerIndex)`; the server's `broadcastGameView` helper dispatches the right view to each client. Adding a new per-player-view game only requires exporting the hook — no server.js edits needed.
+
+## Per-Player Views
+
+Some games hide private information or show legal-move hints only to the active player. These games export `playerView(state, playerIndex)` or `playerBoardView(state, playerIndex)` from their module in `games/`. The server calls these functions before broadcasting `game_state`, `game_started`, and `game_restart`, so each client receives a filtered view of the shared state.
+
+Current games using per-player views:
+
+- **Minesweeper Race** — `playerBoardView` shares the mine layout but gives each player independent reveal and flag state.
+- **Texas Hold'em** — `playerView` hides opponents' hole cards.
+- **Chinese Chess** — `playerView` attaches a `legalMoves` array for the current player.
+- **Draw & Guess** — `playerView` hides the drawing stroke endpoint from guessing players.
 
 ## Android Wrapper
 

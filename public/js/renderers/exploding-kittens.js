@@ -62,11 +62,7 @@
 
   window.gameRenderers.set('exploding-kittens', {
     init: function(container) {
-      if (!document.getElementById('ekStyles')) {
-        var s = document.createElement('style');
-        s.id = 'ekStyles'; s.textContent = STYLES;
-        document.head.appendChild(s);
-      }
+      injectStylesOnce('ekStyles', STYLES);
       container.innerHTML =
         '<div class="ek-game">' +
           '<div class="ek-opponents" id="ekOpps"></div>' +

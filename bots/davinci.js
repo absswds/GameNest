@@ -1,4 +1,6 @@
 // bots/davinci.js — Da Vinci Code AI with deduction
+const { botName } = require('./lib/bot-name');
+
 exports.name = 'davinci';
 
 function deduceGuess(state, playerIndex, targetPlayer, tileIndex) {
@@ -39,7 +41,7 @@ function deduceGuess(state, playerIndex, targetPlayer, tileIndex) {
 }
 
 exports.createBot = (playerIndex) => ({
-  name: `电脑${playerIndex + 1}`,
+  name: botName(playerIndex, 'zh'),
   getMove(state) {
     if (state.phase === 'draw') return {};
 

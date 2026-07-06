@@ -1,11 +1,13 @@
 // bots/gomoku.js — Gomoku AI with pattern scoring
+const { botName } = require('./lib/bot-name');
+
 exports.name = 'gomoku';
 
 const SIZE = 15;
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
 exports.createBot = (playerIndex) => ({
-  name: `电脑${playerIndex + 1}`,
+  name: botName(playerIndex, 'zh'),
   playerIndex,
   getMove(state) {
     const board = state.board;

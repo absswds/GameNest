@@ -1,24 +1,12 @@
 // bots/bigtwo.js
 exports.name = 'bigtwo';
 
-const RANKS = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
-
-function rankVal(rank) {
-  return RANKS.indexOf(rank);
-}
+const { RANKS, rankVal, rankGroups } = require('./lib/cards');
+const { botName } = require('./lib/bot-name');
 
 function suitVal(suit) {
   const order = { s: 3, h: 2, c: 1, d: 0 };
   return order[suit] || 0;
-}
-
-function rankGroups(hand) {
-  const m = new Map();
-  for (const c of hand) {
-    if (!m.has(c.rank)) m.set(c.rank, []);
-    m.get(c.rank).push(c);
-  }
-  return m;
 }
 
 // Find lowest single in hand (by rank, then suit)
@@ -108,7 +96,7 @@ function findBeat(hand, lastPlay) {
 
 exports.createBot = function(playerIndex) {
   return {
-    name: '电脑' + (playerIndex + 1),
+    name: botName(playerIndex, 'zh'),
     playerIndex: playerIndex,
     getMove: function(state) {
       const hand = state.hands[playerIndex];

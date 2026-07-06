@@ -97,10 +97,7 @@
 
   window.gameRenderers.set('rummikub', {
     init: function(container) {
-      if (!document.getElementById('rkStyles')) {
-        var s = document.createElement('style'); s.id = 'rkStyles'; s.textContent = STYLES;
-        document.head.appendChild(s);
-      }
+      injectStylesOnce('rkStyles', STYLES);
       selectedTiles = {};
       _targetSet = null;
       _boxes = [];

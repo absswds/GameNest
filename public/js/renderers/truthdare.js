@@ -32,10 +32,7 @@
           '</div>' +
         '</div>';
 
-      if (!document.getElementById('truthdare-styles')) {
-        var s = document.createElement('style');
-        s.id = 'truthdare-styles';
-        s.textContent = '' +
+      injectStylesOnce('truthdare-styles', '' +
           '.td-shell{width:100%;max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:14px;align-items:center;}' +
           '.td-hero{text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:18px 18px 16px;box-shadow:var(--shadow-sm);width:100%;box-sizing:border-box;}' +
           '.td-kicker{display:inline-flex;padding:4px 10px;border-radius:999px;background:rgba(200,164,92,.12);color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.08em;}' +
@@ -66,9 +63,7 @@
           '.td-history-badge.truth{background:#3b5b92;}.td-history-badge.dare{background:#b85f4a;}' +
           '.td-history-meta{color:var(--text-muted);font-size:12px;margin-top:2px;}' +
           '@keyframes tdPop{0%{transform:scale(.98);opacity:.85;}60%{transform:scale(1.015);}100%{transform:scale(1);opacity:1;}}' +
-          '@media(max-width:520px){.td-actions{grid-template-columns:1fr;}.td-card-text{font-size:22px;}.td-hero h2{font-size:23px;}.td-card{min-height:200px;}}';
-        document.head.appendChild(s);
-      }
+          '@media(max-width:520px){.td-actions{grid-template-columns:1fr;}.td-card-text{font-size:22px;}.td-hero h2{font-size:23px;}.td-card{min-height:200px;}}');
     },
 
     render: function(state, container, playerIndex) {

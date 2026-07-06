@@ -231,3 +231,17 @@ exports.handleMove = (data, state, playerIndex) => {
 };
 
 exports.SUIT_SYMBOL = SUIT_SYMBOL;
+
+exports.getCurrentActor = (state) => {
+  return state.phase === 'shooting' && Number.isInteger(state.currentShooter) && state.currentShooter >= 0
+    ? state.currentShooter
+    : state.currentPlayer;
+};
+
+exports.setCurrentActor = (state, index) => {
+  if (state.phase === 'shooting' && Number.isInteger(state.currentShooter) && state.currentShooter >= 0) {
+    state.currentShooter = index;
+  } else {
+    state.currentPlayer = index;
+  }
+};

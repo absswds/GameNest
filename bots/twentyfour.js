@@ -1,4 +1,6 @@
 // bots/twentyfour.js
+const { botName } = require('./lib/bot-name');
+
 exports.name = 'twentyfour';
 
 function genResults(nums) {
@@ -34,7 +36,7 @@ function findSolution(numbers) {
 
 exports.createBot = function(playerIndex) {
   return {
-    name: '电脑' + (playerIndex + 1),
+    name: botName(playerIndex, 'zh'),
     getMove: function(state) {
       if (state.phase !== 'playing') return {};
       const numbers = state.numbers;
