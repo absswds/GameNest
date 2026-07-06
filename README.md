@@ -20,7 +20,7 @@ GameNest is a lightweight open-source tabletop game room for family nights, dorm
 
 ## Highlights
 
-- 23 built-in games covering classic boards, party cards, poker, deduction, puzzle races, and real-time battles.
+- 27 built-in games covering classic boards, party cards, poker, deduction, puzzle races, and real-time battles.
 - Local-first multiplayer: no account system, no cloud dependency, just one host and one shared WiFi.
 - Room code and QR-code joining for phones, tablets, and laptops.
 - Waiting-room flow with player names, emoji avatars, ready state, seat swaps, bots, and per-game options.
@@ -154,10 +154,6 @@ More details:
 ## Contributing
 
 Bug reports, rules fixes, AI improvements, renderer polish, and new games are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=absswds/GameNest&type=Date)](https://star-history.com/#absswds/GameNest&Date)
 
 ## License
 
