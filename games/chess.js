@@ -49,12 +49,12 @@ exports.initGame = (state) => {
 };
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
-  if (state.currentPlayer !== playerIndex) return '不是你的回合';
+  if (state.winner !== null) return 'Game is over';
+  if (state.currentPlayer !== playerIndex) return 'Not your turn';
 
   var from = data && data.from;
   var to = data && data.to;
-  if (!from || !to) return '无效的操作';
+  if (!from || !to) return 'Invalid move';
 
   var sqFrom = coordToSq(from);
   var sqTo = coordToSq(to);
@@ -62,7 +62,7 @@ exports.handleMove = (data, state, playerIndex) => {
   var c = new Chess(state.fen);
   var promotion = (data.promote || 'q').toLowerCase();
   var mv = c.move({ from: sqFrom, to: sqTo, promotion: promotion }, { sloppy: true });
-  if (!mv) return '非法走法';
+  if (!mv) return 'Illegal move';
 
   state.fen = c.fen();
   state.board = snapshotBoard(c);

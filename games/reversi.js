@@ -88,8 +88,8 @@ function countPieces(board, ROWS, COLS) {
 }
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
-  if (state.currentPlayer !== playerIndex) return '不是你的回合';
+  if (state.winner !== null) return 'Game is over';
+  if (state.currentPlayer !== playerIndex) return 'Not your turn';
 
   var sz = getSize(state);
   var ROWS = sz.ROWS, COLS = sz.COLS;
@@ -107,9 +107,9 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   var row = data && data.row, col = data && data.col;
-  if (row === undefined || col === undefined) return '无效的操作';
-  if (!inBounds(row, col, ROWS, COLS)) return '超出棋盘范围';
-  if (state.board[row][col] !== null) return '该位置已有棋子';
+  if (row === undefined || col === undefined) return 'Invalid move';
+  if (!inBounds(row, col, ROWS, COLS)) return 'Out of bounds';
+  if (state.board[row][col] !== null) return 'Cell already occupied';
 
   var legalMoves = getLegalMoves(state.board, playerIndex, ROWS, COLS);
   var matched = null;
@@ -119,7 +119,7 @@ exports.handleMove = (data, state, playerIndex) => {
       break;
     }
   }
-  if (!matched) return '不合法的走法';
+  if (!matched) return 'Illegal move';
 
   state.board[row][col] = playerIndex;
   for (var fi = 0; fi < matched.flips.length; fi++) {

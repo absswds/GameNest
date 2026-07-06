@@ -194,8 +194,8 @@ function canPlayCard(card, state, playerIndex, isFirstTrick) {
 }
 
 exports.handleMove = function(data, state, playerIndex) {
-  if (state.winner !== null) return '游戏已结束';
-  if (state.phase === 'over') return '游戏已结束';
+  if (state.winner !== null) return 'Game is over';
+  if (state.phase === 'over') return 'Game is over';
 
   // ---- PASSING PHASE ----
   if (state.phase === 'passing') {
@@ -219,11 +219,11 @@ exports.handleMove = function(data, state, playerIndex) {
       cards = hand.slice(-3).map(function(c) { return c.id; });
       data.cards = cards;
     }
-    if (!Array.isArray(cards) || cards.length !== 3) return '请选择恰好 3 张牌传递';
+    if (!Array.isArray(cards) || cards.length !== 3) return 'Select exactly 3 cards to pass';
     // Check no duplicates
     var seen = {};
     for (var i = 0; i < cards.length; i++) {
-      if (seen[cards[i]]) return '不能重复选择同一张牌';
+      if (seen[cards[i]]) return 'Cannot select the same card twice';
       seen[cards[i]] = true;
     }
     // Check cards in hand
@@ -233,7 +233,7 @@ exports.handleMove = function(data, state, playerIndex) {
       for (var j = 0; j < hand.length; j++) {
         if (hand[j].id === cards[i]) { found = true; break; }
       }
-      if (!found) return '你手上没有 ' + cards[i];
+      if (!found) return "You don't have " + cards[i];
     }
     state.passSubmissions[playerIndex] = cards;
     // Check if all 4 submitted
@@ -259,26 +259,26 @@ exports.handleMove = function(data, state, playerIndex) {
   }
 
   // ---- PLAYING PHASE ----
-  if (state.phase !== 'playing') return '当前阶段不允许操作';
+  if (state.phase !== 'playing') return 'Operation not allowed in current phase';
 
   var hand = state.hands[playerIndex];
-  if (!hand || hand.length === 0) return '你没有手牌';
+  if (!hand || hand.length === 0) return 'No cards in hand';
 
   var cardId = data.card;
-  if (!cardId) return '请选择一张牌';
+  if (!cardId) return 'Select a card';
 
   // Find card in hand
   var cardIdx = -1;
   for (var i = 0; i < hand.length; i++) {
     if (hand[i].id === cardId) { cardIdx = i; break; }
   }
-  if (cardIdx === -1) return '你手上没有这张牌';
+  if (cardIdx === -1) return "You don't have this card";
 
   var card = hand[cardIdx];
   var isFirstTrick = state.trickCount === 0;
 
   if (!canPlayCard(card, state, playerIndex, isFirstTrick)) {
-    return '这张牌不合法';
+    return 'Illegal card';
   }
 
   // Play the card

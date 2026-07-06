@@ -254,9 +254,9 @@
     var pi3 = parseInt(sessionStorage.getItem('playerIndex'));
     if (state.winner != null) {
       if (state.winner === -1) {
-        ctx.fillText('平局！', W / 2, statusY);
+        ctx.fillText(window._t('rv_draw'), W / 2, statusY);
       } else {
-        ctx.fillText(state.winner === pi3 ? '🏆 你赢了！' : '😢 你输了', W / 2, statusY);
+        ctx.fillText(state.winner === pi3 ? window._t('rv_you_win') : window._t('rv_you_lose'), W / 2, statusY);
       }
       ctx.font = '13px system-ui,-apple-system,sans-serif';
       ctx.fillStyle = '#666';
@@ -264,10 +264,10 @@
     } else {
       if (state.currentPlayer === pi3) {
         ctx.fillStyle = '#c8a45c';
-        ctx.fillText('▼ 轮到你落子 ▼', W / 2, statusY);
+        ctx.fillText(window._t('rv_your_turn'), W / 2, statusY);
       } else {
         var cp = (window.gamePlayers || [])[state.currentPlayer];
-        ctx.fillText('对手回合 · ' + (cp ? cp.name : '等待中'), W / 2, statusY);
+        ctx.fillText(window._t('rv_opponent_turn') + ' · ' + (cp ? cp.name : window._t('ch_waiting')), W / 2, statusY);
       }
     }
   }

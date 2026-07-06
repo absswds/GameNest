@@ -256,6 +256,16 @@
         { h: '小建议', p: '如果不想太刺激，就先开轻松破冰和朋友聚会；熟人局再加入深度真心话或大冒险挑战。' },
       ]
     },
+    hearts: {
+      sections: [
+        { h: '游戏目标', p: '4 人打牌，尽量少拿红心♥和黑桃Q，得分最低者获胜。' },
+        { h: '牌组', p: '52 张标准扑克牌（去掉大小王），A 最大，2 最小。每人 13 张。' },
+        { h: '传牌', p: '每轮的第三、五、七局开始前，需要向左/右/对面传递 3 张牌。其他局不传牌。' },
+        { h: '出牌规则', p: '首家自由出牌，后续必须跟同花色（有则必跟），没有可以垫其他花色。首轮必须有 2♣ 先出。' },
+        { h: '计分', p: '每张红心♥ 1 分，黑桃Q 13 分。一轮结束累计一轮得分，多轮后总分最低者获胜。' },
+        { h: '射月', p: '如果一轮中一人收走全部 13 张红心♥和黑桃Q（共 26 分），其他玩家各加 26 分，该玩家得 0 分。' },
+      ]
+    },
     battleship: {
       sections: [
         { h: '游戏目标', p: '在 10×10 的海战棋盘上，先击沉对方所有 5 艘战舰的一方获胜。' },
@@ -520,6 +530,16 @@
         { h: 'Deck Types', p: 'The host can enable different deck types: Light Icebreaker, Friends Party, Deep Truth, Dare Challenge, and more.' },
         { h: 'Custom Decks', p: 'The host can add custom Truth and Dare prompts in the waiting room (one per line). After saving, check the "Custom" deck to include them in the pool.' },
         { h: 'Tip', p: 'For a gentler game, start with Light Icebreaker and Friends Party. Save Deep Truth and Dare Challenge for close friends.' },
+      ]
+    },
+    hearts: {
+      sections: [
+        { h: 'Objective', p: '4 players compete to avoid hearts (♥) and the Queen of Spades (♠Q). Lowest score wins.' },
+        { h: 'Deck', p: 'Standard 52-card deck (no jokers). Aces high, 2 low. Each player gets 13 cards.' },
+        { h: 'Passing', p: 'Before rounds 3, 5, and 7, pass 3 cards left/right or across. Other rounds skip passing.' },
+        { h: 'Play', p: 'Leading player plays any card; others must follow suit if possible. The first trick must be led with 2♣.' },
+        { h: 'Scoring', p: 'Each heart (♥) = 1 point; Queen of Spades (♠Q) = 13 points. Total score after all rounds wins.' },
+        { h: 'Shooting the Moon', p: 'One player collects ALL hearts + ♠Q (26 pts). All other players receive 26 points; the moon-shooter gets 0. A risky but rewarding reversal!' },
       ]
     },
     battleship: {

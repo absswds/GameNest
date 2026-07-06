@@ -111,7 +111,7 @@
   }
 
   function getPassDirName(dir) {
-    var map = { left: '← 向左传', right: '→ 向右传', across: '↕ 对面传', none: '不传牌' };
+    var map = { left: window._t('ht_pass_left'), right: window._t('ht_pass_right'), across: window._t('ht_pass_across'), none: window._t('ht_pass_none') };
     return map[dir] || dir;
   }
 
@@ -135,7 +135,7 @@
       var isMe = i === myIdx;
       var cls = 'ht-score-card' + (isMe ? ' me' : '');
       html += '<div class="' + cls + '">' +
-        '<div class="pname">' + players[i] + (isMe ? ' (你)' : '') + '</div>' +
+        '<div class="pname">' + players[i] + (isMe ? ' ' + window._t('ht_you') : '') + '</div>' +
         '<div class="ptotal">' + ((s.scores || [0,0,0,0])[i]) + '</div>' +
         '<div class="pround">+' + ((s.roundScores || [0,0,0,0])[i]) + '</div>' +
         '</div>';
@@ -145,13 +145,13 @@
     // --- Status ---
     var statusText = '';
     if (s.phase === 'over') {
-      statusText = '游戏结束！';
+      statusText = window._t('ht_game_over');
     } else if (s.phase === 'passing') {
       var dir = getPassDirName(s.passDirection);
-      statusText = '第 ' + (s.round || 1) + ' 轮 · 传牌 (' + dir + ')';
+      statusText = window._tf('ht_round_pass', s.round || 1, dir);
     } else if (s.phase === 'playing') {
-      var whose = s.currentPlayer === myIdx ? '你的回合' : '等待 P' + ((s.currentPlayer || 0) + 1) + ' 出牌';
-      statusText = '第 ' + (s.round || 1) + ' 轮 · ' + whose + (s.heartsBroken ? ' · ♥已破' : '');
+      var whose = s.currentPlayer === myIdx ? window._t('ht_your_turn_s') : window._tf('ht_waiting_player', (s.currentPlayer || 0) + 1);
+      statusText = window._tf('ht_round_play', s.round || 1, whose, s.heartsBroken ? window._t('ht_hearts_broken') : '');
     }
     html += '<div class="ht-status">' + statusText + '</div>';
 
@@ -168,7 +168,7 @@
       var tc = slotMap[r] || null;
       html += '<div class="ht-trick-slot ' + positions[r] + '">' +
         renderTrickCard(tc) +
-        '<div class="ht-trick-label">' + (r === 0 ? '你' : 'P' + (((r + myIdx) % 4) + 1)) + '</div>' +
+        '<div class="ht-trick-label">' + (r === 0 ? window._t('ht_you') : 'P' + (((r + myIdx) % 4) + 1)) + '</div>' +
         '</div>';
     }
     html += '</div>';
@@ -181,7 +181,7 @@
         pts += (s.lastTrick[i].card.suit === 'h' ? 1 : (s.lastTrick[i].card.suit === 's' && s.lastTrick[i].card.rank === 'Q' ? 13 : 0));
         ltNames.push(SUIT_SYMBOLS[s.lastTrick[i].card.suit] + s.lastTrick[i].card.rank);
       }
-      html += '<div class="ht-last-trick">上一墩: ' + ltNames.join(' ') + ' (' + pts + '分)</div>';
+      html += '<div class="ht-last-trick">' + window._tf('ht_last_trick', ltNames.join(' '), pts) + '</div>';
     } else {
       html += '<div class="ht-last-trick"></div>';
     }
@@ -189,19 +189,19 @@
     // --- Pass confirm ---
     if (s.phase === 'passing' && s.passDirection !== 'none' && !s.myPassCards) {
       html += '<div class="ht-pass-bar">';
-      html += '<button class="ht-pass-btn" id="ht-pass-btn"' + (selectedCards.length !== 3 ? ' disabled' : '') + '>确认传递 (' + selectedCards.length + '/3)</button>';
+      html += '<button class="ht-pass-btn" id="ht-pass-btn"' + (selectedCards.length !== 3 ? ' disabled' : '') + '>' + window._tf('ht_confirm_pass', selectedCards.length) + '</button>';
       html += '</div>';
     } else if (s.myPassCards) {
-      html += '<div class="ht-pass-bar"><span style="color:var(--accent);font-size:13px;font-weight:600;">已传递 ' + s.myPassCards.length + ' 张牌，等待其他人...</span></div>';
+      html += '<div class="ht-pass-bar"><span style="color:var(--accent);font-size:13px;font-weight:600;">' + window._tf('ht_pass_sent', s.myPassCards.length) + '</span></div>';
     }
 
     // --- My hand ---
     html += '<div class="ht-hand-wrap">';
-    html += '<div class="ht-hand-label">手牌 (' + (s.myHand || []).length + ')</div>';
+    html += '<div class="ht-hand-label">' + window._tf('ht_hand', (s.myHand || []).length) + '</div>';
     html += '<div class="ht-my-hand">';
     var hand = s.myHand || [];
     if (hand.length === 0) {
-      html += '<div style="color:var(--text-muted);font-size:13px;">暂无手牌</div>';
+      html += '<div style="color:var(--text-muted);font-size:13px;">' + window._t('ht_no_cards') + '</div>';
     }
     for (var i = 0; i < hand.length; i++) {
       var card = hand[i];
@@ -242,14 +242,14 @@
       var isWinner = s.winner === myIdx;
       html += '<div class="ht-over" id="ht-over">' +
         '<div class="ht-over-box">' +
-        '<div class="ht-over-title">' + (isWinner ? '🏆 你赢了！' : '💀 你输了') + '</div>' +
+        '<div class="ht-over-title">' + (isWinner ? window._t('ht_you_win') : window._t('ht_you_lose')) + '</div>' +
         '<div class="ht-over-scores">';
       for (var i = 0; i < 4; i++) {
-        html += '<div>' + players[i] + (i === myIdx ? ' (你)' : '') + ': ' + (s.scores || [0,0,0,0])[i] + ' 分' +
-          (i === s.winner ? ' 👑' : '') + '</div>';
+        html += '<div>' + players[i] + (i === myIdx ? ' ' + window._t('ht_you') : '') + ': ' + window._tf('ht_score', (s.scores || [0,0,0,0])[i]) +
+          (i === s.winner ? window._t('ht_crown') : '') + '</div>';
       }
       html += '</div>';
-      html += '<div style="font-size:13px;color:var(--text-muted);">点击任意处关闭</div>';
+      html += '<div style="font-size:13px;color:var(--text-muted);">' + window._t('ht_click_close') + '</div>';
       html += '</div></div>';
     }
 

@@ -212,7 +212,7 @@
     ctx.fillStyle = '#3a3028';
     ctx.font = 'bold 14px system-ui,-apple-system,sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    ctx.fillText('升变为', W / 2, py + 6);
+    ctx.fillText(window._t('ch_promote'), W / 2, py + 6);
 
     var btnSize = cs * 0.75;
     var gap = (panelW - 4 * btnSize) / 5;
@@ -380,16 +380,16 @@
     var pi = parseInt(sessionStorage.getItem('playerIndex'));
     if (state.winner != null) {
       if (state.winner === -1) {
-        ctx.fillText('🤝 和棋', W / 2, sy);
+        ctx.fillText(window._t('ch_draw'), W / 2, sy);
       } else {
-        ctx.fillText(state.winner === pi ? '🏆 你赢了！' : '😢 你输了', W / 2, sy);
+        ctx.fillText(state.winner === pi ? window._t('ch_you_win') : window._t('ch_you_lose'), W / 2, sy);
       }
     } else {
       if (state.currentPlayer === pi) {
-        ctx.fillStyle = '#c8a45c'; ctx.fillText('▼ 轮到你走棋 ▼', W / 2, sy);
+        ctx.fillStyle = '#c8a45c'; ctx.fillText(window._t('ch_your_turn'), W / 2, sy);
       } else {
         var cp = (window.gamePlayers || [])[state.currentPlayer];
-        ctx.fillText('对手回合 · ' + (cp ? cp.name : '等待中'), W / 2, sy);
+        ctx.fillText(window._t('ch_opponent_turn') + ' · ' + (cp ? cp.name : window._t('ch_waiting')), W / 2, sy);
       }
     }
   }
