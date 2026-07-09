@@ -72,9 +72,9 @@ function removeGroup(board, group) {
 }
 
 function validateMove(board, side, row, col, koPoint) {
-  if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return { valid: false, reason: '超出棋盘' };
-  if (board[row][col] !== EMPTY) return { valid: false, reason: '该位置已有棋子' };
-  if (koPoint && koPoint.row === row && koPoint.col === col) return { valid: false, reason: '打劫规则：不能立刻提回' };
+  if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return { valid: false, reason: 'go_out_of_bounds' };
+  if (board[row][col] !== EMPTY) return { valid: false, reason: 'go_position_occupied' };
+  if (koPoint && koPoint.row === row && koPoint.col === col) return { valid: false, reason: 'go_ko_rule' };
 
   const myStone = stoneForSide(side);
   const enemy = enemyStone(side);
@@ -98,7 +98,7 @@ function validateMove(board, side, row, col, koPoint) {
   board[row][col] = EMPTY;
 
   if (capturedGroups.length === 0 && ownLibs === 0)
-    return { valid: false, reason: '禁着点：此处落子会自杀' };
+    return { valid: false, reason: 'go_suicide_point' };
 
   return { valid: true, capturedGroups, ownGroup };
 }
@@ -140,8 +140,8 @@ function scoreGame(board) {
 // ---- Handle Move ----
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
-  if (state.currentPlayer !== playerIndex) return '不是你的回合';
+  if (state.winner !== null) return 'g_game_over';
+  if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
 
   const { row, col, pass } = data || {};
 
@@ -160,7 +160,7 @@ exports.handleMove = (data, state, playerIndex) => {
     return null;
   }
 
-  if (typeof row !== 'number' || typeof col !== 'number') return '无效的操作';
+  if (typeof row !== 'number' || typeof col !== 'number') return 'g_invalid_action';
 
   const result = validateMove(state.board, playerIndex, row, col, state.koPoint);
   if (!result.valid) return result.reason;

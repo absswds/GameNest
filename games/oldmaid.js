@@ -3,6 +3,7 @@
 
 exports.name = 'oldmaid';
 exports.maxPlayers = 6;
+const { pick } = require('./lib/i18n');
 
 const SUITS = ['s', 'h', 'c', 'd'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -83,7 +84,7 @@ exports.initGame = function (state, playerCount) {
   for (let i = 0; i < playerCount; i++) {
     const discards = discardAllPairsWithLog(state.hands[i]);
     for (const d of discards) {
-      state.messages.push({ text: 'P' + (i + 1) + ' 开局弃掉对子: ' + d.rank + ' ' + d.rank, time: Date.now() });
+      state.messages.push({ text: pick(state, 'P' + (i + 1) + ' 开局弃掉对子: ' + d.rank + ' ' + d.rank, 'P' + (i + 1) + ' discarded pair: ' + d.rank + ' ' + d.rank), time: Date.now() });
     }
   }
 
@@ -96,9 +97,9 @@ exports.initGame = function (state, playerCount) {
 };
 
 exports.handleMove = function (data, state, playerIndex) {
-  if (state.winner !== null || state.loser !== null) return '游戏已结束';
-  if (state.currentPlayer !== playerIndex) return '还没轮到你';
-  if (state.hands[playerIndex].length === 0) return '你已经没有手牌了';
+  if (state.winner !== null || state.loser !== null) return 'g_game_over';
+  if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
+  if (state.hands[playerIndex].length === 0) return 'om_no_hand';
 
   // Allow _ping — a no-op move to trigger UI re-render
   if (data && data._ping === true) return null;
@@ -107,14 +108,14 @@ exports.handleMove = function (data, state, playerIndex) {
 
   // Validate drawFrom
   if (typeof drawFrom !== 'number' || drawFrom < 0 || drawFrom >= state.hands.length) {
-    return '请选择要从哪个玩家抽牌';
+    return 'om_choose_player';
   }
-  if (drawFrom === playerIndex) return '不能抽自己的牌';
-  if (state.hands[drawFrom].length === 0) return '该玩家没有牌了';
+  if (drawFrom === playerIndex) return 'om_cannot_draw_self';
+  if (state.hands[drawFrom].length === 0) return 'om_player_no_cards';
 
   // Validate cardIndex — player picks a specific face-down card
   if (typeof cardIndex !== 'number' || cardIndex < 0 || cardIndex >= state.hands[drawFrom].length) {
-    return '无效的选牌位置';
+    return 'om_invalid_draw_position';
   }
 
   // Draw the chosen card
@@ -126,7 +127,7 @@ exports.handleMove = function (data, state, playerIndex) {
   var suitSymbols = { s: '♠', h: '♥', c: '♣', d: '♦' };
   var dispCard = drawnCard.rank + (drawnCard.suit ? suitSymbols[drawnCard.suit] : '');
   state.messages.push({
-    text: 'P' + (playerIndex + 1) + ' 从 P' + (drawFrom + 1) + ' 抽到了一张牌',
+    text: pick(state, 'P' + (playerIndex + 1) + ' 从 P' + (drawFrom + 1) + ' 抽到了一张牌', 'P' + (playerIndex + 1) + ' drew a card from P' + (drawFrom + 1)),
     time: Date.now(),
     from: drawFrom,
     to: playerIndex,
@@ -138,7 +139,7 @@ exports.handleMove = function (data, state, playerIndex) {
   if (discards.length > 0) {
     for (const d of discards) {
       state.messages.push({
-        text: 'P' + (playerIndex + 1) + ' 弃掉对子: ' + d.rank + ' ' + d.rank + ' ✅',
+        text: pick(state, 'P' + (playerIndex + 1) + ' 弃掉对子: ' + d.rank + ' ' + d.rank + ' ✅', 'P' + (playerIndex + 1) + ' discarded pair: ' + d.rank + ' ' + d.rank + ' ✅'),
         time: Date.now(),
         highlight: true,
       });
@@ -151,7 +152,7 @@ exports.handleMove = function (data, state, playerIndex) {
 
   // Check if current player cleared all cards
   if (state.hands[playerIndex].length === 0) {
-    state.messages.push({ text: 'P' + (playerIndex + 1) + ' 手牌清空！', time: Date.now(), highlight: true });
+    state.messages.push({ text: pick(state, 'P' + (playerIndex + 1) + ' 手牌清空！', 'P' + (playerIndex + 1) + ' hand is empty!'), time: Date.now(), highlight: true });
     state.handSizes = state.hands.map(h => h.length);
     const withCards = [];
     for (let i = 0; i < state.hands.length; i++) {

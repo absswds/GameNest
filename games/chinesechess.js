@@ -272,30 +272,30 @@ function getLegalMoves(board, side) {
 // ---- Handle Move ----
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
-  if (state.currentPlayer !== playerIndex) return '不是你的回合';
+  if (state.winner !== null) return 'g_game_over';
+  if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
 
   const { from, to } = data || {};
-  if (!from || !to) return '无效的操作';
+  if (!from || !to) return 'g_invalid_action';
   const { row: fr, col: fc } = from;
   const { row: tr, col: tc } = to;
 
-  if (!inBounds(fr, fc) || !inBounds(tr, tc)) return '超出棋盘范围';
-  if (fr === tr && fc === tc) return '不能原地不动';
+  if (!inBounds(fr, fc) || !inBounds(tr, tc)) return 'xq_out_of_bounds';
+  if (fr === tr && fc === tc) return 'xq_stand_still';
 
   const piece = state.board[fr][fc];
-  if (!piece) return '该位置没有棋子';
-  if (piece.side !== playerIndex) return '不能移动对方的棋子';
+  if (!piece) return 'xq_no_piece_there';
+  if (piece.side !== playerIndex) return 'xq_not_your_piece';
 
   const target = state.board[tr][tc];
-  if (target && target.side === playerIndex) return '不能吃自己的棋子';
+  if (target && target.side === playerIndex) return 'xq_cannot_take_own';
 
   // Validate move against legal moves
   const legalMoves = getLegalMoves(state.board, playerIndex);
   const found = legalMoves.find(m =>
     m.fromRow === fr && m.fromCol === fc && m.toRow === tr && m.toCol === tc
   );
-  if (!found) return '不合法的走法';
+  if (!found) return 'xq_illegal_move';
 
   // Execute
   const captured = makeMove(state.board, found);

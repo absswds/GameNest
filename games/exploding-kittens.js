@@ -1,5 +1,6 @@
 // games/exploding-kittens.js
 // 爆炸猫 — Russian roulette card game. Avoid drawing Exploding Kittens!
+const { pick } = require('./lib/i18n');
 
 exports.name = 'exploding-kittens';
 exports.maxPlayers = 6;
@@ -113,8 +114,8 @@ function aliveCount(state) {
 }
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
-  if (!state.alive[playerIndex]) return '你已经出局了';
+  if (state.winner !== null) return 'g_game_over';
+  if (!state.alive[playerIndex]) return 'ek_you_are_out';
 
   // Lazy init
   if (state.hands.length === 0) {
@@ -126,12 +127,12 @@ exports.handleMove = (data, state, playerIndex) => {
   const { cardId, targetPlayer } = data || {};
   const hand = state.hands[playerIndex];
 
-  if (playerIndex !== state.currentPlayer) return '还没轮到你';
+  if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
 
   // ---- DRAW phase ----
   if (state.phase === 'draw') {
     // Must draw a card
-    if (state.deck.length === 0) return '牌堆已空';
+    if (state.deck.length === 0) return 'ek_deck_empty';
     const card = state.deck.pop();
     if (card.type === 'explode') {
       // Check for defuse
@@ -196,7 +197,7 @@ exports.handleMove = (data, state, playerIndex) => {
     // Play a single card
     if (cardId) {
       const idx = hand.findIndex(c => c.id === cardId);
-      if (idx === -1) return '手上没有这张牌';
+      if (idx === -1) return 'ek_card_not_in_hand';
       const card = hand.splice(idx, 1)[0];
       state.discard.push(card);
       // Public: reveal which card was played (so others can see defuse/skip/etc.)
@@ -243,10 +244,10 @@ exports.handleMove = (data, state, playerIndex) => {
         case 'favor':
           // 偷牌 — directly steal a random card from the target player
           if (targetPlayer === undefined || targetPlayer === playerIndex) {
-            hand.push(card); state.discard.pop(); return '必须指定目标玩家';
+            hand.push(card); state.discard.pop(); return 'ek_must_target_player';
           }
           if (!state.alive[targetPlayer]) {
-            hand.push(card); state.discard.pop(); return '目标玩家已出局';
+            hand.push(card); state.discard.pop(); return 'ek_target_out';
           }
           {
             const targetHand = state.hands[targetPlayer];
@@ -262,10 +263,10 @@ exports.handleMove = (data, state, playerIndex) => {
 
         case 'steal':
           if (targetPlayer === undefined || targetPlayer === playerIndex) {
-            hand.push(card); state.discard.pop(); return '必须指定目标玩家';
+            hand.push(card); state.discard.pop(); return 'ek_must_target_player';
           }
           if (!state.alive[targetPlayer]) {
-            hand.push(card); state.discard.pop(); return '目标玩家已出局';
+            hand.push(card); state.discard.pop(); return 'ek_target_out';
           }
           {
             const targetHand = state.hands[targetPlayer];
@@ -290,5 +291,5 @@ exports.handleMove = (data, state, playerIndex) => {
     return null;
   }
 
-  return '未知阶段';
+  return 'g_unknown_action';
 };

@@ -273,22 +273,22 @@
       if (state.winner === -1) {
         ctx.fillStyle = '#555';
         ctx.font = 'bold 16px system-ui,-apple-system,sans-serif';
-        ctx.fillText('平局！', W / 2, sy);
+        ctx.fillText(_t('c4_status_draw'), W / 2, sy);
       } else {
         ctx.fillStyle = state.winner === pi ? '#c8a45c' : '#e63946';
         ctx.font = 'bold 16px system-ui,-apple-system,sans-serif';
-        ctx.fillText(state.winner === pi ? '🏆 你赢了！' : '😢 你输了', W / 2, sy);
+        ctx.fillText(state.winner === pi ? _t('c4_status_win') : _t('c4_status_lose'), W / 2, sy);
       }
     } else {
       if (state.currentPlayer === pi) {
         ctx.fillStyle = '#c8a45c';
         ctx.font = 'bold 16px system-ui,-apple-system,sans-serif';
-        ctx.fillText('▼ 轮到你落子 ▼', W / 2, sy);
+        ctx.fillText(_t('c4_status_your_turn'), W / 2, sy);
       } else {
         var cp = (window.gamePlayers || [])[state.currentPlayer];
         ctx.fillStyle = '#555';
         ctx.font = '14px system-ui,-apple-system,sans-serif';
-        ctx.fillText('对手回合 · ' + (cp ? cp.name : '等待中'), W / 2, sy);
+        ctx.fillText(_t('c4_status_opp_turn') + (cp ? cp.name : _t('c4_waiting')), W / 2, sy);
       }
     }
   }

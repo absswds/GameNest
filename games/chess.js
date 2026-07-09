@@ -49,12 +49,12 @@ exports.initGame = (state) => {
 };
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return 'Game is over';
-  if (state.currentPlayer !== playerIndex) return 'Not your turn';
+  if (state.winner !== null) return 'g_game_over';
+  if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
 
   var from = data && data.from;
   var to = data && data.to;
-  if (!from || !to) return 'Invalid move';
+  if (!from || !to) return 'ch_invalid_move';
 
   var sqFrom = coordToSq(from);
   var sqTo = coordToSq(to);
@@ -62,7 +62,7 @@ exports.handleMove = (data, state, playerIndex) => {
   var c = new Chess(state.fen);
   var promotion = (data.promote || 'q').toLowerCase();
   var mv = c.move({ from: sqFrom, to: sqTo, promotion: promotion }, { sloppy: true });
-  if (!mv) return 'Illegal move';
+  if (!mv) return 'ch_illegal_move';
 
   state.fen = c.fen();
   state.board = snapshotBoard(c);

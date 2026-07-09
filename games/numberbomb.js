@@ -1,5 +1,6 @@
 // games/numberbomb.js
 // 数字炸弹 — Turn-based number guessing with shrinking range
+const { pick } = require('./lib/i18n');
 
 exports.name = 'numberbomb';
 exports.maxPlayers = 10;
@@ -31,19 +32,19 @@ exports.initGame = function (state, playerCount) {
 };
 
 exports.handleMove = function (data, state, playerIndex) {
-  if (state.winner !== null) return '游戏已结束';
-  if (state.currentPlayer !== playerIndex) return '还没轮到你';
-  if (state.lives[playerIndex] <= 0) return '你已出局';
+  if (state.winner !== null) return 'g_game_over';
+  if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
+  if (state.lives[playerIndex] <= 0) return 'nb_you_are_out';
 
   const { guess } = data || {};
   if (typeof guess !== 'number' || !Number.isInteger(guess) || guess < state.low || guess > state.high) {
-    return '请输入 ' + state.low + ' ~ ' + state.high + ' 之间的整数';
+    return 'nb_invalid_guess';
   }
 
   if (guess === state.bomb) {
     state.lives[playerIndex]--;
     // Log hit with context
-    var hitMsg = 'P' + (playerIndex + 1) + ' 猜了 ' + guess + ' 💥 踩雷！扣 1 条命（剩余 ' + state.lives[playerIndex] + ' ❤️）';
+    var hitMsg = pick(state, 'P' + (playerIndex + 1) + ' 猜了 ' + guess + ' 💥 踩雷！扣 1 条命（剩余 ' + state.lives[playerIndex] + ' ❤️）', 'P' + (playerIndex + 1) + ' guessed ' + guess + ' 💥 Bomb! -1 life (' + state.lives[playerIndex] + ' ❤️ left)');
     state.messages.push({ text: hitMsg, time: Date.now(), bombHit: true, player: playerIndex });
     if (state.messages.length > 10) state.messages.shift();
     state.lastGuess = { player: playerIndex, guess: guess, hit: true };
@@ -72,17 +73,17 @@ exports.handleMove = function (data, state, playerIndex) {
   var narrowed = '';
   if (guess > state.bomb) {
     state.high = guess - 1;
-    narrowed = '↑ 大了';
+    narrowed = pick(state, '↑ 大了', '↑ too high');
   } else {
     state.low = guess + 1;
-    narrowed = '↓ 小了';
+    narrowed = pick(state, '↓ 小了', '↓ too low');
   }
 
   // Final forced guess — only 1 number left in range
   if (state.low === state.high) {
-    state.messages.push({ text: 'P' + (playerIndex + 1) + ' 猜了 ' + guess + ' ' + narrowed + ' → 只剩 ' + state.low + ' 一个数字，下家必中弹！', time: Date.now(), bombHit: false, player: playerIndex });
+    state.messages.push({ text: pick(state, 'P' + (playerIndex + 1) + ' 猜了 ' + guess + ' ' + narrowed + ' → 只剩 ' + state.low + ' 一个数字，下家必中弹！', 'P' + (playerIndex + 1) + ' guessed ' + guess + ' ' + narrowed + ' → only ' + state.low + ' left, next player will hit!'), time: Date.now(), bombHit: false, player: playerIndex });
   } else {
-    state.messages.push({ text: 'P' + (playerIndex + 1) + ' 猜了 ' + guess + ' ' + narrowed + ' → 范围 ' + state.low + '~' + state.high, time: Date.now(), bombHit: false, player: playerIndex });
+    state.messages.push({ text: pick(state, 'P' + (playerIndex + 1) + ' 猜了 ' + guess + ' ' + narrowed + ' → 范围 ' + state.low + '~' + state.high, 'P' + (playerIndex + 1) + ' guessed ' + guess + ' ' + narrowed + ' → range ' + state.low + '~' + state.high), time: Date.now(), bombHit: false, player: playerIndex });
   }
   if (state.messages.length > 10) state.messages.shift();
   state.lastGuess = { player: playerIndex, guess: guess, hit: false };

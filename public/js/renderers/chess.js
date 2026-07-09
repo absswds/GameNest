@@ -421,6 +421,10 @@
         canvas.width = W * dpr; canvas.height = H * dpr;
         canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
         ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(dpr, dpr);
+        if (window._chState) {
+          var pi = parseInt(sessionStorage.getItem('playerIndex')) || 0;
+          window.gameRenderers.get('chess').render(window._chState, container, pi, window._chState.winner);
+        }
       };
       resize(); window.addEventListener('resize', resize);
 

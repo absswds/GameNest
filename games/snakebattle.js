@@ -72,13 +72,13 @@ exports.initGame = (state, playerCount) => {
 };
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
+  if (state.winner !== null) return 'g_game_over';
   const snake = state.snakes[playerIndex];
-  if (!snake) return '玩家不存在';
-  if (!snake.alive) return '你已出局';
+  if (!snake) return 'sb_player_not_found';
+  if (!snake.alive) return 'sb_you_are_out';
   const direction = data && data.direction;
-  if (!DIRECTIONS[direction]) return '方向无效';
-  if (DIRECTIONS[direction].opposite === snake.direction) return '不能立刻反向';
+  if (!DIRECTIONS[direction]) return 'sb_invalid_direction';
+  if (DIRECTIONS[direction].opposite === snake.direction) return 'sb_cannot_reverse';
   snake.nextDirection = direction;
   return null;
 };

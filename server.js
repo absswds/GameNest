@@ -468,15 +468,39 @@ function scheduleBotMove(room) {
       let err = gameMod.handleMove(moveData, room.state, cp);
       if (err) {
         // Never let a bad bot move stall the game: fall back to drawing / passing
-        console.error('Bot error:', err, '— falling back to pass/draw');
+        console.error('[game=' + room.game + ' actor=' + cp + ' room=' + room._roomId + '] Bot error:', err, '— falling back to pass/draw');
         const fb = gameMod.handleMove({ pass: true }, room.state, cp);
         if (fb) gameMod.handleMove({}, room.state, cp); // last resort: empty move (most games draw + advance)
       }
       skipDisconnectedTurn(room);
       broadcastGameView(room);
       scheduleBotMove(room);
-    } catch(e) { console.error('Bot exception:', e.message); }
+    } catch(e) {
+        console.error('[game=' + room.game + ' actor=' + cp + ' room=' + room._roomId + '] Bot exception:', e.message);
+        gameMod.handleMove({ pass: true }, room.state, cp);
+        skipDisconnectedTurn(room);
+        broadcastGameView(room);
+        scheduleBotMove(room);
+      }
   }, delay);
+}
+
+function scheduleTurnTimer(room) {
+  clearTimeout(room._ddzTurnTimer);
+  if (!room || room.game !== 'doudizhu') return;
+  var st = room.state;
+  if (!st || !st.playTimeLimit || st.playTimeLimit <= 0) return;
+  if (st.winner != null || !st.currentTurnDeadline) return;
+  var ms = st.currentTurnDeadline - Date.now();
+  if (ms <= 0) {
+    if (st.phase !== 'playing') return;
+    var cp = st.currentPlayer;
+    gameRegistry['doudizhu'].handleMove({ cards: [] }, st, cp);
+    broadcastGameView(room, 'game_state');
+    scheduleBotMove(room);
+    return;
+  }
+  room._ddzTurnTimer = setTimeout(function() { scheduleTurnTimer(room); }, Math.min(ms, 1000));
 }
 
 function scheduleBattleshipPlacements(room) {
@@ -898,7 +922,10 @@ wss.on('connection', (ws) => {
       if (!playerInfo) return;
 
       const err = gameMod.handleMove(data, currentRoom.state, playerInfo.index);
-      if (err) { ws.send(JSON.stringify({ type: 'error', message: err })); return; }
+      if (err) {
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, err), code: err }));
+        return;
+      }
 
       skipDisconnectedTurn(currentRoom);
 
@@ -912,6 +939,7 @@ wss.on('connection', (ws) => {
       if (currentRoom.game === 'drawguess' && !isStageLiveAction) scheduleDrawguessTimer(currentRoom);
 
       broadcastGameView(currentRoom, 'game_state');
+      if (currentRoom.game === 'doudizhu') scheduleTurnTimer(currentRoom);
       scheduleBotMove(currentRoom);
       return;
     }

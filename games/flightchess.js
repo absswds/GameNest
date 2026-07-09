@@ -3,6 +3,8 @@
 // The gameplay issue was if canMakeMove returns false, turn passes but dice=6
 // should give another roll. Let's fix that edge case.
 
+const { pick } = require('./lib/i18n');
+
 const MAIN_PATH = 52;
 const HOME_STRETCH = 6;
 const HOME = MAIN_PATH + HOME_STRETCH;
@@ -27,14 +29,14 @@ exports.createState = () => {
 };
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
-  if (state.currentPlayer !== playerIndex) return '不是你的回合';
+  if (state.winner !== null) return 'g_game_over';
+  if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
 
   const pData = state.players[playerIndex];
   const { action } = data || {};
 
   if (action === 'roll' || !action) {
-    if (state.hasRolled) return '请先移动飞机';
+    if (state.hasRolled) return 'fc_need_to_select_plane';
     let dice = Math.floor(Math.random() * 6) + 1;
 
     // Pity mechanism: if all planes are in base (or home) and player has rolled
@@ -45,21 +47,23 @@ exports.handleMove = (data, state, playerIndex) => {
       if (pData.noSixStreak >= 5) {
         dice = 6;
         pData.noSixStreak = 0;
-        state.lastMoveResult = '🎲 保底机制触发！自动获得6点';
+        state.lastMoveResult = pick(state, '🎲 保底机制触发！自动获得6点', '🎲 Guaranteed 6 activated!');
       }
     } else if (dice === 6 || !allInBase) {
       pData.noSixStreak = 0;
     }
 
     state.dice = dice; state.hasRolled = true;
-    state.lastMoveResult = `${windowNames(playerIndex)} 掷了 ${dice} 点`;
+    const name = windowNames(playerIndex, state);
+    state.lastMoveResult = pick(state, `${name} 掷了 ${dice} 点`, `${name} rolled ${dice}`);
 
     if (dice === 6) state.consecutiveSixes++;
     else state.consecutiveSixes = 0;
 
     if (state.consecutiveSixes >= 3) {
       state.consecutiveSixes = 0; state.hasRolled = false; advanceTurn(state);
-      state.lastMoveResult = `${windowNames(playerIndex)} 连续3次6，回合作废`;
+      const name = windowNames(playerIndex, state);
+      state.lastMoveResult = pick(state, `${name} 连续3次6，回合作废`, `${name} rolled 3 sixes in a row, turn forfeited`);
       return null;
     }
 
@@ -67,27 +71,29 @@ exports.handleMove = (data, state, playerIndex) => {
     if (!hasValidMove(state, playerIndex)) {
       state.hasRolled = false;
       if (dice !== 6) advanceTurn(state);
-      state.lastMoveResult = `${windowNames(playerIndex)} 无合法走法，自动跳过`;
+      const name = windowNames(playerIndex, state);
+      state.lastMoveResult = pick(state, `${name} 无合法走法，自动跳过`, `${name} has no valid moves, skipping`);
       return null;
     }
     return null;
   }
 
   if (action === 'move') {
-    if (!state.hasRolled) return '请先掷骰子';
+    if (!state.hasRolled) return 'fc_roll_dice_first';
     const idx = data.planeIndex;
-    if (typeof idx !== 'number' || idx < 0 || idx >= PLANES) return '无效的飞机';
+    if (typeof idx !== 'number' || idx < 0 || idx >= PLANES) return 'fc_invalid_plane';
 
     const pos = pData.planes[idx];
-    if (pos === HOME) return '这架飞机已经到家了';
+    if (pos === HOME) return 'fc_plane_already_home';
 
     const dice = state.dice;
 
     if (pos === -1) {
-      if (dice !== 6) return '只有掷到6才能起飞';
+      if (dice !== 6) return 'fc_must_roll_6_to_launch';
       pData.planes[idx] = 0; // start of path
       doLanding(state, playerIndex, idx);
-      state.lastMoveResult = `${windowNames(playerIndex)} 起飞了飞机${idx+1}号`;
+      const name = windowNames(playerIndex, state);
+      state.lastMoveResult = pick(state, `${name} 起飞了飞机${idx+1}号`, `${name} launched plane #${idx+1}`);
       endTurn(state, playerIndex); return null;
     }
 
@@ -98,10 +104,14 @@ exports.handleMove = (data, state, playerIndex) => {
       if (target > HOME) target = HOME - (target - HOME); // bounce back
       if (target === HOME) {
         pData.planes[idx] = HOME; pData.finished++;
-        state.lastMoveResult = `${windowNames(playerIndex)} 飞机${idx+1}号到家了！`;
+        const name = windowNames(playerIndex, state);
+        state.lastMoveResult = pick(state, `${name} 飞机${idx+1}号到家了！`, `${name}'s plane #${idx+1} reached home!`);
         if (pData.finished >= PLANES) { state.winner = playerIndex; return null; }
       } else {
-        if (target < pos) state.lastMoveResult = `${windowNames(playerIndex)} 点数过头，反弹回退`;
+        if (target < pos) {
+          const name = windowNames(playerIndex, state);
+          state.lastMoveResult = pick(state, `${name} 点数过头，反弹回退`, `${name} rolled too high, bouncing back`);
+        }
         pData.planes[idx] = target;
       }
       endTurn(state, playerIndex); return null;
@@ -119,7 +129,7 @@ exports.handleMove = (data, state, playerIndex) => {
 
     endTurn(state, playerIndex); return null;
   }
-  return '无效操作';
+  return 'g_invalid_action';
 };
 
 // Resolve special cells after a normal main-path landing:
@@ -133,7 +143,8 @@ function resolveSpecial(state, pi, idx) {
   // Fly cell: follow the dashed line across the board, then jump +4 (rule: 虚线到同色格后再跳一格)
   if (step === FLY_STEP) {
     flyAcross(state, pi, idx);
-    state.lastMoveResult = `✈ ${windowNames(pi)} 沿航线飞到对面！`;
+    const name = windowNames(pi, state);
+    state.lastMoveResult = pick(state, `✈ ${name} 沿航线飞到对面！`, `✈ ${name} flew across the board!`);
     return;
   }
   // Own-color cell ⟺ step is a multiple of 4 (each player owns every 4th cell):
@@ -143,7 +154,8 @@ function resolveSpecial(state, pi, idx) {
     const jump = step + 4;
     if (jump < MAIN_PATH) {
       p.planes[idx] = jump; doLanding(state, pi, idx);
-      state.lastMoveResult = `${windowNames(pi)} 同色格跳 +4`;
+      const name = windowNames(pi, state);
+      state.lastMoveResult = pick(state, `${name} 同色格跳 +4`, `${name} jumped +4 on same color`);
     }
   }
 }
@@ -184,7 +196,9 @@ function doLanding(state, pi, idx) {
       const op = state.players[oi].planes[j];
       if (op >= 0 && op < MAIN_PATH && absPos(oi, op) === landingAbs) {
         state.players[oi].planes[j] = -1;
-        state.lastMoveResult = `${windowNames(pi)} 踩了${windowNames(oi)}的飞机！`;
+        const attacker = windowNames(pi, state);
+        const target = windowNames(oi, state);
+        state.lastMoveResult = pick(state, `${attacker} 踩了${target}的飞机！`, `${attacker} caught ${target}'s plane!`);
       }
     }
   }
@@ -207,9 +221,8 @@ function advanceTurn(state) {
   state.currentPlayer = (state.currentPlayer + 1) % total;
 }
 
-function windowNames(pi) {
-  // A simple placeholder; the real names are in the frontend
-  return `玩家${pi+1}`;
+function windowNames(pi, state) {
+  return pick(state, `玩家${pi+1}`, `Player ${pi+1}`);
 }
 
 exports.initGame = (state, pc) => {

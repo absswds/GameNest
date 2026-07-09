@@ -190,19 +190,19 @@ test('game rejects moves after checkmate', () => {
   assert.strictEqual(state.winner, 1);
 
   const err = makeMove(state, 'a2', 'a4', 0);
-  assert.strictEqual(err, 'Game is over');
+  assert.strictEqual(err, 'g_game_over');
 });
 
 test('wrong player is rejected', () => {
   const state = createStartedState();
   const err = makeMove(state, 'a7', 'a6', 1); // Black tries to move on white's turn
-  assert.strictEqual(err, 'Not your turn');
+  assert.strictEqual(err, 'g_not_your_turn');
 });
 
 test('invalid move is rejected', () => {
   const state = createStartedState();
   const err = makeMove(state, 'e2', 'e5', 0); // Pawn can't move 3 squares
-  assert.strictEqual(err, 'Illegal move');
+  assert.strictEqual(err, 'ch_illegal_move');
 });
 
 test('bot returns a legal move', () => {

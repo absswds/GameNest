@@ -105,18 +105,18 @@ function getAllDirs(type) {
 // ---- Handle Move ----
 
 exports.handleMove = function(data, state, playerIndex) {
-  if (state.winner !== null) return '游戏已结束';
-  if (state.currentPlayer !== playerIndex) return '不是你的回合';
+  if (state.winner !== null) return 'g_game_over';
+  if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
 
   var from = data && data.from;
   var to = data && data.to;
-  if (!from || !to) return '无效的操作';
+  if (!from || !to) return 'g_invalid_action';
   var fr = from.row, fc = from.col, tr = to.row, tc = to.col;
-  if (!inBounds(fr, fc) || !inBounds(tr, tc)) return '超出棋盘范围';
+  if (!inBounds(fr, fc) || !inBounds(tr, tc)) return 'ck_out_of_bounds';
 
   var piece = state.board[fr][fc];
-  if (!piece) return '该位置没有棋子';
-  if (piece.side !== playerIndex) return '不能移动对方的棋子';
+  if (!piece) return 'ck_no_piece_there';
+  if (piece.side !== playerIndex) return 'ck_not_your_piece';
 
   // Generate legal moves
   var origin = state.mustCapture ? { row: state._lastCaptureRow, col: state._lastCaptureCol } : null;
@@ -131,7 +131,7 @@ exports.handleMove = function(data, state, playerIndex) {
       break;
     }
   }
-  if (!found) return '不合法的走法';
+  if (!found) return 'ck_illegal_move';
 
   // Execute move
   state.board[tr][tc] = piece;

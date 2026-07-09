@@ -165,16 +165,16 @@ exports.initGame = function(state, playerCount) {
 };
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
-  if (playerIndex !== state.currentPlayer) return '还没轮到你';
+  if (state.winner !== null) return 'g_game_over';
+  if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
 
   const { cards: cardIds } = data;
-  if (!Array.isArray(cardIds)) return '无效格式';
+  if (!Array.isArray(cardIds)) return 'bt_invalid_format';
 
   // PASS
   if (cardIds.length === 0) {
-    if (!state.lastPlay) return '本轮你是首家，必须出牌';
-    if (state.lastPlayPlayer === playerIndex) return '你刚出了牌别人都没过，不能过';
+    if (!state.lastPlay) return 'bt_must_lead';
+    if (state.lastPlayPlayer === playerIndex) return 'bt_cannot_pass_after_play';
 
     state.passCount++;
     state.passed[playerIndex] = true;
@@ -195,13 +195,13 @@ exports.handleMove = (data, state, playerIndex) => {
 
   // Remove cards from hand
   const hand = state.hands[playerIndex];
-  if (!hand) return '你没有手牌';
+  if (!hand) return 'bt_no_hand';
   const played = [];
   for (const id of cardIds) {
     const idx = hand.findIndex(c => c.id === id);
     if (idx === -1) {
       hand.push(...played); sortHand(hand);
-      return '你手上没有这张牌: ' + id;
+      return 'bt_card_not_in_hand';
     }
     played.push(hand.splice(idx, 1)[0]);
   }
@@ -209,7 +209,7 @@ exports.handleMove = (data, state, playerIndex) => {
   const playType = detectType(played);
   if (!playType) {
     hand.push(...played); sortHand(hand);
-    return '无效牌型';
+    return 'bt_invalid_play';
   }
 
   // Check if this is a free play (new round after everyone passed, or first move)
@@ -217,7 +217,7 @@ exports.handleMove = (data, state, playerIndex) => {
   if (!isFreePlay) {
     if (!canBeat(playType, state.lastPlay.play)) {
       hand.push(...played); sortHand(hand);
-      return '打不过上家的牌';
+      return 'bt_doesnt_beat';
     }
   }
 

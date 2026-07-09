@@ -31,6 +31,10 @@
         canvas.width = size * dpr; canvas.height = size * dpr;
         canvas.style.width = size + 'px'; canvas.style.height = size + 'px';
         ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr, dpr);
+        if (window._goState) {
+          var pi = parseInt(sessionStorage.getItem('playerIndex')) || 0;
+          window.gameRenderers.get('go9').render(window._goState, container, pi, window._goState.winner);
+        }
       };
       resize(); window.addEventListener('resize', resize);
 

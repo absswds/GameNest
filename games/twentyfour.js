@@ -98,19 +98,19 @@ exports.initGame = function(state, playerCount) {
 };
 
 exports.handleMove = function(data, state, playerIndex) {
-  if (state.phase === 'round_end') return '本轮已结束，等待下一轮';
-  if (state.phase === 'over') return '游戏已结束';
-  if (state.phase !== 'playing') return '游戏未开始';
+  if (state.phase === 'round_end') return 'tf_round_ended_wait_next';
+  if (state.phase === 'over') return 'g_game_over';
+  if (state.phase !== 'playing') return 'tf_game_not_started';
 
   const timed = state.roundTime > 0;
   if (!state.playerSubmissions) state.playerSubmissions = {};
   // In timed mode, a player who already answered correctly just waits
   if (timed && state.playerSubmissions[playerIndex] && state.playerSubmissions[playerIndex].correct) {
-    return '你已答对，等待倒计时结束';
+    return 'tf_already_correct';
   }
 
   const { expression } = data || {};
-  if (typeof expression !== 'string' || !expression.trim()) return '请输入表达式';
+  if (typeof expression !== 'string' || !expression.trim()) return 'tf_enter_expression';
 
   // Extract numbers used
   const numPattern = /\b(\d+)\b/g;
@@ -123,24 +123,24 @@ exports.handleMove = function(data, state, playerIndex) {
   // Must use exactly the 4 numbers, each exactly once
   const expected = [...state.numbers].sort((a, b) => a - b);
   const used = [...usedNums].sort((a, b) => a - b);
-  if (used.length !== 4) return '必须使用全部4个数字';
+  if (used.length !== 4) return 'tf_use_all_4_numbers';
   if (JSON.stringify(expected) !== JSON.stringify(used)) {
-    return '必须使用给定数字各一次: ' + expected.join(', ');
+    return 'tf_wrong_numbers';
   }
 
-  if (!/^[\d\+\-\*\/\(\)\s\.]+$/.test(expression)) return '表达式含有非法字符';
+  if (!/^[\d\+\-\*\/\(\)\s\.]+$/.test(expression)) return 'tf_invalid_chars';
 
   let result;
   try {
     result = Function('"use strict"; return (' + expression + ')')();
   } catch (e) {
-    return '表达式无效: ' + e.message;
+    return 'tf_invalid_expression';
   }
 
-  if (typeof result !== 'number' || !isFinite(result)) return '计算结果无效';
+  if (typeof result !== 'number' || !isFinite(result)) return 'tf_invalid_result';
   // Round the result for a clean message (e.g. 23.999999 -> 24)
   const shown = Math.round(result * 100) / 100;
-  if (Math.abs(result - 24) > 0.0001) return '结果不等于24，你的算式 = ' + shown;
+  if (Math.abs(result - 24) > 0.0001) return 'tf_not_24';
 
   if (timed) {
     // Timed mode: record the correct submission and keep waiting. The fastest

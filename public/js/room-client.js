@@ -158,6 +158,7 @@
     renderMetaPills('waitingMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
     renderFacts('stageMeta', [gameInfo.category, gameInfo.players, gameInfo.duration]);
     // Show connecting status until first server response arrives
+    document.title = 'GameNest — ' + _t('room');
     el.waitingStatus.textContent = _t('connecting_room');
   }
 
@@ -541,6 +542,82 @@
         optionsEl.innerHTML =
           '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
           '<div style="font-size:13px;color:var(--text-muted)">' + _t('break_in_rule') + ': ' + (breakOn2 ? _t('break_on') : _t('break_off')) + '</div>';
+      } else if (game === 'doudizhu') {
+        optionsEl.style.display = 'block';
+        var bm = roomOptions.bidMode || 'rob';
+        var fc = roomOptions.firstCaller || 'random';
+        var ad = roomOptions.allowDouble || false;
+        var ash = roomOptions.allowShowHand || false;
+        var pt = roomOptions.playTimeLimit || 20;
+        var tr = roomOptions.totalRounds || 3;
+        if (isHost) {
+          var timeOpts = [10, 20, 60, 300];
+          var roundOpts = [3, 6, 9, 12];
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">' + _t('game_settings') + '</div>' +
+            // Row 1: 叫地主方式
+            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;margin-bottom:10px;font-size:13px;">' +
+              '<div style="font-weight:600;padding-top:4px;">' + _t('ddz_bid_mode') + '</div>' +
+              '<div style="display:flex;gap:16px;">' +
+                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
+                  '<input type="radio" name="ddzBidMode" value="rob"' + (bm === 'rob' ? ' checked' : '') + ' onchange="window._setGameOption(\'bidMode\',this.value)">' + _t('ddz_bid_mode_rob') + '</label>' +
+                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
+                  '<input type="radio" name="ddzBidMode" value="score"' + (bm === 'score' ? ' checked' : '') + ' onchange="window._setGameOption(\'bidMode\',this.value)">' + _t('ddz_bid_mode_score') + '</label>' +
+              '</div>' +
+            '</div>' +
+            // Row 2: 先叫规则
+            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;margin-bottom:10px;font-size:13px;">' +
+              '<div style="font-weight:600;padding-top:4px;">' + _t('ddz_first_caller') + '</div>' +
+              '<div style="display:flex;gap:16px;">' +
+                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
+                  '<input type="radio" name="ddzFirstCaller" value="random"' + (fc === 'random' ? ' checked' : '') + ' onchange="window._setGameOption(\'firstCaller\',this.value)">' + _t('ddz_first_caller_random') + '</label>' +
+                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
+                  '<input type="radio" name="ddzFirstCaller" value="winner"' + (fc === 'winner' ? ' checked' : '') + ' onchange="window._setGameOption(\'firstCaller\',this.value)">' + _t('ddz_first_caller_winner') + '</label>' +
+              '</div>' +
+            '</div>' +
+            // Row 3: 游戏规则
+            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;margin-bottom:10px;font-size:13px;">' +
+              '<div style="font-weight:600;padding-top:4px;">' + _t('ddz_game_rules') + '</div>' +
+              '<div style="display:flex;gap:16px;">' +
+                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
+                  '<input type="checkbox"' + (ad ? ' checked' : '') + ' onchange="window._setGameOption(\'allowDouble\',this.checked)">' + _t('ddz_allow_double') + '</label>' +
+                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
+                  '<input type="checkbox"' + (ash ? ' checked' : '') + ' onchange="window._setGameOption(\'allowShowHand\',this.checked)">' + _t('ddz_allow_show_hand') + '</label>' +
+              '</div>' +
+            '</div>' +
+            // Row 4: 出牌时长
+            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;margin-bottom:10px;font-size:13px;">' +
+              '<div style="font-weight:600;padding-top:4px;">' + _t('ddz_play_time') + '</div>' +
+              '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+                timeOpts.map(function(t) {
+                  return '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;">' +
+                    '<input type="radio" name="ddzPlayTime" value="' + t + '"' + (pt === t ? ' checked' : '') + ' onchange="window._setGameOption(\'playTimeLimit\',' + t + ')">' +
+                    _t('ddz_play_time_' + t) + '</label>';
+                }).join('') +
+              '</div>' +
+            '</div>' +
+            // Row 5: 总局数
+            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;font-size:13px;">' +
+              '<div style="font-weight:600;padding-top:4px;">' + _t('ddz_total_rounds') + '</div>' +
+              '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+                roundOpts.map(function(n) {
+                  return '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;">' +
+                    '<input type="radio" name="ddzTotalRounds" value="' + n + '"' + (tr === n ? ' checked' : '') + ' onchange="window._setGameOption(\'totalRounds\',' + n + ')">' +
+                    _t('ddz_total_rounds_' + n) + '</label>';
+                }).join('') +
+              '</div>' +
+            '</div>';
+        } else {
+          var timeLabel = _t('ddz_play_time_' + pt) || (pt + _t('seconds'));
+          var roundsLabel = _t('ddz_total_rounds_' + tr) || (tr + _t('rounds'));
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+            '<div style="font-size:13px;color:var(--text-muted)">' +
+              _t('ddz_bid_mode') + ': ' + (bm === 'rob' ? _t('ddz_bid_mode_rob') : _t('ddz_bid_mode_score')) + ' ・ ' +
+              _t('ddz_play_time') + ': ' + timeLabel + ' ・ ' +
+              _t('ddz_total_rounds') + ': ' + roundsLabel +
+            '</div>';
+        }
       } else if (game === 'sheeptile') {
         optionsEl.style.display = 'block';
         var sameBoard = roomOptions.sameBoard !== false; // default same board

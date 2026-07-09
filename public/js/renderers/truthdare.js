@@ -79,9 +79,9 @@
         cardEl.className = 'td-card ' + card.kind + ' pop';
         setTimeout(function() { if (cardEl) cardEl.classList.remove('pop'); }, 360);
         typeEl.textContent = card.kind === 'truth' ? t('td_truth') : t('td_dare');
-        textEl.textContent = card.text;
+        textEl.textContent = pickCardText(card);
         var playerName = window.getPlayerName ? window.getPlayerName(card.player) : t('player') + (card.player + 1);
-        deckEl.textContent = playerName + ' ' + t('td_drawn_by') + ' · ' + (card.deckName || card.deck || t('td_deck_default'));
+        deckEl.textContent = playerName + ' ' + t('td_drawn_by') + ' · ' + pickDeckName(card);
       }
 
       if (hintEl) {
@@ -99,8 +99,8 @@
             var playerName = window.getPlayerName ? window.getPlayerName(card.player) : t('player') + (card.player + 1);
             return '<div class="td-history-row">' +
               '<span class="td-history-badge ' + card.kind + '">' + label + '</span>' +
-              '<div><div>' + escapeHtml(card.text) + '</div>' +
-              '<div class="td-history-meta">' + escapeHtml(card.deckName || card.deck || t('td_deck_default')) + ' · ' +
+              '<div><div>' + escapeHtml(pickCardText(card)) + '</div>' +
+              '<div class="td-history-meta">' + escapeHtml(pickDeckName(card)) + ' · ' +
                 escapeHtml(playerName) + '</div></div>' +
               '</div>';
           }).join('');
@@ -113,6 +113,15 @@
     window.makeGameMove({ action: 'draw', kind: kind });
   };
 
+  function getViewerLang() {
+    return (typeof localStorage !== 'undefined' && localStorage.getItem('lang')) || 'zh';
+  }
+  function pickCardText(card) {
+    return getViewerLang() === 'en' ? (card.textEn || card.text || '') : (card.text || '');
+  }
+  function pickDeckName(card) {
+    return getViewerLang() === 'en' ? (card.deckNameEn || card.deckName || card.deck || '') : (card.deckName || card.deck || '');
+  }
   function escapeHtml(str) {
     return String(str || '').replace(/[&<>"']/g, function(ch) {
       return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];

@@ -318,13 +318,13 @@
     ctx.fillStyle = '#3a3028'; ctx.font = 'bold 16px system-ui,-apple-system,sans-serif'; ctx.textAlign = 'center';
     var pi = parseInt(sessionStorage.getItem('playerIndex'));
     if (state.winner != null) {
-      ctx.fillText(state.winner === pi ? '🏆 你赢了！' : '😢 你输了', W / 2, sy);
+        ctx.fillText(state.winner === pi ? _t('xq_status_win') : _t('xq_status_lose'), W / 2, sy);
     } else {
       if (state.currentPlayer === pi) {
-        ctx.fillStyle = '#c8a45c'; ctx.fillText('▼ 轮到你走棋 ▼', W / 2, sy);
+        ctx.fillStyle = '#c8a45c'; ctx.fillText(_t('xq_status_your_turn'), W / 2, sy);
       } else {
         var cp = (window.gamePlayers || [])[state.currentPlayer];
-        ctx.fillText('对手回合 · ' + (cp ? cp.name : '等待中'), W / 2, sy);
+        ctx.fillText(_t('xq_status_opp_turn') + (cp ? cp.name : _t('xq_waiting')), W / 2, sy);
       }
     }
   }
@@ -356,6 +356,10 @@
         canvas.width = W * dpr; canvas.height = H * dpr;
         canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
         ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(dpr, dpr);
+        if (window._ccState) {
+          var pi = parseInt(sessionStorage.getItem('playerIndex')) || 0;
+          window.gameRenderers.get('chinesechess').render(window._ccState, container, pi, window._ccState.winner);
+        }
       };
       resize(); window.addEventListener('resize', resize);
 

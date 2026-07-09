@@ -7,6 +7,7 @@
 const SUITS = ['s','h','c','d'];
 const RANKS = ['J','Q','K'];
 const SUIT_SYMBOL = { s: '♠', h: '♥', c: '♣', d: '♦' };
+const { pick } = require('./lib/i18n');
 
 exports.name = 'liarsbar';
 exports.maxPlayers = 6;
@@ -120,14 +121,14 @@ function fire(state, playerIndex) {
 }
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
-  if (!state.alive[playerIndex]) return '你已出局';
+  if (state.winner !== null) return 'g_game_over';
+  if (!state.alive[playerIndex]) return 'lb_you_are_out';
 
   const { action, cardId } = data;
 
   // --- Shooting: one click → one trigger pull ---
   if (action === 'shoot') {
-    if (state.currentShooter !== playerIndex) return '不是你在开枪';
+    if (state.currentShooter !== playerIndex) return 'lb_not_your_shot';
 
     const result = fire(state, playerIndex);
 
@@ -139,7 +140,7 @@ exports.handleMove = (data, state, playerIndex) => {
 
     if (state.shootQueue.length > 0) {
       state.currentShooter = state.shootQueue[0];
-      state.roundMessage = result.dead ? '下一个...' : '下一个开枪的人...';
+      state.roundMessage = pick(state, result.dead ? '下一个...' : '下一个开枪的人...', result.dead ? 'Next...' : 'Next shooter...');
       return null;
     }
 
@@ -163,18 +164,18 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   // --- Normal gameplay ---
-  if (state.phase === 'shooting') return '正在开枪阶段，请等待';
-  if (state.phase !== 'playing') return '当前阶段不能操作';
-  if (playerIndex !== state.currentPlayer) return '还没轮到你';
+  if (state.phase === 'shooting') return 'lb_shooting_in_progress';
+  if (state.phase !== 'playing') return 'lb_wrong_phase';
+  if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
 
   if (action === 'play') {
-    if (typeof cardId !== 'string') return '请选择一张牌';
+    if (typeof cardId !== 'string') return 'lb_select_a_card';
 
     const hand = state.hands[playerIndex];
-    if (!hand || hand.length === 0) return '你没有手牌';
+    if (!hand || hand.length === 0) return 'lb_no_hand';
 
     const idx = hand.findIndex(c => c.id === cardId);
-    if (idx === -1) return '你没有这张牌';
+    if (idx === -1) return 'lb_card_not_in_hand';
 
     const card = hand.splice(idx, 1)[0];
     state.pileCards.push(card);
@@ -189,8 +190,8 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   if (action === 'suspect') {
-    if (state.lastClaimant < 0) return '没有可以质疑的牌';
-    if (state.lastClaimant === playerIndex) return '不能质疑自己';
+    if (state.lastClaimant < 0) return 'lb_nothing_to_challenge';
+    if (state.lastClaimant === playerIndex) return 'lb_cannot_challenge_self';
 
     const lastCard = state.pileCards[state.pileCards.length - 1];
     const claimedRank = state.themeRank;
@@ -203,20 +204,20 @@ exports.handleMove = (data, state, playerIndex) => {
 
     if (lastCard.suit === 'wild') {
       shooterIndices.push(playerIndex);
-      msg = '是万能牌★！万能牌永远是真话';
+      msg = pick(state, '是万能牌★！万能牌永远是真话', '★ Wild card! Wild cards are always true');
     } else if (lastCard.suit === 'ghost') {
       for (let i = 0; i < state.alive.length; i++) {
         if (state.alive[i] && i !== state.lastClaimant) shooterIndices.push(i);
       }
-      msg = '是鬼牌👻！除了出牌者，所有人都要开一枪';
+      msg = pick(state, '是鬼牌👻！除了出牌者，所有人都要开一枪', '👻 Ghost card! Everyone except the player takes a shot');
     } else if (lastCard.rank === claimedRank) {
       shooterIndices.push(playerIndex);
       const sym = SUIT_SYMBOL[lastCard.suit] || '';
-      msg = '质疑失败！上家出的确实是 ' + sym + claimedRank;
+      msg = pick(state, '质疑失败！上家出的确实是 ' + sym + claimedRank, 'Challenge failed! The previous player did play ' + sym + claimedRank);
     } else {
       shooterIndices.push(state.lastClaimant);
       const sym = SUIT_SYMBOL[lastCard.suit] || '';
-      msg = '质疑成功！上家出的是 ' + sym + lastCard.rank + '，不是 ' + claimedRank;
+      msg = pick(state, '质疑成功！上家出的是 ' + sym + lastCard.rank + '，不是 ' + claimedRank, 'Challenge successful! They played ' + sym + lastCard.rank + ', not ' + claimedRank);
     }
 
     state.roundMessage = msg;
@@ -227,7 +228,7 @@ exports.handleMove = (data, state, playerIndex) => {
     return null;
   }
 
-  return '无效操作';
+  return 'g_invalid_action';
 };
 
 exports.SUIT_SYMBOL = SUIT_SYMBOL;

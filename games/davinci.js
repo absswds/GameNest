@@ -145,7 +145,7 @@ function endGame(state) {
 }
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.phase === 'over' || state.winner !== null) return '游戏已结束';
+  if (state.phase === 'over' || state.winner !== null) return 'g_game_over';
 
   // Initialize on first move (for backward compat with lazy init)
   if (state.tiles.length === 0) {
@@ -157,9 +157,9 @@ exports.handleMove = (data, state, playerIndex) => {
   // ---- INIT_PLACE PHASE: initial jokers in hand need player to choose position ----
   if (state.phase === 'init_place') {
     const { playerIdx, jokerTileId } = (state.initJokerQueue && state.initJokerQueue[0]) || {};
-    if (playerIndex !== playerIdx) return '还没轮到你';
+    if (playerIndex !== playerIdx) return 'g_not_your_turn';
     const { placeIndex } = data || {};
-    if (typeof placeIndex !== 'number') return '请选择万能牌插入位置';
+    if (typeof placeIndex !== 'number') return 'dv_choose_joker_position';
 
     const tiles = state.tiles[playerIdx];
     const rev = state.revealed[playerIdx];
@@ -190,7 +190,7 @@ exports.handleMove = (data, state, playerIndex) => {
 
   // ---- PENALTY PHASE: choose tile to reveal after wrong guess ----
   if (state.phase === 'penalty') {
-    if (playerIndex !== state.penaltyPlayer) return '还没轮到你';
+    if (playerIndex !== state.penaltyPlayer) return 'g_not_your_turn';
     const { revealIndex } = data || {};
 
     const tiles = state.tiles[playerIndex];
@@ -225,7 +225,7 @@ exports.handleMove = (data, state, playerIndex) => {
 
   // ---- DRAW PHASE ----
   if (state.phase === 'draw') {
-    if (playerIndex !== state.currentPlayer) return '还没轮到你';
+    if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
     if (state.pool.length === 0) {
       state.drawnTile = null;
       state.phase = 'guess';
@@ -239,16 +239,16 @@ exports.handleMove = (data, state, playerIndex) => {
 
   // ---- PLACE PHASE (for wild/joker tile placement) ----
   if (state.phase === 'place') {
-    if (playerIndex !== state.currentPlayer) return '还没轮到你';
+    if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
     const { placeIndex } = data || {};
-    if (typeof placeIndex !== 'number') return '请选择万能牌插入位置';
+    if (typeof placeIndex !== 'number') return 'dv_choose_joker_position';
 
     const tiles = state.tiles[playerIndex];
     const rev = state.revealed[playerIndex];
 
     // Insert at chosen position. The joker stays hidden (opponents must still
     // guess it) and is marked `locked` so later re-sorts never move it again.
-    if (placeIndex < 0 || placeIndex > tiles.length) return '无效位置';
+    if (placeIndex < 0 || placeIndex > tiles.length) return 'dv_invalid_position';
     state.drawnTile.locked = true;
     const paired = tiles.map((t, i) => ({ tile: t, rev: rev[i] }));
     paired.splice(placeIndex, 0, { tile: state.drawnTile, rev: false });
@@ -265,7 +265,7 @@ exports.handleMove = (data, state, playerIndex) => {
 
   // ---- GUESS PHASE ----
   if (state.phase === 'guess') {
-    if (playerIndex !== state.currentPlayer) return '还没轮到你';
+    if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
 
     const { targetPlayer, tileIndex, guessColor, guessNum, pass } = data || {};
 
@@ -286,14 +286,14 @@ exports.handleMove = (data, state, playerIndex) => {
       return null;
     }
 
-    if (typeof targetPlayer !== 'number' || targetPlayer === playerIndex) return '不能猜自己的牌';
-    if (targetPlayer < 0 || targetPlayer >= state.playerCount) return '无效的目标玩家';
-    if (state.eliminated[targetPlayer]) return '该玩家已经出局';
-    if (tileIndex < 0 || tileIndex >= state.tiles[targetPlayer].length) return '无效位置';
-    if (state.revealed[targetPlayer][tileIndex]) return '这张牌已经揭示了';
+    if (typeof targetPlayer !== 'number' || targetPlayer === playerIndex) return 'dv_cannot_guess_own';
+    if (targetPlayer < 0 || targetPlayer >= state.playerCount) return 'dv_invalid_target';
+    if (state.eliminated[targetPlayer]) return 'dv_player_out';
+    if (tileIndex < 0 || tileIndex >= state.tiles[targetPlayer].length) return 'dv_invalid_position';
+    if (state.revealed[targetPlayer][tileIndex]) return 'dv_card_already_revealed';
 
     const tile = state.tiles[targetPlayer][tileIndex];
-    if (!tile) return '该位置没有牌';
+    if (!tile) return 'dv_no_card_there';
 
     // Check guess: for jokers, only need to match color='joker'; for numbers, match color+num
     const correct = tile.wild
@@ -335,5 +335,5 @@ exports.handleMove = (data, state, playerIndex) => {
     return null;
   }
 
-  return '未知阶段';
+  return 'g_unknown_action';
 };

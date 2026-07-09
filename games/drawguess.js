@@ -2,6 +2,7 @@
 // 玩法: 首位画家从候选词中选词→画→猜→画→猜... 依次传递，最后揭示全链，投票最好笑的一步
 // 房间设置: categories(词库分类) / drawTime / guessTime / wordChoices(候选词数) / customWords(自定义词)
 const WORD_LIBRARY = require('./drawguess-words');
+const { pick } = require('./lib/i18n');
 
 exports.name = 'drawguess';
 exports.maxPlayers = 8;
@@ -195,9 +196,9 @@ function advanceStep(state) {
 exports.handleMove = (data, state, playerIndex) => {
   if (state.mode === 'stage') {
     if (state.phase === 'choosing') {
-      if (playerIndex !== state.drawerIndex || data.type !== 'choose_word') return '现在不能选词';
+      if (playerIndex !== state.drawerIndex || data.type !== 'choose_word') return 'dg_cannot_pick_word_now';
       const idx = parseInt(data.index, 10);
-      if (isNaN(idx) || idx < 0 || idx >= state.wordOptions.length) return '无效选择';
+      if (isNaN(idx) || idx < 0 || idx >= state.wordOptions.length) return 'g_invalid_action';
       state.word = state.wordOptions[idx];
       state.wordOptions = [];
       state.phase = 'playing';
@@ -206,30 +207,30 @@ exports.handleMove = (data, state, playerIndex) => {
     }
     if (state.phase === 'playing') {
       if (data.type === 'stage_stroke') {
-        if (playerIndex !== state.drawerIndex || !data.stroke || !Array.isArray(data.stroke.pts) || data.stroke.pts.length < 2) return '现在不能画';
+        if (playerIndex !== state.drawerIndex || !data.stroke || !Array.isArray(data.stroke.pts) || data.stroke.pts.length < 2) return 'dg_cannot_draw_now';
         state.strokes.push(data.stroke);
         return null;
       }
       if (data.type === 'stage_guess') {
-        if (playerIndex === state.drawerIndex || state.correct[playerIndex]) return '不能重复猜词';
-        if (normalizeWord(data.text) !== normalizeWord(state.word)) return '不对，再试试';
+        if (playerIndex === state.drawerIndex || state.correct[playerIndex]) return 'dg_cannot_repeat_guess';
+        if (normalizeWord(data.text) !== normalizeWord(state.word)) return 'dg_wrong_try_again';
         state.correct[playerIndex] = true;
         state.scores[playerIndex] += scoreForGuess(state);
         state.scores[state.drawerIndex] += 1;
         if (allGuessersCorrect(state)) finishStageRound(state);
         return null;
       }
-      return '未知操作';
+      return 'g_unknown_action';
     }
-    if (state.phase === 'round_result') return '本轮已结束';
-    return '游戏已结束';
+    if (state.phase === 'round_result') return 'dg_round_ended';
+    return 'g_game_over';
   }
 
   if (state.phase === 'choosing') {
-    if (data.type !== 'choose_word') return '请先选词';
-    if (!state.chain[0] || state.chain[0].playerIndex !== playerIndex) return '不是你选词';
+    if (data.type !== 'choose_word') return 'dg_pick_word_first';
+    if (!state.chain[0] || state.chain[0].playerIndex !== playerIndex) return 'dg_not_your_word';
     const idx = parseInt(data.index, 10);
-    if (isNaN(idx) || idx < 0 || idx >= state.wordOptions.length) return '无效选择';
+    if (isNaN(idx) || idx < 0 || idx >= state.wordOptions.length) return 'g_invalid_action';
     state.word = state.wordOptions[idx];
     state.wordOptions = [];
     state.phase = 'playing';
@@ -238,12 +239,12 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   if (state.phase === 'playing') {
-    if (data.type !== 'submit') return '未知操作';
+    if (data.type !== 'submit') return 'g_unknown_action';
     const step = state.chain[state.currentStep];
-    if (!step) return '链已结束';
-    if (step.playerIndex !== playerIndex) return '不是你的回合';
-    if (step.done) return '已提交';
-    if (data.content === undefined || data.content === null) return '内容为空';
+    if (!step) return 'dg_stage_ended';
+    if (step.playerIndex !== playerIndex) return 'g_not_your_turn';
+    if (step.done) return 'dg_already_submitted';
+    if (data.content === undefined || data.content === null) return 'dg_content_empty';
     step.content = data.content;
     step.done = true;
     advanceStep(state);
@@ -252,7 +253,7 @@ exports.handleMove = (data, state, playerIndex) => {
 
   if (state.phase === 'reveal') {
     if (data.type === 'vote_match') {
-      if (data.value !== 'match' && data.value !== 'drift') return '无效投票';
+      if (data.value !== 'match' && data.value !== 'drift') return 'dg_invalid_vote';
       state.votes[playerIndex] = data.value;
       if (Object.keys(state.votes).length >= state._playerCount) {
         const matchCount = Object.values(state.votes).filter(v => v === 'match').length;
@@ -271,7 +272,7 @@ exports.handleMove = (data, state, playerIndex) => {
     }
     if (data.type === 'vote') {
       const si = parseInt(data.stepIndex);
-      if (isNaN(si) || si < 0 || si >= state.chain.length) return '无效投票';
+      if (isNaN(si) || si < 0 || si >= state.chain.length) return 'dg_invalid_vote';
       state.votes[playerIndex] = si;
       const voteCount = Object.keys(state.votes).length;
       if (voteCount >= state._playerCount) {
@@ -288,7 +289,7 @@ exports.handleMove = (data, state, playerIndex) => {
     return null;
   }
 
-  return '游戏未进行';
+  return 'dg_game_not_running';
 };
 
 // 服务端计时兜底：超时自动推进，防止一人挂机卡死整局
@@ -342,7 +343,7 @@ exports.onTimeout = (state) => {
   if (state.phase === 'playing') {
     const step = state.chain[state.currentStep];
     if (!step || step.done) return false;
-    step.content = step.type === 'draw' ? [] : '（超时）';
+    step.content = step.type === 'draw' ? [] : pick(state, '（超时）', '(timeout)');
     step.done = true;
     advanceStep(state);
     return true;

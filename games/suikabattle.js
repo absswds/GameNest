@@ -36,8 +36,8 @@ exports.initGame = (state, playerCount) => {
 };
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.phase !== 'playing') return '游戏已结束';
-  if (state.eliminated[playerIndex]) return '你已出局';
+  if (state.phase !== 'playing') return 'g_game_over';
+  if (state.eliminated[playerIndex]) return 'sk_you_are_out';
 
   if (data.type === 'drop') {
     // Client dropped a fruit, advance to next fruit
@@ -71,5 +71,5 @@ exports.handleMove = (data, state, playerIndex) => {
     return null;
   }
 
-  return '未知操作';
+  return 'g_unknown_action';
 };

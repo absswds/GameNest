@@ -193,10 +193,10 @@ function levelTiles(state, level) { return state.layout.filter(t => t.level === 
 
 // ---------- 走子 ----------
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.phase !== 'playing') return '游戏已结束';
+  if (state.phase !== 'playing') return 'g_game_over';
   const me = state.players[playerIndex];
-  if (!me) return '无此玩家';
-  if (me.eliminated) { state.currentPlayer = nextAlive(state, playerIndex); return '你已出局'; }
+  if (!me) return 'st_no_such_player';
+  if (me.eliminated) { state.currentPlayer = nextAlive(state, playerIndex); return 'st_you_are_out'; }
 
   const lvTiles = levelTiles(state, me.level);
   // 推进 currentPlayer（跳过已出局者）以驱动 bot 调度
@@ -204,10 +204,10 @@ exports.handleMove = (data, state, playerIndex) => {
 
   if (data.type === 'pick') {
     const tile = state.layout.find(t => t.id === data.tileId);
-    if (!tile) return '找不到此牌';
-    if (tile.level !== me.level) return '不是当前关卡的牌';
-    if (me.removed[tile.id]) return '已移除';
-    if (isBlockedAt(tile, lvTiles, me.removed)) return '被遮挡，无法点击';
+    if (!tile) return 'st_tile_not_found';
+    if (tile.level !== me.level) return 'st_wrong_level';
+    if (me.removed[tile.id]) return 'st_already_removed';
+    if (isBlockedAt(tile, lvTiles, me.removed)) return 'st_covered_cannot_click';
 
     me.removed[tile.id] = true;
     me.slot.push({ pattern: effPattern(state, playerIndex, tile), fromId: tile.id });
@@ -253,8 +253,8 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   if (data.type === 'power_undo') {
-    if (me.powers.undo <= 0) return '撤回次数已用完';
-    if (me.slot.length === 0) return '槽位为空';
+    if (me.powers.undo <= 0) return 'st_no_undos_left';
+    if (me.slot.length === 0) return 'st_slot_empty';
     const last = me.slot.pop();
     delete me.removed[last.fromId];
     me.powers.undo--;
@@ -263,7 +263,7 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   if (data.type === 'power_shuffle') {
-    if (me.powers.shuffle <= 0) return '洗牌次数已用完';
+    if (me.powers.shuffle <= 0) return 'st_no_shuffles_left';
     const remain = lvTiles.filter(t => !me.removed[t.id]);
     const pats = shuffle(remain.map(t => effPattern(state, playerIndex, t)));
     remain.forEach((t, i) => { me.shuffleOverride[t.id] = pats[i]; });
@@ -273,15 +273,15 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   if (data.type === 'power_pop3') {
-    if (me.powers.pop3 <= 0) return '移出次数已用完';
-    if (me.slot.length === 0) return '槽位为空';
+    if (me.powers.pop3 <= 0) return 'st_no_removes_left';
+    if (me.slot.length === 0) return 'st_slot_empty';
     me.slot.splice(0, Math.min(3, me.slot.length)); // 移出槽位前 3 张（出局）
     me.powers.pop3--;
     advance();
     return null;
   }
 
-  return '未知操作';
+  return 'g_unknown_action';
 };
 
 // 下一个未出局玩家（无则 +1）

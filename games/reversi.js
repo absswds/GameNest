@@ -88,8 +88,8 @@ function countPieces(board, ROWS, COLS) {
 }
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return 'Game is over';
-  if (state.currentPlayer !== playerIndex) return 'Not your turn';
+  if (state.winner !== null) return 'g_game_over';
+  if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
 
   var sz = getSize(state);
   var ROWS = sz.ROWS, COLS = sz.COLS;
@@ -107,9 +107,9 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   var row = data && data.row, col = data && data.col;
-  if (row === undefined || col === undefined) return 'Invalid move';
-  if (!inBounds(row, col, ROWS, COLS)) return 'Out of bounds';
-  if (state.board[row][col] !== null) return 'Cell already occupied';
+  if (row === undefined || col === undefined) return 'rv_invalid_move';
+  if (!inBounds(row, col, ROWS, COLS)) return 'rv_out_of_bounds';
+  if (state.board[row][col] !== null) return 'rv_cell_occupied';
 
   var legalMoves = getLegalMoves(state.board, playerIndex, ROWS, COLS);
   var matched = null;
@@ -119,7 +119,7 @@ exports.handleMove = (data, state, playerIndex) => {
       break;
     }
   }
-  if (!matched) return 'Illegal move';
+  if (!matched) return 'rv_illegal_move';
 
   state.board[row][col] = playerIndex;
   for (var fi = 0; fi < matched.flips.length; fi++) {

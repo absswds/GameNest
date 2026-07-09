@@ -83,10 +83,36 @@ exports.createBot = function(playerIndex) {
     name: botName(playerIndex, 'zh'),
     playerIndex: playerIndex,
     getMove: function(state) {
+      // ---- continue_vote phase ----
+      if (state.phase === 'continue_vote') {
+        return { action: 'continue_vote', vote: 'yes' };
+      }
+
+      // ---- roundEnd phase ----
+      if (state.phase === 'roundEnd') {
+        return { action: 'next_round' };
+      }
+
+      // ---- bidding phase ----
       if (state.phase === 'bidding') {
         const hand = state.hands[playerIndex];
         const bombs = countBombs(hand);
         const highCards = hand.filter(c => rankVal(c.rank) >= 12).length;
+        var strong = (bombs >= 1 && highCards >= 3) || bombs >= 2;
+
+        // 叫抢 mode
+        if (state.callPhase === 'call') {
+          return strong ? { call: true } : { pass: true };
+        }
+        if (state.callPhase === 'rob') {
+          if (!state.eligibleForRob || !state.eligibleForRob[playerIndex]) return { passRob: true };
+          if (state.robAttempts && state.robAttempts.indexOf(playerIndex) >= 0) return { passRob: true };
+          // Rob if hand is very strong; caller also gets a rob chance
+          if (strong) return { rob: true };
+          return { passRob: true };
+        }
+
+        // 叫分 mode (original)
         let score = 0;
         if (bombs >= 2 || (bombs >= 1 && highCards >= 4)) score = 3;
         else if (bombs >= 1 || highCards >= 3) score = 2;
@@ -95,25 +121,19 @@ exports.createBot = function(playerIndex) {
         return { score };
       }
 
-      // Playing phase
+      // ---- playing phase ----
       const hand = state.hands[playerIndex];
       const lastPlay = state.lastPlay;
       const isFreePlay = !lastPlay || lastPlay.player === playerIndex;
-      const groups = rankGroups(hand);
 
       if (isFreePlay) {
-        // Lead with smallest single (copy to avoid mutating state)
         const sorted = [...hand].sort((a,b) => rankVal(a.rank) - rankVal(b.rank));
         return { cards: [sorted[0].id] };
       }
 
-      // Try to beat
       const beat = findBeat(hand, lastPlay);
-      if (beat) {
-        return { cards: beat.map(c => c.id) };
-      }
+      if (beat) return { cards: beat.map(c => c.id) };
 
-      // Pass
       return { cards: [] };
     }
   };

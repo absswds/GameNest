@@ -3,17 +3,17 @@
   window.gameRenderers = window.gameRenderers || new Map();
 
   var FRUITS = [
-    { name: '樱桃', color: '#E74C3C', r: 18, emoji: '🍒', pts: 1 },
-    { name: '草莓', color: '#FF4E6A', r: 24, emoji: '🍓', pts: 3 },
-    { name: '葡萄', color: '#9B59B6', r: 30, emoji: '🍇', pts: 6 },
-    { name: '橘子', color: '#F39C12', r: 37, emoji: '🍊', pts: 10 },
-    { name: '柠檬', color: '#F1C40F', r: 44, emoji: '🍋', pts: 15 },
-    { name: '猕猴桃', color: '#27AE60', r: 52, emoji: '🥝', pts: 21 },
-    { name: '番茄', color: '#C0392B', r: 60, emoji: '🍅', pts: 28 },
-    { name: '桃子', color: '#FFA07A', r: 68, emoji: '🍑', pts: 36 },
-    { name: '菠萝', color: '#F1C40F', r: 78, emoji: '🍍', pts: 45 },
-    { name: '椰子', color: '#8B6914', r: 88, emoji: '🥥', pts: 55 },
-    { name: '西瓜', color: '#2ECC71', r: 100, emoji: '🍉', pts: 66 },
+    { name: '樱桃', nameEn: 'Cherry', color: '#E74C3C', r: 18, emoji: '🍒', pts: 1 },
+    { name: '草莓', nameEn: 'Strawberry', color: '#FF4E6A', r: 24, emoji: '🍓', pts: 3 },
+    { name: '葡萄', nameEn: 'Grape', color: '#9B59B6', r: 30, emoji: '🍇', pts: 6 },
+    { name: '橘子', nameEn: 'Orange', color: '#F39C12', r: 37, emoji: '🍊', pts: 10 },
+    { name: '柠檬', nameEn: 'Lemon', color: '#F1C40F', r: 44, emoji: '🍋', pts: 15 },
+    { name: '猕猴桃', nameEn: 'Kiwi', color: '#27AE60', r: 52, emoji: '🥝', pts: 21 },
+    { name: '番茄', nameEn: 'Tomato', color: '#C0392B', r: 60, emoji: '🍅', pts: 28 },
+    { name: '桃子', nameEn: 'Peach', color: '#FFA07A', r: 68, emoji: '🍑', pts: 36 },
+    { name: '菠萝', nameEn: 'Pineapple', color: '#F1C40F', r: 78, emoji: '🍍', pts: 45 },
+    { name: '椰子', nameEn: 'Coconut', color: '#8B6914', r: 88, emoji: '🥥', pts: 55 },
+    { name: '西瓜', nameEn: 'Watermelon', color: '#2ECC71', r: 100, emoji: '🍉', pts: 66 },
   ];
 
   var BOX_W = 320, BOX_H = 480;
@@ -387,7 +387,7 @@
       if (infoBar) {
         var nextInfo = FRUITS[nextFruitType];
         infoBar.innerHTML = '<span>' + _t('sk_score_label') + '<b>' + (st.scores && st.scores[pi] || 0) + '</b></span>' +
-          '<span>' + _t('sk_next_label') + nextInfo.emoji + ' ' + nextInfo.name + '</span>';
+          '<span>' + _t('sk_next_label') + nextInfo.emoji + ' ' + (window.__ACTIVE_LANG === 'en' ? (nextInfo.nameEn || nextInfo.name) : nextInfo.name) + '</span>';
       }
 
       // Opponent bar

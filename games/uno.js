@@ -95,7 +95,7 @@ function drawCards(hand, count, state) {
 }
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
+  if (state.winner !== null) return 'g_game_over';
 
   // Initialize if first move
   if (state.hands.length === 0) {
@@ -103,7 +103,7 @@ exports.handleMove = (data, state, playerIndex) => {
     initGame(state, count);
   }
 
-  if (playerIndex !== state.currentPlayer) return '还没轮到你';
+  if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
 
   const hand = state.hands[playerIndex];
   const { cardId, chosenColor, uno } = data || {};
@@ -126,14 +126,14 @@ exports.handleMove = (data, state, playerIndex) => {
     }
     // Check if player has playable cards
     const hasPlayable = hand.some(c => canPlay(c, state));
-    if (hasPlayable) return '你有可出的牌';
+    if (hasPlayable) return 'uno_have_playable_card';
     drawCards(hand, 1, state);
     state.currentPlayer = nextPlayer(state);
     return null;
   }
 
   const cardIdx = hand.findIndex(c => c.id === cardId);
-  if (cardIdx === -1) return '手上没有这张牌';
+  if (cardIdx === -1) return 'uno_card_not_in_hand';
   const card = hand[cardIdx];
 
   // UNO penalty: playing last card without calling UNO → instant loss
@@ -145,8 +145,8 @@ exports.handleMove = (data, state, playerIndex) => {
     return null;
   }
 
-  if (state.drawStack > 0 && card.value !== '+2' && card.value !== '+4') return '必须先摸牌或出+2/+4叠加';
-  if (!canPlay(card, state) && state.drawStack === 0) return '不能出这张牌';
+  if (state.drawStack > 0 && card.value !== '+2' && card.value !== '+4') return 'uno_must_draw_or_play';
+  if (!canPlay(card, state) && state.drawStack === 0) return 'uno_cannot_play_card';
 
   hand.splice(cardIdx, 1);
 

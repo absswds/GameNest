@@ -31,6 +31,7 @@ $items = @(
     "startup-port.js",
     "package.json",
     "package-lock.json",
+    "lang",
     "games",
     "bots",
     "public",

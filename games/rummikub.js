@@ -3,6 +3,7 @@
 
 exports.name = 'rummikub';
 exports.maxPlayers = 4;
+const { pick } = require('./lib/i18n');
 
 const COLORS = ['black', 'blue', 'red', 'orange'];
 const COLOR_NAMES = { black: '黑', blue: '蓝', red: '红', orange: '橙' };
@@ -161,7 +162,7 @@ function canAddToSet(tile, set) {
 }
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
+  if (state.winner !== null) return 'g_game_over';
 
   if (state.hands.length === 0) {
     const count = state._playerCount || 2;
@@ -171,7 +172,7 @@ exports.handleMove = (data, state, playerIndex) => {
 
   const requireBreak = state.requireBreak;
 
-  if (playerIndex !== state.currentPlayer) return '还没轮到你';
+  if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
 
   // ---- MANIPULATE PHASE ----
   if (state.phase === 'manipulate') {
@@ -194,21 +195,21 @@ exports.handleMove = (data, state, playerIndex) => {
     }
 
     if (action === 'submit') {
-      if (!groups || !Array.isArray(groups) || groups.length === 0) return '请至少提交一个牌组';
+      if (!groups || !Array.isArray(groups) || groups.length === 0) return 'rk_submit_at_least_one_set';
 
       // Flatten all submitted tiles
       const allTiles = [];
       for (const g of groups) {
-        if (!Array.isArray(g)) return '牌组格式错误';
+        if (!Array.isArray(g)) return 'rk_invalid_set';
         for (const t of g) {
-          if (!t || !t.id) return '牌组中有无效牌';
+          if (!t || !t.id) return 'rk_invalid_tile';
           allTiles.push(t);
         }
       }
 
       // Validate each group
       for (const g of groups) {
-        if (!isValidSet(g)) return '存在不合法的牌组（需同色连续≥3或同数不同色≥3）';
+        if (!isValidSet(g)) return 'rk_illegal_sets';
       }
 
       // Check at least one hand tile was used
@@ -217,13 +218,13 @@ exports.handleMove = (data, state, playerIndex) => {
       for (const t of allTiles) {
         if (handIds.has(t.id)) { handTileUsed = true; break; }
       }
-      if (!handTileUsed) return '必须至少使用一张自己的牌';
+      if (!handTileUsed) return 'rk_use_at_least_one_own';
 
       // Every tile originally on the table must be re-formed into a group (none lost)
       const groupedIds = new Set(allTiles.map(t => t.id));
       for (const set of state.savedTable) {
         for (const t of set) {
-          if (!groupedIds.has(t.id)) return '桌面上原有的牌必须全部重新组成合法牌组';
+          if (!groupedIds.has(t.id)) return 'rk_all_table_tiles_must_regroup';
         }
       }
 
@@ -233,7 +234,7 @@ exports.handleMove = (data, state, playerIndex) => {
         for (const t of allTiles) {
           if (handIds.has(t.id)) handScore += (t.wild ? 0 : t.num);
         }
-        if (handScore < 30) return '首次出牌总分需要≥30分，当前手牌贡献' + handScore + '分';
+        if (handScore < 30) return 'rk_need_break_ice';
       }
 
       // Success — update table and hand
@@ -259,7 +260,7 @@ exports.handleMove = (data, state, playerIndex) => {
       return null;
     }
 
-    return '未知操作';
+    return 'g_unknown_action';
   }
 
   // ---- PLAY PHASE ----
@@ -269,7 +270,7 @@ exports.handleMove = (data, state, playerIndex) => {
 
     // Start manipulate mode
     if (action === 'start_manipulate') {
-      if (state.table.length === 0) return '桌面还没有牌组';
+      if (state.table.length === 0) return 'rk_table_empty';
       // Save snapshot
       state.savedTable = state.table.map(s => s.slice());
       state.savedHand = hand.slice();
@@ -292,7 +293,7 @@ exports.handleMove = (data, state, playerIndex) => {
     }
 
     if (pass) {
-      if (state.playedThisTurn[playerIndex]) return '本回合已经出过牌，只能继续出牌、重组或结束回合';
+      if (state.playedThisTurn[playerIndex]) return 'rk_already_played';
       if (state.pool.length > 0) {
         hand.push(state.pool.pop());
         sortHand(hand);
@@ -318,18 +319,18 @@ exports.handleMove = (data, state, playerIndex) => {
       const remaining = [...hand];
       for (const id of tileIds) {
         const idx = remaining.findIndex(t => t.id === id);
-        if (idx === -1) return '手上没有这张牌: ' + id;
+        if (idx === -1) return 'rk_card_not_in_hand';
         toPlay.push(...remaining.splice(idx, 1));
       }
 
       // Check if these tiles form a valid set
       if (toPlay.length >= 3) {
-        if (!isValidSet(toPlay)) return '不能组成合法牌组（顺组需同色连续≥3，群组需同数不同色≥3）';
+        if (!isValidSet(toPlay)) return 'rk_cannot_form_set';
 
         // Check break requirement
         if (!state.hasBroken[playerIndex] && requireBreak) {
           const score = tileScore(toPlay);
-          if (score < 30) return '首次出牌总分需要≥30分，当前' + score + '分';
+          if (score < 30) return 'rk_need_break_ice';
         }
 
         // Remove from hand
@@ -355,9 +356,9 @@ exports.handleMove = (data, state, playerIndex) => {
       if (toPlay.length === 1 && targetSet !== undefined && targetSet >= 0 && targetSet < state.table.length) {
         const tile = toPlay[0];
         const set = state.table[targetSet];
-        if (!canAddToSet(tile, set)) return '不能加入该牌组';
+        if (!canAddToSet(tile, set)) return 'rk_cannot_join_set';
 
-        if (!state.hasBroken[playerIndex] && requireBreak) return '需要先破冰（首次出牌总分≥30）';
+        if (!state.hasBroken[playerIndex] && requireBreak) return 'rk_need_break_ice';
 
         const idx = hand.findIndex(t => t.id === tile.id);
         hand.splice(idx, 1);
@@ -380,7 +381,7 @@ exports.handleMove = (data, state, playerIndex) => {
         return null;
       }
 
-      return '出牌数量少于3张且未指定加入桌面牌组';
+      return 'rk_invalid_play';
     }
 
     // Draw if can't play (no action specified)
@@ -401,5 +402,5 @@ exports.handleMove = (data, state, playerIndex) => {
     return null;
   }
 
-  return '未知阶段';
+  return 'g_unknown_action';
 };

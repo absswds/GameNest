@@ -1,5 +1,6 @@
 // games/texas.js
 // Texas Hold'em Poker — community card poker game
+const { pick } = require('./lib/i18n');
 
 const SUITS = ['s','h','c','d'];
 const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
@@ -369,11 +370,11 @@ exports.initGame = function(state, playerCount) {
 };
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
-  if (state.phase === 'showdown') return '已经摊牌，请重新开始';
-  if (playerIndex !== state.currentPlayer) return '还没轮到你';
-  if (state.folded[playerIndex]) return '你已经弃牌';
-  if (state.allIn[playerIndex]) return '你已经全下';
+  if (state.winner !== null) return 'g_game_over';
+  if (state.phase === 'showdown') return 'tx_showdown_start_new';
+  if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
+  if (state.folded[playerIndex]) return 'tx_you_folded';
+  if (state.allIn[playerIndex]) return 'tx_you_all_in';
 
   const { action, amount } = data;
   const n = state.chips.length;
@@ -405,7 +406,7 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   if (action === 'check') {
-    if (state.currentBet > state.bets[playerIndex]) return '必须先跟注';
+    if (state.currentBet > state.bets[playerIndex]) return 'tx_must_call';
 
     state.currentPlayer = nextActivePlayer(state, playerIndex);
     advancePhase(state);
@@ -414,8 +415,8 @@ exports.handleMove = (data, state, playerIndex) => {
 
   if (action === 'call') {
     const toCall = state.currentBet - state.bets[playerIndex];
-    if (toCall <= 0) return '你可以过牌';
-    if (state.chips[playerIndex] < toCall) return '筹码不足，请全下';
+    if (toCall <= 0) return 'tx_you_can_check';
+    if (state.chips[playerIndex] < toCall) return 'tx_not_enough_chips_go_allin';
 
     state.chips[playerIndex] -= toCall;
     state.bets[playerIndex] = state.currentBet;
@@ -428,9 +429,9 @@ exports.handleMove = (data, state, playerIndex) => {
   if (action === 'raise') {
     const minRaise = state.lastRaise > 0 ? state.lastRaise : state.currentBet > 0 ? state.currentBet - state.bets[playerIndex] : 10;
     if (typeof amount !== 'number' || amount < (state.currentBet + minRaise)) {
-      return '加注至少需要 ' + (state.currentBet + minRaise) + ' 筹码';
+      return 'tx_raise_too_low';
     }
-    if (amount > state.chips[playerIndex]) return '筹码不足';
+    if (amount > state.chips[playerIndex]) return 'tx_not_enough_chips';
 
     state.chips[playerIndex] -= (amount - state.bets[playerIndex]);
     state.bets[playerIndex] = amount;
@@ -458,7 +459,7 @@ exports.handleMove = (data, state, playerIndex) => {
     return null;
   }
 
-  return '无效操作';
+  return 'g_invalid_action';
 };
 
 // Per-player view: show only the player's hole cards

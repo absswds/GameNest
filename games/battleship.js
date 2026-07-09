@@ -83,17 +83,17 @@ function findShipAt(ships, r, c) {
 }
 
 exports.handleMove = function (data, state, playerIndex) {
-  if (state.winner !== null) return 'Game is over';
+  if (state.winner !== null) return 'g_game_over';
   if (state.phase === 'placing') {
     return handlePlacing(data, state, playerIndex);
   } else if (state.phase === 'shooting') {
     return handleShooting(data, state, playerIndex);
   }
-  return 'Invalid phase';
+  return 'bs_invalid_phase';
 };
 
 function handlePlacing(data, state, playerIndex) {
-  if (playerIndex !== 0 && playerIndex !== 1) return 'Invalid player';
+  if (playerIndex !== 0 && playerIndex !== 1) return 'bs_invalid_player';
   if (data.pass) return null; // Already done placing — skip
 
   var r = data.r;
@@ -101,14 +101,14 @@ function handlePlacing(data, state, playerIndex) {
   var orientation = data.orientation;
   var size = data.size;
 
-  if (typeof r !== 'number' || typeof c !== 'number') return 'Invalid coordinates';
-  if (orientation !== 'h' && orientation !== 'v') return 'Invalid orientation';
+  if (typeof r !== 'number' || typeof c !== 'number') return 'bs_invalid_coordinates';
+  if (orientation !== 'h' && orientation !== 'v') return 'bs_invalid_orientation';
 
   var expectedSize = SHIP_SIZES[state.placedCount[playerIndex]];
-  if (size !== expectedSize) return 'Wrong ship size';
+  if (size !== expectedSize) return 'bs_wrong_ship_size';
 
   if (!canPlaceShip(state.ships[playerIndex], r, c, orientation, size)) {
-    return 'Invalid ship placement';
+    return 'bs_invalid_placement';
   }
 
   var cells = getShipCells(r, c, orientation, size).map(function (cell) {
@@ -130,19 +130,19 @@ function handlePlacing(data, state, playerIndex) {
 }
 
 function handleShooting(data, state, playerIndex) {
-  if (state.currentPlayer !== playerIndex) return 'Not your turn';
+  if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
 
   var r = data.r;
   var c = data.c;
 
-  if (typeof r !== 'number' || typeof c !== 'number') return 'Invalid coordinates';
-  if (!inBounds(r, c)) return 'Out of bounds';
+  if (typeof r !== 'number' || typeof c !== 'number') return 'bs_invalid_coordinates';
+  if (!inBounds(r, c)) return 'bs_out_of_bounds';
 
   // Check if already shot at this position
   var myShots = state.shots[playerIndex];
   for (var i = 0; i < myShots.length; i++) {
     if (myShots[i].r === r && myShots[i].c === c) {
-      return 'Already shot here';
+      return 'bs_already_shot';
     }
   }
 

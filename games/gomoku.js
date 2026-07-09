@@ -9,13 +9,13 @@ exports.createState = () => ({
 });
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
-  if (state.currentPlayer !== playerIndex) return '还没轮到你';
+  if (state.winner !== null) return 'g_game_over';
+  if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
 
   const { row, col } = data;
-  if (typeof row !== 'number' || typeof col !== 'number') return '无效位置';
-  if (row < 0 || row >= 15 || col < 0 || col >= 15) return '超出棋盘范围';
-  if (state.board[row][col] !== null) return '该位置已被占用';
+  if (typeof row !== 'number' || typeof col !== 'number') return 'gk_invalid_position';
+  if (row < 0 || row >= 15 || col < 0 || col >= 15) return 'gk_out_of_bounds';
+  if (state.board[row][col] !== null) return 'gk_position_occupied';
 
   state.board[row][col] = playerIndex;
 

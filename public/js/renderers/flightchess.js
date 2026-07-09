@@ -415,7 +415,7 @@
       else if (my) turnTxt = s.hasRolled ? _t('fc_tap_to_move') : _t('fc_your_turn_roll');
       else { var ci = window.gamePlayers && window.gamePlayers[s.currentPlayer]; var nm2 = ci ? ci.name : _t('fc_opponent'); turnTxt = s.hasRolled ? _tf('fc_opponent_moving', nm2) : _tf('fc_waiting_roll', nm2); }
       var lr = s.lastMoveResult || '';
-      var special = /飞到对面|跳|踩/.test(lr);
+      var special = /飞到对面|跳|踩|flew across|jumped|caught/.test(lr || '');
       info.innerHTML = turnTxt + (special ? '<br><span style="color:#c8a45c;font-weight:800;">' + lr + '</span>' : '');
     }
     if (btn) btn.style.display = (my && !s.hasRolled && s.winner == null) ? '' : 'none';

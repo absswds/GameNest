@@ -11,12 +11,12 @@ exports.createState = () => ({
 });
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
-  if (state.currentPlayer !== playerIndex) return '还没轮到你';
+  if (state.winner !== null) return 'g_game_over';
+  if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
 
   const { cell } = data;
-  if (typeof cell !== 'number' || cell < 0 || cell > 8) return '无效的落子位置';
-  if (state.board[cell] !== null) return '该位置已被占用';
+  if (typeof cell !== 'number' || cell < 0 || cell > 8) return 'ttt_invalid_cell';
+  if (state.board[cell] !== null) return 'ttt_position_occupied';
 
   state.board[cell] = playerIndex;
 

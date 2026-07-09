@@ -33,7 +33,7 @@ exports.createBot = (playerIndex) => ({
     let bestScore = -Infinity;
 
     for (const card of playable) {
-      const score = scoreCard(card, hand, top, nextHandSize);
+      const score = scoreCard(card, hand, top, nextHandSize, state);
       if (score > bestScore) {
         bestScore = score;
         bestCard = card;
@@ -90,7 +90,7 @@ function countColors(hand, excludeCard) {
   return counts;
 }
 
-function scoreCard(card, hand, top, nextHandSize) {
+function scoreCard(card, hand, top, nextHandSize, state) {
   const remainingColors = countColors(hand, card);
   const dominantColorCount = card.color === 'wild'
     ? Math.max(remainingColors.red, remainingColors.blue, remainingColors.green, remainingColors.yellow)

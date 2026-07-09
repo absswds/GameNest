@@ -194,8 +194,8 @@ function canPlayCard(card, state, playerIndex, isFirstTrick) {
 }
 
 exports.handleMove = function(data, state, playerIndex) {
-  if (state.winner !== null) return 'Game is over';
-  if (state.phase === 'over') return 'Game is over';
+  if (state.winner !== null) return 'g_game_over';
+  if (state.phase === 'over') return 'g_game_over';
 
   // ---- PASSING PHASE ----
   if (state.phase === 'passing') {
@@ -219,11 +219,11 @@ exports.handleMove = function(data, state, playerIndex) {
       cards = hand.slice(-3).map(function(c) { return c.id; });
       data.cards = cards;
     }
-    if (!Array.isArray(cards) || cards.length !== 3) return 'Select exactly 3 cards to pass';
+    if (!Array.isArray(cards) || cards.length !== 3) return 'ht_select_3_to_pass';
     // Check no duplicates
     var seen = {};
     for (var i = 0; i < cards.length; i++) {
-      if (seen[cards[i]]) return 'Cannot select the same card twice';
+      if (seen[cards[i]]) return 'ht_no_duplicate_selection';
       seen[cards[i]] = true;
     }
     // Check cards in hand
@@ -233,7 +233,7 @@ exports.handleMove = function(data, state, playerIndex) {
       for (var j = 0; j < hand.length; j++) {
         if (hand[j].id === cards[i]) { found = true; break; }
       }
-      if (!found) return "You don't have " + cards[i];
+      if (!found) return 'ht_card_not_in_hand';
     }
     state.passSubmissions[playerIndex] = cards;
     // Check if all 4 submitted
@@ -259,26 +259,26 @@ exports.handleMove = function(data, state, playerIndex) {
   }
 
   // ---- PLAYING PHASE ----
-  if (state.phase !== 'playing') return 'Operation not allowed in current phase';
+  if (state.phase !== 'playing') return 'ht_wrong_phase';
 
   var hand = state.hands[playerIndex];
-  if (!hand || hand.length === 0) return 'No cards in hand';
+  if (!hand || hand.length === 0) return 'ht_no_hand';
 
   var cardId = data.card;
-  if (!cardId) return 'Select a card';
+  if (!cardId) return 'ht_select_a_card';
 
   // Find card in hand
   var cardIdx = -1;
   for (var i = 0; i < hand.length; i++) {
     if (hand[i].id === cardId) { cardIdx = i; break; }
   }
-  if (cardIdx === -1) return "You don't have this card";
+  if (cardIdx === -1) return 'ht_card_not_in_hand';
 
   var card = hand[cardIdx];
   var isFirstTrick = state.trickCount === 0;
 
   if (!canPlayCard(card, state, playerIndex, isFirstTrick)) {
-    return 'Illegal card';
+    return 'ht_illegal_card';
   }
 
   // Play the card

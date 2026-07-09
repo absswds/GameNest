@@ -120,22 +120,22 @@ exports.initGame = function (state, playerCount) {
 exports.playerBoardView = playerBoardView;
 
 exports.handleMove = function (data, state, playerIndex) {
-  if (state.winner !== null) return '游戏已结束';
-  if (!state.alive[playerIndex]) return '你已出局，只能观战';
+  if (state.winner !== null) return 'g_game_over';
+  if (!state.alive[playerIndex]) return 'ms_you_are_out';
 
   const { action, row, col } = data || {};
-  if (typeof row !== 'number' || typeof col !== 'number') return '无效操作';
-  if (row < 0 || row >= state.rows || col < 0 || col >= state.cols) return '坐标超出范围';
+  if (typeof row !== 'number' || typeof col !== 'number') return 'ms_invalid_action';
+  if (row < 0 || row >= state.rows || col < 0 || col >= state.cols) return 'ms_out_of_bounds';
 
   if (action === 'flag') {
-    if (state.revealed[playerIndex][row][col]) return '该格已翻开';
+    if (state.revealed[playerIndex][row][col]) return 'ms_already_revealed';
     state.flagged[playerIndex][row][col] = !state.flagged[playerIndex][row][col];
     return null;
   }
 
   if (action === 'reveal') {
-    if (state.revealed[playerIndex][row][col]) return '该格已翻开';
-    if (state.flagged[playerIndex][row][col]) return '该格已标旗，请先取消旗子';
+    if (state.revealed[playerIndex][row][col]) return 'ms_already_revealed';
+    if (state.flagged[playerIndex][row][col]) return 'ms_flagged';
 
     if (state.mines[row][col]) {
       state.revealed[playerIndex][row][col] = true;
@@ -161,5 +161,5 @@ exports.handleMove = function (data, state, playerIndex) {
     return null;
   }
 
-  return '无效操作类型: ' + (action || '无');
+  return 'ms_invalid_action_type';
 };

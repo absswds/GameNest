@@ -25,26 +25,26 @@ test('connect4: full column is rejected', () => {
   for (var r = 0; r < 6; r++) state.board[r][3] = 0;
 
   var err = connect4.handleMove({ col: 3 }, state, 0);
-  assert.equal(err, '该列已满');
+  assert.equal(err, 'c4_column_full');
   assert.equal(state.winner, null);
 });
 
 test('connect4: invalid column rejected', () => {
   var state = makeState();
-  assert.equal(connect4.handleMove({ col: -1 }, state, 0), '无效的列');
-  assert.equal(connect4.handleMove({ col: 7 }, state, 0), '无效的列');
-  assert.equal(connect4.handleMove({ col: 'a' }, state, 0), '无效的列');
+  assert.equal(connect4.handleMove({ col: -1 }, state, 0), 'c4_invalid_column');
+  assert.equal(connect4.handleMove({ col: 7 }, state, 0), 'c4_invalid_column');
+  assert.equal(connect4.handleMove({ col: 'a' }, state, 0), 'c4_invalid_column');
 });
 
 test('connect4: wrong player rejected', () => {
   var state = makeState();
-  assert.equal(connect4.handleMove({ col: 0 }, state, 1), '不是你的回合');
+  assert.equal(connect4.handleMove({ col: 0 }, state, 1), 'g_not_your_turn');
 });
 
 test('connect4: game over rejected', () => {
   var state = makeState();
   state.winner = 0;
-  assert.equal(connect4.handleMove({ col: 0 }, state, 0), '游戏已结束');
+  assert.equal(connect4.handleMove({ col: 0 }, state, 0), 'g_game_over');
 });
 
 test('connect4: piece drops to lowest empty row', () => {

@@ -55,12 +55,12 @@ function isBoardFull(board) {
 }
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.winner !== null) return '游戏已结束';
-  if (state.currentPlayer !== playerIndex) return '不是你的回合';
+  if (state.winner !== null) return 'g_game_over';
+  if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
 
   const col = data && data.col;
-  if (typeof col !== 'number' || col < 0 || col >= COLS || col !== Math.floor(col)) return '无效的列';
-  if (state.board[0][col] !== null) return '该列已满';
+  if (typeof col !== 'number' || col < 0 || col >= COLS || col !== Math.floor(col)) return 'c4_invalid_column';
+  if (state.board[0][col] !== null) return 'c4_column_full';
 
   // Find lowest empty row in this column
   let targetRow = -1;
@@ -70,7 +70,7 @@ exports.handleMove = (data, state, playerIndex) => {
       break;
     }
   }
-  if (targetRow === -1) return '该列已满';
+  if (targetRow === -1) return 'c4_column_full';
 
   state.board[targetRow][col] = playerIndex;
   state.lastMove = { row: targetRow, col: col };
