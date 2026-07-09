@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">GameNest</string>
+    <string name="status_starting">🎲 正在启动服务器…</string>
+    <string name="status_ready_lan">📡 其他设备访问：%s</string>
+    <string name="status_no_wifi">📴 当前非 Wi-Fi，仅可单机或加 AI 玩</string>
+    <string name="status_timeout">❌ 服务器启动超时，请重启 App</string>
 </resources>

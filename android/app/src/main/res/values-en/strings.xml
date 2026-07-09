@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GameNest</string>
+    <string name="status_starting">🎲 Starting server…</string>
+    <string name="status_ready_lan">📡 Other devices visit: %s</string>
+    <string name="status_no_wifi">📴 No Wi-Fi — solo or AI play only</string>
+    <string name="status_timeout">❌ Server startup timed out. Please restart the app.</string>
+</resources>

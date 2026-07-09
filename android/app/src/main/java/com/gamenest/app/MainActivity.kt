@@ -2,6 +2,8 @@ package com.gamenest.app
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.os.Handler
@@ -11,6 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
+import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -63,11 +66,12 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-        binding.statusBar.text = "🎲 正在启动服务器…"
+        binding.statusBar.text = if (resources.configuration.locales[0].language.startsWith("en")) "🚀 Starting game server..." else "🚀 正在启动游戏服务器…"
         binding.webview.visibility = View.GONE
         binding.splash.visibility = View.VISIBLE
 
         configureWebView()
+        registerNetworkCallback()
 
         // 1. Extract nodejs-project from assets to internal storage
         // 2. Start polling for server readiness (spawns its own thread, returns immediately)
@@ -110,7 +114,18 @@ class MainActivity : AppCompatActivity() {
         ws.useWideViewPort = true
         ws.loadWithOverviewMode = true
         ws.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-        binding.webview.webViewClient = WebViewClient()
+        binding.webview.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView, url: String?) {
+                super.onPageFinished(view, url)
+                view.evaluateJavascript("(function(){ return localStorage.getItem('lang') || 'zh'; })()") { result ->
+                    val lang = result?.trim('"') ?: "zh"
+                    if (lang != currentLang) {
+                        currentLang = lang
+                        refreshStatusBarText()
+                    }
+                }
+            }
+        }
         binding.webview.webChromeClient = WebChromeClient()
     }
 
@@ -129,7 +144,7 @@ class MainActivity : AppCompatActivity() {
             }
             Log.e(TAG, "Server did not start within 30 seconds")
             handler.post {
-                binding.statusBar.text = "❌ 服务器启动超时，请重启 App"
+                binding.statusBar.text = if (currentLang == "en") "⏰ Server start timeout" else "⏰ 服务启动超时"
             }
         }
     }
@@ -150,10 +165,99 @@ class MainActivity : AppCompatActivity() {
 
     private fun onServerReady(lanIp: String?) {
         val displayUrl = if (lanIp != null) "http://$lanIp:$SERVER_PORT" else SERVER_URL
-        binding.statusBar.text = "📡 其他设备访问：$displayUrl"
-        binding.webview.loadUrl(SERVER_URL)
+        binding.statusBar.text = statusBarText(isOnWifi(), displayUrl)
+        val wifiFlag = if (isOnWifi()) "1" else "0"
+        binding.webview.loadUrl("$SERVER_URL?wifi=$wifiFlag")
         binding.webview.visibility = View.VISIBLE
         binding.splash.visibility = View.GONE
+    }
+
+    /** Returns the status bar text in the current WebView language. */
+    private fun statusBarText(wifi: Boolean, displayUrl: String? = null): String {
+        val url = displayUrl ?: (getLanIp()?.let { "http://$it:$SERVER_PORT" } ?: SERVER_URL)
+        return if (wifi) {
+            if (currentLang == "en") "📡 Other devices visit: $url" else "📡 其他设备访问：$url"
+        } else {
+            if (currentLang == "en") "📴 No Wi-Fi — solo or AI play only" else "📴 当前非 Wi-Fi，仅可单机或加 AI 玩"
+        }
+    }
+
+    /** Refresh status bar text after language change (without reloading WebView). */
+    private fun refreshStatusBarText() {
+        val displayUrl = getLanIp()?.let { "http://$it:$SERVER_PORT" } ?: SERVER_URL
+        binding.statusBar.text = statusBarText(currentIsWifi, displayUrl)
+    }
+
+    /** True when the active network is Wi-Fi or Ethernet (both support LAN peer reachability). */
+    private fun isOnWifi(): Boolean {
+        return try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val activeNet = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(activeNet) ?: return false
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+        } catch (e: Exception) {
+            Log.w(TAG, "isOnWifi check failed", e)
+            true // fail open: assume WiFi so the user can still try
+        }
+    }
+
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private var currentIsWifi: Boolean = true
+    private var currentLang: String = "zh"  // WebView language, updated on page load
+
+    /** Reload the WebView with the latest ?wifi= query when the network type changes. */
+    private fun registerNetworkCallback() {
+        try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            currentIsWifi = isOnWifi()
+            val cb = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) {
+                    val nowWifi = isOnWifi()
+                    if (nowWifi != currentIsWifi) {
+                        currentIsWifi = nowWifi
+                        handler.post { onNetworkTypeChanged(nowWifi) }
+                    }
+                }
+                override fun onCapabilitiesChanged(network: android.net.Network, caps: NetworkCapabilities) {
+                    val nowWifi = isOnWifi()
+                    if (nowWifi != currentIsWifi) {
+                        currentIsWifi = nowWifi
+                        handler.post { onNetworkTypeChanged(nowWifi) }
+                    }
+                }
+                override fun onLost(network: android.net.Network) {
+                    if (currentIsWifi) {
+                        currentIsWifi = false
+                        handler.post { onNetworkTypeChanged(false) }
+                    }
+                }
+            }
+            cm.registerDefaultNetworkCallback(cb)
+            networkCallback = cb
+        } catch (e: Exception) {
+            Log.w(TAG, "registerNetworkCallback failed", e)
+        }
+    }
+
+    private fun onNetworkTypeChanged(nowWifi: Boolean) {
+        val lanIp = getLanIp()
+        val displayUrl = if (lanIp != null) "http://$lanIp:$SERVER_PORT" else SERVER_URL
+        binding.statusBar.text = statusBarText(nowWifi, displayUrl)
+        val wifiFlag = if (nowWifi) "1" else "0"
+        val url = "$SERVER_URL?wifi=$wifiFlag"
+        val curUrl = binding.webview.url
+        if (curUrl != null && curUrl.startsWith(SERVER_URL)) {
+            binding.webview.loadUrl(url)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            networkCallback?.let { cm.unregisterNetworkCallback(it) }
+        } catch (e: Exception) { /* ignore */ }
     }
 
     /** Picks the most likely LAN IP (192.168.x.x > 10.x.x.x > others). */
