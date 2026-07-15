@@ -149,7 +149,7 @@ cd android
 - `scripts/generate-cover-art.js`（封面生成）
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 说明服务端、WebSocket 和渲染器流程。
 - [CONTRIBUTING.md](CONTRIBUTING.md) 提供新增游戏清单。
-- [docs/STORE_LISTING.md](docs/STORE_LISTING.md) 收集商店文案和素材规划。
+  
 
 ## 参与贡献
 
