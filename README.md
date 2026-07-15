@@ -149,7 +149,6 @@ More details:
 - `scripts/generate-cover-art.js` — cover art generator
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains the server, WebSocket, and renderer flow.
 - [CONTRIBUTING.md](CONTRIBUTING.md) has the new-game checklist.
-- [docs/STORE_LISTING.md](docs/STORE_LISTING.md) collects app-store copy and asset planning.
 
 ## Contributing
 
