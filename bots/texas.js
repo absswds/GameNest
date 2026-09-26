@@ -58,7 +58,10 @@ exports.createBot = function(playerIndex) {
       }
 
       if (toCall >= chips) {
-        return strength >= 240 ? { action: 'all_in' } : { action: 'fold' };
+        // Facing an all-in: call with a decent pair, sometimes with big high cards —
+        // otherwise shoving every hand would win uncontested
+        const callShove = strength >= 160 || (strength >= 120 && Math.random() < 0.4);
+        return callShove ? { action: 'all_in' } : { action: 'fold' };
       }
 
       // 10% bluff chance on weak hands — keeps the bot unpredictable

@@ -216,12 +216,24 @@ exports.playerView = function (state, playerIndex) {
         shot: shotAt, // 'hit' | 'miss' | 'sunk' | null
         shipType: null,
       };
-      // If game over, reveal ship types
-      if (state.winner !== null && shotAt === 'sunk') {
+      // Sunk ships are public: expose which ship each cell belongs to (for hull drawing)
+      if (shotAt === 'sunk') {
         var ship = findShipAt(enemyShips, r, c);
-        if (ship) enemyBoard[r][c].shipType = ship.type;
+        if (ship) {
+          enemyBoard[r][c].shipId = enemyShips.indexOf(ship);
+          if (state.winner !== null) enemyBoard[r][c].shipType = ship.type;
+        }
       }
     }
+  }
+
+  // A sunk ship is public: mark every one of its cells so the client can draw its outline
+  for (var si = 0; si < enemyShips.length; si++) {
+    if (!isShipSunk(enemyShips[si])) continue;
+    enemyShips[si].cells.forEach(function (cl) {
+      enemyBoard[cl.r][cl.c].shot = 'sunk';
+      enemyBoard[cl.r][cl.c].shipId = si;
+    });
   }
 
   // Build my board: show my ships and opponent shots on them
@@ -239,7 +251,8 @@ exports.playerView = function (state, playerIndex) {
       var cell = sh.cells[j];
       myBoard[cell.r][cell.c].hasShip = true;
       myBoard[cell.r][cell.c].shipType = sh.type;
-      if (cell.hit) myBoard[cell.r][cell.c].shot = 'hit';
+      myBoard[cell.r][cell.c].shipId = s;
+      if (cell.hit) myBoard[cell.r][cell.c].shot = isShipSunk(sh) ? 'sunk' : 'hit';
     }
   }
   // Opponent's shots on my board

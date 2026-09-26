@@ -15,6 +15,44 @@
   var COLOR_TEXT = { red:'#fff', blue:'#fff', green:'#fff', yellow:'#222', wild:'#fff' };
   var COLOR_NAMES = { red: t('uno_red'), blue: t('uno_blue'), green: t('uno_green'), yellow: t('uno_yellow') };
   var COLOR_ORDER = ['red','blue','green','yellow'];
+  var CARD_COLOR = { red:'#d63a2f', blue:'#1f6fd1', green:'#2c9a55', yellow:'#f2b705' };
+
+  // Inline SVG glyphs for action cards (currentColor so they tint per card)
+  var ICONS = {
+    skip: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="3"/><path d="M6.2 17.8 17.8 6.2" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
+    reverse: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9.5h11l-3-3M19 14.5H8l3 3" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    wild: '<svg viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(-28 12 12)"><path d="M12 3a6 9 0 0 0-6 9h6z" fill="#d63a2f"/><path d="M12 3a6 9 0 0 1 6 9h-6z" fill="#1f6fd1"/><path d="M12 21a6 9 0 0 1-6-9h6z" fill="#f2b705"/><path d="M12 21a6 9 0 0 0 6-9h-6z" fill="#2c9a55"/></g></svg>'
+  };
+
+  function valueGlyph(value) {
+    if (ICONS[value]) return ICONS[value];
+    if (value === '+2' || value === '+4') return '<span class="uf-num uf-plus">' + value + '</span>';
+    return '<span class="uf-num">' + value + '</span>';
+  }
+
+  function cornerLabel(value) {
+    if (value === 'skip') return '⊘';
+    if (value === 'reverse') return '⇄';
+    if (value === 'wild') return '';
+    return value;
+  }
+
+  // Full card face: solid body, white inset border, tilted white oval, corner indices
+  function cardFace(card) {
+    var bg = card.color === 'wild' ? '#1c1b19' : (CARD_COLOR[card.color] || '#888');
+    var corner = cornerLabel(card.value);
+    var center = card.value === '+4'
+      ? ICONS.wild + '<span class="uf-num uf-plus uf-over">+4</span>'
+      : valueGlyph(card.value);
+    return '<div class="uf" style="--uc:' + bg + '">' +
+      '<span class="uf-oval">' + center + '</span>' +
+      (corner ? '<span class="uf-corner">' + corner + '</span><span class="uf-corner uf-br">' + corner + '</span>' : '') +
+    '</div>';
+  }
+
+  function cardBack() {
+    return '<div class="uf uf-back" style="--uc:#1c1b19"><span class="uf-oval">' + ICONS.wild + '</span></div>';
+  }
   var lastDiscardKey = null;
   var lastHandSignature = null;
   var lastHandLen = 0;
@@ -37,7 +75,7 @@
     '.uno-discard-card .dv{font-size:28px;line-height:1;}' +
     '.uno-discard-card .dl{font-size:9px;opacity:.8;margin-top:1px;text-transform:uppercase;}' +
     '.uno-discard-card.wild-card{background:linear-gradient(135deg,#e74c3c 25%,#3498db 25%,#3498db 50%,#2ecc71 50%,#2ecc71 75%,#f1c40f 75%);}' +
-    '.uno-draw-pile{width:76px;height:110px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#2a2a2a;color:#fff;border:2px dashed #555;box-shadow:0 2px 10px rgba(0,0,0,.1);}' +
+    '.uno-draw-pile{width:76px;height:110px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#2a2a2a;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.1);}' +
     '.uno-draw-pile .dc{font-size:22px;font-weight:800;}' +
     '.uno-draw-pile .dl{font-size:10px;color:#999;margin-top:1px;}' +
     '.uno-draw-stack{position:absolute;top:-6px;right:-6px;background:#e74c3c;color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.2);}' +
@@ -54,6 +92,24 @@
     '.uno-card .cl{font-size:8px;opacity:.8;margin-top:1px;text-transform:uppercase;}' +
     '.uno-card.not-playable{opacity:.35;cursor:default;}' +
     '.uno-card.not-playable:active{transform:none;}' +
+    '.uf{position:absolute;inset:0;border-radius:inherit;background:var(--uc);box-shadow:inset 0 0 0 3px #fff;overflow:hidden;color:var(--uc);}' +
+    '.uf-oval{position:absolute;left:50%;top:50%;width:74%;height:62%;transform:translate(-50%,-50%) rotate(-28deg);background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;}' +
+    '.uf-oval>*{transform:rotate(28deg);}' +
+    '.uf-oval svg{width:58%;height:auto;}' +
+    '.uf-num{font-weight:900;font-size:calc(var(--cw) * .44);line-height:1;letter-spacing:-1px;text-shadow:1px 1px 0 rgba(0,0,0,.18);}' +
+    '.uf-plus{font-size:calc(var(--cw) * .32);}' +
+    '.uf-over{position:absolute;color:#fff;-webkit-text-stroke:1px #1c1b19;}' +
+    '.uf-corner{position:absolute;top:5%;left:9%;font-weight:900;font-size:calc(var(--cw) * .2);line-height:1;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.35);}' +
+    '.uf-br{top:auto;left:auto;bottom:5%;right:9%;transform:rotate(180deg);}' +
+    '.uf-back .uf-oval{background:#d63a2f;}' +
+    '.uf-back .uf-oval svg{width:70%;}' +
+    '.uno-card,.uno-discard-card,.uno-draw-pile{--cw:48px;position:relative;background:#fff !important;padding:0;border:none;}' +
+    '.uno-discard-card,.uno-draw-pile{--cw:76px;}' +
+    '.uno-draw-pile .uno-pile-count{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap;}' +
+    '.uno-play-area{padding-bottom:18px;}' +
+    '.uno-card.not-playable{opacity:.72;filter:saturate(.45) brightness(.97);}' +
+    '@media (hover:hover){.uno-card.playable:hover{transform:translateY(-6px);box-shadow:0 10px 20px rgba(0,0,0,.18);}}' +
+    '.uno-card.playable{box-shadow:0 2px 6px rgba(0,0,0,.13),0 0 0 2px #fff,0 0 0 4px rgba(28,27,25,.2);}' +
     '.uno-actions{display:flex;gap:8px;justify-content:center;}' +
     '#unoBtn.uno-btn-warn{background:#e74c3c;color:#fff;border-color:#e74c3c;}' +
     '.uno-color-picker-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:2px 0;}' +
@@ -72,12 +128,12 @@
     '@media(max-width:380px){' +
       '.uno-opponent{font-size:11px;padding:5px 8px;gap:0;}' +
       '.uno-opponent .mini-back{width:8px;height:12px;}' +
-      '.uno-discard-card{width:60px;height:88px;}' +
+      '.uno-discard-card{width:60px;height:88px;--cw:60px;}' +
       '.uno-discard-card .dv{font-size:22px;}' +
-      '.uno-draw-pile{width:60px;height:88px;}' +
+      '.uno-draw-pile{width:60px;height:88px;--cw:60px;}' +
       '.uno-draw-pile .dc{font-size:18px;}' +
       '.uno-play-area{gap:14px;}' +
-      '.uno-card{width:44px;height:70px;border-radius:8px;}' +
+      '.uno-card{width:44px;height:66px;border-radius:8px;--cw:44px;}' +
       '.uno-card .cv{font-size:17px;}' +
       '.uno-card .cl{font-size:7px;}' +
       '.uno-hand{gap:3px;min-height:72px;}' +
@@ -89,10 +145,10 @@
       '.uno-table{flex-direction:row;gap:6px;align-items:flex-start;}' +
       '.uno-opponents{flex:0 0 auto;flex-direction:column;max-width:140px;}' +
       '.uno-center{flex:0 0 auto;}' +
-      '.uno-discard-card,.uno-draw-pile{width:50px;height:74px;}' +
+      '.uno-discard-card,.uno-draw-pile{width:50px;height:74px;--cw:50px;}' +
       '.uno-discard-card .dv{font-size:20px;}' +
       '.uno-draw-pile .dc{font-size:16px;}' +
-      '.uno-card{width:40px;height:62px;border-radius:7px;}' +
+      '.uno-card{width:40px;height:60px;border-radius:7px;--cw:40px;}' +
       '.uno-card .cv{font-size:16px;}' +
       '.uno-card .cl{font-size:6px;}' +
       '.uno-hand{gap:2px;min-height:0;padding:0 2px;}' +
@@ -275,20 +331,13 @@
     var el = document.getElementById('unoDiscardCard');
     if (!el) return;
     if (!discard || discard.length === 0) {
-      el.style.background = '#ccc';
-      el.style.color = '#666';
-      el.innerHTML = '<div class="dv">-</div><div class="dl"></div>';
+      el.innerHTML = '';
       return;
     }
     var top = discard[0];
-    var bg = top.color === 'wild' ? '' : COLOR_HEX[top.color] || '#ccc';
-    var fg = top.color === 'wild' ? '#fff' : COLOR_TEXT[top.color] || '#fff';
-    var wildCls = top.color === 'wild' ? ' wild-card' : '';
-    el.className = 'uno-discard-card' + wildCls;
-    el.style.background = top.color !== 'wild' ? bg : '';
-    el.style.color = fg;
-    el.innerHTML = '<div class="dv">' + (VALUE_LABELS[top.value] || top.value) + '</div>' +
-      '<div class="dl">' + (COLOR_NAMES[top.color] || top.color.toUpperCase()) + '</div>';
+    el.className = 'uno-discard-card';
+    el.style.background = '';
+    el.innerHTML = cardFace(top);
     if (discardChanged) {
       void el.offsetWidth;
       el.classList.add('play-flash');
@@ -303,9 +352,8 @@
     var el = document.getElementById('unoDrawPile');
     if (!el) return;
     var count = (deck && deck.length) || 0;
-    el.innerHTML = '' +
-      '<div class="dc">' + count + '</div>' +
-      '<div class="dl">' + t('uno_remaining') + '</div>' +
+    el.innerHTML = cardBack() +
+      '<div class="uno-pile-count">' + count + ' ' + t('uno_remaining') + '</div>' +
       (drawStack > 0 ? '<div class="uno-draw-stack">+' + drawStack + '</div>' : '');
   }
 
@@ -321,16 +369,10 @@
     for (var i = 0; i < hand.length; i++) {
       var c = hand[i];
       var playable = isMyTurn && canPlayCard(c, top, currentColor);
-      var wildCls = c.color === 'wild' ? ' wild-rainbow' : '';
-      var notPlayableCls = playable ? '' : ' not-playable';
-      var bg = c.color !== 'wild' ? 'background:' + (COLOR_HEX[c.color] || '#ccc') : '';
-      var fg = c.color !== 'wild' ? 'color:' + (COLOR_TEXT[c.color] || '#fff') : '';
+      // Off-turn the whole hand is dimmed; on your turn only the unplayable cards are
+      var stateCls = isMyTurn ? (playable ? ' playable' : ' not-playable') : ' not-playable';
       var newCardCls = drewCard && i === hand.length - 1 ? ' new-card' : '';
-      html += '' +
-        '<div class="uno-card' + wildCls + notPlayableCls + newCardCls + '" data-card-id="' + c.id + '" style="' + bg + ';' + fg + '">' +
-          '<div class="cv">' + (VALUE_LABELS[c.value] || c.value) + '</div>' +
-          '<div class="cl">' + (COLOR_NAMES[c.color] || c.color.toUpperCase()) + '</div>' +
-        '</div>';
+      html += '<div class="uno-card' + stateCls + newCardCls + '" data-card-id="' + c.id + '">' + cardFace(c) + '</div>';
     }
     el.innerHTML = html;
 

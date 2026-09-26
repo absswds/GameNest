@@ -417,6 +417,17 @@ function skipDisconnectedTurn(room) {
   return false;
 }
 
+// The state a given seat is allowed to see (hidden info filtered by the game module).
+function viewFor(room, index) {
+  const gameMod = gameRegistry[room.game];
+  if (!room.state || !gameMod || index === undefined || index === null) return room.state;
+  if (room.game === 'minesweeper' && gameMod.playerBoardView) {
+    return Object.assign({}, room.state, { board: gameMod.playerBoardView(room.state, index) });
+  }
+  if (gameMod.playerView) return gameMod.playerView(room.state, index);
+  return room.state;
+}
+
 function broadcastGameView(room, msgType) {
   const t = msgType || 'game_state';
   const gameMod = gameRegistry[room.game];
@@ -458,6 +469,13 @@ function clearAllRoomTimers(room) {
   clearTimeout(room._botTimer);
   clearTimeout(room._tfTimer);
   clearTimeout(room._dgTimer);
+  clearTimeout(room._phaseTimer);
+  room._phaseDeadline = 0;
+  if (room._phaseBotTimers) {
+    for (const h of room._phaseBotTimers) clearTimeout(h);
+    room._phaseBotTimers = [];
+  }
+  if (room._phaseBotPending) room._phaseBotPending.clear();
   stopRealtimeGame(room);
   if (room._tfBotTimers) {
     for (const h of room._tfBotTimers) clearTimeout(h);
@@ -728,6 +746,63 @@ function scheduleRealtimeGame(room) {
   }, gameMod.tickMs || 120);
 }
 
+// Generic scheduler for phase-based games. Module hooks:
+//   getPhaseDeadline(state) -> absolute ms timestamp (0 = no timer); the module
+//     stores it in state so clients can render a countdown.
+//   onTimeout(state) -> apply defaults for everyone who hasn't acted.
+//   getPendingActors(state) -> player indexes that may act right now (can be several).
+function schedulePhaseGame(room, gameMod) {
+  const state = room.state;
+  const deadline = typeof gameMod.getPhaseDeadline === 'function' ? (gameMod.getPhaseDeadline(state) || 0) : 0;
+  if (room._phaseDeadline !== deadline) {
+    clearTimeout(room._phaseTimer);
+    room._phaseDeadline = deadline;
+    if (deadline > 0 && typeof gameMod.onTimeout === 'function') {
+      room._phaseTimer = setTimeout(() => {
+        room._phaseDeadline = 0;
+        if (!rooms.has(room._roomId) || room.state !== state || room.phase !== 'playing') return;
+        if (state.winner !== null && state.winner !== undefined) return;
+        try {
+          gameMod.onTimeout(state);
+        } catch (e) {
+          console.error('[game=' + room.game + ' room=' + room._roomId + '] onTimeout exception:', e.message);
+        }
+        broadcastGameView(room, 'game_state');
+        scheduleBotMove(room);
+      }, Math.max(0, deadline - Date.now()));
+    }
+  }
+
+  if (typeof gameMod.getPendingActors !== 'function') return;
+  room._phaseBotPending = room._phaseBotPending || new Set();
+  for (const idx of gameMod.getPendingActors(state) || []) {
+    const bot = room.bots.get(idx);
+    if (!bot || room._phaseBotPending.has(idx)) continue;
+    room._phaseBotPending.add(idx);
+    const delay = 900 + Math.random() * 1500;
+    const handle = setTimeout(() => {
+      room._phaseBotPending.delete(idx);
+      if (!rooms.has(room._roomId) || room.state !== state) return;
+      if (state.winner !== null && state.winner !== undefined) return;
+      const pending = gameMod.getPendingActors(state) || [];
+      if (pending.indexOf(idx) < 0) return;
+      try {
+        const err = gameMod.handleMove(bot.getMove(state, idx), state, idx);
+        if (err) {
+          console.error('[game=' + room.game + ' actor=' + idx + ' room=' + room._roomId + '] Bot error:', err, '— passing');
+          gameMod.handleMove({ pass: true }, state, idx);
+        }
+      } catch (e) {
+        console.error('[game=' + room.game + ' actor=' + idx + ' room=' + room._roomId + '] Bot exception:', e.message);
+      }
+      broadcastGameView(room);
+      scheduleBotMove(room);
+    }, delay);
+    room._phaseBotTimers = room._phaseBotTimers || [];
+    room._phaseBotTimers.push(handle);
+  }
+}
+
 function scheduleBotMove(room) {
   if (!room || !room.state) return;
   const state = room.state;
@@ -743,6 +818,12 @@ function scheduleBotMove(room) {
   const gameMod = gameRegistry[room.game];
   if (!gameMod) return;
   if (gameMod.realtime) return;
+
+  // Phase-based games (night/vote/response windows) opt in via module hooks.
+  if (typeof gameMod.getPhaseDeadline === 'function' || typeof gameMod.getPendingActors === 'function') {
+    schedulePhaseGame(room, gameMod);
+    return;
+  }
 
   // Battleship placing phase: all bots place simultaneously (not turn-based)
   if (room.game === 'battleship' && state.phase === 'placing') {
@@ -766,7 +847,13 @@ function scheduleBotMove(room) {
   // 打牌/摸牌：快一些（0.8~2s）。吃碰杠等 claim 响应：放慢到 1.6~3s，
   // 给真人玩家留出反应时间，避免"按不过 bot"。
   const isClaimResp = state.phase === 'claim';
-  const delay = isClaimResp ? (1600 + Math.random() * 1400) : (800 + Math.random() * 1200);
+  let delay = isClaimResp ? (1600 + Math.random() * 1400) : (800 + Math.random() * 1200);
+  // 骗子酒馆：开牌/开枪结果出来后多停一会儿，让真人看清楚再继续
+  if (room.game === 'liarsbar') {
+    const shotsShown = state.lastShotResults && state.lastShotResults.length > 0;
+    if (state.phase === 'shooting' && !shotsShown) delay += 3000;
+    else if (state.phase === 'playing' && shotsShown && state.pileCards.length === 0) delay += 3000;
+  }
   clearTimeout(room._botTimer);
   room._botTimer = setTimeout(() => {
     if (!rooms.has(room._roomId)) return;
@@ -828,7 +915,7 @@ function scheduleBattleshipPlacements(room) {
       break;
     }
   }
-  if (!nextBot) { scheduleBotMove(room); return; }
+  if (!nextBot) return;  // all bots placed — wait for humans (their move reschedules)
 
   const delay = 250 + Math.random() * 500;
   clearTimeout(room._botTimer);
@@ -1015,7 +1102,7 @@ wss.on('connection', (ws) => {
         currentRoomId = roomId;
         currentRoom = room;
         ws.send(JSON.stringify({ type: 'room_joined', roomId, game: room.game, maxPlayers: room.maxPlayers,
-          playerIndex: info.index, players: roomPlayersList(room), state: room.state, phase: room.phase,
+          playerIndex: info.index, players: roomPlayersList(room), state: viewFor(room, info.index), phase: room.phase,
           options: room.options, resumeToken: info.resumeToken }));
         sendToRoom(room, {
           type: 'room_update',
@@ -1037,7 +1124,7 @@ wss.on('connection', (ws) => {
           maxPlayers: room.maxPlayers,
           playerIndex: existing[1].index,
           players: roomPlayersList(room),
-          state: room.state,
+          state: viewFor(room, existing[1].index),
           phase: room.phase,
           options: room.options,
         }));
@@ -1089,7 +1176,7 @@ wss.on('connection', (ws) => {
         maxPlayers: room.maxPlayers,
         playerIndex: idx,
         players: roomPlayersList(room),
-        state: room.state,
+        state: viewFor(room, idx),
         phase: room.phase,
         options: room.options,
         resumeToken: room.players.get(ws).resumeToken,

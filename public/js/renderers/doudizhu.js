@@ -7,15 +7,16 @@
   var _prevDdzState = null;
   var _hintIndex = -1;
   var _hints = [];
+  var _lastHandLen = 0;
 
   window.gameRenderers.set('doudizhu', {
     init: function(container) {
       container.innerHTML =
-        '<div id="ddzWrap" style="width:100%;max-width:420px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
+        '<div id="ddzWrap" style="width:100%;max-width:640px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
           '<div id="ddzOpponents" style="display:flex;justify-content:space-around;gap:8px;"></div>' +
           '<div id="ddzPlayArea" style="min-height:80px;background:var(--bg,#f8f9fa);border-radius:var(--radius,24px);padding:12px 16px;display:flex;flex-direction:column;align-items:center;gap:6px;"></div>' +
           '<div id="ddzHint" style="display:none;text-align:center;font-size:13px;padding:4px 8px;background:var(--bg,#f8f9fa);border-radius:12px;"></div>' +
-          '<div id="ddzHand" style="min-height:56px;display:flex;flex-wrap:wrap;justify-content:center;gap:4px;padding:8px 0;"></div>' +
+          '<div id="ddzHand" style="min-height:92px;padding:4px 0;"></div>' +
           '<div id="ddzActions" style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;"></div>' +
         '</div>';
     },
@@ -248,35 +249,27 @@
       var el = document.getElementById('ddzHand');
       if (!el) return;
       var hand = s.hands[selfIdx];
-      if (!hand || hand.length === 0) { el.innerHTML = ''; return; }
+      if (!hand || hand.length === 0) { el.innerHTML = ''; _lastHandLen = 0; return; }
 
       var myTurn = (cp === selfIdx && s.phase === 'playing');
-      var html = '';
-      cardEls = {};
-      for (var i = 0; i < hand.length; i++) {
-        var c = hand[i];
-        var isSel = selected[c.id] ? true : false;
-        var style = 'display:inline-flex;align-items:center;justify-content:center;' +
-          'width:48px;height:64px;border-radius:8px;' +
-          'background:#fff;border:1px solid var(--border,#eee);' +
-          'font-size:15px;font-weight:700;cursor:' + (myTurn ? 'pointer' : 'default') + ';' +
-          'transition:transform 0.12s,box-shadow 0.12s;' +
-          'box-shadow:0 1px 4px rgba(0,0,0,0.1);' +
-          'line-height:1;';
-        if (isSel) {
-          style += 'transform:translateY(-16px);box-shadow:0 4px 12px rgba(0,0,0,0.2);border-color:var(--accent,#c8a45c);';
+      // Deal animation only when a fresh hand arrives (new round), not on every update
+      var deal = hand.length > _lastHandLen + 3;
+      _lastHandLen = hand.length;
+      el.innerHTML = window.CardUI.group(hand, {
+        layout: 'hand',
+        deal: deal,
+        cardOpts: function(c) {
+          return {
+            size: 'md',
+            selected: !!selected[c.id],
+            className: myTurn ? 'pc-selectable ddz-card' : 'ddz-card',
+            jokerLabel: jokerLabel(c),
+            attrs: myTurn ? 'onclick="window._ddzToggleCard(\'' + c.id + '\')"' : ''
+          };
         }
-        var color = getCardColor(c);
-        var label = getCardLabel(c);
-        html += '<div class="ddz-card" data-id="' + c.id + '" style="' + style + 'color:' + color + ';"';
-        if (myTurn) {
-          html += ' onclick="window._ddzToggleCard(\'' + c.id + '\')"';
-        }
-        html += '>' + label + '</div>';
-      }
-      el.innerHTML = html;
+      });
 
-      // Store references
+      cardEls = {};
       var cards = el.querySelectorAll('.ddz-card');
       for (var j = 0; j < cards.length; j++) {
         cardEls[cards[j].dataset.id] = cards[j];
@@ -310,32 +303,14 @@
 
   // ---- Helpers ----
 
-  function getCardColor(c) {
-    if (c.rank === '小王' || c.rank === '大王') return '#e74c3c';
-    if (c.suit === 'h' || c.suit === 'd') return '#e74c3c';
-    return '#1a1a1a';
-  }
-
-  function getCardLabel(c) {
-    if (c.id === 'SJ') return '&#x2605;' + _t('ddz_joker_small');
-    if (c.id === 'BJ') return '&#x2605;' + _t('ddz_joker_big');
-    var suitChar = '';
-    if (c.suit === 's') suitChar = '&#9824;';   // ♠
-    else if (c.suit === 'h') suitChar = '&#9829;'; // ♥
-    else if (c.suit === 'c') suitChar = '&#9827;'; // ♣
-    else if (c.suit === 'd') suitChar = '&#9830;'; // ♦
-    return suitChar + c.rank;
+  function jokerLabel(c) {
+    if (c.id === 'SJ') return _t('ddz_joker_small');
+    if (c.id === 'BJ') return _t('ddz_joker_big');
+    return '';
   }
 
   function cardSpan(c) {
-    var color = getCardColor(c);
-    var label = getCardLabel(c);
-    return '<span style="display:inline-flex;align-items:center;justify-content:center;' +
-      'width:40px;height:52px;border-radius:6px;' +
-      'background:#fff;border:1px solid var(--border,#eee);' +
-      'font-size:13px;font-weight:700;color:' + color + ';' +
-      'box-shadow:0 1px 3px rgba(0,0,0,0.1);line-height:1;">' +
-      label + '</span>';
+    return window.CardUI.render(c, { size: 'sm', jokerLabel: jokerLabel(c) });
   }
 
   function renderBidButtons(s) {
@@ -466,17 +441,10 @@
     } else {
       selected[id] = true;
     }
-    // Re-render hand
+    if (cardEls[id]) cardEls[id].classList.toggle('is-selected', !!selected[id]);
     var state = getCurrentState();
     if (state) {
-      var renderer = window.gameRenderers.get('doudizhu');
-      var container = document.getElementById('boardArea');
       var playerIndex = parseInt(sessionStorage.getItem('playerIndex'));
-      if (renderer && renderer.renderHand) {
-        var s = state;
-        var cp = state.currentPlayer != null ? state.currentPlayer : (s ? s.currentPlayer : 0);
-        renderer.renderHand(s, playerIndex, cp);
-      }
       // Show card type hint
       updateDdzHint(state, playerIndex);
     }

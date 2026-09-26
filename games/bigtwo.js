@@ -249,3 +249,9 @@ exports.handleMove = (data, state, playerIndex) => {
   state.currentPlayer = (state.currentPlayer + 1) % state.hands.length;
   return null;
 };
+
+// Hide other players' cards (and draw piles) from each client.
+const { maskView } = require('./lib/hidden');
+exports.playerView = function (state, playerIndex) {
+  return maskView(state, playerIndex);
+};

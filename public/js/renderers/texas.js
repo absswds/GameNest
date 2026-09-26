@@ -1,5 +1,7 @@
 // public/js/renderers/texas.js
 (function() {
+  var _lastHoleCount = 0;
+  var _lastCommunityCount = 0;
   window.gameRenderers = window.gameRenderers || new Map();
 
   var SUIT_SYMBOL = { s: '♠', h: '♥', c: '♣', d: '♦' };
@@ -10,9 +12,9 @@
   window.gameRenderers.set('texas', {
     init: function(container) {
       container.innerHTML =
-        '<div id="txWrap" style="width:100%;max-width:420px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
+        '<div id="txWrap" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
           '<div id="txOpponents" style="display:flex;justify-content:space-around;gap:8px;flex-wrap:wrap;"></div>' +
-          '<div id="txCommunity" style="min-height:80px;background:var(--bg);border-radius:var(--radius-sm);padding:12px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;">' +
+          '<div id="txCommunity" class="ge-felt" style="min-height:80px;border-radius:var(--radius-sm);padding:14px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;">' +
             '<div style="font-size:12px;color:var(--text-muted);">' + _t('tx_community') + '</div>' +
             '<div id="txCommunityCards" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;"></div>' +
             '<div id="txPot" style="font-size:18px;font-weight:800;color:var(--accent);"></div>' +
@@ -96,6 +98,14 @@
         }
       }
       el.innerHTML = html;
+      // Reveal animation for newly dealt community cards (flop/turn/river)
+      if (communityCards.length > _lastCommunityCount && window.Motion) {
+        var faces = el.children;
+        for (var k = _lastCommunityCount; k < communityCards.length; k++) {
+          if (faces[k]) window.Motion.pop(faces[k]);
+        }
+      }
+      _lastCommunityCount = communityCards.length;
 
       var phaseNames = { preflop: _t('tx_phase_preflop'), flop: _t('tx_phase_flop'), turn: _t('tx_phase_turn'), river: _t('tx_phase_river'), showdown: _t('tx_showdown') };
       var phaseEl = document.getElementById('txPhase');
@@ -111,11 +121,8 @@
       var holeCards = s.holeCards || (s.hands && s.hands[selfIdx]) || [];
       if (holeCards.length === 0) { el.innerHTML = ''; return; }
 
-      var html = '<div style="font-size:12px;color:var(--text-muted);text-align:center;">' + _t('tx_your_hand') + '</div><div style="display:flex;gap:6px;">';
-      for (var i = 0; i < holeCards.length; i++) {
-        html += cardSpan(holeCards[i]);
-      }
-      html += '</div>';
+      var html = '<div style="font-size:12px;color:var(--text-muted);text-align:center;">' + _t('tx_your_hand') + '</div>' + window.CardUI.group(holeCards, { size: 'lg', deal: holeCards.length !== _lastHoleCount });
+      _lastHoleCount = holeCards.length;
       el.innerHTML = html;
     },
 
@@ -198,23 +205,11 @@
   });
 
   function cardSpan(c) {
-    var color = SUIT_COLOR[c.suit] || '#1a1a1a';
-    var label = SUIT_SYMBOL[c.suit] + c.rank;
-    return '<span style="display:inline-flex;align-items:center;justify-content:center;' +
-      'width:44px;height:58px;border-radius:8px;' +
-      'background:#fff;border:1px solid var(--border);' +
-      'font-size:14px;font-weight:700;color:' + color + ';' +
-      'box-shadow:0 1px 4px rgba(0,0,0,0.1);line-height:1;">' +
-      label + '</span>';
+    return window.CardUI.render(c, { size: 'md' });
   }
 
   function cardBackSpan() {
-    return '<span style="display:inline-flex;align-items:center;justify-content:center;' +
-      'width:44px;height:58px;border-radius:8px;' +
-      'background:linear-gradient(135deg,#1a1a1a 25%,#333 25%,#333 50%,#1a1a1a 50%,#1a1a1a 75%,#333 75%,#333 100%);background-size:10px 10px;' +
-      'border:1px solid var(--border);' +
-      'box-shadow:0 1px 4px rgba(0,0,0,0.1);opacity:0.5;">' +
-      '</span>';
+    return window.CardUI.render(null, { size: 'md', faceDown: true, className: 'tx-slot' });
   }
 
   function showToast(msg) {

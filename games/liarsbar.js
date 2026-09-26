@@ -44,6 +44,17 @@ function nextAlive(state, fromIndex) {
   return fromIndex;
 }
 
+// Next player to act after `fromIndex` plays: players with empty hands are skipped.
+// If nobody else holds cards any more, the next living player must call the bluff.
+function nextTurn(state, fromIndex) {
+  const n = state.alive.length;
+  for (let i = 1; i < n; i++) {
+    const idx = (fromIndex + i) % n;
+    if (state.alive[idx] && (state.hands[idx] || []).length > 0) return idx;
+  }
+  return nextAlive(state, fromIndex);
+}
+
 function startNewRound(state) {
   const playerCount = state.alive.length;
   const deck = createDeck();
@@ -193,7 +204,7 @@ exports.handleMove = (data, state, playerIndex) => {
     state.revealedPile = null;
     state.lastShotResults = [];
 
-    state.currentPlayer = nextAlive(state, playerIndex);
+    state.currentPlayer = nextTurn(state, playerIndex);
     return null;
   }
 
@@ -256,4 +267,10 @@ exports.setCurrentActor = (state, index) => {
   } else {
     state.currentPlayer = index;
   }
+};
+
+// Hide other players' cards (and draw piles) from each client.
+const { maskView } = require('./lib/hidden');
+exports.playerView = function (state, playerIndex) {
+  return maskView(state, playerIndex, { piles: ['pileCards', 'lastPlayedCards'] });
 };

@@ -13,9 +13,9 @@
     '.ek-opp .count{font-size:20px;font-weight:800;}' +
     '.ek-center{display:flex;gap:20px;justify-content:center;align-items:center;padding:8px 0;}' +
     '.ek-pile{width:80px;height:110px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;color:#fff;}' +
-    '.ek-draw-pile{background:#c0392b;border:2px dashed #e74c3c;font-size:22px;position:relative;}' +
+    '.ek-draw-pile{font-size:22px;position:relative;box-shadow:0 2px 8px rgba(0,0,0,.2);}' +
     '.ek-draw-pile .label{font-size:11px;opacity:.8;margin-top:2px;}' +
-    '.ek-discard{background:#555;border:2px dashed #777;font-size:22px;}' +
+    '.ek-discard{background:transparent;border:1.5px dashed rgba(28,27,25,.25);color:var(--text-muted);font-size:22px;}' +
     '.ek-future{background:var(--accent-dim);border-radius:14px;padding:14px;text-align:center;}' +
     '.ek-future .ftitle{font-size:13px;font-weight:700;color:var(--text-muted);margin-bottom:6px;}' +
     '.ek-future .fcards{display:flex;gap:6px;justify-content:center;}' +
@@ -30,6 +30,23 @@
     '.ek-card:active{transform:scale(.94);}' +
     '.ek-card .ekv{font-size:22px;line-height:1;}' +
     '.ek-card .ekl{font-size:10px;font-weight:700;opacity:.85;margin-top:2px;line-height:1.2;word-break:keep-all;overflow:hidden;max-width:60px;text-align:center;}' +
+    '.ek-card,.ek-fcard{position:relative;display:flex;flex-direction:column;background:#fffdf8 !important;color:var(--ek);border:1px solid rgba(28,27,25,.12);box-shadow:0 1px 2px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.06);overflow:hidden;padding:0;justify-content:flex-start;align-items:stretch;}' +
+    '.ek-card::after,.ek-fcard::after{content:"";position:absolute;inset:3px;border:1px solid color-mix(in srgb,var(--ek) 30%,transparent);border-radius:7px;pointer-events:none;}' +
+    '.ek-band{background:var(--ek);color:#fff;font-size:10px;font-weight:800;text-align:center;padding:4px 2px 3px;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
+    '.ek-ico{flex:1;display:flex;align-items:center;justify-content:center;}' +
+    '.ek-ico svg{width:56%;height:auto;}' +
+    '.ek-card.ek-t-explode{background:#1f1d1b !important;color:#ff6b4a;}' +
+    '.ek-fcard .ek-band{font-size:8px;padding:3px 1px 2px;}' +
+    '@media (hover:hover){.ek-card:hover{transform:translateY(-6px);box-shadow:0 10px 20px rgba(0,0,0,.16);}}' +
+    '.ek-pile-back{position:relative;background:linear-gradient(150deg,#2b2926,#161514) !important;color:#fff;overflow:hidden;}' +
+    '.ek-pile-back::before{content:"";position:absolute;inset:4px;border:1px solid rgba(255,255,255,.14);border-radius:8px;}' +
+    '.ek-flash{position:fixed;inset:0;z-index:300;pointer-events:none;background:radial-gradient(circle at 50% 50%,rgba(255,120,70,.55),rgba(192,57,43,.25) 35%,transparent 70%);animation:ekFlash .9s var(--ease,ease) forwards;}' +
+    '.ek-ring{position:fixed;left:50%;top:50%;width:80px;height:80px;margin:-40px 0 0 -40px;border-radius:50%;border:6px solid #ff6b4a;z-index:301;pointer-events:none;animation:ekRing .8s cubic-bezier(.2,.8,.2,1) forwards;}' +
+    '@keyframes ekFlash{0%{opacity:0;}15%{opacity:1;}100%{opacity:0;}}' +
+    '@keyframes ekRing{0%{transform:scale(.2);opacity:1;}100%{transform:scale(6);opacity:0;border-width:1px;}}' +
+    '@media (prefers-reduced-motion:reduce){.ek-ring{display:none;}.ek-shake{animation:none;}}' +
+    '.ek-fslot{display:flex;flex-direction:column;align-items:center;gap:3px;}' +
+    '.ek-fnum{font-size:11px;font-weight:800;color:var(--text-muted);}' +
     '.ek-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}' +
     '.ek-btn-favor{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}' +
     '.ek-status{text-align:center;font-size:14px;color:var(--text-muted);min-height:20px;}' +
@@ -46,21 +63,47 @@
     '.ek-opp.boom{animation:ekShake .5s ease;border-color:#e74c3c!important;}' +
     '@media(max-width:400px){.ek-card{width:54px;height:78px;}.ek-card .ekv{font-size:18px;}.ek-card .ekl{font-size:9px;}.ek-fcard{width:44px;height:60px;}.ek-fcard .ekv{font-size:16px;}}';
 
+  // Line icons (24x24, stroke = currentColor) — replaces the old emoji faces
+  var SVG_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+  var CARD_SVG = {
+    explode: '<circle cx="10.5" cy="14" r="6.5"/><path d="M15 9.5l2-2M17 7.5l1.2-1.2"/><path d="M19.5 3.5v1.6M21.5 5.5h-1.6M20.9 3.1l-1 1"/><path d="M7.6 12.2a3 3 0 0 1 2.4-1.6"/>',
+    defuse: '<path d="M7 17 17 7"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M9 9l-3-3M15 15l3 3"/>',
+    attack: '<path d="M13 2 5 13.5h6L10 22l9-12h-6z"/>',
+    skip: '<path d="M5 6l6 6-6 6M12 6l6 6-6 6"/><path d="M20 6v12"/>',
+    future: '<path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r=".8" fill="currentColor"/>',
+    shuffle: '<path d="M3 7h4c4 0 6 10 10 10h4M3 17h4c1.6 0 2.8-1.6 3.8-3.5M13.2 9.5C14.2 8 15.4 7 17 7h4"/><path d="M18.5 4.5 21 7l-2.5 2.5M18.5 14.5 21 17l-2.5 2.5"/>',
+    favor: '<rect x="4" y="3.5" width="9" height="13" rx="1.5"/><path d="M13 12h7M17 9l3 3-3 3"/>',
+    steal: '<rect x="4" y="3.5" width="9" height="13" rx="1.5"/><path d="M13 12h7M17 9l3 3-3 3"/>',
+    nope: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/>'
+  };
+  function cardIcon(type) {
+    return SVG_OPEN + (CARD_SVG[type] || '<circle cx="12" cy="12" r="6"/>') + '</svg>';
+  }
+  // Kept for the steal notice text, which is plain text (no HTML)
   var CARD_ICONS = {
-    explode: '💣', defuse: '🔧', attack: '⚔️',
-    skip: '⏭️', future: '🔮', shuffle: '🔀', favor: '🎁',
-    steal: '👋'
+    explode: '✹', defuse: '✂', attack: '⚡', skip: '⏭', future: '◉',
+    shuffle: '⇄', favor: '→', steal: '→', nope: '⊘'
   };
   var CARD_NAME_KEYS = {
     explode: 'ek_card_explode', defuse: 'ek_card_defuse', attack: 'ek_card_attack',
     skip: 'ek_card_skip', future: 'ek_card_future', shuffle: 'ek_card_shuffle', favor: 'ek_card_steal',
-    steal: 'ek_card_steal'
+    steal: 'ek_card_steal', nope: 'ek_card_nope'
   };
   var CARD_COLORS = {
-    explode: '#e74c3c', defuse: '#2ecc71', attack: '#c0392b',
-    skip: '#3498db', future: '#9b59b6', shuffle: '#1abc9c', favor: '#f39c12',
-    steal: '#2c3e50'
+    explode: '#c0392b', defuse: '#2c8a57', attack: '#b8552b',
+    skip: '#2d6fb5', future: '#7a4fb0', shuffle: '#1f8a86', favor: '#b8862b',
+    steal: '#3d4a5c', nope: '#8a2c4f'
   };
+
+  // Paper card with coloured header band (name) and a line icon in the centre
+  function cardHtml(c, cls, extraAttrs) {
+    var color = CARD_COLORS[c.type] || '#555';
+    var name = _t(CARD_NAME_KEYS[c.type]) || c.type;
+    return '<div class="' + cls + ' ek-t-' + c.type + '" style="--ek:' + color + '"' + (extraAttrs || '') + '>' +
+      '<div class="ek-band">' + name + '</div>' +
+      '<div class="ek-ico">' + cardIcon(c.type) + '</div>' +
+    '</div>';
+  }
 
   window.gameRenderers.set('exploding-kittens', {
     init: function(container) {
@@ -70,7 +113,7 @@
           '<div class="ek-opponents" id="ekOpps"></div>' +
           '<div class="ek-action-log" id="ekActionLog"></div>' +
           '<div class="ek-center">' +
-            '<div class="ek-pile ek-draw-pile" id="ekDrawPile"><span id="ekDrawCount">0</span><div class="label">' + _t('ek_draw_pile') + '</div></div>' +
+            '<div class="ek-pile ek-draw-pile ek-pile-back" id="ekDrawPile"><span id="ekDrawCount">0</span><div class="label">' + _t('ek_draw_pile') + '</div></div>' +
             '<div class="ek-pile ek-discard" id="ekDiscard"><span id="ekDiscardCount">0</span><div class="label">' + _t('ek_discard') + '</div></div>' +
           '</div>' +
           '<div class="ek-future" id="ekFuture" style="display:none"></div>' +
@@ -85,7 +128,7 @@
         '</div>';
 
       document.getElementById('ekDrawBtn').addEventListener('click', function() {
-        window.makeGameMove({});
+        window.makeGameMove({ draw: true });
       });
     },
 
@@ -149,7 +192,7 @@
   function playExplosion(victimIdx) {
     var ov = document.createElement('div');
     ov.className = 'ek-explosion';
-    ov.innerHTML = '<div class="ek-boom">💥</div>';
+    ov.innerHTML = '<div class="ek-flash"></div><div class="ek-ring"></div>';
     document.body.appendChild(ov);
     var board = document.querySelector('.ek-game');
     if (board) {
@@ -186,11 +229,9 @@
     if (state.peekedCards && state.currentPlayer === selfIdx && state.phase === 'play') {
       el.style.display = 'block';
       var html = '<div class="ftitle">' + _tf('ek_future_title', state.peekedCards.length) + '</div><div class="fcards">';
-      for (var i = state.peekedCards.length - 1; i >= 0; i--) {
-        var c = state.peekedCards[i];
-        var bg = CARD_COLORS[c.type] || '#555';
-        var fn = _t(CARD_NAME_KEYS[c.type]) || c.type;
-        html += '<div class="ek-fcard" style="background:' + bg + '"><div class="ekv">' + (CARD_ICONS[c.type] || '?') + '</div><div class="ekl">' + fn + '</div></div>';
+      // peekedCards[0] is the top of the deck: show it first (left), numbered in draw order
+      for (var i = 0; i < state.peekedCards.length; i++) {
+        html += '<div class="ek-fslot"><span class="ek-fnum">' + (i + 1) + '</span>' + cardHtml(state.peekedCards[i], 'ek-fcard') + '</div>';
       }
       html += '</div>';
       el.innerHTML = html;
@@ -209,11 +250,7 @@
     var html = '';
     for (var i = 0; i < hand.length; i++) {
       var c = hand[i];
-      var bg = CARD_COLORS[c.type] || '#555';
-      var icon = CARD_ICONS[c.type] || '?';
-      var name = _t(CARD_NAME_KEYS[c.type]) || c.type;
-      html += '<div class="ek-card" data-id="' + c.id + '" style="background:' + bg + '">' +
-        '<div class="ekv">' + icon + '</div><div class="ekl">' + name + '</div></div>';
+      html += cardHtml(c, 'ek-card', ' data-id="' + c.id + '"');
     }
     el.innerHTML = html;
 
@@ -270,7 +307,7 @@
       drawBtn.textContent = _t('ek_draw');
     } else if (isMyTurn && state.phase === 'play') {
       drawBtn.style.display = '';
-      drawBtn.textContent = _t('ek_skip_to_draw');
+      drawBtn.textContent = _t('ek_draw');
     } else {
       drawBtn.style.display = 'none';
     }

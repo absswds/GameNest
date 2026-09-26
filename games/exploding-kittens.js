@@ -8,7 +8,7 @@ exports.maxPlayers = 6;
 function createDeck(playerCount) {
   playerCount = playerCount || 2;
   const deck = [];
-  // Official deck: 6 explode, 4 defuse, 4 nope, 4 attack, 4 skip, 4 shuffle,
+  // Official deck: 6 explode, 4 defuse, (4 nope — omitted), 4 attack, 4 skip, 4 shuffle,
   // 4 favor, 4 steal, 5 future. Scale non-essential cards for larger groups.
   const scale = Math.max(1, Math.ceil(playerCount / 2));
 
@@ -16,8 +16,7 @@ function createDeck(playerCount) {
   for (let i = 0; i < 6; i++) deck.push({ type: 'explode', id: 'explode-' + i });
   // Defuses (official: 4)
   for (let i = 0; i < 4; i++) deck.push({ type: 'defuse', id: 'defuse-' + i });
-  // Nope (official: 4) — cancel another player's action
-  for (let i = 0; i < 4 * scale; i++) deck.push({ type: 'nope', id: 'nope-' + i });
+  // Nope is left out: this version has no reaction window, so it would be a dead card
   // Attack (official: 4)
   for (let i = 0; i < 4 * scale; i++) deck.push({ type: 'attack', id: 'attack-' + i });
   // Skip (official: 4)
@@ -130,6 +129,9 @@ exports.handleMove = (data, state, playerIndex) => {
   const hand = state.hands[playerIndex];
 
   if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
+
+  // "Draw" straight from the play phase: skip playing and end the turn in one click
+  if (state.phase === 'play' && data && data.draw && !cardId) state.phase = 'draw';
 
   // ---- DRAW phase ----
   if (state.phase === 'draw') {
@@ -294,4 +296,15 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   return 'g_unknown_action';
+};
+
+// Hide other players' cards, the deck order and See-the-Future results.
+const { maskView } = require('./lib/hidden');
+exports.playerView = function (state, playerIndex) {
+  const view = maskView(state, playerIndex, { piles: ['deck'] });
+  if (view !== state && state.currentPlayer !== playerIndex) {
+    view.peekedCards = null;
+    view.futureCards = null;
+  }
+  return view;
 };

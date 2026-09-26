@@ -3,20 +3,21 @@
   window.gameRenderers = window.gameRenderers || new Map();
 
   var selectedCards = [];
+  var _lastHandLen = 0;
   var SUIT_SYMBOL = { s: '♠', h: '♥', c: '♣', d: '♦' };
   var SUIT_COLOR = { s: '#1a1a1a', h: '#e74c3c', c: '#1a1a1a', d: '#e74c3c' };
 
   window.gameRenderers.set('liarsbar', {
     init: function(container) {
       container.innerHTML =
-        '<div id="lbWrap" style="width:100%;max-width:420px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
+        '<div id="lbWrap" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
           '<div id="lbPlayers" style="display:flex;justify-content:space-around;gap:8px;flex-wrap:wrap;"></div>' +
           '<div id="lbTheme" style="text-align:center;padding:10px;background:var(--bg);border-radius:var(--radius-sm);"></div>' +
           '<div id="lbPile" style="min-height:60px;background:var(--bg);border-radius:var(--radius-sm);padding:12px;display:flex;flex-direction:column;align-items:center;gap:6px;"></div>' +
           '<div id="lbMessage" style="display:none;text-align:center;font-size:13px;padding:8px;background:#fef9e7;border-radius:12px;color:#7d6608;"></div>' +
           '<div id="lbRevolver" style="display:none;text-align:center;padding:16px;background:var(--bg);border-radius:var(--radius-sm);"></div>' +
           '<div id="lbShotResults" style="display:none;text-align:center;font-size:14px;padding:8px;"></div>' +
-          '<div id="lbHand" style="min-height:56px;display:flex;flex-wrap:wrap;justify-content:center;gap:4px;padding:8px 0;"></div>' +
+          '<div id="lbHand" style="min-height:112px;padding:4px 0;"></div>' +
           '<div id="lbActions" style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;"></div>' +
         '</div>';
     },
@@ -96,7 +97,9 @@
       if (s.phase === 'shooting') {
         var shooterName = window.getPlayerName ? window.getPlayerName(s.currentShooter) : (_t('lb_player_fallback') + (s.currentShooter + 1));
         parts.push('<div style="font-size:14px;color:var(--danger);font-weight:600;">' + _tf('lb_shooter_triggering', shooterName) + '</div>');
-      } else if (s.revealedPile && s.revealedPile.length > 0) {
+      }
+      // Keep the flipped cards visible while the shots play out, so everyone sees why
+      if (s.revealedPile && s.revealedPile.length > 0 && (s.phase === 'shooting' || !(s.pileCards && s.pileCards.length))) {
         parts.push('<div style="font-size:12px;color:var(--text-muted);">' + _t('lb_revealed_cards') + '</div>');
         var cardsHtml = '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">';
         for (var i = 0; i < s.revealedPile.length; i++) {
@@ -104,6 +107,8 @@
         }
         cardsHtml += '</div>';
         parts.push(cardsHtml);
+      } else if (s.phase === 'shooting') {
+        // shooter line already shown
       } else if (s.pileCards && s.pileCards.length > 0) {
         parts.push('<div style="font-size:12px;color:var(--text-muted);">' + _tf('lb_face_down_cards', s.pileCards.length) + '</div>');
         var lastClaim = s.pileClaims && s.pileClaims[s.pileClaims.length - 1];
@@ -200,35 +205,22 @@
 
       var isAlive = (s.alive || [])[selfIdx];
       var myTurn = s.currentPlayer === selfIdx && winner == null && isAlive && s.phase === 'playing';
-      var html = '';
-      for (var i = 0; i < hand.length; i++) {
-        var c = hand[i];
-        var isSel = selectedCards.indexOf(c.id) !== -1;
-        var isTheme = c.rank === s.themeRank;
-
-        var bg = '#fff';
-        if (c.suit === 'wild') bg = 'linear-gradient(135deg,#fef9e7,#fdf0d5)';
-        else if (c.suit === 'ghost') bg = 'linear-gradient(135deg,#2a2a2a,#1a1a1a)';
-
-        var style = 'display:inline-flex;align-items:center;justify-content:center;' +
-          'width:54px;height:72px;border-radius:10px;' +
-          'background:' + bg + ';border:1px solid var(--border);' +
-          'font-size:15px;font-weight:700;cursor:' + (myTurn ? 'pointer' : 'default') + ';' +
-          'transition:transform 0.12s,box-shadow 0.12s;' +
-          'box-shadow:0 2px 6px rgba(0,0,0,0.10);line-height:1;';
-        if (isSel) style += 'transform:translateY(-16px);box-shadow:0 4px 12px rgba(0,0,0,0.2);border-color:var(--accent);';
-        if (isTheme && myTurn) style += 'box-shadow:0 0 0 2px var(--accent-glow);';
-
-        var label, color;
-        if (c.suit === 'wild') { label = '★'; color = '#c8a45c'; }
-        else if (c.suit === 'ghost') { label = '👻'; color = '#fff'; }
-        else { label = SUIT_SYMBOL[c.suit] + c.rank; color = SUIT_COLOR[c.suit] || '#1a1a1a'; }
-
-        html += '<div class="lb-card" data-id="' + c.id + '" style="' + style + 'color:' + color + ';"';
-        if (myTurn) html += ' onclick="window._lbToggleCard(\'' + c.id + '\')"';
-        html += '>' + label + '</div>';
-      }
-      el.innerHTML = html;
+      var deal = hand.length > _lastHandLen + 2;
+      _lastHandLen = hand.length;
+      el.innerHTML = window.CardUI.group(hand, {
+        layout: 'hand',
+        deal: deal,
+        cardOpts: function(c) {
+          var cls = myTurn ? 'pc-selectable lb-card' : 'lb-card';
+          if (myTurn && c.rank === s.themeRank) cls += ' lb-theme';
+          return {
+            size: 'lg',
+            selected: selectedCards.indexOf(c.id) !== -1,
+            className: cls,
+            attrs: myTurn ? 'onclick="window._lbToggleCard(\'' + c.id + '\')"' : ''
+          };
+        }
+      });
     },
 
     renderActions: function(s, selfIdx, winner) {
@@ -240,6 +232,10 @@
 
       if (!isAlive && winner == null) {
         html += '<div style="font-size:13px;color:var(--danger);text-align:center;width:100%;">' + _t('lb_spectating') + '</div>';
+      } else if (myTurn && (s.hands[selfIdx] || []).length === 0) {
+        // Out of cards: calling the bluff is the only move left
+        html += '<div style="font-size:13px;color:var(--text-muted);text-align:center;width:100%;">' + _t('lb_must_suspect') + '</div>';
+        html += '<button class="btn btn-sm" style="background:var(--danger);color:#fff;border:none;" onclick="window._lbSuspect()">' + _t('lb_suspect_btn') + '</button>';
       } else if (myTurn) {
         var selCount = selectedCards.length;
         html += '<button class="btn btn-sm btn-primary" onclick="window._lbPlayCards()" ' +
@@ -255,16 +251,7 @@
   });
 
   function cardSpan(c) {
-    var bg = '#fff', label, color;
-    if (c.suit === 'wild') { bg = 'linear-gradient(135deg,#fef9e7,#fdf0d5)'; label = '★'; color = '#c8a45c'; }
-    else if (c.suit === 'ghost') { bg = 'linear-gradient(135deg,#2a2a2a,#1a1a1a)'; label = '👻'; color = '#fff'; }
-    else { label = SUIT_SYMBOL[c.suit] + c.rank; color = SUIT_COLOR[c.suit] || '#1a1a1a'; }
-    return '<span style="display:inline-flex;align-items:center;justify-content:center;' +
-      'width:44px;height:58px;border-radius:8px;' +
-      'background:' + bg + ';border:1px solid var(--border);' +
-      'font-size:14px;font-weight:700;color:' + color + ';' +
-      'box-shadow:0 1px 4px rgba(0,0,0,0.1);line-height:1;">' +
-      label + '</span>';
+    return window.CardUI.render(c, { size: 'sm' });
   }
 
   window._lbToggleCard = function(id) {

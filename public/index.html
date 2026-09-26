@@ -18,7 +18,7 @@
       </div>
       <div class="hero-stats">
         <div class="hero-stat">
-          <strong>23</strong>
+          <strong id="gameCount">32</strong>
           <span>款游戏</span>
         </div>
         <div class="hero-stat">
@@ -166,12 +166,36 @@ function buildBrowseCard(game) {
   '</button>';
 }
 
+// The floating button names the game it will open, so a tap is never a surprise
 function updateQuickCreate() {
-  document.getElementById('quickCreate').textContent = typeof _t === 'function' ? _t('create_room') : '\u521b\u5efa\u623f\u95f4';
+  const label = typeof _t === 'function' ? _t('create_room') : '创建房间';
+  const game = getGameInfo(selectedGame);
+  document.getElementById('quickCreate').innerHTML = '<span class="qc-label">' + escapeHtml(label) + '</span>' +
+    (game && game.name ? '<span class="qc-game">' + escapeHtml(game.name) + '</span>' : '');
+}
+
+// Pinyin for game names, so typing "ddz" or "doudizhu" finds 斗地主
+const NAME_PINYIN = {
+  '井字棋': 'jing zi qi', '五子棋': 'wu zi qi', '达芬奇密码': 'da fen qi mi ma', '斗地主': 'dou di zhu',
+  '爆炸猫': 'bao zha mao', '魔力桥': 'mo li qiao', '数独': 'shu du', '24点': 'er shi si dian',
+  '扫雷竞速': 'sao lei jing su', '数字炸弹': 'shu zi zha dan', '抽鬼牌': 'chou gui pai', '骗子酒馆': 'pian zi jiu guan',
+  '大老二': 'da lao er', '麻将': 'ma jiang', '德州扑克': 'de zhou pu ke', '飞行棋': 'fei xing qi',
+  '贪吃蛇大乱斗': 'tan chi she da luan dou', '中国象棋': 'zhong guo xiang qi', '国际象棋': 'guo ji xiang qi',
+  '西洋跳棋': 'xi yang tiao qi', '四子棋': 'si zi qi', '黑白棋': 'hei bai qi', '围棋 9路': 'wei qi jiu lu',
+  '大富翁': 'da fu weng', '合成大西瓜': 'he cheng da xi gua', '羊了个羊': 'yang le ge yang', '你画我猜': 'ni hua wo cai',
+  '战舰': 'zhan jian', '红心大战': 'hong xin da zhan', '真心话大冒险': 'zhen xin hua da mao xian'
+};
+function pinyinKeys(name) {
+  const py = NAME_PINYIN[name];
+  if (!py) return '';
+  const syl = py.split(' ');
+  return syl.join('') + ' ' + syl.map(function(x) { return x[0]; }).join('');
 }
 
 function matches(game) {
   const haystack = [
+    game.id,
+    pinyinKeys(game.name),
     game.name,
     game.subtitle,
     game.description,
@@ -181,7 +205,7 @@ function matches(game) {
   const allLabel = (typeof _t === 'function' ? _t('all_categories') : '\u5168\u90e8');
   if (activeCategory !== allLabel && game.category !== activeCategory) return false;
   if (!searchText) return true;
-  return haystack.indexOf(searchText) >= 0;
+  return haystack.indexOf(searchText) >= 0 || haystack.indexOf(searchText.replace(/\s+/g, '')) >= 0;
 }
 
 function bindSelection(containerSelector) {
@@ -212,6 +236,8 @@ function renderCategories() {
 }
 
 function renderCatalog() {
+  const countEl = document.getElementById('gameCount');
+  if (countEl) countEl.textContent = catalog.length;
   document.getElementById('featuredStrip').innerHTML = featuredGames.map(buildFeaturedCard).join('');
   const filtered = catalog.filter(matches);
   document.getElementById('gameGrid').innerHTML = filtered.map(buildBrowseCard).join('');
@@ -423,8 +449,7 @@ if (sessionStorage.getItem('_returnFromGame')) {
   if (el) el.placeholder = _t('search_placeholder');
   el = document.getElementById('emptyState');
   if (el) el.textContent = _t('no_results');
-  el = document.getElementById('quickCreate');
-  if (el) el.textContent = _t('quick_start');
+  updateQuickCreate();
   renderResumeBanner();
   el = document.getElementById('resumeBtn');
   if (el) el.textContent = _t('resume_btn');

@@ -3,6 +3,7 @@
   window.gameRenderers = window.gameRenderers || new Map();
 
   var selected = {};
+  var _lastHandLen = 0;
   var SUIT_SYMBOL = { s: '♠', h: '♥', c: '♣', d: '♦' };
   var SUIT_COLOR = { s: '#1a1a1a', h: '#e74c3c', c: '#1a1a1a', d: '#e74c3c' };
   var TYPE_NAMES = {
@@ -14,11 +15,11 @@
   window.gameRenderers.set('bigtwo', {
     init: function(container) {
       container.innerHTML =
-        '<div id="btWrap" style="width:100%;max-width:420px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
+        '<div id="btWrap" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
           '<div id="btOpponents" style="display:flex;justify-content:space-around;gap:8px;"></div>' +
           '<div id="btPlayArea" style="min-height:80px;background:var(--bg);border-radius:var(--radius-sm);padding:12px 16px;display:flex;flex-direction:column;align-items:center;gap:6px;"></div>' +
           '<div id="btHint" style="display:none;text-align:center;font-size:13px;padding:4px 8px;background:var(--bg);border-radius:12px;"></div>' +
-          '<div id="btHand" style="min-height:56px;display:flex;flex-wrap:wrap;justify-content:center;gap:4px;padding:8px 0;"></div>' +
+          '<div id="btHand" style="min-height:92px;padding:4px 0;"></div>' +
           '<div id="btActions" style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;"></div>' +
         '</div>';
     },
@@ -96,31 +97,22 @@
       var el = document.getElementById('btHand');
       if (!el) return;
       var hand = s.hands[selfIdx] || [];
-      if (hand.length === 0) { el.innerHTML = ''; return; }
+      if (hand.length === 0) { el.innerHTML = ''; _lastHandLen = 0; return; }
 
       var myTurn = s.currentPlayer === selfIdx && winner == null;
-      var html = '';
-      for (var i = 0; i < hand.length; i++) {
-        var c = hand[i];
-        var isSel = selected[c.id] ? true : false;
-        var style = 'display:inline-flex;align-items:center;justify-content:center;' +
-          'width:48px;height:64px;border-radius:8px;' +
-          'background:#fff;border:1px solid var(--border);' +
-          'font-size:14px;font-weight:700;cursor:' + (myTurn ? 'pointer' : 'default') + ';' +
-          'transition:transform 0.12s,box-shadow 0.12s;' +
-          'box-shadow:0 1px 4px rgba(0,0,0,0.1);line-height:1;';
-        if (isSel) {
-          style += 'transform:translateY(-16px);box-shadow:0 4px 12px rgba(0,0,0,0.2);border-color:var(--accent);';
+      var deal = hand.length > _lastHandLen + 3;
+      _lastHandLen = hand.length;
+      el.innerHTML = window.CardUI.group(hand, {
+        layout: 'hand',
+        deal: deal,
+        cardOpts: function(c) {
+          return {
+            selected: !!selected[c.id],
+            className: myTurn ? 'pc-selectable bt-card' : 'bt-card',
+            attrs: myTurn ? 'onclick="window._btToggleCard(\'' + c.id + '\')"' : ''
+          };
         }
-        var color = SUIT_COLOR[c.suit] || '#1a1a1a';
-        var label = SUIT_SYMBOL[c.suit] + c.rank;
-        html += '<div class="bt-card" data-id="' + c.id + '" style="' + style + 'color:' + color + ';"';
-        if (myTurn) {
-          html += ' onclick="window._btToggleCard(\'' + c.id + '\')"';
-        }
-        html += '>' + label + '</div>';
-      }
-      el.innerHTML = html;
+      });
     },
 
     renderActions: function(s, selfIdx, winner) {
@@ -141,14 +133,7 @@
   });
 
   function cardSpan(c) {
-    var color = SUIT_COLOR[c.suit] || '#1a1a1a';
-    var label = SUIT_SYMBOL[c.suit] + c.rank;
-    return '<span style="display:inline-flex;align-items:center;justify-content:center;' +
-      'width:38px;height:50px;border-radius:6px;' +
-      'background:#fff;border:1px solid var(--border);' +
-      'font-size:12px;font-weight:700;color:' + color + ';' +
-      'box-shadow:0 1px 3px rgba(0,0,0,0.1);line-height:1;">' +
-      label + '</span>';
+    return window.CardUI.render(c, { size: 'sm' });
   }
 
   // ---- Card type detection (client-side) ----
@@ -225,15 +210,11 @@
   window._btToggleCard = function(id) {
     if (selected[id]) { delete selected[id]; }
     else { selected[id] = true; }
-    // Re-render and update hint
+    var cardEl = document.querySelector('#btHand [data-id="' + id + '"]');
+    if (cardEl) cardEl.classList.toggle('is-selected', !!selected[id]);
     var state = window._btState;
     if (state) {
-      var renderer = window.gameRenderers.get('bigtwo');
-      var container = document.getElementById('boardArea');
       var playerIndex = parseInt(sessionStorage.getItem('playerIndex'));
-      if (renderer && renderer.renderHand) {
-        renderer.renderHand(state, playerIndex, state.winner);
-      }
       updateHint(state, playerIndex);
     }
   };

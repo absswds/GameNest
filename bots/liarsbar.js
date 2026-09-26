@@ -13,7 +13,8 @@ exports.createBot = function(playerIndex) {
         return { action: 'shoot' };
       }
 
-      if (hand.length === 0) return { action: 'play', cardIds: [] };
+      // No cards left: the only legal move is to call the bluff
+      if (hand.length === 0) return { action: 'suspect' };
 
       const themeRank = state.themeRank;
       const exactThemeCards = hand.filter((card) => card.rank === themeRank);

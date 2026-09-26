@@ -2826,3 +2826,281 @@ body.lobby-page {
     transform: translateY(24px);
   }
 }
+
+/* ====== Game Elements (shared tokens + CardUI) ====== */
+:root {
+  --ge-ink: #1c1b19;
+  --ge-ink-soft: #5d5850;
+  --ge-paper: #fffdf8;
+  --ge-line: rgba(28, 27, 25, 0.12);
+  --ge-red: #c0392b;
+  --ge-gold: #b9954f;
+  --ge-felt: #2f5d4a;
+  --ge-felt-dark: #1f4032;
+  --ge-wood: #d9b98a;
+  --ge-shadow-rest: 0 1px 2px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.06);
+  --ge-shadow-lift: 0 4px 12px rgba(0,0,0,0.12), 0 16px 32px rgba(0,0,0,0.14);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 320ms;
+  --ease: cubic-bezier(.2,.8,.2,1);
+  --card-w: 52px;
+}
+
+.pc-card {
+  --w: var(--card-w);
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--w);
+  height: calc(var(--w) * 1.4);
+  border-radius: calc(var(--w) * 0.11);
+  background: var(--ge-paper);
+  border: 1px solid var(--ge-line);
+  box-shadow: var(--ge-shadow-rest);
+  color: var(--ge-ink);
+  font-family: 'Nunito', 'LXGW WenKai', sans-serif;
+  font-weight: 800;
+  line-height: 1;
+  user-select: none;
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+.pc-sm { --w: 38px; }
+.pc-md { --w: var(--card-w); }
+.pc-lg { --w: 68px; }
+.pc-red { color: var(--ge-red); }
+
+.pc-corner {
+  position: absolute;
+  top: calc(var(--w) * 0.07);
+  left: calc(var(--w) * 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: calc(var(--w) * 0.26);
+  letter-spacing: -0.5px;
+}
+.pc-corner .pc-suit { font-size: calc(var(--w) * 0.2); }
+.pc-corner-br { top: auto; left: auto; bottom: calc(var(--w) * 0.07); right: calc(var(--w) * 0.08); transform: rotate(180deg); }
+.pc-sm .pc-corner-br { display: none; }
+.pc-pip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--w) * 0.5);
+  opacity: 0.9;
+}
+.pc-sm .pc-pip { font-size: calc(var(--w) * 0.34); top: 30%; }
+
+.pc-joker .pc-joker-text {
+  position: absolute;
+  top: calc(var(--w) * 0.08);
+  left: calc(var(--w) * 0.08);
+  writing-mode: vertical-rl;
+  font-size: calc(var(--w) * 0.17);
+  letter-spacing: 1px;
+}
+.pc-wild { background: linear-gradient(145deg, #fffaf0, #f3e6c8); color: var(--ge-gold); }
+.pc-ghost { background: linear-gradient(145deg, #34322e, #1c1b19); color: #fff; }
+.pc-back {
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.07) 0 4px, transparent 4px 8px),
+    linear-gradient(145deg, #2d3a4a, #1b2430);
+  border-color: rgba(255,255,255,0.18);
+  box-shadow: inset 0 0 0 3px var(--ge-paper), var(--ge-shadow-rest);
+}
+
+.pc-card.is-selected { transform: translateY(-14px); box-shadow: var(--ge-shadow-lift); border-color: var(--ge-gold); }
+.pc-card.is-disabled { opacity: 0.45; }
+.pc-card[data-id] { cursor: default; }
+.pc-selectable { cursor: pointer; }
+.pc-selectable:active { transform: translateY(-4px) scale(0.98); transition-duration: var(--dur-fast); }
+@media (hover: hover) {
+  .pc-selectable:not(.is-selected):hover { transform: translateY(-6px); box-shadow: var(--ge-shadow-lift); }
+}
+
+.pc-group { display: flex; align-items: flex-end; justify-content: center; gap: 6px; }
+.pc-layout-hand {
+  justify-content: flex-start; /* centred via auto margins so overflow stays scrollable */
+  gap: 0;
+  padding-top: 18px;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.pc-layout-hand::-webkit-scrollbar { display: none; }
+.pc-layout-hand > .pc-card:first-child { margin-left: auto; }
+.pc-layout-hand > .pc-card:last-child { margin-right: auto; }
+.pc-layout-hand .pc-card + .pc-card { margin-left: calc(var(--w) * -0.42); }
+@media (min-width: 900px) and (hover: hover) {
+  .pc-layout-hand .pc-card + .pc-card { margin-left: calc(var(--w) * -0.34); }
+}
+@media (max-width: 560px) {
+  :root { --card-w: 46px; }
+  .pc-layout-hand { padding-left: 4px; padding-right: 4px; }
+}
+
+@keyframes pcDeal {
+  from { opacity: 0; transform: translateY(-24px) scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+.pc-deal .pc-card { animation: pcDeal var(--dur-slow) var(--ease) both; animation-delay: calc(var(--i, 0) * 30ms); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-card { transition: opacity var(--dur) linear; }
+  .pc-deal .pc-card { animation-name: fadeIn; }
+}
+
+/* Felt table surface (poker-style games) */
+.ge-felt {
+  background:
+    radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.10), transparent 65%),
+    linear-gradient(160deg, var(--ge-felt), var(--ge-felt-dark));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), inset 0 10px 30px rgba(0,0,0,0.25);
+  color: #fff;
+}
+.ge-felt > div[style*="text-muted"] { color: rgba(255,255,255,0.66) !important; }
+.ge-felt .pc-card:not(.pc-back) { box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+.pc-back.tx-slot {
+  background: transparent;
+  border: 1.5px dashed rgba(255,255,255,0.28);
+  box-shadow: none;
+}
+.pc-card.lb-theme:not(.is-selected) { box-shadow: 0 0 0 2px var(--ge-gold), var(--ge-shadow-rest); }
+.pc-group { max-width: 100%; min-width: 0; }
+#ddzWrap, #btWrap, #txWrap, #lbWrap { min-width: 0; }
+
+/* Action rows in card games: compact buttons side by side, not full-width stacks */
+#ddzActions, #btActions, #txActions, #lbActions { flex-wrap: wrap; gap: 8px; }
+#ddzActions .btn, #btActions .btn, #txActions .btn, #lbActions .btn {
+  width: auto;
+  flex: 1 1 0;
+  min-width: 84px;
+  max-width: 160px;
+  margin: 0;
+}
+@media (max-width: 560px) {
+  #ddzActions .btn, #btActions .btn, #txActions .btn, #lbActions .btn { min-height: 46px; }
+}
+/* Board host must be allowed to shrink, otherwise wide content (long hands) widens the page */
+#boardArea { min-width: 0; max-width: 100%; }
+#ddzActions .btn, #btActions .btn, #txActions .btn, #lbActions .btn { white-space: nowrap; }
+
+/* ====== Tic-tac-toe (refresh) ====== */
+.ttt-grid { gap: 8px; padding: 8px; background: var(--ge-line); border-radius: 22px;
+  /* minmax(0,…) so a placed mark never widens its column */
+  grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); }
+.ttt-cell {
+  position: relative;
+  min-width: 0; min-height: 0; padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: var(--ge-paper);
+  box-shadow: var(--ge-shadow-rest);
+  transition: background var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.ttt-cell:disabled { cursor: default; }
+.ttt-cell.open { cursor: pointer; }
+@media (hover: hover) { .ttt-cell.open:hover { background: #fff; } }
+.ttt-cell.open:active { transform: scale(0.97); }
+.ttt-mark { width: 62%; height: 62%; fill: none; stroke-width: 4.5; stroke-linecap: round; }
+.ttt-cell.p1 .ttt-mark { stroke: var(--ge-ink); }
+.ttt-cell.p2 .ttt-mark { stroke: var(--ge-gold); }
+.ttt-cell.ttt-new .ttt-mark path,
+.ttt-cell.ttt-new .ttt-mark circle { stroke-dasharray: 1; stroke-dashoffset: 1; animation: tttDraw var(--dur-slow) var(--ease) forwards; }
+.ttt-cell.ttt-new .ttt-mark path + path { animation-delay: 120ms; }
+@keyframes tttDraw { to { stroke-dashoffset: 0; } }
+.ttt-cell.win-cell { background: #f6ecd6 !important; }
+.ttt-cell.win-cell .ttt-mark { animation: tttWin 600ms var(--ease) both; }
+@keyframes tttWin { 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .ttt-cell.ttt-new .ttt-mark path, .ttt-cell.ttt-new .ttt-mark circle { animation: none; stroke-dashoffset: 0; }
+  .ttt-cell.win-cell .ttt-mark { animation: none; }
+}
+
+/* Scroll-position bar for horizontally scrolling hands (see CardUI) */
+.hs-bar { position: relative; height: 4px; margin: 6px auto 2px; width: min(160px, 50%); border-radius: 2px; background: var(--ge-line, rgba(0,0,0,.08)); cursor: pointer; }
+.hs-bar::before { content: ""; position: absolute; inset: -10px 0; } /* larger tap target */
+.hs-bar > i { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: var(--ge-ink, #1c1b19); opacity: .45; transition: left 80ms linear; }
+.hs-bar[hidden] { display: none; }
+
+/* ====== Lobby: named create button + compact phone layout ====== */
+.lobby-page .quick-create-btn {
+  width: auto; height: auto; min-height: 52px;
+  padding: 8px 22px;
+  border-radius: 999px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  white-space: nowrap;
+}
+.lobby-page .quick-create-btn .qc-label { font-size: 11px; font-weight: 600; opacity: .7; }
+.lobby-page .quick-create-btn .qc-game { font-size: 15px; font-weight: 800; }
+
+@media (max-width: 560px) {
+  /* Button: centred pill at the thumb, never covering card text on the right edge */
+  .lobby-page .quick-create-btn {
+    left: 50%; right: auto; width: auto; height: auto;
+    transform: translateX(-50%);
+    flex-direction: row; gap: 8px; min-height: 48px; padding: 0 22px;
+  }
+  .lobby-page .quick-create-btn:active { transform: translateX(-50%) scale(0.98); }
+  .lobby-page .quick-create-btn .qc-label { font-size: 13px; }
+  .lobby-page .discovery-hint { display: none; }
+
+  /* Featured: one horizontally swipeable row instead of a tall list */
+  .lobby-page .featured-strip {
+    display: flex !important; grid-template-columns: none !important;
+    gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
+    margin: 0; padding: 2px 0 6px; scrollbar-width: none;
+  }
+  .lobby-page .featured-strip::-webkit-scrollbar { display: none; }
+  .lobby-page .featured-strip .featured-card,
+  .lobby-page .featured-strip .featured-card:first-child {
+    flex: 0 0 38%; display: flex !important; flex-direction: column !important;
+    grid-template-columns: none !important; min-height: 0 !important; scroll-snap-align: start;
+  }
+  .lobby-page .featured-strip .featured-card .featured-media,
+  .lobby-page .featured-strip .featured-card:first-child .featured-media {
+    width: 100% !important; height: auto !important; aspect-ratio: 1 / 1; min-height: 0 !important;
+  }
+  .lobby-page .featured-strip .featured-content { padding: 8px 10px 10px !important; }
+  .lobby-page .featured-strip .featured-content p,
+  .lobby-page .featured-strip .featured-topline span:first-child { display: none !important; }
+  .lobby-page .featured-strip .featured-content h3 { font-size: 15px !important; margin: 2px 0 0 !important; }
+
+  /* Categories: single swipeable row */
+  .lobby-page .category-chips {
+    flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none;
+    margin: 0; padding: 0;
+  }
+  .lobby-page .category-chips::-webkit-scrollbar { display: none; }
+  .lobby-page .category-chip { flex: 0 0 auto; }
+
+  /* All games: two-column tiles, cover on top, only what you need to pick */
+  .lobby-page .browse-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+  .lobby-page .browse-card {
+    display: flex !important; flex-direction: column !important;
+    grid-template-columns: none !important; min-height: 0 !important;
+  }
+  .lobby-page .browse-card-media { width: 100% !important; height: auto !important; aspect-ratio: 16 / 11; min-height: 0 !important; }
+  .lobby-page .browse-card-body { padding: 8px 10px 10px !important; gap: 2px !important; }
+  .lobby-page .browse-card-body p,
+  .lobby-page .browse-card-meta span:first-child { display: none !important; }
+  .lobby-page .browse-card-body h3 { font-size: 15px !important; margin: 0 !important; }
+}
+
+@media (max-width: 560px) {
+  /* Phone: featured just repeats the first games of the grid below — drop it */
+  .lobby-page .lobby-discovery { display: none; }
+  /* Shorter hero so the game grid starts within the first screen */
+  .lobby-page .lobby-hero .hero-copy { min-height: 0 !important; height: auto !important; padding: 16px 18px !important; }
+  .lobby-page .hero-title { font-size: 26px !important; margin: 0 !important; }
+  .lobby-page .hero-subtitle,
+  .lobby-page .lobby-hero .eyebrow { display: none !important; }
+  .lobby-page .hero-panels { padding: 12px 14px !important; align-content: start; }
+  .lobby-page .hero-panels .hero-panel { padding: 0 !important; }
+  .lobby-page .lobby-browser .eyebrow { display: none; }
+  .lobby-page .panel-heading { display: none; }
+}
