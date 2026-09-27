@@ -19,8 +19,9 @@
     '.tf-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;}' +
     '.tf-round{font-size:14px;font-weight:600;color:var(--accent);text-align:center;}' +
     '.tf-nums{display:flex;gap:12px;justify-content:center;}' +
-    '.tf-num{width:64px;height:80px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;cursor:pointer;transition:transform .12s,opacity .3s;color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.15);}' +
-    '.tf-num:active{transform:scale(.92);}' +
+    '.tf-num{width:72px;height:72px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:800;cursor:pointer;transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .3s;background:linear-gradient(180deg,#fffdf6,#f1eadb);border:1px solid var(--ge-line,rgba(28,27,25,.12));box-shadow:0 2px 0 #d9ceb8,0 4px 10px rgba(0,0,0,.08);color:var(--ge-ink,#1c1b19);font-family:"Nunito",system-ui,sans-serif;font-variant-numeric:tabular-nums;}' +
+    '.tf-num:active{transform:scale(.95);}' +
+    '@media (hover:hover){.tf-num:hover{transform:translateY(-3px);box-shadow:var(--ge-shadow-lift,0 8px 18px rgba(0,0,0,.14));}}' +
     '.tf-num.used{opacity:.25;pointer-events:none;}' +
     '.tf-expr{min-height:46px;font-size:20px;font-weight:700;padding:8px 14px;background:var(--bg);border-radius:12px;text-align:center;width:100%;word-break:break-all;}' +
     '.tf-ops{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}' +
@@ -34,7 +35,6 @@
     '.tf-lb-row:last-child{border-bottom:none;}' +
     '.tf-lb-rank{font-weight:800;font-size:18px;min-width:28px;}' +
     '.tf-lb-wins{font-weight:600;color:var(--accent);}' +
-    '.tf-n0{background:#e74c3c;} .tf-n1{background:#3498db;} .tf-n2{background:#2ecc71;} .tf-n3{background:#f39c12;}' +
     '.tf-hint{text-align:center;font-size:13px;color:#5a9e6f;padding:4px;font-weight:600;min-height:18px;}';
 
   var _numColors = ['tf-n0', 'tf-n1', 'tf-n2', 'tf-n3'];
@@ -437,75 +437,45 @@
     return null;
   }
 
-  function generateHint(solution, nums) {
-    // Progressive hint, each level gives a useful clue based on actual numbers.
-    // Cycles 1-4, never reveals full answer.
-    if (!solution) return null;
-    var ops = solution.ops;
-    var a = solution.nums[0], b = solution.nums[1], c = solution.nums[2], d = solution.nums[3];
+  var HINT_STEPS = 4;
 
-    // The genuine first (innermost) operation depends on the parenthesization pattern.
-    // Only patterns 1 & 3 actually compute nums[0] op nums[1] first.
-    function calcSym(x, y, sym) {
+  function generateHint(solution) {
+    // Four progressive steps, from direction to the concrete first move; never the full answer.
+    if (!solution) return null;
+    var ops = solution.ops, n = solution.nums, pat = solution.pattern;
+    function calc(x, y, sym) {
       if (sym === '×') return x * y;
       if (sym === '+') return x + y;
       if (sym === '-') return x - y;
       if (sym === '÷') return x / y;
       return null;
     }
-    function firstStep() {
-      var n = solution.nums;
-      switch (solution.pattern) {
-        case 2: return { x: n[1], y: n[2], op: ops[1] }; // (a op (b op c)) op d → b op c
-        case 4: return { x: n[1], y: n[2], op: ops[1] }; // a op ((b op c) op d) → b op c
-        case 5: return { x: n[2], y: n[3], op: ops[2] }; // a op (b op (c op d)) → c op d
-        default: return { x: n[0], y: n[1], op: ops[0] }; // patterns 1 & 3 → a op b
-      }
+    function fmt(v) { return Number.isInteger(v) ? '' + v : (Math.round(v * 100) / 100) + ''; }
+    // Final step = left op right. `single` is the number kept for the last step (null when split into two pairs).
+    var lastOp, single, rest, groupVal, pairA, pairB;
+    if (pat === 3) {
+      lastOp = ops[1];
+      pairA = [n[0], n[1], calc(n[0], n[1], ops[0])];
+      pairB = [n[2], n[3], calc(n[2], n[3], ops[2])];
+    } else if (pat === 1 || pat === 2) {
+      lastOp = ops[2]; single = n[3]; rest = [n[0], n[1], n[2]];
+      groupVal = pat === 1 ? calc(calc(n[0], n[1], ops[0]), n[2], ops[1]) : calc(n[0], calc(n[1], n[2], ops[1]), ops[0]);
+    } else {
+      lastOp = ops[0]; single = n[0]; rest = [n[1], n[2], n[3]];
+      groupVal = pat === 4 ? calc(calc(n[1], n[2], ops[1]), n[3], ops[2]) : calc(n[1], calc(n[2], n[3], ops[2]), ops[1]);
     }
-
-    var level = ((_hintLevel - 1) % 4) + 1;
-    switch (level) {
-      case 1: {
-        // Only reveal which operators are used — no numbers, no result
-        var opSet = ops.filter(function(o, i, a) { return a.indexOf(o) === i; });
-        var opNames = { '×': t('tf_op_mul'), '+': t('tf_op_add'), '-': t('tf_op_sub'), '÷': t('tf_op_div') };
-        var opWords = opSet.map(function(o) { return opNames[o] || o; });
-        var hasMul = ops.indexOf('×') >= 0, hasDiv = ops.indexOf('÷') >= 0;
-        if (hasMul && hasDiv) return t('tf_hint_muldiv');
-        if (hasMul) return t('tf_hint_mul');
-        if (hasDiv) return t('tf_hint_div');
-        return tf('tf_hint_addsub', opWords.join(', '));
-      }
+    switch (_hintLevel) {
+      case 1:
+        return t({ '×': 'tf_h1_mul', '+': 'tf_h1_add', '-': 'tf_h1_sub', '÷': 'tf_h1_div' }[lastOp]);
       case 2:
-        // The overall bracket structure (blanks only, no numbers)
-        if (solution.pattern === 1) return t('tf_pattern_1');
-        if (solution.pattern === 2) return t('tf_pattern_2');
-        if (solution.pattern === 3) return t('tf_pattern_3');
-        if (solution.pattern === 4) return t('tf_pattern_4');
-        if (solution.pattern === 5) return t('tf_pattern_5');
-        return t('tf_pattern_fallback');
-      case 3: {
-        // Intermediate target
-        if (solution.pattern === 1 || solution.pattern === 2) {
-          var t1_1 = solution.pattern === 1 ? calcSym(a, b, ops[0]) : 0;
-          var t1_2 = solution.pattern === 2 ? calcSym(b, c, ops[1]) : 0;
-          var target = solution.pattern === 1 ? t1_1 : t1_2;
-          if (target !== null && Number.isInteger(target)) return tf('tf_target', Math.round(target));
-        }
-        if (solution.pattern === 3) {
-          var ta = calcSym(a, b, ops[0]);
-          var tb = calcSym(c, d, ops[2]);
-          if (ta !== null && tb !== null && Number.isInteger(ta) && Number.isInteger(tb))
-            return tf('tf_two_groups', Math.round(ta), Math.round(tb));
-        }
-        return t('tf_think_intermediate');
-      }
-      case 4: {
-        // First actual step with result
-        var fs = firstStep();
-        var res = calcSym(fs.x, fs.y, fs.op);
-        var resStr = res !== null ? (Number.isInteger(res) ? res : res.toFixed(1)) : '?';
-        return tf('tf_first_step', fs.x, fs.op, fs.y, resStr);
+        if (pat === 3) return tf('tf_h2_pairs', pairA[0], pairA[1], pairB[0], pairB[1]);
+        return tf('tf_h2_single', single);
+      case 3:
+        if (pat === 3) return tf('tf_h3_pairs', fmt(pairA[2]), fmt(pairB[2]), lastOp);
+        return tf('tf_h3_single', rest.join('、'), fmt(groupVal), single);
+      default: {
+        var fs = pat === 2 || pat === 4 ? [n[1], n[2], ops[1]] : pat === 5 ? [n[2], n[3], ops[2]] : [n[0], n[1], ops[0]];
+        return tf('tf_first_step', fs[0], fs[2], fs[1], fmt(calc(fs[0], fs[1], fs[2])));
       }
     }
   }
@@ -539,7 +509,7 @@
         clearInterval(_hintCooldownTimer);
         _hintCooldownTimer = null;
         // Only re-enable if not exhausted
-        if (_hintLevel < 16) btn.disabled = false;
+        if (_hintLevel < HINT_STEPS) btn.disabled = false;
         btn.textContent = baseLabel;
       } else {
         btn.textContent = isOpening ? tf('tf_hint_wait', remain) : tf('tf_hint_wait_short', remain);
@@ -550,7 +520,7 @@
   window._tfHint = function() {
     var hintEl = document.getElementById('tfHint');
     var hintBtn = document.getElementById('tfHintBtn');
-    if (hintBtn && hintBtn.disabled) return; // guard against spam / programmatic calls
+    if ((hintBtn && hintBtn.disabled) || _hintLevel >= HINT_STEPS) return; // guard against spam / programmatic calls
     if (!_lastState || !_lastState.numbers) { if (hintEl) hintEl.textContent = t('tf_no_numbers'); return; }
     var solution = findSolution(_lastState.numbers.slice());
     if (!solution) {
@@ -559,13 +529,11 @@
       return;
     }
     _hintLevel++;
-    var hintText = generateHint(solution, _lastState.numbers);
+    var hintText = generateHint(solution);
     if (hintEl && hintText) {
-      var hintLabels = [null, 'tf_hint_level_1', 'tf_hint_level_2', 'tf_hint_level_3', 'tf_hint_level_4', 'tf_hint_level_5'];
-      var hintLabel = _hintLevel > 5 ? t('tf_hint_level_5') : (_hintLevel > 0 ? t(hintLabels[_hintLevel]) : '');
-      hintEl.textContent = '💡 [' + hintLabel + '] ' + hintText;
+      hintEl.textContent = '💡 ' + tf('tf_hint_step', _hintLevel, HINT_STEPS) + '  ' + hintText;
     }
-    if (_hintLevel >= 16) {
+    if (_hintLevel >= HINT_STEPS) {
       if (hintBtn) { hintBtn.disabled = true; hintBtn.textContent = t('tf_hint_exhausted'); }
     } else {
       var fewPlayers = _lastState && _lastState._hasBots && (_lastState._realPlayerCount || 99) < 3;

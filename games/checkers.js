@@ -210,7 +210,7 @@ exports.playerView = function(state, playerIndex) {
     moveHistory: state.moveHistory,
     _playerCount: state._playerCount,
   };
-  if (state.winner === null && state.currentPlayer === playerIndex) {
+  if (state.board && state.winner === null && state.currentPlayer === playerIndex) {
     var origin = state.mustCapture ? { row: state._lastCaptureRow, col: state._lastCaptureCol } : null;
     view.legalMoves = getLegalMoves(state.board, playerIndex, state.mustCapture, origin);
   } else {

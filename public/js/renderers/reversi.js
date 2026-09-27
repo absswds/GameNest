@@ -3,8 +3,8 @@
   window.gameRenderers = window.gameRenderers || new Map();
   var canvas, ctx, W, H, cs, margin;
   var ROWS = 8, COLS = 8;
-  var BOARD_COLOR = '#2a8a3a';
-  var BOARD_BORDER = '#1e6b2a';
+  var BOARD_COLOR = '#2f5d4a';
+  var BOARD_BORDER = '#7a5a3a';
 
   var animState = {
     running: false,
@@ -298,13 +298,14 @@
       prevBoard = null;
 
       var resize = function() {
-        var avW = window.innerWidth - (window.innerWidth > 600 ? 80 : 32);
-        var avH = window.innerHeight - 240;
+        var fit = window.boardFit(container);
+        var avW = fit.w;
+        var avH = fit.h - 50;
         W = Math.min(avW, avH, 720);
         W = Math.max(W, 240);
         var dpr = window.devicePixelRatio || 1;
-        cs = (W - 80) / Math.max(COLS, 8);
-        margin = 50;
+        margin = 14;
+        cs = (W - margin * 2) / Math.max(COLS, 8);
         H = margin * 2 + cs * Math.max(ROWS, 8) + 50;
         canvas.width = W * dpr; canvas.height = H * dpr;
         canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
@@ -367,12 +368,13 @@
         COLS = newSize;
         ROWS = newSize;
         // Recalc canvas size to fit the new board
-        var avW = window.innerWidth - (window.innerWidth > 600 ? 80 : 32);
-        var avH = window.innerHeight - 240;
+        var fit = window.boardFit(container);
+        var avW = fit.w;
+        var avH = fit.h - 50;
         W = Math.min(avW, avH, 720);
         W = Math.max(W, 240);
         var dpr2 = window.devicePixelRatio || 1;
-        cs = (W - 80) / Math.max(COLS, 8);
+        cs = (W - margin * 2) / Math.max(COLS, 8);
         H = margin * 2 + cs * Math.max(ROWS, 8) + 50;
         canvas.width = W * dpr2; canvas.height = H * dpr2;
         canvas.style.width = W + 'px'; canvas.style.height = H + 'px';

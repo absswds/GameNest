@@ -6,6 +6,7 @@ exports.createState = () => ({
   board: Array.from({ length: 15 }, () => Array(15).fill(null)),
   currentPlayer: 0,
   winner: null,
+  moveHistory: [],
 });
 
 exports.handleMove = (data, state, playerIndex) => {
@@ -18,6 +19,7 @@ exports.handleMove = (data, state, playerIndex) => {
   if (state.board[row][col] !== null) return 'gk_position_occupied';
 
   state.board[row][col] = playerIndex;
+  if (state.moveHistory) state.moveHistory.push({ row, col, side: playerIndex });
 
   const dirs = [[1,0],[0,1],[1,1],[1,-1]];
   for (const [dr, dc] of dirs) {

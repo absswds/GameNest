@@ -52,16 +52,16 @@
     '.rk-table-set:hover{border-color:var(--accent);}' +
     '.rk-table-set.target{border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,164,92,0.3);}' +
     '.rk-table-set.set-invalid{border-color:#e74c3c;}' +
-    '.rk-tile{width:38px;height:54px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;box-shadow:0 2px 5px rgba(0,0,0,.12);flex-shrink:0;cursor:pointer;transition:transform .12s,box-shadow .12s;position:relative;}' +
-    '.rk-tile:active{transform:scale(.93);}' +
-    '.rk-tile.selected{transform:translateY(-10px);box-shadow:0 6px 14px rgba(0,0,0,.25);}' +
+    '.rk-tile{width:38px;height:54px;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;background:linear-gradient(180deg,#fffdf6,#f1eadb);border:1px solid rgba(28,27,25,.14);box-shadow:0 2px 0 #d6ccb6,0 3px 6px rgba(0,0,0,.10);flex-shrink:0;cursor:pointer;transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s;position:relative;font-family:"Nunito",system-ui,sans-serif;}' +
+    '.rk-tile:active{transform:scale(.95);}' +
+    '.rk-tile.selected{transform:translateY(-8px);box-shadow:0 2px 0 #d6ccb6,0 10px 18px rgba(0,0,0,.18);border-color:var(--ge-gold,#b9954f);}' +
     '.rk-tile .rk-num{font-size:22px;line-height:1;}' +
     '.rk-tile .rk-color-dot{width:8px;height:8px;border-radius:50%;margin-top:3px;}' +
-    '.rk-tile-joker{background:linear-gradient(145deg,#c8a45c,#a8863a);color:#fff;}' +
-    '.rk-tile-black{background:linear-gradient(145deg,#444,#222);color:#fff;}' +
-    '.rk-tile-blue{background:linear-gradient(145deg,#2980b9,#1a5276);color:#fff;}' +
-    '.rk-tile-red{background:linear-gradient(145deg,#e74c3c,#922b21);color:#fff;}' +
-    '.rk-tile-orange{background:linear-gradient(145deg,#e67e22,#935116);color:#fff;}' +
+    '.rk-tile-joker{color:#b9954f;}' +
+    '.rk-tile-black{color:#1c1b19;}' +
+    '.rk-tile-blue{color:#1f5f99;}' +
+    '.rk-tile-red{color:#c0392b;}' +
+    '.rk-tile-orange{color:#c7741a;}' +
     '.rk-hand-wrap{overflow:visible;padding:4px 2px;margin:0 -4px;}' +
     '.rk-hand{display:flex;flex-wrap:wrap;gap:5px;min-height:70px;padding:4px;}' +
     '.rk-info{display:flex;justify-content:space-between;align-items:center;padding:4px 0;}' +

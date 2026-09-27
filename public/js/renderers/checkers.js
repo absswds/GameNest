@@ -188,7 +188,7 @@
     var boardH = cs * (ROWS - 1);
 
     // Board background
-    ctx.fillStyle = '#f0d9b5';
+    ctx.fillStyle = '#ecd6b0';
     ctx.fillRect(margin - 16, margin - 16, cs * (COLS - 1) + 32, boardH + 32);
 
     // Draw 8x8 checkerboard
@@ -197,16 +197,16 @@
         var x = margin + c * cs - cs * 0.5;
         var y = margin + r * cs - cs * 0.5;
         if ((r + c) % 2 === 0) {
-          ctx.fillStyle = '#eeeed2';
+          ctx.fillStyle = '#ecd6b0';
         } else {
-          ctx.fillStyle = '#769656';
+          ctx.fillStyle = '#a97c55';
         }
         ctx.fillRect(x, y, cs, cs);
       }
     }
 
     // Board border
-    ctx.strokeStyle = '#5a7a3a'; ctx.lineWidth = 3;
+    ctx.strokeStyle = '#7a5a3a'; ctx.lineWidth = 3;
     ctx.strokeRect(margin - cs * 0.5, margin - cs * 0.5, cs * COLS, cs * ROWS);
 
     // Valid move indicators
@@ -310,14 +310,15 @@
       prevBoard = null;
 
       var resize = function() {
-        var avW = window.innerWidth - (window.innerWidth > 600 ? 80 : 32);
-        var avH = window.innerHeight - 240;
+        var fit = window.boardFit(container);
+        var avW = fit.w;
+        var avH = fit.h - 34;
         W = Math.min(avW, avH, 960);
         W = Math.max(W, 240);
         var dpr = window.devicePixelRatio || 1;
-        cs = (W - 30) / COLS;
-        margin = 30 + cs * 0.5;
-        var H = margin * 2 + cs * (ROWS - 1);
+        cs = (W - 20) / COLS;
+        margin = 10 + cs * 0.5;
+        var H = margin * 2 + cs * (ROWS - 1) + 34;
         canvas.width = W * dpr; canvas.height = H * dpr;
         canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
         ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(dpr, dpr);

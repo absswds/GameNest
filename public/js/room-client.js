@@ -37,6 +37,7 @@
   const SOLO_GAMES = ['2048', 'sudoku', 'minesweeper', 'numberbomb', 'twentyfour', 'suikabattle', 'drawguess'];
 
   let roomOptions = {};
+  let match = null; // best-of-N score for board games, from the server
   let prevPlayerCount = 0;
   const gameInfo = _gt(game);
 
@@ -201,11 +202,13 @@
     if (nd) nd.textContent = _t('choose_avatar');
     if (el.nameInput) el.nameInput.placeholder = _t('name_placeholder');
     if (el.overlay) {
-      var btns = el.overlay.querySelectorAll('.btn-outline');
+      var btns = el.overlay.querySelectorAll('.btn-outline:not(#resultViewBoard)');
       if (btns.length >= 2) {
         btns[0].textContent = _t('return_to_room');
         btns[1].textContent = _t('back_to_lobby');
       }
+      var viewBtn = document.getElementById('resultViewBoard');
+      if (viewBtn) viewBtn.textContent = _t('view_board');
       var accentBtn = el.overlay.querySelector('.btn-accent');
       if (accentBtn) accentBtn.textContent = _t('play_again');
     }
@@ -251,6 +254,7 @@
         }
         players = msg.players || players;
         window._players = players;
+        if (msg.match !== undefined) match = msg.match;
         roomPhase = 'playing';
         showGame();
         updatePlayerBar();
@@ -258,6 +262,7 @@
       },
       game_started(msg) {
         state = msg.state;
+        if (msg.match !== undefined) match = msg.match;
         players = msg.players;
         window._players = players;
         roomPhase = 'playing';
@@ -307,6 +312,8 @@
       player_index_updated(msg) {
         playerIndex = msg.playerIndex;
         sessionStorage.setItem('playerIndex', msg.playerIndex);
+        // 多局比赛换边：提示这一局的先后手
+        if (roomPhase === 'playing' && match) showToast(_t(msg.playerIndex === 0 ? 'match_swap_first' : 'match_swap_second'));
         updateWaitingRoom();
       },
       player_joined(msg) {
@@ -350,6 +357,7 @@
       window._players = players;
       roomPhase = msg.phase || 'lobby';
       if (msg.options) roomOptions = msg.options;
+      if (msg.match !== undefined) match = msg.match;
       if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
       updateWaitingRoom();
       if (roomPhase === 'playing') {
@@ -418,6 +426,8 @@
   // 麻将竖屏放不下 14 张手牌（360dp 宽最多容 ~8 张可点的牌），锁横屏 + 沉浸式全屏。
   // 安卓走 WebAppBridge；普通浏览器退化到 Screen Orientation API（多数需已全屏，失败静默）。
   const IMMERSIVE_GAMES = ['mahjong-sichuan', 'mahjong-cantonese'];
+  // 方形棋盘游戏：宽屏时玩家栏放左侧、操作按钮放右侧，让棋盘占满中间高度
+  const SIDE_LAYOUT_GAMES = ['chess', 'checkers', 'reversi', 'go9', 'gomoku', 'chinesechess'];
   function setImmersiveLandscape(on) {
     try {
       if (window.GameNestNative && window.GameNestNative.setImmersiveLandscape) {
@@ -439,6 +449,9 @@
     // 动作条现在在文档流最底部、不遮挡棋盘，所有游戏都照常显示
     el.gameActions.style.display = '';
     setImmersiveLandscape(IMMERSIVE_GAMES.indexOf(game) !== -1);
+    el.gameStage.classList.toggle('stage-side', SIDE_LAYOUT_GAMES.indexOf(game) !== -1);
+    // 棋盘在等待房间还显示时就量过尺寸，舞台出现后让各渲染器按真实位置重新量一次
+    requestAnimationFrame(function() { window.dispatchEvent(new Event('resize')); });
   }
 
   function showLobby() {
@@ -968,6 +981,23 @@
       } else {
         optionsEl.style.display = 'none';
       }
+      // 棋类多局制：局数选项追加在上面的设置之后，默认一局
+      if (SIDE_LAYOUT_GAMES.indexOf(game) !== -1) {
+        var bo = roomOptions.bestOf || 1;
+        if (optionsEl.style.display === 'none') {
+          optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+          optionsEl.style.display = 'block';
+        }
+        var boHtml;
+        if (isHost) {
+          boHtml = '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' + _t('best_of_label') + ': <select onchange="window._setGameOption(\'bestOf\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">';
+          [1, 3, 5].forEach(function(n) { boHtml += '<option value="' + n + '"' + (bo === n ? ' selected' : '') + '>' + _t('best_of_' + n) + '</option>'; });
+          boHtml += '</select></label>';
+        } else {
+          boHtml = '<span style="font-size:13px;color:var(--text-muted)">' + _t('best_of_label') + ': ' + _t('best_of_' + bo) + '</span>';
+        }
+        optionsEl.insertAdjacentHTML('beforeend', '<div style="margin-top:8px;font-size:14px;">' + boHtml + '</div>');
+      }
     }
 
     // Toggle action buttons
@@ -1137,6 +1167,111 @@
     return rendererKeyFor(game);
   };
 
+  // ---- Side info for board games: match score, captures, recent moves ----
+  var CHESS_FIG = [{ K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙' }, { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' }];
+  var XQ_NAME = [{ K: '帅', A: '仕', E: '相', H: '马', R: '车', C: '炮', P: '兵' }, { K: '将', A: '士', E: '象', H: '马', R: '车', C: '炮', P: '卒' }];
+  var CN_NUM = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  function esc(v) { return String(v).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // Which side made move i, and the stone/piece colour class for that side
+  function moveSide(m, i) {
+    if (game === 'chess') return i % 2;
+    if (m.piece && m.piece.side != null) return m.piece.side;
+    if (m.player != null) return m.player;
+    return m.side != null ? m.side : i % 2;
+  }
+  function sideClass(side) {
+    if (game === 'chess') return side === 0 ? 'w' : 'b';
+    if (game === 'checkers' || game === 'chinesechess') return side === 0 ? 'r' : 'b';
+    return side === 0 ? 'b' : 'w'; // reversi / go9 / gomoku: player 0 plays black
+  }
+  function sq(p) {
+    var size = (state && state.boardSize) || (game === 'go9' ? 9 : game === 'gomoku' ? 15 : 8);
+    return 'ABCDEFGHJKLMNOP'.charAt(p.col) + (size - p.row);
+  }
+  // Traditional xiangqi notation, e.g. 炮二平五 / 马8进7
+  function xqNotation(m) {
+    var side = m.piece.side, t = m.piece.type;
+    var file = function(c) { return side === 0 ? CN_NUM[9 - c] : String(c + 1); };
+    var dist = function(n) { return side === 0 ? CN_NUM[n] : String(n); };
+    var fwd = side === 0 ? m.toRow < m.fromRow : m.toRow > m.fromRow;
+    var act, val;
+    if (m.toRow === m.fromRow) { act = '平'; val = file(m.toCol); }
+    else {
+      act = fwd ? '进' : '退';
+      val = (t === 'H' || t === 'E' || t === 'A') ? file(m.toCol) : dist(Math.abs(m.toRow - m.fromRow));
+    }
+    return XQ_NAME[side][t] + file(m.fromCol) + act + val;
+  }
+  // One move → { text, note }; text is the move itself, note a short muted detail
+  function moveText(m, i) {
+    var side = moveSide(m, i);
+    if (m.pass) return { text: _t('side_pass'), note: '' };
+    if (game === 'chess') {
+      var san = m.san || '';
+      if (/^O-O/.test(san)) return { text: san, note: '' };
+      var fig = /^[KQRBN]/.test(san) ? CHESS_FIG[side][san[0]] : CHESS_FIG[side].P;
+      return { fig: fig, text: /^[KQRBN]/.test(san) ? san.slice(1) : san, note: '' };
+    }
+    if (game === 'chinesechess') return { text: xqNotation(m), note: m.captured ? tf('side_took', XQ_NAME[m.captured.side][m.captured.type]) : '' };
+    if (game === 'checkers') return { text: sq(m.from) + ' → ' + sq(m.to), note: m.captures && m.captures.length ? tf('side_took_n', m.captures.length) : '' };
+    if (game === 'reversi') return { text: sq(m), note: m.flips ? tf('side_flipped', m.flips.length) : '' };
+    if (game === 'go9') return { text: sq(m), note: m.captured ? tf('side_took_n', m.captured) : '' };
+    return { text: sq(m), note: '' };
+  }
+
+  function updateStageInfo() {
+    var box = document.getElementById('stageInfo');
+    if (!box) return;
+    if (SIDE_LAYOUT_GAMES.indexOf(game) === -1 || !state) { box.style.display = 'none'; return; }
+    var name = function(i) { return i === playerIndex ? _t('you') : window.getPlayerName(i); };
+    var stone = function(side) { return '<i class="si-stone ' + sideClass(side) + '"></i>'; };
+    var html = '';
+    if (match && match.bestOf > 1) {
+      var me = playerIndex === 1 ? 1 : 0; // your score always on the left
+      var gameNo = Math.min(match.played + (state.winner == null ? 1 : 0), match.bestOf);
+      html += '<div class="si-block si-match"><div class="si-title">' + _t('best_of_' + match.bestOf) + ' · ' + tf('match_game_n', gameNo) + '</div>' +
+        '<div class="si-score"><span>' + esc(name(me)) + '</span><b>' + match.wins[me] + ' : ' + match.wins[1 - me] + '</b><span>' + esc(name(1 - me)) + '</span></div></div>';
+    }
+    var hist = state.moveHistory || [];
+    // Counts shown on phones too (pieces for reversi, captures for checkers); chess/xiangqi captures are desktop only
+    var countTitle = '', counts = null, capRow = '';
+    if (game === 'reversi' && state.scores) {
+      countTitle = _t('side_pieces'); counts = [state.scores[0], state.scores[1]];
+    } else if (game === 'checkers') {
+      countTitle = _t('side_captured'); counts = [0, 0];
+      hist.forEach(function(m) { if (m.piece && m.captures) counts[m.piece.side] += m.captures.length; });
+    } else if (game === 'chess' || game === 'chinesechess') {
+      var caps = ['', ''];
+      hist.forEach(function(m, i) {
+        if (!m.captured) return;
+        var s0 = moveSide(m, i);
+        caps[s0] += game === 'chess' ? CHESS_FIG[1 - s0][m.captured.toUpperCase()] : XQ_NAME[m.captured.side][m.captured.type];
+      });
+      capRow = '<div class="si-title">' + _t('side_captured') + '</div>' +
+        '<div class="si-cap">' + stone(0) + '<span>' + (caps[0] || '—') + '</span></div><div class="si-cap">' + stone(1) + '<span>' + (caps[1] || '—') + '</span></div>';
+    }
+    if (counts) {
+      html += '<div class="si-block si-count"><div class="si-title">' + countTitle + '</div><div class="si-row">' +
+        '<span>' + stone(0) + esc(name(0)) + ' <b>' + counts[0] + '</b></span><span><b>' + counts[1] + '</b> ' + esc(name(1)) + stone(1) + '</span></div></div>';
+    } else if (capRow) {
+      html += '<div class="si-block">' + capRow + '</div>';
+    }
+    var recent = '';
+    for (var i = hist.length - 1; i >= Math.max(0, hist.length - 12); i--) {
+      var mt = moveText(hist[i], i);
+      recent += '<li><span class="si-n">' + (i + 1) + '</span>' + stone(moveSide(hist[i], i)) +
+        '<span class="si-mv">' + (mt.fig ? '<span class="si-fig">' + mt.fig + '</span>' : '') + esc(mt.text) + '</span>' + (mt.note ? '<span class="si-note">' + esc(mt.note) + '</span>' : '') + '</li>';
+    }
+    html += '<div class="si-block si-moves"><div class="si-title">' + _t('side_moves') + '</div>' +
+      (recent ? '<ol>' + recent + '</ol>' : '<div class="si-empty">' + _t('side_no_moves') + '</div>') + '</div>';
+    var prevH = box.offsetHeight;
+    box.innerHTML = html;
+    box.style.display = '';
+    // 信息栏高度变了（比如比分卡出现）会挤占棋盘上方空间，让棋盘重新量尺寸
+    if (box.offsetHeight !== prevH) window.dispatchEvent(new Event('resize'));
+  }
+
   function renderGame() {
     if (!state) return;
     var key = rendererKeyFor(game);
@@ -1149,6 +1284,7 @@
     }
     window.gamePlayers = players;
     if (currentRenderer) currentRenderer.render(state, el.boardArea, playerIndex, state.winner);
+    updateStageInfo();
     if (state.winner !== null && state.winner !== undefined) showResult(state.winner);
   }
 
@@ -1179,6 +1315,16 @@
       isWin = (winner === playerIndex);
       txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';
     }
+    var inMatch = match && match.bestOf > 1 && SIDE_LAYOUT_GAMES.indexOf(game) !== -1;
+    if (inMatch) {
+      var me = playerIndex === 1 ? 1 : 0;
+      var gameLine = _t('best_of_' + match.bestOf) + ' · ' + _t('match_score') + ' ' + match.wins[me] + ' : ' + match.wins[1 - me];
+      if (match.over) {
+        isWin = match.winner === playerIndex;
+        txt = match.winner === -1 ? _t('match_draw') : isWin ? _t('match_you_win') : _t('match_you_lose');
+      }
+      sub = gameLine;
+    }
     resultEl.textContent = txt;
     resultEl.classList.toggle('win-text', isWin);
     el.resultSub.textContent = sub;
@@ -1193,14 +1339,16 @@
     if (accentBtn) {
       accentBtn.textContent = _t('play_again');
       accentBtn.onclick = function() { window.doRestart(); };
+      // 比赛还没分出胜负：直接进下一局，不弹"确定重新开始"
+      if (inMatch && !match.over) {
+        accentBtn.textContent = _t('next_game');
+        accentBtn.onclick = function() { window.doNextRound(); };
+      }
     }
     pendingRestart = false;
 
-    // Auto-close the overlay after 5s of inactivity.
+    // Stays open until the player dismisses it, so the final board and score can be read.
     clearTimeout(resultCloseTimer);
-    resultCloseTimer = setTimeout(function() {
-      overlay.style.display = 'none';
-    }, 5000);
   }
 
   var resultCloseTimer = null;
@@ -1257,6 +1405,10 @@
       send('request_restart', {});
       setTimeout(function() { pendingRestart = false; }, 10000);
     }
+  };
+
+  window.closeResult = function() {
+    el.overlay.style.display = 'none';
   };
 
   window.doReturnToRoom = function() {

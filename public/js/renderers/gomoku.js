@@ -80,8 +80,11 @@
     if (!canvas) return;
     var wrap = document.getElementById('gomokuWrap');
     if (!wrap) return;
-    var size = wrap.clientWidth;
+    // Square board: fit both the stage width and the height left below it
+    var fit = window.boardFit(wrap.parentElement);
+    var size = Math.floor(Math.min(fit.w, fit.h, 900));
     if (!size || size <= 0) return;  // wrap not laid out yet — skip
+    wrap.style.width = size + 'px';
     canvas.width = size * (window.devicePixelRatio || 1);
     canvas.height = size * (window.devicePixelRatio || 1);
     canvas.style.width = size + 'px';

@@ -100,6 +100,7 @@
           <div class="room-facts" id="stageMeta"></div>
         </div>
         <div class="player-bar" id="playerBar" style="display:none"></div>
+        <div class="stage-info" id="stageInfo" style="display:none"></div>
         <div class="game-status" id="status" style="display:none">等待玩家加入...</div>
         <div class="board-wrap stage-board"><div id="boardArea"></div></div>
         <div class="game-actions-fixed refresh" id="gameActions" style="display:none">
@@ -114,6 +115,7 @@
       <div class="result" id="resultText"></div>
       <div class="sub" id="resultSub"></div>
       <button class="btn btn-accent" onclick="window.doRestart()">再来一局</button>
+      <button class="btn btn-outline btn-sm" onclick="window.closeResult()" style="margin-top:10px;" id="resultViewBoard">查看棋局</button>
       <button class="btn btn-outline btn-sm" onclick="window.doReturnToRoom()" style="margin-top:10px;">返回房间</button>
       <button class="btn btn-outline btn-sm" onclick="window.doLeaveRoom()" style="margin-top:10px;">返回大厅</button>
     </div>

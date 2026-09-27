@@ -3,7 +3,7 @@
 (function() {
   window.gameRenderers = window.gameRenderers || new Map();
   var SIZE = 9;
-  var STAR = [[2,2],[2,6],[6,2],[6,6]];
+  var STAR = [[2,2],[2,6],[6,2],[6,6],[4,4]];
   var canvas, ctx, W, margin, cs;
 
   window.gameRenderers.set('go9', {
@@ -19,8 +19,9 @@
       canvas = document.getElementById('goCanvas');
       ctx = canvas.getContext('2d');
       var resize = function() {
-        var avW = window.innerWidth - (window.innerWidth > 600 ? 80 : 32);
-        var avH = window.innerHeight - 240;
+        var fit = window.boardFit(container);
+        var avW = fit.w;
+        var avH = fit.h - 70;
         W = Math.min(avW, avH, 900);
         W = Math.max(W, 240);
         var dpr = window.devicePixelRatio || 1;
@@ -63,7 +64,7 @@
 
       // === Board (golden wood color) ===
       var bgGrad = ctx.createLinearGradient(0, 0, W, W);
-      bgGrad.addColorStop(0, '#dab860'); bgGrad.addColorStop(0.5, '#c9a345'); bgGrad.addColorStop(1, '#b8902a');
+      bgGrad.addColorStop(0, '#e8cf9c'); bgGrad.addColorStop(0.5, '#ddbf85'); bgGrad.addColorStop(1, '#cfad70');
       ctx.fillStyle = bgGrad;
       var bpad = margin - 10;
       var bsize = cs*(SIZE-1) + 20;
@@ -77,7 +78,7 @@
       }
 
       // === Grid ===
-      ctx.strokeStyle = '#3a2005'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#4a3520'; ctx.lineWidth = 1.2;
       for (var i = 0; i < SIZE; i++) {
         ctx.beginPath(); ctx.moveTo(margin, margin+i*cs); ctx.lineTo(margin+(SIZE-1)*cs, margin+i*cs); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(margin+i*cs, margin); ctx.lineTo(margin+i*cs, margin+(SIZE-1)*cs); ctx.stroke();
@@ -86,8 +87,8 @@
       // Star points
       for (var si = 0; si < STAR.length; si++) {
         var sr = STAR[si][0], sc = STAR[si][1];
-        ctx.fillStyle = '#3a2005'; ctx.beginPath();
-        ctx.arc(margin+sc*cs, margin+sr*cs, cs*0.14, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#4a3520'; ctx.beginPath();
+        ctx.arc(margin+sc*cs, margin+sr*cs, cs*0.09, 0, Math.PI*2); ctx.fill();
       }
 
       // === Stones ===

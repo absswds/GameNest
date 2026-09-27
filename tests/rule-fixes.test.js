@@ -75,3 +75,10 @@ test('exploding-kittens: the deck has no Nope cards', () => {
   const all = s.deck.concat(...s.hands);
   assert.equal(all.filter(c => c.type === 'nope').length, 0);
 });
+
+test('checkers: playerView before the game starts does not throw', () => {
+  const checkers = require('../games/checkers');
+  const s = checkers.createState();
+  assert.doesNotThrow(() => checkers.playerView(s, 0));
+  assert.deepEqual(checkers.playerView(s, 0).legalMoves, []);
+});

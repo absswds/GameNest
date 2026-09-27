@@ -314,7 +314,7 @@
     }
 
     // === Status bar ===
-    var sy = margin + boardH + 22;
+    var sy = margin + boardH + cs * 0.5 + 20;
     ctx.fillStyle = '#3a3028'; ctx.font = 'bold 16px system-ui,-apple-system,sans-serif'; ctx.textAlign = 'center';
     var pi = parseInt(sessionStorage.getItem('playerIndex'));
     if (state.winner != null) {
@@ -345,14 +345,14 @@
       prevBoard = null;
 
       var resize = function() {
-        var avW = window.innerWidth - (window.innerWidth > 600 ? 80 : 32);
-        var avH = window.innerHeight - 240;
-        W = Math.min(avW, avH, 960);
-        W = Math.max(W, 240);
+        // 9×10 board: size from whichever of width/height runs out first; margin leaves room for edge pieces
+        var fit = window.boardFit(container);
+        cs = Math.min((fit.w - 8) / (COLS - 1 + 1.1), (fit.h - 38) / (ROWS - 1 + 1.1), 100);
+        cs = Math.max(cs, 24);
+        margin = cs * 0.55 + 4;
+        W = margin * 2 + cs * (COLS - 1);
         var dpr = window.devicePixelRatio || 1;
-        cs = (W - 60) / (COLS - 1);
-        margin = 30;
-        var H = margin * 2 + cs * (ROWS - 1);
+        var H = margin * 2 + cs * (ROWS - 1) + 30;
         canvas.width = W * dpr; canvas.height = H * dpr;
         canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
         ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(dpr, dpr);

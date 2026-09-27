@@ -3104,3 +3104,79 @@ body.lobby-page {
   .lobby-page .lobby-browser .eyebrow { display: none; }
   .lobby-page .panel-heading { display: none; }
 }
+
+/* Touch: seat badges keep their compact look, but get a >=44px invisible hit area */
+@media (pointer: coarse) {
+  .waiting-slot-swap, .waiting-slot-xbtn { position: relative; }
+  .waiting-slot-swap::after, .waiting-slot-xbtn::after {
+    content: ''; position: absolute; left: 50%; top: 50%;
+    width: max(100%, 44px); height: 44px; transform: translate(-50%, -50%);
+  }
+  .waiting-slot-swap + .waiting-slot-xbtn, .waiting-slot-xbtn + .waiting-slot-swap { margin-left: 10px; }
+}
+
+/* Featured shelf: big card + odd number of small ones leaves a hole; the last card fills it */
+@media (min-width: 861px) and (max-width: 1179px) {
+  .lobby-page .featured-card:nth-child(even):last-child { grid-column: 1 / -1; }
+}
+@media (min-width: 1180px) {
+  .lobby-page .featured-card:nth-child(even):last-child { grid-column: span 2; }
+}
+
+/* Game stage: the top bar already names the game, so drop the duplicate header and give the height to the board */
+#gameStage .game-stage-header { display: none; }
+#gameStage .game-status:empty { display: none !important; }
+#gameStage .game-actions-fixed { margin-top: 8px; padding-top: 10px; }
+@media (max-width: 560px) {
+  #gameStage.game-stage-panel { padding: 8px; }
+}
+/* Square board games on wide screens: players on the left, actions on the right, board takes the middle */
+@media (min-width: 1100px) {
+  #gameStage.stage-side {
+    display: grid;
+    grid-template-columns: minmax(200px, 260px) minmax(0, 1fr) minmax(200px, 260px);
+    grid-template-rows: auto auto auto 1fr;
+    column-gap: 24px;
+    align-items: start;
+  }
+  #gameStage.stage-side .player-bar { grid-column: 1; grid-row: 1; flex-direction: column; align-items: stretch; margin: 0; }
+  #gameStage.stage-side .player-tag { flex: none; justify-content: flex-start; padding: 12px 14px; }
+  #gameStage.stage-side .vs-text { align-self: center; }
+  #gameStage.stage-side .stage-info { grid-column: 1; grid-row: 2; }
+  #gameStage.stage-side .game-status { grid-column: 1; grid-row: 3; }
+  #gameStage.stage-side .board-wrap { grid-column: 2; grid-row: 1 / span 4; }
+  #gameStage.stage-side .game-actions-fixed { grid-column: 3; grid-row: 1; margin: 0; padding: 0; border: 0; background: none; justify-content: flex-end; }
+}
+/* Side info (match score / captures / moves) for board games */
+.stage-info { display: grid; gap: 12px; }
+.si-block { padding: 12px 14px; border-radius: var(--radius-sm); background: var(--bg); font-size: 13px; }
+.si-title { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
+.si-score { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.si-score span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.si-score span:last-child { text-align: right; }
+.si-score b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.si-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.si-row > span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.si-row b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.si-cap { display: flex; align-items: flex-start; gap: 8px; font-size: 20px; line-height: 1.4; word-break: break-all; }
+.si-cap .si-stone { margin-top: 5px; }
+.si-stone { display: inline-block; flex: none; width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 -1px 2px rgba(0,0,0,.25); }
+.si-stone.b { background: radial-gradient(circle at 35% 30%, #5a5a5a, #111); }
+.si-stone.w { background: radial-gradient(circle at 35% 30%, #fff, #d8d4cc); border: 1px solid #bdb6aa; }
+.si-stone.r { background: radial-gradient(circle at 35% 30%, #e0655a, #a8261c); }
+.si-moves ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 300px; overflow: auto; font-variant-numeric: tabular-nums; }
+.si-moves li { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 8px; }
+.si-moves li:first-child { background: var(--surface); font-weight: 600; }
+.si-n { min-width: 22px; color: var(--text-muted); font-size: 12px; }
+.si-mv { font-size: 14px; }
+.si-fig { font-size: 20px; line-height: 1; margin-right: 2px; vertical-align: -2px; }
+.si-note { margin-left: auto; font-size: 12px; color: var(--text-muted); }
+.si-empty { color: var(--text-muted); }
+/* Narrow screens: only the match score, the board needs the height */
+@media (max-width: 1099px) {
+  .stage-info { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
+  .stage-info .si-block:not(.si-match):not(.si-count) { display: none; }
+  .stage-info .si-block { padding: 8px 12px; }
+  .stage-info .si-title { margin-bottom: 2px; }
+  .stage-info .si-score b, .stage-info .si-row b { font-size: 16px; }
+}

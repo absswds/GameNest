@@ -5,6 +5,9 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const matchLib = require('./games/lib/match');
+// Two-player board games that support a best-of-N match (room option `bestOf`)
+const MATCH_GAMES = ['chess', 'checkers', 'reversi', 'go9', 'gomoku', 'chinesechess'];
 const startupLogPath = path.join(__dirname, 'android-startup.log');
 
 // Language packs
@@ -424,29 +427,71 @@ function viewFor(room, index) {
   if (room.game === 'minesweeper' && gameMod.playerBoardView) {
     return Object.assign({}, room.state, { board: gameMod.playerBoardView(room.state, index) });
   }
-  if (gameMod.playerView) return gameMod.playerView(room.state, index);
+  if (gameMod.playerView) {
+    // A throwing view (e.g. on a not-yet-initialised state) must not crash the whole server.
+    // Return null rather than the raw state so hidden info never leaks.
+    try { return gameMod.playerView(room.state, index); }
+    catch (e) { console.error('[playerView]', room.game, e.message); return null; }
+  }
   return room.state;
+}
+
+// Count a finished game toward the room's match exactly once.
+function tallyMatch(room) {
+  const s = room.state;
+  if (!room.match || !s || s.winner == null || s._matchCounted) return;
+  s._matchCounted = true;
+  matchLib.recordResult(room.match, s.winner);
+}
+
+// Start a new match on game start, or when the previous match has finished.
+function ensureMatch(room, fresh) {
+  if (MATCH_GAMES.indexOf(room.game) === -1) { room.match = null; return; }
+  if (fresh || !room.match || room.match.over) room.match = matchLib.createMatch(room.options.bestOf);
+}
+
+// Between games of a match the two seats swap, so the first move alternates.
+// Bots remember their seat from createBot(), so they are rebuilt for the new seat.
+function swapMatchSeats(room) {
+  for (const info of room.players.values()) info.index = 1 - info.index;
+  if (room.bots && room.bots.size) {
+    const botMod = botRegistry[room.game];
+    const old = Array.from(room.bots);
+    room.bots = new Map();
+    for (const [idx, bot] of old) {
+      const nb = botMod ? botMod.createBot(1 - idx) : bot;
+      nb.name = bot.name;
+      room.bots.set(1 - idx, nb);
+    }
+  }
+  room.readyPlayers = new Set(Array.from(room.readyPlayers, i => 1 - i));
+  room.match.wins.reverse();
+  for (const [client, info] of room.players) {
+    if (client.readyState === 1) client.send(JSON.stringify({ type: 'player_index_updated', playerIndex: info.index }));
+  }
 }
 
 function broadcastGameView(room, msgType) {
   const t = msgType || 'game_state';
   const gameMod = gameRegistry[room.game];
   const players = roomPlayersList(room);
+  tallyMatch(room);
+  const match = room.match || null;
   if (room.game === 'minesweeper' && gameMod.playerBoardView) {
     for (const [client, info] of room.players) {
       if (client.readyState === 1) {
         const viewState = Object.assign({}, room.state, { board: gameMod.playerBoardView(room.state, info.index) });
-        client.send(JSON.stringify({ type: t, state: viewState, players }));
+        client.send(JSON.stringify({ type: t, state: viewState, players, match }));
       }
     }
   } else if (gameMod.playerView) {
     for (const [client, info] of room.players) {
       if (client.readyState === 1) {
-        client.send(JSON.stringify({ type: t, state: gameMod.playerView(room.state, info.index), players }));
+        client.send(JSON.stringify({ type: t, state: gameMod.playerView(room.state, info.index), players, match }));
       }
     }
   } else {
-    broadcastRoom(room, { type: t, state: room.state, players });
+    broadcastRoom(room, { type: t, state: room.state, players, match });
   }
 }
 
@@ -1102,7 +1147,7 @@ wss.on('connection', (ws) => {
         currentRoomId = roomId;
         currentRoom = room;
         ws.send(JSON.stringify({ type: 'room_joined', roomId, game: room.game, maxPlayers: room.maxPlayers,
-          playerIndex: info.index, players: roomPlayersList(room), state: viewFor(room, info.index), phase: room.phase,
+          playerIndex: info.index, players: roomPlayersList(room), state: viewFor(room, info.index), match: room.match || null, phase: room.phase,
           options: room.options, resumeToken: info.resumeToken }));
         sendToRoom(room, {
           type: 'room_update',
@@ -1124,7 +1169,7 @@ wss.on('connection', (ws) => {
           maxPlayers: room.maxPlayers,
           playerIndex: existing[1].index,
           players: roomPlayersList(room),
-          state: viewFor(room, existing[1].index),
+          state: viewFor(room, existing[1].index), match: room.match || null,
           phase: room.phase,
           options: room.options,
         }));
@@ -1176,7 +1221,7 @@ wss.on('connection', (ws) => {
         maxPlayers: room.maxPlayers,
         playerIndex: idx,
         players: roomPlayersList(room),
-        state: viewFor(room, idx),
+        state: viewFor(room, idx), match: room.match || null,
         phase: room.phase,
         options: room.options,
         resumeToken: room.players.get(ws).resumeToken,
@@ -1254,6 +1299,7 @@ wss.on('connection', (ws) => {
       }
       if (currentRoom.game === 'drawguess') scheduleDrawguessTimer(currentRoom); // 在广播前写入 stepDeadline
 
+      ensureMatch(currentRoom, true);
       broadcastGameView(currentRoom, 'game_started');
       if (currentRoom.game === 'twentyfour') scheduleTwentyFourTimer(currentRoom);
       scheduleRealtimeGame(currentRoom);
@@ -1456,6 +1502,10 @@ wss.on('connection', (ws) => {
           winner: currentRoom.state.winner,
         };
       }
+      // 多局比赛：上一局已分出结果、比赛还没结束时交换座位，轮流先手
+      if (currentRoom.match && !currentRoom.match.over && currentRoom.state && currentRoom.state.winner != null) {
+        swapMatchSeats(currentRoom);
+      }
       currentRoom.state = gameMod.createState();
       applyRuntimeState(currentRoom, totalPlayers);
 
@@ -1485,6 +1535,7 @@ wss.on('connection', (ws) => {
 
       if (currentRoom.game === 'drawguess') scheduleDrawguessTimer(currentRoom);
       currentRoom.phase = 'playing';
+      ensureMatch(currentRoom, false);
 
       broadcastGameView(currentRoom, 'game_state');
       if (currentRoom.game === 'twentyfour') scheduleTwentyFourTimer(currentRoom);
