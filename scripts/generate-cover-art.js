@@ -41,6 +41,7 @@ const covers = [
   { id: 'drawguess', palette: ['#f6efe9', '#ddd0c2', '#c8856a', '#231816'], motif: 'drawguess' },
   { id: 'hearts', palette: ['#f5e8e8', '#e8a0a0', '#c23030', '#1a0a0a'], motif: 'hearts' },
   { id: 'truthdare', palette: ['#f2e8f0', '#d4a0c8', '#8a3070', '#1a1020'], motif: 'truthdare' },
+  { id: 'werewolf', palette: ['#e9e7ef', '#aab0c8', '#3d4668', '#141725'], motif: 'werewolf' },
   { id: 'battleship', palette: ['#e8eef4', '#7cafc2', '#2a6f8a', '#142a35'], motif: 'battleship' },
   { id: '2048', palette: ['#f5f1e8', '#d9cbb0', '#edc22e', '#2a2418'], motif: '2048' },
   { id: 'sudoku', palette: ['#f2f0ea', '#c9d4de', '#6d8fb0', '#182231'], motif: 'sudoku' },
@@ -361,6 +362,16 @@ function motifSvg(cover) {
         <text x="800" y="600" text-anchor="middle" font-size="320" fill="${accent}" opacity="0.85">♥</text>
         <text x="680" y="420" text-anchor="middle" font-size="180" fill="${dark}" opacity="0.5">♥</text>
         <text x="950" y="750" text-anchor="middle" font-size="140" fill="${accent}" opacity="0.4">♥</text>
+      `;
+    case 'werewolf':
+      return `
+        <rect x="440" y="150" width="900" height="720" rx="48" fill="${dark}"/>
+        <circle cx="960" cy="420" r="230" fill="#f3ead2" opacity="0.95"/>
+        <circle cx="1050" cy="380" r="200" fill="${dark}"/>
+        <circle cx="640" cy="260" r="8" fill="#f3ead2" opacity="0.8"/>
+        <circle cx="1260" cy="700" r="6" fill="#f3ead2" opacity="0.6"/>
+        <circle cx="560" cy="620" r="5" fill="#f3ead2" opacity="0.5"/>
+        <path d="M520 860 L700 610 L760 700 L860 540 L1000 760 L1080 660 L1240 860 Z" fill="${accent}" opacity="0.9"/>
       `;
     case 'truthdare':
       return `

@@ -299,6 +299,17 @@
         { h: '房间设置', p: '房主可选「同一张棋盘」（所有人棋盘相同，公平比手速）或「各自随机」。' },
       ]
     },
+    werewolf: {
+      sections: [
+        { h: '怎么玩', p: '手机就是法官：夜里轮到你时手机提示你操作，其他人的屏幕只显示“天黑请闭眼”。白天大家当面发言，发言顺序和投票在手机上完成。' },
+        { h: '身份配置', p: '按人数自动配板：6 人 2 狼+预言家+女巫+2 平民；7–10 人加入猎人；11–12 人再加入白痴。身份牌默认盖着，点一下才显示，注意别让旁边的人看到。' },
+        { h: '夜晚', p: '狼人一起选击杀目标（可以空刀），预言家查验一人；之后女巫决定是否用解药救人或用毒药毒人，同一晚只能用一瓶，不能自救。' },
+        { h: '白天', p: '第一天可以竞选警长：上警的人依次发言，其他人投票，警长投票算 1.5 票并最后发言。之后公布昨晚死讯，第一晚死者有遗言，然后所有人依次发言并投票放逐。平票的人进行 PK 发言再投一次，还平票就无人出局。' },
+        { h: '技能', p: '猎人出局时可以开枪带走一人（被毒死除外）；白痴被放逐时翻牌免死，但之后不能投票；警长出局时可以移交或撕毁警徽。' },
+        { h: '胜负', p: '狼人全部出局，好人获胜；神职全部出局或平民全部出局（屠边），狼人获胜。' },
+        { h: '房间设置', p: '房主可以调整每人发言时长，以及是否进行警长竞选。人数不够可以加电脑凑人，电脑只会随机行动，主要用于试玩。' },
+      ]
+    },
     truthdare: {
       sections: [
         { h: '页面定位', p: '这是一个聚会抽题工具。场外剪刀石头布决定谁输，输的人回到页面点击抽卡。页面负责同步题目，不负责判胜负。' },
@@ -631,6 +642,17 @@
         { h: 'Power-Ups', p: 'Each stage gives you 1 use of each: ↩ Undo (return last tile), 🔀 Shuffle (rearrange remaining tiles), ⏏ Eject 3 (clear the first 3 slots).' },
         { h: 'Battle', p: 'Every player solves independently — you can\'t see others\' moves, only their progress bar. First to clear Stage 2 wins. Alternatively, see who survives longest.' },
         { h: 'Room Settings', p: 'Host can choose "Same Board" (everyone gets an identical layout for a fair speed race) or "Random" boards.' },
+      ]
+    },
+    werewolf: {
+      sections: [
+        { h: 'How It Works', p: 'The phone is the moderator. At night, only players with an action see prompts; everyone else sees \u201cnight falls\u201d. During the day you talk in person, while speaking order and votes run on the phone.' },
+        { h: 'Roles', p: 'Roles scale with the table: 6 players = 2 wolves, Seer, Witch, 2 villagers; 7\u201310 add the Hunter; 11\u201312 add the Idiot. Your role card stays face down until you tap it.' },
+        { h: 'Night', p: 'Wolves agree on a victim (or no kill) and the Seer checks one player. Then the Witch may heal the victim or poison someone, one potion per night and never on herself.' },
+        { h: 'Day', p: 'On day one you may elect a sheriff: candidates speak, the others vote. The sheriff\u2019s vote counts 1.5 and they speak last. Then deaths are announced, first-night victims give last words, everyone speaks in turn and votes to exile. A tie leads to tie-break speeches and a revote; a second tie exiles nobody.' },
+        { h: 'Powers', p: 'The Hunter may shoot someone when he dies, unless poisoned. The Idiot survives his first exile by revealing but loses his vote. A dying sheriff passes or tears up the badge.' },
+        { h: 'Winning', p: 'The village wins when every wolf is out. The wolves win when all special roles or all villagers are out.' },
+        { h: 'Room Settings', p: 'The host sets the speech time and whether there is a sheriff election. Bots can fill empty seats; they act randomly and are mainly for trying the game.' },
       ]
     },
     truthdare: {

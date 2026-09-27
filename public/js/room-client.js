@@ -802,6 +802,26 @@
             '<div style="font-size:13px;color:var(--text-muted)">' + _t('enable_decks') + ': ' + (tdNames || _t('deck_custom')) +
             (truthCount + dareCount > 0 ? ' · ' + _t('deck_custom') + ' ' + (truthCount + dareCount) + ' ' + _t('seconds') : '') + '</div>';
         }
+      } else if (game === 'werewolf') {
+        optionsEl.style.display = 'block';
+        var wwSpeech = roomOptions.speechTime || 60;
+        var wwSheriff = roomOptions.sheriff !== false;
+        var wwHead = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+        var wwHint = '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.5;">' + _t('ww_setup_hint') + '</div>';
+        if (isHost) {
+          var wwSel = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
+          var wwOpts = '';
+          [30, 60, 90, 120, 180].forEach(function(v) { wwOpts += '<option value="' + v + '"' + (wwSpeech === v ? ' selected' : '') + '>' + v + _t('seconds') + '</option>'; });
+          optionsEl.innerHTML = wwHead +
+            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('ww_speech_time') + ' <select onchange="window._setGameOption(\'speechTime\', parseInt(this.value))" style="' + wwSel + '">' + wwOpts + '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('ww_sheriff_opt') + ' <select onchange="window._setGameOption(\'sheriff\', this.value === \'1\')" style="' + wwSel + '">' +
+                '<option value="1"' + (wwSheriff ? ' selected' : '') + '>' + _t('ww_on') + '</option><option value="0"' + (wwSheriff ? '' : ' selected') + '>' + _t('ww_off') + '</option></select></label>' +
+            '</div>' + wwHint;
+        } else {
+          optionsEl.innerHTML = wwHead + '<div style="font-size:13px;color:var(--text-muted)">' + _t('ww_speech_time') + ': ' + wwSpeech + _t('seconds') +
+            ' · ' + _t('ww_sheriff_opt') + ': ' + _t(wwSheriff ? 'ww_on' : 'ww_off') + '</div>' + wwHint;
+        }
       } else if (game === 'drawguess') {
         optionsEl.style.display = 'block';
         var dgCats = [['animal',_t('cat_animal')],['food',_t('cat_food')],['daily',_t('cat_daily')],['action',_t('cat_action')],['place',_t('cat_place')],['idiom',_t('cat_idiom')],['movie',_t('cat_movie')],['internet',_t('cat_internet')]];
@@ -1311,6 +1331,12 @@
         isWin = (winner === playerIndex);
         txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';
       }
+    } else if (game === 'werewolf' && state && state.roles) {
+      // -2 wolves win, -3 village wins
+      var wolfSide = state.roles[playerIndex] === 'wolf';
+      isWin = winner === -2 ? wolfSide : !wolfSide;
+      txt = isWin ? _t('you_win') : _t('you_lose');
+      sub = _t(winner === -2 ? 'ww_win_wolf' : 'ww_win_good');
     } else {
       isWin = (winner === playerIndex);
       txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';

@@ -424,6 +424,18 @@
       maxPlayers: 10,
       cover: '/assets/game-covers/truthdare.webp'
     },
+    werewolf: {
+      name: '狼人杀',
+      icon: '🐺',
+      subtitle: '手机当法官，当面论狼',
+      description: '预女猎白标准板，6–12 人自动配板，夜间操作和投票都在手机上。',
+      players: '6-12人',
+      duration: '约30分钟',
+      category: '派对同乐',
+      tags: ['身份', '推理'],
+      supportsAI: true,
+      maxPlayers: 12,
+    },
   };
 
 
@@ -466,6 +478,7 @@
     'oldmaid',
     'exploding-kittens',
     'truthdare',
+    'werewolf',
     'snakebattle',
     'battleship'
   ];

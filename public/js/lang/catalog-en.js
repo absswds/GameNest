@@ -290,5 +290,14 @@
       category: 'Party',
       tags: ['Social', 'Casual'],
     },
+    werewolf: {
+      name: 'Werewolf',
+      subtitle: 'Your phone is the moderator',
+      description: 'Classic Seer, Witch, Hunter and Idiot setup for 6 to 12 players. Night actions and votes happen on the phone.',
+      players: '6-12 players',
+      duration: '~30 min',
+      category: 'Party',
+      tags: ['Hidden roles', 'Deduction'],
+    },
   };
 })();

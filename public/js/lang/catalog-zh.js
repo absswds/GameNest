@@ -290,5 +290,14 @@
       category: '派对同乐',
       tags: ['社交', '轻松'],
     },
+    werewolf: {
+      name: '狼人杀',
+      subtitle: '手机当法官，当面论狼',
+      description: '预女猎白标准板，6–12 人自动配板，夜间操作和投票都在手机上。',
+      players: '6-12人',
+      duration: '约30分钟',
+      category: '派对同乐',
+      tags: ['身份', '推理'],
+    },
   };
 })();

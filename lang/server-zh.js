@@ -14,7 +14,7 @@ module.exports = {
   'room_not_found': '房间不存在或已结束',
   'game_started': '游戏已经开始',
   'host_only_start': '只有房主可以开始游戏',
-  'min_players': '至少需要2名玩家',
+  'min_players': '至少需要 %s 名玩家（人不够可以添加 AI）',
   'all_ready_required': '所有玩家就绪后才能开始',
   'game_started_no_swap': '游戏已经开始，不能换位',
   'host_only_settings': '只有房主可以修改设置',
@@ -316,4 +316,9 @@ module.exports = {
   'mj_choose_swap': '请选择3张同色牌交换',
   'mj_bad_swap': '无效的换牌（需3张同色牌）',
 
+  'ww_not_now': '现在不能这样操作',
+  'ww_bad_target': '目标无效',
+  'ww_one_potion': '同一晚只能用一瓶药',
+  'ww_no_potion': '没有可用的药',
+  'ww_no_self_save': '女巫不能自救',
 };

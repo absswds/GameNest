@@ -14,7 +14,7 @@ module.exports = {
   'room_not_found': 'Room not found or has ended',
   'game_started': 'Game already started',
   'host_only_start': 'Only the host can start the game',
-  'min_players': 'At least 2 players needed',
+  'min_players': 'At least %s players needed (add AI to fill seats)',
   'all_ready_required': 'All players must be ready before starting',
   'game_started_no_swap': 'Game already started, cannot swap seats',
   'host_only_settings': 'Only the host can change settings',
@@ -316,4 +316,9 @@ module.exports = {
   'mj_choose_swap': 'Select 3 same-suit tiles to swap',
   'mj_bad_swap': 'Invalid swap (need 3 same-suit tiles)',
 
+  'ww_not_now': 'You cannot do that now',
+  'ww_bad_target': 'Invalid target',
+  'ww_one_potion': 'Only one potion per night',
+  'ww_no_potion': 'No potion available',
+  'ww_no_self_save': 'The witch cannot heal herself',
 };

@@ -1278,7 +1278,7 @@ wss.on('connection', (ws) => {
       const totalPlayers = currentRoom.players.size + (currentRoom.bots ? currentRoom.bots.size : 0);
       const minPlayers = (gameMod && gameMod.minPlayers) || 2;
       if (totalPlayers < minPlayers) {
-        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'min_players') }));
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'min_players').replace('%s', minPlayers) }));
         return;
       }
       const allReady = Array.from(currentRoom.players.values())
