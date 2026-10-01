@@ -299,6 +299,18 @@
         { h: '房间设置', p: '房主可选「同一张棋盘」（所有人棋盘相同，公平比手速）或「各自随机」。' },
       ]
     },
+    sanguo: {
+      sections: [
+        { h: '目标', p: '4–8 人身份局，每人一个暗置身份（主公公开）。主公和忠臣要消灭所有反贼和内奸；反贼要杀死主公；内奸要先帮忙清掉其他人，最后单挑主公并取胜。' },
+        { h: '回合', p: '摸 2 张牌 → 出牌 → 弃牌到手牌数不超过当前体力。出牌阶段每回合只能出一张「杀」（装了诸葛连弩不限）。' },
+        { h: '基本牌', p: '「杀」攻击攻击范围内的人，对方要打出「闪」才能躲过；「桃」回复 1 点体力，濒死时任何人都可以出桃救人。' },
+        { h: '锦囊', p: '过河拆桥、顺手牵羊、决斗、借刀杀人、南蛮入侵、万箭齐发、桃园结义、五谷丰登、无中生有、乐不思蜀、闪电。「无懈可击」可以抵消任意锦囊，也可以被再次抵消。' },
+        { h: '装备', p: '武器决定攻击范围并带有特效，防具提供防御，+1 马让别人更难打到你，-1 马让你更容易够到别人。' },
+        { h: '武将技能', p: '每人随机分到一名武将，技能写在你的牌面下方。刘备、孙权、华佗、貂蝉有主动技能（选牌和目标后点技能按钮），其余是被动或转换技能。' },
+        { h: '奖惩', p: '杀死反贼摸 3 张牌；主公杀死忠臣，要弃掉所有手牌和装备。' },
+        { h: '提示', p: '手牌点一下选中，需要目标时再点座位；被问到要不要出闪、无懈可击或桃时，不想出点「放弃」。人不够可以加电脑凑人。' },
+      ]
+    },
     werewolf: {
       sections: [
         { h: '怎么玩', p: '手机就是法官：夜里轮到你时手机提示你操作，其他人的屏幕只显示“天黑请闭眼”。白天大家当面发言，发言顺序和投票在手机上完成。' },
@@ -642,6 +654,18 @@
         { h: 'Power-Ups', p: 'Each stage gives you 1 use of each: ↩ Undo (return last tile), 🔀 Shuffle (rearrange remaining tiles), ⏏ Eject 3 (clear the first 3 slots).' },
         { h: 'Battle', p: 'Every player solves independently — you can\'t see others\' moves, only their progress bar. First to clear Stage 2 wins. Alternatively, see who survives longest.' },
         { h: 'Room Settings', p: 'Host can choose "Same Board" (everyone gets an identical layout for a fair speed race) or "Random" boards.' },
+      ]
+    },
+    sanguo: {
+      sections: [
+        { h: 'Goal', p: '4–8 players, each with a hidden role (the lord is public). The lord and loyalists must defeat all rebels and the spy; rebels must kill the lord; the spy wins by outlasting everyone and finishing the lord in a duel.' },
+        { h: 'Turn', p: 'Draw 2 cards, play cards, then discard down to your current health. You may play one Slash per turn (unlimited with the Repeating Crossbow).' },
+        { h: 'Basic Cards', p: 'Slash hits a player in range unless they play a Dodge. Peach heals 1; anyone may play a Peach to save a dying player.' },
+        { h: 'Tricks', p: 'Dismantle, Snatch, Duel, Borrowed Blade, Barbarian Raid, Arrow Barrage, Peach Garden, Harvest, Windfall, Indulgence and Lightning. Nullify cancels any trick and can itself be nullified.' },
+        { h: 'Equipment', p: 'Weapons set your attack range and add effects, armor defends, a +1 horse makes you harder to reach and a -1 horse brings others closer.' },
+        { h: 'Generals', p: 'Everyone gets a random general whose skills are listed under your hand. Liu Bei, Sun Quan, Hua Tuo and Diao Chan have active skills (pick cards and targets, then tap the skill); the rest are passive or conversion skills.' },
+        { h: 'Rewards and Penalties', p: 'Killing a rebel draws 3 cards; a lord who kills a loyalist discards all cards and equipment.' },
+        { h: 'Tips', p: 'Tap a card to select it, then tap a seat if it needs a target. When asked to play Dodge, Nullify or Peach, tap Pass to decline. Bots can fill empty seats.' },
       ]
     },
     werewolf: {

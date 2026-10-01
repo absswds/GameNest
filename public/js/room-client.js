@@ -1331,6 +1331,11 @@
         isWin = (winner === playerIndex);
         txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';
       }
+    } else if (game === 'sanguo' && state && state.winners) {
+      // -2 lord side, -3 rebels, -4 spy; winners lists the winning seats
+      isWin = state.winners.indexOf(playerIndex) >= 0;
+      txt = isWin ? _t('you_win') : _t('you_lose');
+      sub = _t(winner === -2 ? 'sg_win_lord' : winner === -3 ? 'sg_win_rebel' : 'sg_win_spy');
     } else if (game === 'werewolf' && state && state.roles) {
       // -2 wolves win, -3 village wins
       var wolfSide = state.roles[playerIndex] === 'wolf';

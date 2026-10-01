@@ -42,6 +42,7 @@ const covers = [
   { id: 'hearts', palette: ['#f5e8e8', '#e8a0a0', '#c23030', '#1a0a0a'], motif: 'hearts' },
   { id: 'truthdare', palette: ['#f2e8f0', '#d4a0c8', '#8a3070', '#1a1020'], motif: 'truthdare' },
   { id: 'werewolf', palette: ['#e9e7ef', '#aab0c8', '#3d4668', '#141725'], motif: 'werewolf' },
+  { id: 'sanguo', palette: ['#f5ece0', '#e0b89a', '#b03a2e', '#1f1210'], motif: 'sanguo' },
   { id: 'battleship', palette: ['#e8eef4', '#7cafc2', '#2a6f8a', '#142a35'], motif: 'battleship' },
   { id: '2048', palette: ['#f5f1e8', '#d9cbb0', '#edc22e', '#2a2418'], motif: '2048' },
   { id: 'sudoku', palette: ['#f2f0ea', '#c9d4de', '#6d8fb0', '#182231'], motif: 'sudoku' },
@@ -372,6 +373,17 @@ function motifSvg(cover) {
         <circle cx="1260" cy="700" r="6" fill="#f3ead2" opacity="0.6"/>
         <circle cx="560" cy="620" r="5" fill="#f3ead2" opacity="0.5"/>
         <path d="M520 860 L700 610 L760 700 L860 540 L1000 760 L1080 660 L1240 860 Z" fill="${accent}" opacity="0.9"/>
+      `;
+    case 'sanguo':
+      return `
+        <rect x="440" y="150" width="900" height="720" rx="48" fill="${dark}"/>
+        <path d="M760 220 H1120 V700 L940 610 L760 700 Z" fill="${accent}"/>
+        <path d="M800 260 H1080 V620 L940 550 L800 620 Z" fill="none" stroke="#f3ead2" stroke-width="8" opacity="0.7"/>
+        <circle cx="940" cy="400" r="70" fill="none" stroke="#f3ead2" stroke-width="10" opacity="0.85"/>
+        ${line(560, 800, 840, 520, '#f3ead2', 18)}
+        ${line(1320, 800, 1040, 520, '#f3ead2', 18)}
+        ${line(520, 760, 600, 840, accent, 26)}
+        ${line(1360, 760, 1280, 840, accent, 26)}
       `;
     case 'truthdare':
       return `

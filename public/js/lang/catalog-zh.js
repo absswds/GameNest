@@ -290,6 +290,15 @@
       category: '派对同乐',
       tags: ['社交', '轻松'],
     },
+    sanguo: {
+      name: '三国身份局',
+      subtitle: '主忠反内，谋定天下',
+      description: '4–8 人身份局：出杀闪、用锦囊、配装备，12 名武将各有技能。',
+      players: '4-8人',
+      duration: '约30分钟',
+      category: '牌桌竞技',
+      tags: ['身份', '卡牌', '策略'],
+    },
     werewolf: {
       name: '狼人杀',
       subtitle: '手机当法官，当面论狼',

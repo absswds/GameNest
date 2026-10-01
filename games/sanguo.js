@@ -1,26 +1,27 @@
 // games/sanguo.js
 // 三国身份局 — standard identity mode for 4–8 players. Rules live in lib/sanguo-core.js.
-// Step 1: rules engine only; generals have hp/gender/kingdom but no skills yet.
+// Skills are implemented inside the engine, keyed by general id.
 const core = require('./lib/sanguo-core');
 
 exports.name = 'sanguo';
 exports.maxPlayers = 8;
 exports.minPlayers = 4;
 
-// Historical names; skill ids are filled in step 2.
+// Historical names; each general has one or two skills (ids only; text lives in the lang packs).
+// Lord skills (jijiang, hujia, jiuyuan) are not implemented yet.
 const GENERALS = [
-  { id: 'liubei', kingdom: 'shu', hp: 4, gender: 'm' },
-  { id: 'guanyu', kingdom: 'shu', hp: 4, gender: 'm' },
-  { id: 'zhangfei', kingdom: 'shu', hp: 4, gender: 'm' },
-  { id: 'caocao', kingdom: 'wei', hp: 4, gender: 'm' },
-  { id: 'simayi', kingdom: 'wei', hp: 3, gender: 'm' },
-  { id: 'xiahoudun', kingdom: 'wei', hp: 4, gender: 'm' },
-  { id: 'sunquan', kingdom: 'wu', hp: 4, gender: 'm' },
-  { id: 'ganning', kingdom: 'wu', hp: 4, gender: 'm' },
-  { id: 'lvmeng', kingdom: 'wu', hp: 4, gender: 'm' },
-  { id: 'lvbu', kingdom: 'qun', hp: 4, gender: 'm' },
-  { id: 'huatuo', kingdom: 'qun', hp: 3, gender: 'm' },
-  { id: 'diaochan', kingdom: 'qun', hp: 3, gender: 'f' },
+  { id: 'liubei', skills: ['rende'], kingdom: 'shu', hp: 4, gender: 'm' },
+  { id: 'guanyu', skills: ['wusheng'], kingdom: 'shu', hp: 4, gender: 'm' },
+  { id: 'zhangfei', skills: ['paoxiao'], kingdom: 'shu', hp: 4, gender: 'm' },
+  { id: 'caocao', skills: ['jianxiong'], kingdom: 'wei', hp: 4, gender: 'm' },
+  { id: 'simayi', skills: ['fankui'], kingdom: 'wei', hp: 3, gender: 'm' },
+  { id: 'xiahoudun', skills: ['ganglie'], kingdom: 'wei', hp: 4, gender: 'm' },
+  { id: 'sunquan', skills: ['zhiheng'], kingdom: 'wu', hp: 4, gender: 'm' },
+  { id: 'ganning', skills: ['qixi'], kingdom: 'wu', hp: 4, gender: 'm' },
+  { id: 'lvmeng', skills: ['keji'], kingdom: 'wu', hp: 4, gender: 'm' },
+  { id: 'lvbu', skills: ['wushuang'], kingdom: 'qun', hp: 4, gender: 'm' },
+  { id: 'huatuo', skills: ['jijiu', 'qingnang'], kingdom: 'qun', hp: 3, gender: 'm' },
+  { id: 'diaochan', skills: ['lijian', 'biyue'], kingdom: 'qun', hp: 3, gender: 'f' },
 ];
 exports.GENERALS = GENERALS;
 

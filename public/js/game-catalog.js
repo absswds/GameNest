@@ -436,6 +436,18 @@
       supportsAI: true,
       maxPlayers: 12,
     },
+    sanguo: {
+      name: '三国身份局',
+      icon: '⚔️',
+      subtitle: '主忠反内，谋定天下',
+      description: '4–8 人身份局：出杀闪、用锦囊、配装备，12 名武将各有技能。',
+      players: '4-8人',
+      duration: '约30分钟',
+      category: '牌桌竞技',
+      tags: ['身份', '卡牌', '策略'],
+      supportsAI: true,
+      maxPlayers: 8,
+    },
   };
 
 
@@ -479,6 +491,7 @@
     'exploding-kittens',
     'truthdare',
     'werewolf',
+    'sanguo',
     'snakebattle',
     'battleship'
   ];

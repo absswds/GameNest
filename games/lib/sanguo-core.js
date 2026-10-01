@@ -134,6 +134,13 @@ function takeFromHand(s, p, id) {
   return i < 0 ? null : s.players[p].hand.splice(i, 1)[0];
 }
 const hasCard = (s, p, name) => s.players[p].hand.some((c) => c.name === name);
+const gen = (s, p) => s.players[p].general;
+// Does this hand card count as `name` for player p? (guanyu: red as sha; huatuo: red as tao off-turn)
+const asCard = (s, p, c, name) => c.name === name
+  || (name === 'sha' && gen(s, p) === 'guanyu' && isRed(c))
+  || (name === 'tao' && gen(s, p) === 'huatuo' && isRed(c) && s.current !== p);
+const canPlay = (s, p, name) => s.players[p].hand.some((c) => asCard(s, p, c, name));
+const noShaLimit = (s, p) => weapon(s, p) === 'zhuge' || gen(s, p) === 'zhangfei';
 const weapon = (s, p) => s.players[p].equip.weapon && s.players[p].equip.weapon.name;
 const armor = (s, p) => s.players[p].equip.armor && s.players[p].equip.armor.name;
 
@@ -207,6 +214,8 @@ const OPS = {
       case undefined:
         s.current = p;
         P.shaUsed = 0;
+        P.used = {};
+        P.given = 0;
         log(s, { t: 'turn', p });
         f.step = 'judge';
         return;
@@ -223,11 +232,11 @@ const OPS = {
         if (f.answer === undefined) return setAsk(s, { type: 'play', to: p }, SEC.play);
         const a = answer(f);
         if (a.end) { f.step = 'discard'; return; }
-        s.stack.push(a.frame);
+        if (a.frame) s.stack.push(a.frame); // skills without a frame just re-ask
         return;
       }
       case 'discard': {
-        const over = P.hand.length - Math.max(0, P.hp);
+        const over = gen(s, p) === 'lvmeng' && P.shaUsed === 0 ? 0 : P.hand.length - Math.max(0, P.hp);
         if (over > 0) {
           if (f.answer === undefined) return setAsk(s, { type: 'discard', to: p, count: over, reason: 'limit' }, SEC.discard);
           const ids = answer(f).cardIds;
@@ -241,6 +250,7 @@ const OPS = {
       case 'end':
         pop(s);
         if (s.winner !== null) return;
+        if (P.alive && gen(s, p) === 'diaochan') draw(s, p, 1);
         {
           const next = nextAlive(s, p);
           if (next <= p) s.round++;
@@ -335,7 +345,7 @@ const OPS = {
       else s.stack.push({ op: 'trick', name: f.name, from: f.from, to: t, victim: f.victim });
       return;
     }
-    toDiscard(s, f.cards);
+    toDiscard(s, f.cards.filter((c) => s.processing.some((x) => x.id === c.id)));
     if (f.name === 'wugu' && s.wugu) { toDiscard(s, s.wugu.cards); s.wugu = null; }
     s.processing = [];
     pop(s);
@@ -365,7 +375,7 @@ const OPS = {
       }
       case 'need':
         f.step = 'afterNeed';
-        s.stack.push({ op: 'need', to: T, name: 'shan', from: A, armorOk: !ignoreArmor, count: 1 });
+        s.stack.push({ op: 'need', to: T, name: 'shan', from: A, armorOk: !ignoreArmor, count: gen(s, A) === 'lvbu' ? 2 : 1 });
         return;
       case 'afterNeed':
         if (!s.lastNeed) { f.step = 'hit'; return; }
@@ -431,7 +441,7 @@ const OPS = {
     }
     while (f.got < (f.count || 1)) {
       const P = s.players[f.to];
-      const canAnswer = hasCard(s, f.to, f.name) || (f.name === 'sha' && weapon(s, f.to) === 'zhangba' && P.hand.length >= 2);
+      const canAnswer = canPlay(s, f.to, f.name) || (f.name === 'sha' && weapon(s, f.to) === 'zhangba' && P.hand.length >= 2);
       if (!canAnswer && f.answer === undefined) { s.lastNeed = false; s.lastNeedCards = null; return pop(s); }
       if (f.answer === undefined) {
         return setAsk(s, { type: 'respond', need: f.name, to: f.to, from: f.from, reason: f.reason || null }, SEC.respond);
@@ -458,6 +468,41 @@ const OPS = {
       return;
     }
     pop(s);
+    if (T.alive && f.from !== f.to) s.stack.push({ op: 'onDamage', to: f.to, from: f.from });
+  },
+
+  // Skills that trigger after damage: caocao, simayi, xiahoudun
+  onDamage(s, f) {
+    const T = s.players[f.to], g = T.general;
+    if (g === 'caocao' && s.processing.length) {
+      const got = s.processing.splice(0);
+      T.hand.push(...got);
+      log(s, { t: 'skill', p: f.to, skill: 'jianxiong' });
+    }
+    const src = f.from >= 0 ? s.players[f.from] : null;
+    if (g === 'simayi' && src && src.alive && (src.hand.length || Object.keys(src.equip).length)) {
+      const c = src.hand.length ? src.hand.splice(Math.floor(Math.random() * src.hand.length), 1)[0] : removeEquipOrJudge(s, f.from, Object.values(src.equip)[0].id);
+      T.hand.push(c);
+      log(s, { t: 'skill', p: f.to, skill: 'fankui', target: f.from });
+    }
+    if (g === 'xiahoudun' && src && src.alive) {
+      if (!f.step) {
+        f.step = 1;
+        log(s, { t: 'skill', p: f.to, skill: 'ganglie', target: f.from });
+        const j = judge(s, f.to, 'ganglie');
+        if (j && j.suit !== 'H') {
+          if (src.hand.length >= 2) return setAsk(s, { type: 'discard', to: f.from, count: 2, reason: 'ganglie', optional: true }, SEC.confirm);
+          s.stack.pop();
+          s.stack.push({ op: 'damage', from: f.to, to: f.from, n: 1 });
+          return;
+        }
+      } else {
+        const a = answer(f);
+        if (a && a.cardIds && a.cardIds.length === 2) toDiscard(s, a.cardIds.map((id) => takeFromHand(s, f.from, id)));
+        else { s.stack.pop(); s.stack.push({ op: 'damage', from: f.to, to: f.from, n: 1 }); return; }
+      }
+    }
+    pop(s);
   },
 
   dying(s, f) {
@@ -465,7 +510,7 @@ const OPS = {
     if (!f.order) { f.order = aliveFrom(s, s.current); f.i = 0; log(s, { t: 'dying', p: f.who }); }
     while (P.hp <= 0 && f.i < f.order.length) {
       const q = f.order[f.i];
-      if (f.answer !== undefined || (s.players[q].alive && hasCard(s, q, 'tao'))) {
+      if (f.answer !== undefined || (s.players[q].alive && canPlay(s, q, 'tao'))) {
         if (f.answer === undefined) return setAsk(s, { type: 'respond', need: 'tao', to: q, dying: f.who }, SEC.respond);
         const a = answer(f);
         if (a.cards) {
@@ -527,12 +572,12 @@ const OPS = {
       case 'juedou':
         f.turn = T;
         f.step = 'jd';
-        s.stack.push({ op: 'need', to: T, name: 'sha', from: A, count: 1, reason: 'juedou' });
+        s.stack.push({ op: 'need', to: T, name: 'sha', from: A, count: gen(s, A) === 'lvbu' ? 2 : 1, reason: 'juedou' });
         return;
       case 'jd':
         if (s.lastNeed) {
           f.turn = f.turn === T ? A : T;
-          s.stack.push({ op: 'need', to: f.turn, name: 'sha', from: f.turn === T ? A : T, count: 1, reason: 'juedou' });
+          { const o = f.turn === T ? A : T; s.stack.push({ op: 'need', to: f.turn, name: 'sha', from: o, count: gen(s, o) === 'lvbu' ? 2 : 1, reason: 'juedou' }); }
           return;
         }
         pop(s);
@@ -616,6 +661,12 @@ function planUse(s, p, data) {
     if (weapon(s, p) !== 'zhangba' || data.as !== 'sha') return { err: 'sg_bad_card' };
     name = 'sha';
   } else if (cards.length !== 1) return { err: 'sg_bad_card' };
+  else if (data.as && data.as !== name) {
+    // wusheng: red card as sha; qixi: black card as guohe
+    if (data.as === 'sha' && gen(s, p) === 'guanyu' && isRed(cards[0])) name = 'sha';
+    else if (data.as === 'guohe' && gen(s, p) === 'ganning' && isBlack(cards[0])) name = 'guohe';
+    else return { err: 'sg_bad_card' };
+  }
   const targets = (Array.isArray(data.targets) ? data.targets : []).filter((t) => Number.isInteger(t));
   const alive = (t) => t >= 0 && t < s.n && s.players[t].alive;
   const others = aliveFrom(s, p + 1).filter((t) => t !== p);
@@ -624,7 +675,7 @@ function planUse(s, p, data) {
   let use = { targets: [p] };
 
   if (name === 'sha') {
-    if (P.shaUsed >= 1 && weapon(s, p) !== 'zhuge') return { err: 'sg_sha_limit' };
+    if (P.shaUsed >= 1 && !noShaLimit(s, p)) return { err: 'sg_sha_limit' };
     const max = weapon(s, p) === 'fangtian' && P.hand.length === cards.length ? 3 : 1;
     if (!targets.length || targets.length > max || new Set(targets).size !== targets.length) return { err: 'sg_bad_target' };
     if (targets.some((t) => !alive(t) || t === p || !inRange(s, p, t))) return { err: 'sg_out_of_range' };
@@ -657,6 +708,46 @@ function planUse(s, p, data) {
   return { frame: Object.assign({ op: 'use', from: p, name, cardIds: ids }, use) };
 }
 
+// Active skills of the play phase. Returns an error key or null; a skill that
+// starts a trick leaves its frame in s.pendingSkillFrame.
+function useSkill(s, p, data) {
+  const P = s.players[p];
+  const used = P.used || (P.used = {});
+  const ids = Array.isArray(data.cardIds) ? data.cardIds : [];
+  const cards = ids.map((id) => P.hand.find((c) => c.id === id));
+  if (!ids.length || cards.some((c) => !c) || new Set(ids).size !== ids.length) return 'sg_bad_card';
+  const alive = (t) => Number.isInteger(t) && t >= 0 && t < s.n && s.players[t].alive;
+  const g = gen(s, p);
+  const target = data.targets && data.targets[0];
+  if (data.skill === 'rende' && g === 'liubei') {
+    if (!alive(target) || target === p) return 'sg_bad_target';
+    ids.forEach((id) => s.players[target].hand.push(takeFromHand(s, p, id)));
+    const before = P.given || 0;
+    P.given = before + ids.length;
+    if (before < 2 && P.given >= 2) P.hp = Math.min(P.maxHp, P.hp + 1);
+  } else if (data.skill === 'zhiheng' && g === 'sunquan') {
+    if (used.zhiheng) return 'sg_skill_used';
+    used.zhiheng = true;
+    toDiscard(s, ids.map((id) => takeFromHand(s, p, id)));
+    draw(s, p, ids.length);
+  } else if (data.skill === 'qingnang' && g === 'huatuo') {
+    if (used.qingnang) return 'sg_skill_used';
+    if (ids.length !== 1 || !alive(target) || s.players[target].hp >= s.players[target].maxHp) return 'sg_bad_target';
+    used.qingnang = true;
+    toDiscard(s, takeFromHand(s, p, ids[0]));
+    s.players[target].hp += 1;
+  } else if (data.skill === 'lijian' && g === 'diaochan') {
+    if (used.lijian) return 'sg_skill_used';
+    const [a, b] = data.targets || [];
+    if (ids.length !== 1 || !alive(a) || !alive(b) || a === b || s.players[a].gender !== 'm' || s.players[b].gender !== 'm') return 'sg_bad_target';
+    used.lijian = true;
+    toDiscard(s, takeFromHand(s, p, ids[0]));
+    s.pendingSkillFrame = { op: 'trick', name: 'juedou', from: a, to: b };
+  } else return 'sg_bad_skill';
+  log(s, { t: 'skill', p, skill: data.skill, target: target === undefined ? null : target });
+  return null;
+}
+
 function handleMove(data, s, p) {
   if (!data || s.winner !== null) return 'sg_not_now';
   const ask = s.ask;
@@ -666,6 +757,15 @@ function handleMove(data, s, p) {
 
   if (ask.type === 'play') {
     if (data.type === 'end') { f.answer = { end: true }; s.ask = null; run(s); return null; }
+    if (data.type === 'skill') {
+      const err = useSkill(s, p, data);
+      if (err) return err;
+      f.answer = { frame: s.pendingSkillFrame || null };
+      s.pendingSkillFrame = null;
+      s.ask = null;
+      run(s);
+      return null;
+    }
     if (data.type !== 'use') return 'sg_not_now';
     const plan = planUse(s, p, data);
     if (plan.err) return plan.err;
@@ -680,7 +780,7 @@ function handleMove(data, s, p) {
       if (!cards.length || cards.some((c) => !c) || new Set(ids).size !== ids.length) return 'sg_bad_card';
       const need = ask.need;
       const ok = need === 'any' ? cards.length === 1
-        : cards.length === 1 ? cards[0].name === need
+        : cards.length === 1 ? asCard(s, p, cards[0], need)
         : need === 'sha' && cards.length === 2 && weapon(s, p) === 'zhangba';
       if (!ok) return 'sg_bad_card';
       f.answer = { cards: ids.map((id) => takeFromHand(s, p, id)) };
@@ -729,6 +829,6 @@ function onTimeout(s) {
 
 module.exports = {
   EQUIP, TRICKS, DELAYED, HARMFUL, ROLES, SEC,
-  buildDeck, cardType, isRed, isBlack, setup, run, handleMove, onTimeout, planUse,
+  buildDeck, cardType, isRed, isBlack, setup, run, handleMove, onTimeout, planUse, asCard, canPlay,
   distance, attackRange, inRange, aliveFrom, weapon, armor, hasCard, checkWin,
 };

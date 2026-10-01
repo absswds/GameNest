@@ -13,7 +13,7 @@ function table(n, opts = {}) {
   sg.initGame(s, n);
   const roles = opts.roles || core.ROLES[n];
   s.players.forEach((P, i) => {
-    Object.assign(P, { role: roles[i], hand: [], equip: {}, judge: [], hp: 4, maxHp: 4, gender: 'm', alive: true, shaUsed: 0, skipPlay: false });
+    Object.assign(P, { role: roles[i], hand: [], equip: {}, judge: [], general: 'none', hp: 4, maxHp: 4, gender: 'm', alive: true, shaUsed: 0, skipPlay: false });
   });
   s.lord = roles.indexOf('lord');
   s.deck = opts.deck || Array.from({ length: 40 }, () => card('sha', 'C', 3));
@@ -240,4 +240,124 @@ test('sanguo: bots finish whole games for 4–8 players', () => {
       assert.ok(total <= 106);
     }
   }
+});
+
+// ---- general skills ----
+const as = (s, p, general) => { s.players[p].general = general; if (general === 'lvbu') s.players[p].gender = 'm'; };
+
+test('sanguo skills: rende gives cards and heals once after 2 given; zhiheng and qingnang once per turn', () => {
+  const s = table(4);
+  as(s, 0, 'liubei');
+  s.players[0].hp = 2;
+  const [a, b, c] = give(s, 0, card('shan'), card('shan'), card('sha'));
+  ok(s, 0, { type: 'skill', skill: 'rende', cardIds: [a.id], targets: [1] });
+  assert.equal(s.players[0].hp, 2);
+  ok(s, 0, { type: 'skill', skill: 'rende', cardIds: [b.id], targets: [1] });
+  assert.equal(s.players[0].hp, 3);
+  assert.equal(s.players[1].hand.length, 2);
+  assert.equal(sg.handleMove({ type: 'skill', skill: 'zhiheng', cardIds: [c.id] }, s, 0), 'sg_bad_skill');
+
+  const z = table(4);
+  as(z, 0, 'sunquan');
+  const cs = give(z, 0, card('sha'), card('sha'));
+  ok(z, 0, { type: 'skill', skill: 'zhiheng', cardIds: cs.map((x) => x.id) });
+  assert.equal(z.players[0].hand.length, 2);
+  assert.equal(sg.handleMove({ type: 'skill', skill: 'zhiheng', cardIds: [z.players[0].hand[0].id] }, z, 0), 'sg_skill_used');
+
+  const h = table(4);
+  as(h, 0, 'huatuo');
+  h.players[1].hp = 2;
+  const [x] = give(h, 0, card('sha'));
+  ok(h, 0, { type: 'skill', skill: 'qingnang', cardIds: [x.id], targets: [1] });
+  assert.equal(h.players[1].hp, 3);
+});
+
+test('sanguo skills: wusheng, qixi, paoxiao and jijiu conversions', () => {
+  const s = table(4);
+  as(s, 0, 'guanyu');
+  const [red] = give(s, 0, card('shan', 'H'));
+  ok(s, 0, { type: 'use', cardId: red.id, as: 'sha', targets: [1] });
+  assert.equal(s.players[1].hp, 3);
+  const [bad] = give(s, 0, card('shan', 'S'));
+  assert.equal(sg.handleMove({ type: 'use', cardId: bad.id, as: 'sha', targets: [1] }, s, 0), 'sg_bad_card');
+
+  const q = table(4);
+  as(q, 0, 'ganning');
+  q.players[1].hand.push(card('sha'));
+  const [blk] = give(q, 0, card('shan', 'C'));
+  ok(q, 0, { type: 'use', cardId: blk.id, as: 'guohe', targets: [1] });
+  assert.equal(q.ask.type, 'pick');
+
+  const p = table(4);
+  as(p, 0, 'zhangfei');
+  const [s1, s2] = give(p, 0, card('sha'), card('sha'));
+  ok(p, 0, { type: 'use', cardId: s1.id, targets: [1] });
+  ok(p, 0, { type: 'use', cardId: s2.id, targets: [1] });
+  assert.equal(p.players[1].hp, 2);
+
+  const j = table(4);
+  as(j, 2, 'huatuo');
+  j.players[1].hp = 1;
+  const [sha] = give(j, 0, card('sha'));
+  const [rc] = give(j, 2, card('shan', 'D'));
+  ok(j, 0, { type: 'use', cardId: sha.id, targets: [1] });
+  assert.equal(j.ask.need, 'tao');
+  ok(j, 2, { type: 'respond', cardId: rc.id });
+  assert.equal(j.players[1].alive, true);
+});
+
+test('sanguo skills: jianxiong, fankui, ganglie, wushuang, biyue, keji, lijian', () => {
+  const c = table(4);
+  as(c, 1, 'caocao');
+  const [sha] = give(c, 0, card('sha'));
+  ok(c, 0, { type: 'use', cardId: sha.id, targets: [1] });
+  assert.equal(c.players[1].hand.some((x) => x.id === sha.id), true, 'caocao keeps the sha that hit him');
+  assert.equal(c.discard.some((x) => x.id === sha.id), false);
+
+  const f = table(4);
+  as(f, 1, 'simayi');
+  const [s2] = give(f, 0, card('sha'), card('tao'));
+  const before = f.players[0].hand.length;
+  ok(f, 0, { type: 'use', cardId: s2.id, targets: [1] });
+  assert.equal(f.players[0].hand.length, before - 2, 'sha spent and one card taken');
+  assert.equal(f.players[1].hand.length, 1);
+
+  const g = table(4, { deck: [card('shan', 'S', 5)] }); // black judge → ganglie works
+  as(g, 1, 'xiahoudun');
+  const [s3] = give(g, 0, card('sha'));
+  ok(g, 0, { type: 'use', cardId: s3.id, targets: [1] });
+  assert.equal(g.players[0].hp, 3, 'attacker has no 2 cards to discard → takes 1');
+
+  const w = table(4);
+  as(w, 0, 'lvbu');
+  const [s4] = give(w, 0, card('sha'));
+  const [sh1] = give(w, 1, card('shan'), card('shan'));
+  ok(w, 0, { type: 'use', cardId: s4.id, targets: [1] });
+  ok(w, 1, { type: 'respond', cardId: sh1.id });
+  assert.equal(w.ask.type, 'respond', 'second shan is required against wushuang');
+  ok(w, 1, { type: 'pass' });
+  assert.equal(w.players[1].hp, 3);
+
+  const d = table(4);
+  as(d, 0, 'diaochan');
+  const n0 = d.players[0].hand.length;
+  ok(d, 0, { type: 'end' });
+  assert.equal(d.players[0].hand.length, n0 + 1, 'biyue draws at end of turn');
+
+  const k = table(4);
+  as(k, 0, 'lvmeng');
+  k.players[0].hp = 1;
+  give(k, 0, card('shan'), card('shan'), card('shan'));
+  ok(k, 0, { type: 'end' });
+  assert.equal(k.players[0].hand.length, 3, 'keji skips the discard phase');
+
+  const l = table(4);
+  as(l, 0, 'diaochan');
+  const [lc] = give(l, 0, card('sha'));
+  l.players[2].gender = 'm';
+  give(l, 1, card('sha')); // the duel victim (seat 2) is asked first
+  give(l, 2, card('sha'));
+  ok(l, 0, { type: 'skill', skill: 'lijian', cardIds: [lc.id], targets: [1, 2] });
+  assert.equal(l.ask.type, 'respond');
+  assert.equal(l.ask.reason, 'juedou');
 });

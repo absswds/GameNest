@@ -290,6 +290,15 @@
       category: 'Party',
       tags: ['Social', 'Casual'],
     },
+    sanguo: {
+      name: 'Three Kingdoms Showdown',
+      subtitle: 'Lord, loyalists, rebels and a spy',
+      description: 'A 4 to 8 player identity card game: play Slash and Dodge, use tricks and equipment, 12 generals with their own skills.',
+      players: '4-8 players',
+      duration: '~30 min',
+      category: 'Cards & Tiles',
+      tags: ['Hidden roles', 'Cards', 'Strategy'],
+    },
     werewolf: {
       name: 'Werewolf',
       subtitle: 'Your phone is the moderator',
