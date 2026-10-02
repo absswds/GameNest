@@ -1,6 +1,8 @@
 // games/werewolf.js
 // 狼人杀（预女猎白标准板）— the phone is the judge: night actions and votes happen
-// on screen, day discussion happens out loud. 6–12 players, 屠边 win condition.
+// on screen. Day talk is either out loud (talkMode 'face') or typed into the game
+// (talkMode 'chat': turn-based speeches, then free discussion; wolves get a night
+// channel). 6–12 players, 屠边 win condition.
 
 exports.name = 'werewolf';
 exports.maxPlayers = 12;
@@ -17,6 +19,9 @@ const SETUPS = {
 };
 const GODS = ['seer', 'witch', 'hunter', 'idiot'];
 const SEC = { wolf: 40, witch: 25, dawn: 6, sign: 15, vote: 25, hunter: 20, badge: 15 };
+const CHAT_MAX = 120;     // characters per message
+const CHAT_GAP = 800;     // ms between two messages from one player
+const CHAT_KEEP = 300;    // messages kept in state
 
 exports.SETUPS = SETUPS;
 
@@ -57,6 +62,10 @@ exports.initGame = (state, n) => {
     sheriff: -1,
     sheriffOn: opts.sheriff !== false,
     speechTime: [30, 60, 90, 120, 180].indexOf(opts.speechTime) >= 0 ? opts.speechTime : 60,
+    talkMode: opts.talkMode === 'chat' ? 'chat' : 'face',
+    discussTime: [0, 60, 120, 180].indexOf(opts.discussTime) >= 0 ? opts.discussTime : 60,
+    chat: [],
+    chatAt: {},
     potions: { save: true, poison: true },
     checks: [], // seer results
     log: [],
@@ -93,6 +102,7 @@ function end(s, winner) {
 // ---------- night ----------
 function startNight(s) {
   s.night++;
+  s.log.push({ night: s.night, t: 'night' });
   s.phase = 'night_wolf';
   s.wolfVotes = {};
   s.seerDone = aliveWith(s, 'seer').length === 0;
@@ -199,10 +209,28 @@ function nextSpeaker(s) {
   if (s.speakerPos < s.speakers.length) return setDeadline(s, s.speechTime);
   const kind = s.speechKind;
   if (kind === 'sheriff') return startVote(s, 'sheriff', s.candidates, false);
-  if (kind === 'day') return startVote(s, 'exile', alive(s), false);
+  if (kind === 'day') return s.discussTime > 0 ? startDiscuss(s) : startVote(s, 'exile', alive(s), false);
   if (kind === 'pk') return startVote(s, 'exile', s.speakers, true);
   return runQueue(s); // last words
 }
+
+// After the day speeches everyone may talk at once; it ends early when every living player is ready.
+function startDiscuss(s) {
+  s.phase = 'discuss';
+  s.ready = {};
+  setDeadline(s, s.discussTime);
+}
+
+// Who may type right now, and into which channel ('all' or 'wolf'); null = nobody can hear you.
+function chatChannel(s, p) {
+  if (s.talkMode !== 'chat' || s.winner !== null) return null;
+  if (s.phase === 'speech') return s.speakers[s.speakerPos] === p ? 'all' : null;
+  if (!s.alive[p]) return null;
+  if (s.phase === 'discuss' || s.phase === 'vote') return 'all';
+  if (s.phase === 'night_wolf' && s.roles[p] === 'wolf') return 'wolf';
+  return null;
+}
+exports.chatChannel = chatChannel;
 
 // ---------- sheriff election (day 1 only) ----------
 function startSheriff(s) {
@@ -290,6 +318,22 @@ exports.handleMove = (data, s, p) => {
   const t = data.type;
   const isAlive = (i) => Number.isInteger(i) && i >= 0 && i < s.n && s.alive[i];
 
+  if (t === 'chat') {
+    const ch = chatChannel(s, p);
+    if (!ch) return 'ww_chat_closed';
+    // The sender saw a different channel (e.g. typed at night, phase flipped to day): never leak it.
+    if (data.ch !== undefined && data.ch !== ch) return 'ww_chat_moved';
+    const text = typeof data.text === 'string' ? data.text.replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX) : '';
+    if (!text) return 'ww_chat_empty';
+    const now = Date.now();
+    if (now - (s.chatAt[p] || 0) < CHAT_GAP) return 'ww_chat_fast';
+    s.chatAt[p] = now;
+    // `at` = log length when sent, so the client can interleave chat with game events.
+    s.chat.push({ p, ch, text, at: s.log.length, day: s.day });
+    if (s.chat.length > CHAT_KEEP) s.chat.splice(0, s.chat.length - CHAT_KEEP);
+    return null;
+  }
+
   if (s.phase === 'night_wolf') {
     if (t === 'kill') {
       if (s.roles[p] !== 'wolf' || !s.alive[p]) return 'ww_not_now';
@@ -330,6 +374,13 @@ exports.handleMove = (data, s, p) => {
   if (s.phase === 'speech') {
     if (t !== 'end_speech' || s.speakers[s.speakerPos] !== p) return 'ww_not_now';
     nextSpeaker(s);
+    return null;
+  }
+
+  if (s.phase === 'discuss') {
+    if (t !== 'ready' || !s.alive[p]) return 'ww_not_now';
+    s.ready[p] = true;
+    if (exports.getPendingActors(s).length === 0) startVote(s, 'exile', alive(s), false);
     return null;
   }
 
@@ -381,6 +432,7 @@ exports.getPendingActors = (s) => {
     case 'night_witch': return s.witchDone ? [] : aliveWith(s, 'witch');
     case 'sheriff_sign': return alive(s).filter((i) => s.runs[i] === undefined);
     case 'speech': return [s.speakers[s.speakerPos]];
+    case 'discuss': return alive(s).filter((i) => !s.ready[i]);
     case 'vote': return s.voters.filter((v) => s.votes[v] === undefined);
     case 'hunter': case 'badge': return [s.actor];
     default: return [];
@@ -393,6 +445,7 @@ exports.onTimeout = (s) => {
     case 'night_witch': s.witchDone = true; return endNight(s);
     case 'sheriff_sign': return endSign(s);
     case 'speech': return nextSpeaker(s);
+    case 'discuss': return startVote(s, 'exile', alive(s), false);
     case 'vote': return resolveVote(s);
     case 'hunter': s.revealed[s.actor] = true; return runQueue(s);
     case 'badge':
@@ -410,6 +463,7 @@ exports.setCurrentActor = () => {};
 // ---------- hidden information ----------
 exports.playerView = (s, idx) => {
   const v = JSON.parse(JSON.stringify(s));
+  delete v.chatAt;
   if (!Array.isArray(s.roles) || !s.roles.length) return v;
   const over = s.winner !== null;
   const mine = s.roles[idx];
@@ -418,6 +472,7 @@ exports.playerView = (s, idx) => {
     v.roles = s.roles.map((r, i) => (i === idx || s.revealed[i] || (mine === 'wolf' && r === 'wolf') ? r : null));
     v.deathCause = s.deathCause.map((c) => (c === 'shot' || c === 'exile' ? c : c ? 'dead' : null));
     if (mine !== 'wolf') v.wolfVotes = {};
+    if (mine !== 'wolf') v.chat = (s.chat || []).filter((m) => m.ch !== 'wolf');
     if (mine !== 'seer') v.checks = [];
     if (mine !== 'witch') v.potions = null;
     v.knife = mine === 'witch' && s.phase === 'night_witch' && s.potions.save ? s.knife : -1;

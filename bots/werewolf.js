@@ -34,6 +34,7 @@ exports.createBot = (playerIndex) => ({
         return { type: 'witch' };
       case 'sheriff_sign': return { type: 'run', run: Math.random() < 0.35 };
       case 'speech': return { type: 'end_speech' };
+      case 'discuss': return { type: 'ready' };
       case 'vote': {
         const pool = s.voteCandidates.filter((i) => i !== me);
         const pref = pool.filter((i) => suspects.indexOf(i) >= 0);

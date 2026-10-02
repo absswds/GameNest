@@ -361,3 +361,36 @@ test('sanguo skills: jianxiong, fankui, ganglie, wushuang, biyue, keji, lijian',
   assert.equal(l.ask.type, 'respond');
   assert.equal(l.ask.reason, 'juedou');
 });
+
+test('sanguo skills: keji also counts a sha played (not used) in this turn, e.g. inside a juedou', () => {
+  const s = table(4);
+  s.players[0].general = 'lvmeng';
+  s.players[0].hp = 1;
+  const [jd, s1] = give(s, 0, card('juedou'), card('sha'));
+  give(s, 0, card('tao'), card('tao'), card('tao'));
+  const [t1] = give(s, 1, card('sha'));
+  ok(s, 0, { type: 'use', cardId: jd.id, targets: [1] });
+  ok(s, 1, { type: 'respond', cardId: t1.id });
+  ok(s, 0, { type: 'respond', cardId: s1.id });
+  ok(s, 0, { type: 'end' });
+  assert.equal(s.ask.type, 'discard', 'a sha was played this turn, so keji does not skip discarding');
+  assert.equal(s.ask.to, 0);
+});
+
+test('sanguo: hanbing discards from hand or equipment only, never the judge zone', () => {
+  const s = table(4);
+  const hb = card('hanbing');
+  s.players[0].equip.weapon = hb;
+  const [sha] = give(s, 0, card('sha'));
+  const lebu = card('lebu');
+  s.players[1].judge.push(lebu);
+  const [h1] = give(s, 1, card('tao', 'H'));
+  ok(s, 0, { type: 'use', cardId: sha.id, targets: [1] });
+  ok(s, 0, { type: 'confirm', yes: true });
+  assert.equal(s.ask.type, 'pick');
+  assert.equal(s.ask.noJudge, true);
+  ok(s, 0, { type: 'pick', zone: 'table', cardId: lebu.id });
+  assert.ok(s.players[1].judge.includes(lebu), 'the lebu stays in the judge zone');
+  assert.ok(!s.players[1].hand.includes(h1), 'the hand card was discarded instead');
+  assert.equal(s.players[1].hp, 4, 'hanbing prevented the damage');
+});

@@ -6,7 +6,7 @@ const { createBot } = require('../bots/werewolf');
 // Start a game with fixed roles (seat order) so scenarios are deterministic.
 function start(roles, options) {
   const s = ww.createState();
-  s._options = Object.assign({ sheriff: false }, options);
+  s._options = Object.assign({ sheriff: false, discussTime: 0 }, options);
   ww.initGame(s, roles.length);
   s.roles = roles.slice();
   return s;
@@ -107,7 +107,7 @@ test('werewolf: a tied vote goes to a PK, a second tie exiles nobody', () => {
   move(s, 4, { type: 'vote', target: -1 });
   move(s, 5, { type: 'vote', target: -1 });
   assert.equal(s.phase, 'night_wolf');
-  assert.equal(s.log[s.log.length - 1].t, 'no_exile');
+  assert.deepEqual(s.log.slice(-2).map((e) => e.t), ['no_exile', 'night']);
 });
 
 test('werewolf: wolves win by killing every god (屠边)', () => {

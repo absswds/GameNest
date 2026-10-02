@@ -313,13 +313,14 @@
     },
     werewolf: {
       sections: [
-        { h: '怎么玩', p: '手机就是法官：夜里轮到你时手机提示你操作，其他人的屏幕只显示“天黑请闭眼”。白天大家当面发言，发言顺序和投票在手机上完成。' },
+        { h: '怎么玩', p: '手机就是法官：夜里轮到你时手机提示你操作，其他人的屏幕只显示“天黑请闭眼”。白天可以当面说，也可以在房间设置里选「打字聊天」在手机上打字发言；发言顺序和投票都在手机上完成。' },
         { h: '身份配置', p: '按人数自动配板：6 人 2 狼+预言家+女巫+2 平民；7–10 人加入猎人；11–12 人再加入白痴。身份牌默认盖着，点一下才显示，注意别让旁边的人看到。' },
         { h: '夜晚', p: '狼人一起选击杀目标（可以空刀），预言家查验一人；之后女巫决定是否用解药救人或用毒药毒人，同一晚只能用一瓶，不能自救。' },
-        { h: '白天', p: '第一天可以竞选警长：上警的人依次发言，其他人投票，警长投票算 1.5 票并最后发言。之后公布昨晚死讯，第一晚死者有遗言，然后所有人依次发言并投票放逐。平票的人进行 PK 发言再投一次，还平票就无人出局。' },
+        { h: '白天', p: '第一天可以竞选警长：上警的人依次发言，其他人投票，警长投票算 1.5 票并最后发言。之后公布昨晚死讯，第一晚死者有遗言，然后所有人依次发言，之后是一段自由讨论（大家可以一起说，所有人都点「准备投票」就提前结束），最后投票放逐。平票的人进行 PK 发言再投一次，还平票就无人出局。' },
+        { h: '打字聊天', p: '选了「打字聊天」时：轮流发言阶段只有当前发言人能打字；自由讨论和投票时所有活着的人都能说；夜里狼人有只有狼队友看得到的狼人频道；出局的人只能旁观（遗言除外）。' },
         { h: '技能', p: '猎人出局时可以开枪带走一人（被毒死除外）；白痴被放逐时翻牌免死，但之后不能投票；警长出局时可以移交或撕毁警徽。' },
         { h: '胜负', p: '狼人全部出局，好人获胜；神职全部出局或平民全部出局（屠边），狼人获胜。' },
-        { h: '房间设置', p: '房主可以调整每人发言时长，以及是否进行警长竞选。人数不够可以加电脑凑人，电脑只会随机行动，主要用于试玩。' },
+        { h: '房间设置', p: '房主可以选择发言方式（面对面 / 打字聊天）、自由讨论时长（可关闭）、每人发言时长，以及是否进行警长竞选。人数不够可以加电脑凑人，电脑只会随机行动，主要用于试玩。' },
       ]
     },
     truthdare: {
@@ -670,13 +671,14 @@
     },
     werewolf: {
       sections: [
-        { h: 'How It Works', p: 'The phone is the moderator. At night, only players with an action see prompts; everyone else sees \u201cnight falls\u201d. During the day you talk in person, while speaking order and votes run on the phone.' },
+        { h: 'How It Works', p: 'The phone is the moderator. At night, only players with an action see prompts; everyone else sees \u201cnight falls\u201d. During the day you talk in person, or pick typed chat in the room settings and type on the phone; speaking order and votes always run on the phone.' },
         { h: 'Roles', p: 'Roles scale with the table: 6 players = 2 wolves, Seer, Witch, 2 villagers; 7\u201310 add the Hunter; 11\u201312 add the Idiot. Your role card stays face down until you tap it.' },
         { h: 'Night', p: 'Wolves agree on a victim (or no kill) and the Seer checks one player. Then the Witch may heal the victim or poison someone, one potion per night and never on herself.' },
-        { h: 'Day', p: 'On day one you may elect a sheriff: candidates speak, the others vote. The sheriff\u2019s vote counts 1.5 and they speak last. Then deaths are announced, first-night victims give last words, everyone speaks in turn and votes to exile. A tie leads to tie-break speeches and a revote; a second tie exiles nobody.' },
+        { h: 'Day', p: 'On day one you may elect a sheriff: candidates speak, the others vote. The sheriff\u2019s vote counts 1.5 and they speak last. Then deaths are announced, first-night victims give last words, everyone speaks in turn, then an open discussion follows (everyone may talk; it ends early once all tap Ready to vote), and then the exile vote. A tie leads to tie-break speeches and a revote; a second tie exiles nobody.' },
+        { h: 'Typed Chat', p: 'With typed chat on: during turn-by-turn speeches only the current speaker can type; in the open discussion and the vote every living player can talk; at night the wolves get a channel only they can read; players who are out can only watch, apart from their last words.' },
         { h: 'Powers', p: 'The Hunter may shoot someone when he dies, unless poisoned. The Idiot survives his first exile by revealing but loses his vote. A dying sheriff passes or tears up the badge.' },
         { h: 'Winning', p: 'The village wins when every wolf is out. The wolves win when all special roles or all villagers are out.' },
-        { h: 'Room Settings', p: 'The host sets the speech time and whether there is a sheriff election. Bots can fill empty seats; they act randomly and are mainly for trying the game.' },
+        { h: 'Room Settings', p: 'The host picks how people talk (face to face or typed chat), the open discussion length (or off), the speech time and whether there is a sheriff election. Bots can fill empty seats; they act randomly and are mainly for trying the game.' },
       ]
     },
     truthdare: {

@@ -806,20 +806,29 @@
         optionsEl.style.display = 'block';
         var wwSpeech = roomOptions.speechTime || 60;
         var wwSheriff = roomOptions.sheriff !== false;
+        var wwTalk = roomOptions.talkMode === 'chat' ? 'chat' : 'face';
+        var wwDiscuss = roomOptions.discussTime !== undefined ? roomOptions.discussTime : 60;
+        var wwDiscussLabel = function(v) { return v ? v + _t('seconds') : _t('ww_off'); };
         var wwHead = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
         var wwHint = '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.5;">' + _t('ww_setup_hint') + '</div>';
         if (isHost) {
           var wwSel = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
           var wwOpts = '';
           [30, 60, 90, 120, 180].forEach(function(v) { wwOpts += '<option value="' + v + '"' + (wwSpeech === v ? ' selected' : '') + '>' + v + _t('seconds') + '</option>'; });
+          var wwDisOpts = '';
+          [0, 60, 120, 180].forEach(function(v) { wwDisOpts += '<option value="' + v + '"' + (wwDiscuss === v ? ' selected' : '') + '>' + wwDiscussLabel(v) + '</option>'; });
           optionsEl.innerHTML = wwHead +
             '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('ww_talk_mode') + ' <select onchange="window._setGameOption(\'talkMode\', this.value)" style="' + wwSel + '">' +
+                '<option value="face"' + (wwTalk === 'face' ? ' selected' : '') + '>' + _t('ww_talk_face') + '</option><option value="chat"' + (wwTalk === 'chat' ? ' selected' : '') + '>' + _t('ww_talk_chat') + '</option></select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('ww_discuss_time') + ' <select onchange="window._setGameOption(\'discussTime\', parseInt(this.value))" style="' + wwSel + '">' + wwDisOpts + '</select></label>' +
               '<label style="display:flex;align-items:center;gap:6px;">' + _t('ww_speech_time') + ' <select onchange="window._setGameOption(\'speechTime\', parseInt(this.value))" style="' + wwSel + '">' + wwOpts + '</select></label>' +
               '<label style="display:flex;align-items:center;gap:6px;">' + _t('ww_sheriff_opt') + ' <select onchange="window._setGameOption(\'sheriff\', this.value === \'1\')" style="' + wwSel + '">' +
                 '<option value="1"' + (wwSheriff ? ' selected' : '') + '>' + _t('ww_on') + '</option><option value="0"' + (wwSheriff ? '' : ' selected') + '>' + _t('ww_off') + '</option></select></label>' +
             '</div>' + wwHint;
         } else {
-          optionsEl.innerHTML = wwHead + '<div style="font-size:13px;color:var(--text-muted)">' + _t('ww_speech_time') + ': ' + wwSpeech + _t('seconds') +
+          optionsEl.innerHTML = wwHead + '<div style="font-size:13px;color:var(--text-muted)">' + _t('ww_talk_mode') + ': ' + _t(wwTalk === 'chat' ? 'ww_talk_chat' : 'ww_talk_face') +
+            ' · ' + _t('ww_discuss_time') + ': ' + wwDiscussLabel(wwDiscuss) + ' · ' + _t('ww_speech_time') + ': ' + wwSpeech + _t('seconds') +
             ' · ' + _t('ww_sheriff_opt') + ': ' + _t(wwSheriff ? 'ww_on' : 'ww_off') + '</div>' + wwHint;
         }
       } else if (game === 'drawguess') {
@@ -1164,6 +1173,8 @@
       }
       else if (state && state.currentPlayer >= 0) st.textContent = _t('opponent_turn');
       else if (state) st.textContent = _t('realtime_race');
+      // These renderers draw their own whose-turn header; the generic line would be wrong for them.
+      if (game === 'sanguo' || game === 'werewolf') st.style.display = 'none';
     }
   }
 

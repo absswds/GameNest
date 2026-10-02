@@ -171,6 +171,7 @@ function allCards(P) {
   return P.hand.concat(Object.values(P.equip), P.judge);
 }
 const hasAnyCard = (P) => allCards(P).length > 0;
+const handAndEquip = (P) => P.hand.concat(Object.values(P.equip));
 
 function setAsk(s, ask, sec) {
   s.ask = Object.assign({ seq: ++s.askSeq, deadline: Date.now() + sec * 1000 }, ask);
@@ -214,6 +215,7 @@ const OPS = {
       case undefined:
         s.current = p;
         P.shaUsed = 0;
+        P.shaPlayed = false; // 克己 also counts a sha played (打出) in answer, e.g. inside a duel
         P.used = {};
         P.given = 0;
         log(s, { t: 'turn', p });
@@ -236,7 +238,7 @@ const OPS = {
         return;
       }
       case 'discard': {
-        const over = gen(s, p) === 'lvmeng' && P.shaUsed === 0 ? 0 : P.hand.length - Math.max(0, P.hp);
+        const over = gen(s, p) === 'lvmeng' && P.shaUsed === 0 && !P.shaPlayed ? 0 : P.hand.length - Math.max(0, P.hp);
         if (over > 0) {
           if (f.answer === undefined) return setAsk(s, { type: 'discard', to: p, count: over, reason: 'limit' }, SEC.discard);
           const ids = answer(f).cardIds;
@@ -405,12 +407,12 @@ const OPS = {
         if (s.lastNeed) s.stack.push({ op: 'sha', from: A, to: T, card: s.lastNeedCards || [] });
         return;
       case 'hit':
-        if (weapon(s, A) === 'hanbing' && hasAnyCard(s.players[T])) {
+        if (weapon(s, A) === 'hanbing' && handAndEquip(s.players[T]).length) {
           if (f.answer === undefined) return setAsk(s, { type: 'confirm', to: A, reason: 'hanbing', target: T }, SEC.confirm);
           if (answer(f).yes) {
             log(s, { t: 'weapon', p: A, name: 'hanbing' });
             pop(s);
-            s.stack.push({ op: 'pick', from: A, to: T, mode: 'discard', left: 2 });
+            s.stack.push({ op: 'pick', from: A, to: T, mode: 'discard', left: 2, noJudge: true });
             return;
           }
         }
@@ -451,6 +453,7 @@ const OPS = {
       toDiscard(s, a.cards);
       s.lastNeedCards = a.cards;
       log(s, { t: 'respond', p: f.to, name: f.name, cards: a.cards });
+      if (f.name === 'sha' && f.to === s.current) s.players[f.to].shaPlayed = true;
       f.got++;
     }
     s.lastNeed = true;
@@ -614,13 +617,15 @@ const OPS = {
   // `from` picks `left` cards of `to` to discard or take (hand cards are picked blind).
   pick(s, f) {
     const TP = s.players[f.to];
-    if (f.left <= 0 || !hasAnyCard(TP)) return pop(s);
-    if (f.answer === undefined) return setAsk(s, { type: 'pick', to: f.from, target: f.to, mode: f.mode }, SEC.pick);
+    // 寒冰剑 (noJudge) may only hit hand and equipment; 过河拆桥/顺手牵羊 can reach the judge zone too.
+    const pool = f.noJudge ? handAndEquip(TP) : allCards(TP);
+    if (f.left <= 0 || !pool.length) return pop(s);
+    if (f.answer === undefined) return setAsk(s, { type: 'pick', to: f.from, target: f.to, mode: f.mode, noJudge: !!f.noJudge }, SEC.pick);
     const a = answer(f);
     let c;
     if (a.zone === 'hand' && TP.hand.length) c = TP.hand.splice(Math.floor(Math.random() * TP.hand.length), 1)[0];
-    else c = removeEquipOrJudge(s, f.to, a.cardId);
-    if (!c) c = TP.hand.length ? TP.hand.splice(0, 1)[0] : removeEquipOrJudge(s, f.to, allCards(TP)[0].id);
+    else if (!(f.noJudge && TP.judge.some((j) => j.id === a.cardId))) c = removeEquipOrJudge(s, f.to, a.cardId);
+    if (!c) c = TP.hand.length ? TP.hand.splice(0, 1)[0] : removeEquipOrJudge(s, f.to, pool[0].id);
     if (f.mode === 'take') s.players[f.from].hand.push(c);
     else toDiscard(s, c);
     log(s, { t: f.mode === 'take' ? 'took' : 'dismantled', p: f.from, target: f.to, card: a.zone === 'hand' && f.mode === 'take' ? null : c });
