@@ -1,0 +1,67 @@
+name: Bug report / 问题反馈
+description: Something is broken, a rule is wrong, or a game gets stuck. / 功能异常、规则错误或游戏卡住。
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! Chinese or English are both fine. / 感谢反馈，中英文都可以。
+        Security problems: please don't file them here — see [SECURITY.md](https://github.com/absswds/GameNest/blob/master/SECURITY.md). / 安全问题请勿公开提交，见 SECURITY.md。
+  - type: input
+    id: game
+    attributes:
+      label: Game / 游戏
+      description: Which game, or "lobby" / "waiting room" if it's not inside a game. / 哪个游戏；与游戏无关请填“大厅”或“等待房间”。
+      placeholder: e.g. UNO, 斗地主, lobby
+    validations:
+      required: true
+  - type: dropdown
+    id: host
+    attributes:
+      label: How is GameNest running? / 运行方式
+      options:
+        - npm start (source / 源码)
+        - Windows exe
+        - Android APK (phone as host / 手机开服)
+        - Online demo (Render)
+        - Other / 其他
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / 版本
+      description: Release tag or commit, e.g. v1.5.0. / 发布版本号或 commit。
+    validations:
+      required: false
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened? / 发生了什么
+      description: What you saw, and what you expected instead. / 实际看到的情况，以及你期望的结果。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / 复现步骤
+      description: Number of players and bots, room options, and the moves that led to the problem. / 人数、AI 数量、房间选项，以及出问题前的操作。
+      placeholder: |
+        1. 4 players, 2 bots, default options
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Player device & browser / 玩家设备与浏览器
+      placeholder: e.g. iPhone 15 Safari, Windows Chrome 130
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Screenshots or logs / 截图或日志
+      description: Server console output or browser console errors help a lot. / 服务器控制台或浏览器控制台的报错很有帮助。
+    validations:
+      required: false

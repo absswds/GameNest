@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions & ideas / 提问与讨论
+    url: https://github.com/absswds/GameNest/discussions
+    about: How to set up, play, or host — ask in Discussions. / 安装、玩法、开服问题请到 Discussions。
+  - name: Security report / 安全问题
+    url: https://github.com/absswds/GameNest/security/advisories/new
+    about: Report vulnerabilities privately. / 请私密提交安全漏洞。

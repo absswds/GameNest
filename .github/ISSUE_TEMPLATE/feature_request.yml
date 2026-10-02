@@ -1,0 +1,36 @@
+name: Feature or new game / 功能建议或新游戏
+description: Suggest a new game, a rule variant, or an improvement. / 建议新游戏、规则变体或改进。
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Type / 类型
+      options:
+        - New game / 新游戏
+        - Rule option or variant / 规则选项或变体
+        - Bot (AI) improvement / AI 改进
+        - UI / mobile experience / 界面或手机体验
+        - Other / 其他
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like? / 你想要什么
+      description: For a new game, include player count and a link to the rules if possible. / 新游戏请写明人数，最好附上规则链接。
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why? / 使用场景
+      description: When would your group use this? / 什么场景下会用到？
+    validations:
+      required: false
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing / 参与
+      options:
+        - label: I'd like to help build this (see CONTRIBUTING.md). / 我愿意参与实现。

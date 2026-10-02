@@ -44,29 +44,30 @@ Players can join, reconnect, change names and avatars, swap seats, mark ready, a
 
 ## State Sync
 
-Clients send `game_move` messages with game-specific payloads. The server passes those payloads to the current game's `handleMove(data, state, playerIndex)`.
-
-After a legal move, the server broadcasts `game_state`. Some games expose a per-player state view to hide private information or include legal moves only for the active player.
-
-Examples:
-
-- Minesweeper Race uses per-player board views.
-- Texas Hold'em hides opponents' hole cards.
-- Chinese Chess sends legal move hints to the current player.
-- Draw & Guess hides the drawing stroke endpoint from guessing players.
-
-Games export `playerView(state, playerIndex)` or `playerBoardView(state, playerIndex)`; the server's `broadcastGameView` helper dispatches the right view to each client. Adding a new per-player-view game only requires exporting the hook — no server.js edits needed.
+Clients send `game_move` messages with game-specific payloads. The server passes each payload to the current game's `handleMove(data, state, playerIndex)`, which mutates `room.state` and returns `null` or an i18n error key. After a legal move the server broadcasts the new state as `game_state`.
 
 ## Per-Player Views
 
-Some games hide private information or show legal-move hints only to the active player. These games export `playerView(state, playerIndex)` or `playerBoardView(state, playerIndex)` from their module in `games/`. The server calls these functions before broadcasting `game_state`, `game_started`, and `game_restart`, so each client receives a filtered view of the shared state.
+Any game with private information (hands, roles, hidden boards) exports `playerView(state, playerIndex)`. The server sends every state through it — on broadcast and also on join and resume — so each client only sees what its seat may see. Adding the hook is enough; no `server.js` change is needed. `games/lib/hidden.js` has a `maskView` helper for card games, and `tests/hidden-hands.test.js` checks that hidden data does not leak.
 
-Current games using per-player views:
+Most card and role games use it (Texas Hold'em, Dou Dizhu, UNO, Mahjong, Werewolf, Three Kingdoms, …). Board games use it to attach legal-move hints for the current player. Minesweeper Race is the one exception: it uses `playerBoardView`, which `server.js` calls directly.
 
-- **Minesweeper Race** — `playerBoardView` shares the mine layout but gives each player independent reveal and flag state.
-- **Texas Hold'em** — `playerView` hides opponents' hole cards.
-- **Chinese Chess** — `playerView` attaches a `legalMoves` array for the current player.
-- **Draw & Guess** — `playerView` hides the drawing stroke endpoint from guessing players.
+## Turn Flow and Timers
+
+- **Normal turns**: the actor is `state.currentPlayer`. Games where someone else must answer (a responder, a shooter) export `getCurrentActor` / `setCurrentActor`.
+- **Real-time games** export `realtime` and `tick`; the server calls `tick` on an interval.
+- **Phase games** (Werewolf, Three Kingdoms) export `getPhaseDeadline`, `onTimeout` and `getPendingActors`; the generic `schedulePhaseGame` in `server.js` runs their deadlines and bot actions.
+- A few older games still have their own branches in `server.js` (Battleship placement, 24 Game, Dou Dizhu turn timer, Mahjong round end, Liar's Bar pause).
+
+## Matches and Results
+
+Two-player board games (`MATCH_GAMES` in `server.js`) support best-of-1/3/5 through `games/lib/match.js`. Between games the seats swap so the first move alternates.
+
+`state.winner` is a seat index, or a negative sentinel for team results (e.g. landlord vs farmers in Dou Dizhu, wolves vs village in Werewolf). `showResult` in `public/js/room-client.js` turns these into the result screen.
+
+## Bots
+
+Each `bots/<id>.js` exports `createBot(index)`, whose `getMove(state)` receives the full server state and must not mutate it. The server schedules bot moves; if a bot move is rejected it falls back to `{pass:true}` and then `{}`.
 
 ## Android Wrapper
 
