@@ -1148,6 +1148,12 @@
         vs.className = 'vs-text'; vs.textContent = 'VS'; bar.appendChild(vs);
       }
     }
+    // Overflowing bar (many players): bring whoever is acting into view
+    const act = bar.querySelector('.player-tag.active');
+    if (act && bar.scrollWidth > bar.clientWidth) {
+      const br = bar.getBoundingClientRect(), ar = act.getBoundingClientRect();
+      bar.scrollLeft += (ar.left + ar.width / 2) - (br.left + br.width / 2);
+    }
     if (!state || state.winner == null) {
       const st = el.status;
       st.classList.remove('my-turn');

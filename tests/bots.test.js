@@ -21,7 +21,7 @@ test('numberbomb bot guesses the exact midpoint without random drift', () => {
   assert.equal(move.guess, 50);
 });
 
-test('oldmaid bot prefers a known pairing draw over the nearest random opponent', () => {
+test('oldmaid bot draws from the next player and takes the card that pairs with its hand', () => {
   const bot = oldmaidBot.createBot(0);
   const move = bot.getMove({
     hands: [
@@ -31,28 +31,24 @@ test('oldmaid bot prefers a known pairing draw over the nearest random opponent'
       ],
       [
         { id: 'kc-opp1', rank: 'K', suit: 'c' },
-        { id: 'qd-opp1', rank: 'Q', suit: 'd' },
+        { id: 'ah-opp1', rank: 'A', suit: 'h' },
       ],
       [
-        { id: 'ah-opp2', rank: 'A', suit: 'h' },
+        { id: 'qd-opp2', rank: 'Q', suit: 'd' },
         { id: '9c-opp2', rank: '9', suit: 'c' },
       ],
     ],
   });
 
-  assert.deepEqual(move, { drawFrom: 2, cardIndex: 0 });
+  assert.deepEqual(move, { drawFrom: 1, cardIndex: 1 });
 });
 
-test('oldmaid bot falls back to the shortest non-empty target when no pairing draw exists', () => {
+test('oldmaid bot skips players who are out of cards when choosing whom to draw from', () => {
   const bot = oldmaidBot.createBot(0);
   const move = bot.getMove({
     hands: [
       [{ id: '3s-self', rank: '3', suit: 's' }],
-      [
-        { id: '8h-opp1', rank: '8', suit: 'h' },
-        { id: '9h-opp1', rank: '9', suit: 'h' },
-        { id: '10h-opp1', rank: '10', suit: 'h' },
-      ],
+      [],
       [
         { id: 'ks-opp2', rank: 'K', suit: 's' },
         { id: 'qc-opp2', rank: 'Q', suit: 'c' },
@@ -60,7 +56,7 @@ test('oldmaid bot falls back to the shortest non-empty target when no pairing dr
     ],
   });
 
-  assert.deepEqual(move, { drawFrom: 2, cardIndex: 1 });
+  assert.equal(move.drawFrom, 2);
 });
 
 test('texas bot raises more assertively with a premium made hand when checked to', () => {

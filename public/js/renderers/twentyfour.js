@@ -179,6 +179,10 @@
           } else {
             rwEl.style.display = 'none';
           }
+        } else {
+          // A new round started: drop the previous round's winner, answer and "next round" button
+          rwEl.style.display = 'none';
+          rwEl.innerHTML = '';
         }
       }
 

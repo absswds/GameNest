@@ -313,9 +313,13 @@ exports.createBot = (playerIndex) => ({
     let bestVal = -Infinity;
     const depth = getDepth(state, { easy: 1, normal: 2, hard: 3 });
 
+    const seen = state._seen || {};
+    const enemy = 1 - side;
     for (const move of moves) {
       const cap = applyMove(board, move);
-      const val = minimax(board, depth - 1, -Infinity, Infinity, false, side);
+      let val = minimax(board, depth - 1, -Infinity, Infinity, false, side);
+      // Don't shuffle back into positions that already happened (avoids endless repetition)
+      val -= 40 * (seen[board.map(r => r.map(c => (c ? c.type + c.side : '0')).join('')).join('|') + enemy] || 0);
       undoMove(board, move, cap);
       if (val > bestVal) {
         bestVal = val;

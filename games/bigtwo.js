@@ -161,6 +161,7 @@ exports.initGame = function(state, playerCount) {
   state.scores = new Array(playerCount).fill(0);
 
   // ♦3 holder starts first round
+  state._opened = false;
   state.currentPlayer = findDiamond3Player(state);
 };
 
@@ -221,7 +222,7 @@ exports.handleMove = (data, state, playerIndex) => {
     }
   }
   // First play of the game must contain the ♦3 (official rule).
-  if (!state.lastPlay && state.currentPlayer === findDiamond3Player(state)) {
+  if (!state._opened && !state.lastPlay && state.currentPlayer === findDiamond3Player(state)) {
     const hasDiamond3 = played.some(function(c) { return c.rank === '3' && c.suit === 'd'; });
     if (!hasDiamond3) {
       hand.push(...played); sortHand(hand);
@@ -229,6 +230,7 @@ exports.handleMove = (data, state, playerIndex) => {
     }
   }
 
+  state._opened = true; // the opening play (with the 3 of diamonds) is done; later free leads may be anything
   state.lastPlay = { player: playerIndex, cards: played.map(c => ({ ...c })), play: playType };
   state.lastPlayPlayer = playerIndex;
   state.passCount = 0;

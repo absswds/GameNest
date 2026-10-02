@@ -93,6 +93,13 @@ exports.createBot = pi => ({
       }
     }
     if (cands.length===0) return { pass: true };
+    // Opponent just passed: end the game if we are not behind on stones, instead of filling our own territory
+    const last = (state.moveHistory || [])[state.moveHistory.length - 1];
+    if (last && last.pass) {
+      let mine = 0, theirs = 0;
+      for (const row of board) for (const v of row) { if (v === (side===0 ? BLACK : WHITE)) mine++; else if (v !== EMPTY) theirs++; }
+      if (mine >= theirs) return { pass: true };
+    }
     var diff = getDifficulty(state);
     var topN = diff === 'easy' ? 8 : diff === 'hard' ? 1 : 3;
     cands.sort((a,b) => b.score-a.score);

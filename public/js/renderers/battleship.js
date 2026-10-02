@@ -349,7 +349,7 @@
     if (r < 0 || c < 0) return;
     var x = ox + c * cs + cs / 2;
     var y = oy + r * cs + cs / 2;
-    var progress = animState.shotProgress;
+    var progress = Math.min(1, Math.max(0, animState.shotProgress)); // a late frame can overshoot 1 -> negative arc radius
 
     if (animState.shotResult === 'miss') {
       var maxR = cs * 0.6;

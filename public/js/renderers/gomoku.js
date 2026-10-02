@@ -20,7 +20,19 @@
       resize();
       canvas.addEventListener('click', function(e) {
         var cell = cellAt(e);
-        if (cell) window.makeGameMove({ row: cell.row, col: cell.col });
+        if (!cell) return;
+        // Touch screens: cells are ~23px, too small for a one-tap commit. First tap previews
+        // the stone, tapping the same intersection again places it.
+        if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches && _myTurn) {
+          var same = _hover && _hover.row === cell.row && _hover.col === cell.col;
+          if (!same) {
+            _hover = _lastState && _lastState.board[cell.row][cell.col] === null ? cell : null;
+            if (_lastState) draw(_lastState);
+            return;
+          }
+          _hover = null;
+        }
+        window.makeGameMove({ row: cell.row, col: cell.col });
       });
       canvas.addEventListener('mousemove', function(e) {
         var cell = _myTurn ? cellAt(e) : null;

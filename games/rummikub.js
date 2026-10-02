@@ -140,9 +140,7 @@ function isValidSet(tiles) {
   if (nonWild.length === 0) return false;
   const colors = new Set(nonWild.map(t => t.color));
   const nums = new Set(nonWild.map(t => t.num));
-  if (nums.size === 1 && colors.size === nonWild.length) {
-    return isValidGroup(tiles);
-  }
+  if (nums.size === 1 && colors.size === nonWild.length && isValidGroup(tiles)) return true;
   if (colors.size === 1) {
     return isValidRun(tiles);
   }
@@ -153,6 +151,14 @@ function isValidSet(tiles) {
 function tileScore(tiles) {
   if (!tiles || !Array.isArray(tiles)) return 0;
   return tiles.reduce((sum, t) => sum + (t.wild ? 30 : t.num), 0);
+}
+
+// Stalemate (pool empty, nobody can play): lowest total in hand wins, equal totals draw.
+function lowestRackWinner(state) {
+  const totals = state.hands.map(tileScore);
+  const best = Math.min(...totals);
+  const leaders = totals.reduce((a, t, i) => (t === best ? a.concat(i) : a), []);
+  return leaders.length === 1 ? leaders[0] : -1;
 }
 
 // Can a tile be added to an existing table set?
@@ -303,7 +309,7 @@ exports.handleMove = (data, state, playerIndex) => {
         // Pool empty — increment stalemate counter
         state.passesSinceLastPlay++;
         if (state.passesSinceLastPlay >= state.hands.length) {
-          state.winner = -1; // draw
+          state.winner = lowestRackWinner(state);
           state.phase = 'over';
           return null;
         }
@@ -393,7 +399,7 @@ exports.handleMove = (data, state, playerIndex) => {
     } else {
       state.passesSinceLastPlay++;
       if (state.passesSinceLastPlay >= state.hands.length) {
-        state.winner = -1; // draw
+        state.winner = lowestRackWinner(state);
         state.phase = 'over';
         return null;
       }

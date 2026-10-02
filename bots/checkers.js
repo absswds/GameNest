@@ -23,7 +23,7 @@ function getAllDirs(type) {
 }
 
 function getCaptures(board, r, c, piece, side, result) {
-  var dirs = getAllDirs(piece.type);
+  var dirs = getForwardDirs(side, piece.type); // men capture forward only, same as games/checkers.js
   var enemy = 1 - side;
   for (var d = 0; d < dirs.length; d++) {
     var dr = dirs[d][0], dc = dirs[d][1];

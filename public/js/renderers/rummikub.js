@@ -10,6 +10,7 @@
   var _handBox = [];           // tiles kept in hand during manipulate
   var _sel = {};               // selected tile ids (across all boxes + hand)
   var _manipInit = false;      // whether boxes have been seeded for this manipulate session
+  var _sortByNum = false;      // hand sort mode: false = colour then number (server order), true = number first
 
   // Client-side set validity (mirrors games/rummikub.js) for live colour feedback
   function clientValidSet(tiles) {
@@ -40,22 +41,22 @@
   }
 
   var STYLES = '' +
-    '.rk-game{width:100%;display:flex;flex-direction:column;gap:8px;}' +
-    '.rk-opponents{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}' +
-    '.rk-opp{background:var(--bg);border-radius:14px;padding:10px 14px;text-align:center;min-width:75px;border:2px solid transparent;}' +
-    '.rk-opp.active{border-color:var(--accent);background:var(--surface);animation:pulse 2s ease infinite;}' +
+    '.rk-game{width:100%;display:flex;flex-direction:column;gap:6px;}' +
+    '.rk-opponents{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;}' +
+    '.rk-opp{background:var(--bg);border-radius:12px;padding:4px 10px;display:flex;align-items:center;gap:8px;border:2px solid transparent;}' +
+    '.rk-opp.active{border-color:var(--accent);background:var(--surface);}' +
     '.rk-opp .rk-opp-name{font-size:13px;font-weight:600;}' +
-    '.rk-opp .rk-opp-count{font-size:20px;font-weight:800;}' +
+    '.rk-opp .rk-opp-count{font-size:16px;font-weight:800;}' +
     '.rk-opp .rk-opp-badge{font-size:11px;color:var(--accent);}' +
-    '.rk-table-area{background:var(--bg);border-radius:16px;padding:12px;min-height:60px;display:flex;flex-direction:column;gap:10px;align-items:stretch;}' +
-    '.rk-table-set{display:flex;gap:3px;padding:6px;background:var(--surface);width:100%;box-sizing:border-box;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;border-radius:10px;border:2px solid var(--border);position:relative;cursor:pointer;transition:border-color .2s;}' +
+    '.rk-table-area{background:#2b3245;border-radius:14px;padding:10px 8px;min-height:120px;display:flex;flex-direction:row;flex-wrap:wrap;gap:12px 8px;align-items:flex-start;align-content:flex-start;}' +
+    '.rk-table-set{display:flex;gap:2px;padding:3px;background:rgba(255,255,255,.08);max-width:100%;box-sizing:border-box;flex-wrap:wrap;border-radius:8px;border:1.5px solid rgba(255,255,255,.18);position:relative;cursor:pointer;transition:border-color .2s;}' +
     '.rk-table-set:hover{border-color:var(--accent);}' +
     '.rk-table-set.target{border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,164,92,0.3);}' +
     '.rk-table-set.set-invalid{border-color:#e74c3c;}' +
-    '.rk-tile{width:38px;height:54px;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;background:linear-gradient(180deg,#fffdf6,#f1eadb);border:1px solid rgba(28,27,25,.14);box-shadow:0 2px 0 #d6ccb6,0 3px 6px rgba(0,0,0,.10);flex-shrink:0;cursor:pointer;transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s;position:relative;font-family:"Nunito",system-ui,sans-serif;}' +
+    '.rk-tile{width:32px;height:44px;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;background:linear-gradient(180deg,#fffdf6,#f1eadb);border:1px solid rgba(28,27,25,.14);box-shadow:0 2px 0 #d6ccb6,0 3px 6px rgba(0,0,0,.10);flex-shrink:0;cursor:pointer;transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s;position:relative;font-family:"Nunito",system-ui,sans-serif;}' +
     '.rk-tile:active{transform:scale(.95);}' +
     '.rk-tile.selected{transform:translateY(-8px);box-shadow:0 2px 0 #d6ccb6,0 10px 18px rgba(0,0,0,.18);border-color:var(--ge-gold,#b9954f);}' +
-    '.rk-tile .rk-num{font-size:22px;line-height:1;}' +
+    '.rk-tile .rk-num{font-size:18px;line-height:1;}' +
     '.rk-tile .rk-color-dot{width:8px;height:8px;border-radius:50%;margin-top:3px;}' +
     '.rk-tile-joker{color:#b9954f;}' +
     '.rk-tile-black{color:#1c1b19;}' +
@@ -63,21 +64,21 @@
     '.rk-tile-red{color:#c0392b;}' +
     '.rk-tile-orange{color:#c7741a;}' +
     '.rk-hand-wrap{overflow:visible;padding:4px 2px;margin:0 -4px;}' +
-    '.rk-hand{display:flex;flex-wrap:wrap;gap:5px;min-height:70px;padding:4px;}' +
+    '.rk-hand{display:flex;flex-wrap:wrap;gap:4px;min-height:52px;padding:4px;background:var(--bg);border-radius:12px;}.rk-hand .rk-tile{width:36px;height:50px;}.rk-hand .rk-tile .rk-num{font-size:20px;}' +
     '.rk-info{display:flex;justify-content:space-between;align-items:center;padding:4px 0;}' +
     '.rk-info .rk-break{font-size:12px;font-weight:600;padding:4px 12px;border-radius:12px;}' +
     '.rk-info .rk-break.done{background:var(--accent-dim);color:var(--accent);}' +
     '.rk-info .rk-break.need{background:#ffeaea;color:#e74c3c;}' +
     '.rk-pool-info{font-size:13px;color:var(--text-muted);}' +
-    '.rk-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}' +
-    '.rk-status{text-align:center;font-size:14px;color:var(--text-muted);min-height:20px;}' +
-    '.rk-set-idx{position:absolute;top:-8px;right:-6px;background:var(--accent);color:#fff;font-size:10px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;}' +
+    '.rk-actions{display:flex;gap:6px;justify-content:center;flex-wrap:nowrap;}.rk-actions .btn{flex:1 1 0;width:auto;min-width:0;min-height:40px;padding:8px 6px;font-size:14px;border-radius:10px;white-space:nowrap;}' +
+    '.rk-status{text-align:center;font-size:13px;color:var(--text-muted);min-height:20px;}' +
+    '.rk-set-idx{position:absolute;top:-9px;left:-4px;background:var(--accent);color:#fff;font-size:9px;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;}' +
     '.rk-workspace{background:var(--bg);border-radius:16px;border:2px dashed var(--accent);padding:12px;min-height:50px;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;}' +
-    '.rk-ws-label{width:100%;font-size:12px;color:var(--accent);font-weight:600;margin-bottom:2px;}' +
+    '.rk-ws-label{width:100%;font-size:12px;color:#e9d9a8;font-weight:600;margin-bottom:2px;}' +
     '.rk-manip-group{display:flex;gap:3px;padding:6px;background:var(--surface);border-radius:10px;border:2px solid var(--accent);position:relative;}' +
     '.rk-table-set.sel-target{border-color:#5a9e6f;box-shadow:0 0 0 3px rgba(90,158,111,0.3);}' +
-    '.rk-boxes{display:flex;flex-wrap:wrap;gap:10px;width:100%;}' +
-    '.rk-box{display:flex;flex-wrap:wrap;gap:3px;padding:8px;min-width:58px;min-height:62px;background:var(--surface);border-radius:10px;border:2px solid var(--border);align-items:center;cursor:pointer;position:relative;transition:border-color .15s,box-shadow .15s;}' +
+    '.rk-boxes{display:flex;flex-wrap:wrap;gap:12px 8px;width:100%;}' +
+    '.rk-box{display:flex;flex-wrap:wrap;gap:3px;padding:4px;min-width:48px;min-height:52px;background:var(--surface);border-radius:10px;border:2px solid var(--border);align-items:center;cursor:pointer;position:relative;transition:border-color .15s,box-shadow .15s;}' +
     '.rk-box.ok{border-color:#5a9e6f;box-shadow:0 0 0 2px rgba(90,158,111,.18);}' +
     '.rk-box.bad{border-color:#e74c3c;box-shadow:0 0 0 2px rgba(231,76,60,.18);}' +
     '.rk-box.empty{border-style:dashed;color:var(--text-muted);font-size:12px;justify-content:center;}' +
@@ -86,9 +87,9 @@
     '.rk-box-tag{position:absolute;top:-9px;left:6px;background:var(--text-muted);color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;font-weight:600;}' +
     '.rk-box.ok .rk-box-tag{background:#5a9e6f;}' +
     '.rk-box.bad .rk-box-tag{background:#e74c3c;}' +
-    '@media(max-width:400px){.rk-table-area{padding:8px;gap:8px;}.rk-table-set{padding:5px;}.rk-tile{width:34px;height:48px;}.rk-tile .rk-num{font-size:17px;}}' +
-    '@media(max-width:360px){.rk-tile{width:30px;height:44px;}.rk-tile .rk-num{font-size:15px;}}' +
-    '@media(max-width:320px){.rk-tile{width:28px;height:40px;}.rk-tile .rk-num{font-size:14px;}}';
+    '@media(max-width:480px){.rk-tile{width:28px;height:40px;}.rk-tile .rk-num{font-size:16px;}.rk-hand .rk-tile{width:32px;height:46px;}}' +
+    '@media(max-width:360px){.rk-tile{width:26px;height:38px;}.rk-tile .rk-num{font-size:15px;}.rk-hand .rk-tile{width:29px;height:42px;}}' +
+    '@media(max-width:320px){.rk-tile{width:24px;height:36px;}.rk-tile .rk-num{font-size:14px;}.rk-hand .rk-tile{width:27px;height:40px;}}';
 
   var COLOR_CSS = {
     black: 'rk-tile-black', blue: 'rk-tile-blue',
@@ -110,6 +111,7 @@
           '<div class="rk-info">' +
             '<span class="rk-break" id="rkBreakBadge" style="display:none"></span>' +
             '<span class="rk-pool-info" id="rkPoolInfo">' + _tf('rk_pool', 0) + '</span>' +
+            '<button class="btn btn-outline btn-sm" id="rkSortBtn" style="min-height:30px;padding:2px 10px;font-size:12px;">' + _t('rk_sort') + '</button>' +
           '</div>' +
           '<div class="rk-table-area" id="rkTable"><div style="color:var(--text-muted);font-size:13px;padding:8px;">' + _t('rk_table_placeholder') + '</div></div>' +
           '<div class="rk-hand-wrap" id="rkHandWrap"><div class="rk-hand" id="rkHand"></div></div>' +
@@ -121,6 +123,11 @@
           '</div>' +
           '<div class="rk-status" id="rkStatus"></div>' +
         '</div>';
+
+      document.getElementById('rkSortBtn').addEventListener('click', function() {
+        _sortByNum = !_sortByNum;
+        if (window.rkLastState) renderHand(window.rkLastState.s, window.rkLastState.i);
+      });
 
       // Play button
       document.getElementById('rkPlayBtn').addEventListener('click', function() {
@@ -149,14 +156,13 @@ if (ids.length === 0) { showToast(_t('rk_select_tiles_first')); return; }
       document.getElementById('rkDrawBtn').addEventListener('click', function() {
         selectedTiles = {};
         _targetSet = null;
-        _selWorkspace = {};
-        _manipGroups = [];
         window.makeGameMove({ pass: true });
       });
     },
 
     render: function(state, container, playerIndex, winner) {
       if (!state || !state.hands || state.hands.length === 0) return;
+      window.rkLastState = { s: state, i: playerIndex };
       renderOpponents(state, playerIndex);
       if (state.phase === 'manipulate' && state.currentPlayer === playerIndex) {
         renderManipulate(state, playerIndex);
@@ -376,8 +382,9 @@ if (ids.length === 0) { showToast(_t('rk_select_tiles_first')); return; }
   function renderHand(state, selfIdx) {
     var el = document.getElementById('rkHand');
     if (!el) return;
-    var hand = state.hands[selfIdx];
-    if (!hand || hand.length === 0) { el.innerHTML = ''; return; }
+    var hand = (state.hands[selfIdx] || []).slice();
+    if (_sortByNum) hand.sort(function(a, b) { return (a.wild ? 99 : a.num) - (b.wild ? 99 : b.num); });
+    if (hand.length === 0) { el.innerHTML = ''; return; }
     var isMyTurn = state.currentPlayer === selfIdx && state.winner === null;
     var html = '';
     for (var i = 0; i < hand.length; i++) {

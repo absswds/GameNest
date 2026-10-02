@@ -65,8 +65,11 @@ exports.handleMove = function (data, state, playerIndex) {
     state.low = 1;
     state.high = 100;
     state.round++;
-    state.currentPlayer = playerIndex;
-    state.startPlayer = playerIndex;
+    // The one who hit the bomb starts, unless that was their last life: then the next living player does
+    let starter = playerIndex;
+    while (state.lives[starter] <= 0) starter = (starter + 1) % state.lives.length;
+    state.currentPlayer = starter;
+    state.startPlayer = starter;
     return null;
   }
 

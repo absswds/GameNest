@@ -210,10 +210,12 @@ exports.handleMove = (data, state, playerIndex) => {
       switch (card.type) {
         case 'skip':
           // End turn without drawing
+          // Skip ends only one turn: an attacked player still owes the other one.
           if (state.extraTurns[playerIndex] > 0) {
             state.extraTurns[playerIndex]--;
+          } else {
+            state.currentPlayer = nextAlive(state, playerIndex);
           }
-          state.currentPlayer = nextAlive(state, playerIndex);
           state.phase = 'play';
           return null;
 

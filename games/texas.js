@@ -230,6 +230,7 @@ function advancePhase(state) {
       const winner = showdown(state);
       state.phase = 'showdown';
       state.showdownWinner = winner;
+      state.winner = winner; // one hand per game, like a fold-out: otherwise nothing ever starts the next hand
       state.showdownHands = [];
       for (let i = 0; i < state.hands.length; i++) {
         if (!state.folded[i]) {

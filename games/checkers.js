@@ -161,7 +161,8 @@ exports.handleMove = function(data, state, playerIndex) {
     var canContinue = false;
     // Check if the piece that just moved can capture again from its new position
     var pieceAfter = afterBoard[tr][tc];
-    if (pieceAfter) {
+    // Official rule: a man that reaches the king row mid-jump ends its move there
+    if (pieceAfter && !promoted) {
       var contCaptures = [];
       getCaptures(afterBoard, tr, tc, pieceAfter, playerIndex, contCaptures);
       canContinue = contCaptures.length > 0;

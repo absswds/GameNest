@@ -91,6 +91,16 @@ exports.initGame = function (state, playerCount) {
   state.handSizes = state.hands.map(h => h.length);
 };
 
+// Seat the current player draws from: the next one (clockwise) who still has cards, or -1.
+exports.drawTarget = function (state, playerIndex) {
+  const n = state.hands.length;
+  for (let k = 1; k < n; k++) {
+    const t = (playerIndex + k) % n;
+    if (state.hands[t].length > 0) return t;
+  }
+  return -1;
+};
+
 exports.handleMove = function (data, state, playerIndex) {
   if (state.winner !== null || state.loser !== null) return 'g_game_over';
   if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
@@ -101,9 +111,9 @@ exports.handleMove = function (data, state, playerIndex) {
 
   const { cardIndex } = data || {};
 
-  // Official rule: must draw from the player to your left (next in turn order).
-  const drawFrom = (playerIndex + 1) % state.hands.length;
-  if (state.hands[drawFrom].length === 0) return 'om_player_no_cards';
+  // Official rule: draw from the player to your left, skipping anyone who is already out of cards.
+  const drawFrom = exports.drawTarget(state, playerIndex);
+  if (drawFrom < 0) return 'om_player_no_cards';
 
   // Validate cardIndex — player picks a specific face-down card
   if (typeof cardIndex !== 'number' || cardIndex < 0 || cardIndex >= state.hands[drawFrom].length) {
@@ -145,16 +155,17 @@ exports.handleMove = function (data, state, playerIndex) {
   // Check if current player cleared all cards
   if (state.hands[playerIndex].length === 0) {
     state.messages.push({ text: pick(state, 'P' + (playerIndex + 1) + ' 手牌清空！', 'P' + (playerIndex + 1) + ' hand is empty!'), time: Date.now(), highlight: true });
+  }
+  // The game is over as soon as at most one player still holds cards: that player has the joker.
+  const withCards = [];
+  for (let i = 0; i < state.hands.length; i++) {
+    if (state.hands[i].length > 0) withCards.push(i);
+  }
+  if (withCards.length <= 1) {
     state.handSizes = state.hands.map(h => h.length);
-    const withCards = [];
-    for (let i = 0; i < state.hands.length; i++) {
-      if (state.hands[i].length > 0) withCards.push(i);
-    }
-    if (withCards.length === 1) {
-      state.loser = withCards[0];
-      state.winner = -1;
-      return null;
-    }
+    state.loser = withCards.length ? withCards[0] : playerIndex;
+    state.winner = -1;
+    return null;
   }
 
   // Move to next player with cards (skip empty hands)

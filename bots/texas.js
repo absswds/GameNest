@@ -32,11 +32,27 @@ function handStrength(holeCards, communityCards) {
   return score;
 }
 
+// A raise the table would reject (short stack, below the minimum raise) becomes a call/check/all-in.
+function legalRaise(state, playerIndex, move) {
+  if (!move || move.action !== 'raise') return move;
+  const chips = state.chips[playerIndex];
+  const currentBet = state.currentBet || 0;
+  const bet = state.bets[playerIndex] || 0;
+  const minRaise = state.lastRaise > 0 ? state.lastRaise : currentBet > 0 ? currentBet - bet : 10;
+  if (typeof move.amount === 'number' && move.amount >= currentBet + minRaise && move.amount <= chips) return move;
+  const toCall = currentBet - bet;
+  if (toCall <= 0) return { action: 'check' };
+  return chips <= toCall ? { action: 'all_in' } : { action: 'call' };
+}
+
 exports.createBot = function(playerIndex) {
   return {
     name: botName(playerIndex, 'zh'),
     playerIndex: playerIndex,
     getMove: function(state) {
+      return legalRaise(state, playerIndex, this._decide(state));
+    },
+    _decide: function(state) {
       const chips = state.chips[playerIndex];
       const currentBet = state.currentBet || 0;
       const invested = (state.bets[playerIndex] || 0);

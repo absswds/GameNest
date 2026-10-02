@@ -42,7 +42,15 @@ exports.createState = () => ({
   board: createInitialBoard(),
   moveHistory: [],      // [{ from, to, piece, captured }]
   _playerCount: 2,
+  _seen: {},            // position key -> times reached (threefold repetition = draw)
+  _quiet: 0,            // plies since the last capture (120 = draw)
 });
+
+const QUIET_LIMIT = 120;
+function positionKey(board, turn) {
+  return board.map(r => r.map(c => (c ? c.type + c.side : '0')).join('')).join('|') + turn;
+}
+exports.positionKey = positionKey;
 
 // ---- Move Generation ----
 
@@ -305,6 +313,12 @@ exports.handleMove = (data, state, playerIndex) => {
   const enemy = playerIndex === RED ? BLACK : RED;
   state.currentPlayer = enemy;
 
+  // Draw rules: the same position three times, or 60 moves each without a capture
+  const key = positionKey(state.board, enemy);
+  state._seen = state._seen || {};
+  state._seen[key] = (state._seen[key] || 0) + 1;
+  state._quiet = captured ? 0 : (state._quiet || 0) + 1;
+
   // Check if enemy has no legal moves → checkmate or stalemate
   const enemyMoves = getLegalMoves(state.board, enemy);
   if (enemyMoves.length === 0) {
@@ -315,6 +329,8 @@ exports.handleMove = (data, state, playerIndex) => {
       // Stalemate — stalemated player loses in Chinese chess
       state.winner = playerIndex;
     }
+  } else if (state._seen[key] >= 3 || state._quiet >= QUIET_LIMIT) {
+    state.winner = -1;
   }
 
   return null;

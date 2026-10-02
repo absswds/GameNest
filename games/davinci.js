@@ -218,6 +218,9 @@ exports.handleMove = (data, state, playerIndex) => {
       }
     }
 
+    // Revealing their last hidden tile knocks the guesser out.
+    if (rev.every(r => r)) state.eliminated[playerIndex] = true;
+
     state.phase = 'draw';
     state.penaltyPlayer = null;
     state.lastGuessResult = null;
@@ -320,7 +323,15 @@ exports.handleMove = (data, state, playerIndex) => {
       if (activeCount(state) <= 1) { endGame(state); return null; }
       // Player may continue guessing (continueGuess) or end turn (pass)
       if (data.continueGuess) return null;
-      // No continueGuess — end turn
+      // No continueGuess — end turn, drawn tile goes into the hand hidden
+      if (state.drawnTile) {
+        const tiles = state.tiles[playerIndex];
+        const rev = state.numRevealed[playerIndex];
+        tiles.push(state.drawnTile);
+        rev.push(false);
+        sortTilesLocked(tiles, rev);
+        state.drawnTile = null;
+      }
       state.currentPlayer = nextActive(state, playerIndex);
       state.phase = 'draw';
       return null;

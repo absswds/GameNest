@@ -233,6 +233,11 @@ exports.handleMove = (data, state, playerIndex) => {
 
   state.currentColor = card.color === 'wild' ? (chosenColor || 'red') : card.color;
 
+  if (hand.length === 0) {
+    state.winner = playerIndex;
+    return null;
+  }
+
   if (card.value === '+4') {
     // Hold the turn: the next player must accept the draw or challenge.
     state.pendingChallenge = {

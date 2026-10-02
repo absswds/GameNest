@@ -299,3 +299,13 @@ test('2048: bot getMove does not mutate player board', () => {
   bot.getMove(state);
   assert.deepEqual(JSON.stringify(state.boards[0]), before);
 });
+
+test('2048: a solo player who gets stuck without reaching 2048 loses', () => {
+  const state = makeState(1);
+  state.boards[0] = [[4, 2, 4, 2], [2, 4, 2, 4], [4, 2, 4, 2], [4, 2, 4, 0]];
+  const origRandom = Math.random;
+  Math.random = () => 0; // the spawn is a 2 in the first empty cell, which locks the board
+  try { assert.equal(game2048.handleMove({ dir: 'right' }, state, 0), null); } finally { Math.random = origRandom; }
+  assert.equal(state.alive[0], false);
+  assert.equal(state.winner, -2, 'a lone locked-up player must not be declared the winner');
+});

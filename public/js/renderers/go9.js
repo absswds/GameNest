@@ -21,7 +21,7 @@
       var resize = function() {
         var fit = window.boardFit(container);
         var avW = fit.w;
-        var avH = fit.h - 70;
+        var avH = fit.h - 94;
         W = Math.min(avW, avH, 900);
         W = Math.max(W, 240);
         var dpr = window.devicePixelRatio || 1;
@@ -29,8 +29,8 @@
         cs = (W - margin*2) / (SIZE - 1);
         var pad = 24;
         var size = W;
-        canvas.width = size * dpr; canvas.height = size * dpr;
-        canvas.style.width = size + 'px'; canvas.style.height = size + 'px';
+        canvas.width = size * dpr; canvas.height = (size + 24) * dpr;
+        canvas.style.width = size + 'px'; canvas.style.height = (size + 24) + 'px';
         ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr, dpr);
         if (window._goState) {
           var pi = parseInt(sessionStorage.getItem('playerIndex')) || 0;
@@ -60,14 +60,15 @@
     render: function(state, container, playerIndex, winner) {
       window._goState = state;
       if (!canvas) return;
-      ctx.clearRect(0, 0, W, W);
+      ctx.clearRect(0, 0, W, W + 24);
 
       // === Board (golden wood color) ===
       var bgGrad = ctx.createLinearGradient(0, 0, W, W);
       bgGrad.addColorStop(0, '#e8cf9c'); bgGrad.addColorStop(0.5, '#ddbf85'); bgGrad.addColorStop(1, '#cfad70');
       ctx.fillStyle = bgGrad;
-      var bpad = margin - 10;
-      var bsize = cs*(SIZE-1) + 20;
+      // Wood must cover edge stones (radius ~0.47cs), not just the grid lines
+      var bpad = margin - cs*0.55;
+      var bsize = cs*(SIZE-1) + cs*1.1;
       ctx.beginPath(); rrect(ctx, bpad, bpad, bsize, bsize, 8); ctx.fill();
 
       // Wood grain
@@ -134,7 +135,7 @@
       }
 
       // === Captures display ===
-      var cy = W - margin * 0.4;
+      var cy = W + 12;
       ctx.fillStyle = '#1a1a1a'; ctx.font = 'bold 13px system-ui';
       ctx.textAlign = 'left'; ctx.fillText(_t('go_captures_black') + ((state.captures||[])[0]||0), margin, cy);
       ctx.textAlign = 'right'; ctx.fillText(_t('go_captures_white') + ((state.captures||[])[1]||0) + ' ⚪', W-margin, cy);

@@ -261,8 +261,17 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       TW = Math.max(38, Math.min(64, W / 11));
     }
     TH = Math.round(TW * 1.4);
+    // 手机竖屏：画布高度 = 剩余视口高度，整张桌子 + 两行手牌一屏放下，不用滚页面找手牌
+    var portrait = isMobile && window.innerHeight > window.innerWidth;
+    if (portrait) {
+      var bar = document.getElementById('mjActions');
+      var top = board ? board.getBoundingClientRect().top + window.scrollY : 200;
+      H = Math.max(460, Math.min(900, window.innerHeight - top - (bar ? Math.max(bar.offsetHeight, 50) : 50) - 12));
+      TW = Math.max(36, Math.min(58, Math.floor((W - 20) / 7) - 4)); // 每行 7 张，14 张正好两行
+      TH = Math.round(TW * 1.4);
+    }
     // 手机端：手牌多行时动态加高 canvas，允许 mjBoard 滚动
-    if (isMobile && _state && _state.hands && _state.hands[_playerIndex]) {
+    if (isMobile && !portrait && _state && _state.hands && _state.hands[_playerIndex]) {
       var handN = _state.hands[_playerIndex].length || 0;
       var handRows = Math.max(1, Math.ceil(handN * (TW + 4) / (W - 20)));
       if (handRows > 1) {
@@ -656,9 +665,9 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
   function drawDiscards() {
     var allTiles = buildDiscardSequence();
     if (allTiles.length === 0) return;
+    var isMobile = W < 500;
     var dw = Math.round(TW * (isMobile ? 0.4 : 0.52)), dh = Math.round(TH * (isMobile ? 0.4 : 0.52)); // 小屏缩小弃牌，大屏原样
     var gap = 3;
-    var isMobile = W < 500;
     var zoneW = W * (isMobile ? 0.88 : 0.56);
     var zoneH = H * (isMobile ? 0.40 : 0.34);
     var zoneX = (W - zoneW) / 2;

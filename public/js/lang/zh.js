@@ -684,6 +684,7 @@
     'rk_play': '出牌',
     'rk_manipulate': '🔀 重组牌桌（拿桌面牌）',
     'rk_end_turn': '结束回合',
+    'rk_sort': '排序',
     'rk_draw_end': '摸牌并结束',
     'rk_select_tiles_first': '请先选择牌',
     'rk_manip_instructions': '操作牌桌：点牌选中（可多选）→ 点目标牌组放入；可新建牌组。每组需同色顺子或同数≥3张，绿框=合法。必须用掉≥1张手牌。',

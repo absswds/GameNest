@@ -56,6 +56,8 @@ function floodReveal(revealed, mines_, r, c, rows, cols) {
 
 // Build a lightweight board snapshot for client (per-player view)
 function playerBoardView(state, playerIndex) {
+  // A seat that joined after the boards were created (or before initGame) has no board yet.
+  if (!state.revealed || !state.revealed[playerIndex] || !state.flagged || !state.flagged[playerIndex]) return [];
   const rows = state.rows;
   const cols = state.cols;
   const board = [];
@@ -137,6 +139,17 @@ exports.handleMove = function (data, state, playerIndex) {
   if (action === 'reveal') {
     if (state.revealed[playerIndex][row][col]) return 'ms_already_revealed';
     if (state.flagged[playerIndex][row][col]) return 'ms_flagged';
+
+    // Standard rule: the very first reveal of the game is never a mine.
+    if (state.mines[row][col] && !state.revealed.some(g => g.some(rw => rw.some(Boolean)))) {
+      state.mines[row][col] = false;
+      const free = [];
+      for (let r = 0; r < state.rows; r++) for (let c = 0; c < state.cols; c++) {
+        if (!state.mines[r][c] && !(r === row && c === col)) free.push([r, c]);
+      }
+      const [mr, mc] = free[Math.floor(Math.random() * free.length)];
+      state.mines[mr][mc] = true;
+    }
 
     if (state.mines[row][col]) {
       state.revealed[playerIndex][row][col] = true;

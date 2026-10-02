@@ -174,10 +174,11 @@
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
     // Board background
-    var boardW = cs * (COLS + 1);
-    var boardH = cs * (ROWS + 1);
-    var bgX = margin - cs * 0.5;
-    var bgY = margin - cs * 0.5;
+    var pad = cs * 0.12;
+    var boardW = cs * COLS + pad * 2;
+    var boardH = cs * ROWS + pad * 2;
+    var bgX = margin - cs * 0.5 - pad;
+    var bgY = margin - cs * 0.5 - pad;
 
     // Blue board background with rounded corners
     ctx.fillStyle = '#1565c0';
@@ -333,13 +334,15 @@
         var dpr = window.devicePixelRatio || 1;
         cs = (W - 60) / COLS;
         margin = 30 + cs * 0.5;
-        var H = margin * 2 + cs * (ROWS - 1) + cs * 0.3;
+        var H = margin * 2 + cs * (ROWS - 1);
         canvas.width = W * dpr;
         canvas.height = H * dpr;
         canvas.style.width = W + 'px';
         canvas.style.height = H + 'px';
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.scale(dpr, dpr);
+        // Setting canvas.width wipes it; redraw now instead of waiting for the next move.
+        if (!animState.running) drawFrame(null);
       };
       resize();
       window.addEventListener('resize', resize);

@@ -277,3 +277,19 @@ test('king moves in all 4 diagonal directions', () => {
   var kingMoves = moves.filter(function(m) { return m.from.row === 4 && m.from.col === 4; });
   assert.equal(kingMoves.length, 4, 'king should have 4 diagonal moves');
 });
+
+test('checkers: the bot only plays moves the rules accept (men capture forward only)', () => {
+  const g = require('../games/checkers');
+  const b = require('../bots/checkers');
+  for (let i = 0; i < 8; i++) {
+    const s = g.createState();
+    g.initGame(s, 2);
+    const bots = [b.createBot(0), b.createBot(1)];
+    for (let n = 0; s.winner === null && n < 600; n++) {
+      const p = s.currentPlayer;
+      const mv = bots[p].getMove(s);
+      if (!mv) break;
+      assert.equal(g.handleMove(mv, s, p), null, 'game ' + i + ' ply ' + n);
+    }
+  }
+});

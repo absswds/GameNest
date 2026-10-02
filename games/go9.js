@@ -139,6 +139,14 @@ function scoreGame(board) {
 
 // ---- Handle Move ----
 
+const MOVE_CAP = 200; // plies; keeps a game between two stubborn players from running forever
+function finishByScore(state) {
+  const scores = scoreGame(state.board);
+  if (Math.abs(scores.black - scores.white) < 0.01) state.winner = -1;
+  else state.winner = scores.black > scores.white ? P_BLACK : P_WHITE;
+  state.finalScores = scores;
+}
+
 exports.handleMove = (data, state, playerIndex) => {
   if (state.winner !== null) return 'g_game_over';
   if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
@@ -148,10 +156,7 @@ exports.handleMove = (data, state, playerIndex) => {
   if (pass === true) {
     state.consecutivePasses++;
     if (state.consecutivePasses >= 2) {
-      const scores = scoreGame(state.board);
-      if (Math.abs(scores.black - scores.white) < 0.01) state.winner = -1;
-      else state.winner = scores.black > scores.white ? P_BLACK : P_WHITE;
-      state.finalScores = scores;
+      finishByScore(state);
     } else {
       state.currentPlayer = playerIndex === P_BLACK ? P_WHITE : P_BLACK;
       state.koPoint = null;
@@ -190,6 +195,7 @@ exports.handleMove = (data, state, playerIndex) => {
 
   state.moveHistory.push({ row, col, side: playerIndex, captured: totalCaptured });
   state.currentPlayer = playerIndex === P_BLACK ? P_WHITE : P_BLACK;
+  if (state.moveHistory.length >= MOVE_CAP) finishByScore(state);
   return null;
 };
 

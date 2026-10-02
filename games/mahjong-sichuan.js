@@ -28,6 +28,7 @@ exports.createState = () => ({
   _claimPending: 0,
   _variants: 'sichuan',
   _winSelfDraw: {},
+  _winFrom: {}, // winner seat -> discarder seat (-1 = self-draw), for zero-sum settlement
   // Rule flags (read from state._options in initGame)
   _bloodBattle: true,
   _rain: false,
@@ -82,6 +83,7 @@ exports.initGame = function (state, playerCount) {
   state._claimPending = 0;
   state.guessCount = new Array(playerCount).fill(0);
   state._winSelfDraw = {};
+  state._winFrom = {};
   state._gangScore = new Array(playerCount).fill(0);
   state._penalties = new Array(playerCount).fill(0);
   state.currentPlayer = dealer;
@@ -253,6 +255,8 @@ function finishMultiWinnerClaim(state, playerCount) {
 
 function registerWin(state, playerIndex) {
   if (!state.winners.includes(playerIndex)) state.winners.push(playerIndex);
+  if (!state._winFrom) state._winFrom = {};
+  state._winFrom[playerIndex] = state._winSelfDraw[playerIndex] ? -1 : state._lastDiscardFrom;
   // 一炮多响模式：不立即推进，等所有玩家响应完毕
   if (state._multiWinner) {
     // 自摸胡：无点炮者，无法进入 claim 等待响应，直接走血战分支推进

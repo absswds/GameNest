@@ -89,7 +89,7 @@
 
 .is-active-turn {
   border: 2px solid var(--accent, #c8a45c);
-  animation: pulse 2s ease infinite;
+  animation: pulse 1.2s ease 1;
 }
 
 @keyframes breathe {
@@ -385,10 +385,16 @@ button, input { font-family: inherit; font-size: inherit; }
   width: 100%;
   display: flex; justify-content: space-between;
   align-items: center; margin-bottom: 14px; gap: 10px;
+  /* Many players: keep full names and scroll sideways instead of squeezing */
+  overflow-x: auto; overscroll-behavior-x: contain;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
 }
+.player-bar::-webkit-scrollbar { height: 3px; }
+.player-bar::-webkit-scrollbar-button { display: none; }
+.player-bar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
 .player-tag {
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  flex: 1 0 auto; display: flex; align-items: center; justify-content: center; gap: 6px;
   padding: 10px 8px; border-radius: var(--radius-sm);
   font-size: 14px; font-weight: 600;
   background: var(--bg); transition: all 0.25s;
@@ -415,7 +421,7 @@ button, input { font-family: inherit; font-size: inherit; }
   border-color: var(--accent);
   background: var(--surface);
   box-shadow: 0 2px 12px rgba(200, 164, 92, 0.1);
-  animation: pulse 2s ease infinite;
+  animation: pulse 1.2s ease 1;
 }
 
 .player-tag .dot {
@@ -622,6 +628,7 @@ button, input { font-family: inherit; font-size: inherit; }
 
 .waiting-slot-tags {
   display: flex;
+  align-items: center;
   gap: 6px;
   margin-top: 4px;
   flex-wrap: wrap;
@@ -664,6 +671,16 @@ button, input { font-family: inherit; font-size: inherit; }
   flex-shrink: 0;
   transition: background 0.15s, border-color 0.15s;
   -webkit-tap-highlight-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+}
+/* Phones keep the 32px look; the (pointer: coarse) ::after rule below supplies the 44px hit area */
+@media (max-width: 768px) {
+  .waiting-slot { padding: 10px 12px; }
+  .waiting-slot-avatar { width: 36px; height: 36px; }
 }
 
 .waiting-slot-swap {
@@ -940,14 +957,12 @@ button, input { font-family: inherit; font-size: inherit; }
     -webkit-overflow-scrolling: touch;
     gap: 2px;
     padding-bottom: 6px;
-    scrollbar-width: none;
     justify-content: flex-start;
   }
-  .player-bar::-webkit-scrollbar { display: none; }
-  .player-tag-name { display: none; }
+  .player-tag-name { font-size: 11px; max-width: 96px; }
   .player-tag {
     flex: 0 0 auto; min-width: 32px;
-    padding: 6px 4px; gap: 3px;
+    padding: 6px 6px; gap: 3px;
   }
   .player-tag-avatar { font-size: 17px; }
   .player-tag .dot { width: 6px; height: 6px; }
@@ -2941,6 +2956,8 @@ body.lobby-page {
 @media (max-width: 560px) {
   :root { --card-w: 46px; }
   .pc-layout-hand { padding-left: 4px; padding-right: 4px; }
+  /* Phones: show ~32px of each card so a thumb can hit it; long hands scroll (see .hs-bar) */
+  .pc-layout-hand .pc-card + .pc-card { margin-left: calc(var(--w) * -0.3); }
 }
 
 @keyframes pcDeal {

@@ -575,23 +575,24 @@ function endOfRound(room) {
     winners.push(state.winner);
   }
 
-  // Each winner gains fan points; losers split the loss equally (standard head-to-head).
-  // For 血战 (Sichuan multi-winner), total pot is sum of all winners' gains.
-  var totalPot = 0;
+  // Zero-sum settlement: a self-drawn win is paid by every player still in the hand, a win
+  // off a discard by the discarder alone. In 血战 players who already won (earlier in
+  // winners[]) have left the table and pay nothing for later wins.
   for (var w = 0; w < winners.length; w++) {
-    var scoreInfo = calculateMahjongScore(state, winners[w], gameMod);
-    roundScores[winners[w]] = (roundScores[winners[w]] || 0) + scoreInfo.fan;
-    totalPot += scoreInfo.fan;
-  }
-  // Deduct equally from non-winning, non-drawn players.
-  // 取整到整数分，避免出现 -0.666666...这类小数（麻将积分都是整数）。
-  var losers = playerCount - winners.length;
-  if (losers > 0 && totalPot > 0) {
-    var perLose = Math.max(1, Math.round(totalPot / losers));
-    for (var p = 0; p < playerCount; p++) {
-      if (roundScores[p] === 0 && winners.indexOf(p) < 0) {
-        roundScores[p] = -perLose;
-      }
+    var win = winners[w];
+    var fan = calculateMahjongScore(state, win, gameMod).fan;
+    var selfDraw = state._variants === 'cantonese'
+      ? !(state.winInfo && state.winInfo.from >= 0)
+      : !!(state._winSelfDraw && state._winSelfDraw[win]);
+    var from = state._variants === 'cantonese'
+      ? (state.winInfo ? state.winInfo.from : -1)
+      : (state._winFrom && state._winFrom[win] !== undefined ? state._winFrom[win] : state._lastDiscardFrom);
+    var payers = [];
+    if (!selfDraw && Number.isInteger(from) && from >= 0 && from !== win) payers.push(from);
+    else for (var q = 0; q < playerCount; q++) if (q !== win && (winners.indexOf(q) < 0 || winners.indexOf(q) > w)) payers.push(q);
+    for (var pi = 0; pi < payers.length; pi++) {
+      roundScores[payers[pi]] -= fan;
+      roundScores[win] += fan;
     }
   }
 

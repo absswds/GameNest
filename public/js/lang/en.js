@@ -684,6 +684,7 @@
     'rk_play': 'Play',
     'rk_manipulate': '🔀 Rearrange (take tiles)',
     'rk_end_turn': 'End turn',
+    'rk_sort': 'Sort',
     'rk_draw_end': 'Draw & end',
     'rk_select_tiles_first': 'Select tiles first',
     'rk_manip_instructions': 'Workspace: click tiles to select, click group to place. Group = same-color run or set ≥3. Use ≥1 hand tile.',

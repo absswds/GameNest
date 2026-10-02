@@ -183,7 +183,6 @@
             statusEl.classList.add('danger');
           } else {
             statusEl.textContent = _t('nb_your_turn');
-            statusEl.classList.add('');
           }
         } else {
           statusEl.textContent = _tf('nb_waiting_player', state.currentPlayer + 1);

@@ -103,7 +103,8 @@ function resolveAllDead(state) {
       tie = true;
     }
   }
-  state.winner = tie ? -1 : winner;
+  // Playing alone and getting stuck without a 2048 tile is a loss, not a win by default (-2 = nobody won)
+  state.winner = state.scores.length === 1 ? -2 : tie ? -1 : winner;
 }
 
 // No-op tick: the realtime loop in server.js already drives bots every tickMs.

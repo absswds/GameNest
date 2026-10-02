@@ -103,7 +103,7 @@
   function waitForMatter(cb) {
     if (window.Matter) { cb(window.Matter); return; }
     var script = document.createElement('script');
-    script.src = 'https://unpkg.com/matter-js@0.19.0/build/matter.min.js';
+    script.src = '/vendor/matter.min.js'; // bundled so it also works on a LAN without internet
     script.onload = function () { cb(window.Matter); };
     document.head.appendChild(script);
   }
@@ -193,7 +193,7 @@
   }
 
   function drop(x) {
-    if (dropping || gameOver) return;
+    if (dropping || gameOver || !Matter || !world) return; // physics lib still loading
     dropping = true;
     addFruit(x, DANGER_Y - FRUITS[dropFruitType].r - 5, dropFruitType);
     wsSend({ type: 'drop' });

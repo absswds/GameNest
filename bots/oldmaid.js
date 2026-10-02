@@ -23,34 +23,20 @@ exports.createBot = (playerIndex) => ({
         .map((card) => card.rank)
     );
 
-    let bestMove = null;
+    // The game only lets you draw from the next player (clockwise) who still has cards.
+    let targetIndex = -1;
+    for (let i = 1; i < hands.length; i++) {
+      const t = (playerIndex + i) % hands.length;
+      if ((hands[t] || []).length > 0) { targetIndex = t; break; }
+    }
+    if (targetIndex < 0) return {};
+    const targetHand = hands[targetIndex];
+    let bestIndex = 0;
     let bestScore = -Infinity;
-
-    for (let i = 1; i < hands.length; i++) {
-      const targetIndex = (playerIndex + i) % hands.length;
-      const targetHand = hands[targetIndex] || [];
-      if (targetHand.length === 0) continue;
-
-      for (let cardIndex = 0; cardIndex < targetHand.length; cardIndex++) {
-        const card = targetHand[cardIndex];
-        const score = scoreKnownDraw(myRanks, targetHand, card, cardIndex);
-        if (score > bestScore) {
-          bestScore = score;
-          bestMove = { drawFrom: targetIndex, cardIndex: cardIndex };
-        }
-      }
+    for (let cardIndex = 0; cardIndex < targetHand.length; cardIndex++) {
+      const score = scoreKnownDraw(myRanks, targetHand, targetHand[cardIndex], cardIndex);
+      if (score > bestScore) { bestScore = score; bestIndex = cardIndex; }
     }
-
-    if (bestMove) return bestMove;
-
-    for (let i = 1; i < hands.length; i++) {
-      const targetIndex = (playerIndex + i) % hands.length;
-      const targetHand = hands[targetIndex] || [];
-      if (targetHand.length > 0) {
-        return { drawFrom: targetIndex, cardIndex: Math.floor(targetHand.length / 2) };
-      }
-    }
-
-    return {};
+    return { drawFrom: targetIndex, cardIndex: bestIndex };
   },
 });

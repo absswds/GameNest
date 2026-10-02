@@ -31,6 +31,7 @@
     + '.g2048-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;}'
     + '.g2048-bar{display:flex;gap:10px;justify-content:center;width:100%;}'
     + '.g2048-stat{background:var(--bg);border-radius:12px;padding:8px 16px;text-align:center;min-width:92px;}'
+    + '@media (max-width:480px){.g2048-bar{gap:6px}.g2048-stat{flex:1 1 0;min-width:0;padding:6px 4px}.g2048-stat .value{font-size:18px}}'
     + '.g2048-stat .label{font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}'
     + '.g2048-stat .value{font-size:22px;font-weight:800;line-height:1.2;}'
     + '.g2048-board-wrap{display:flex;justify-content:center;touch-action:none;}'
