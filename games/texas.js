@@ -209,13 +209,19 @@ function showdown(state) {
   return bestPlayer;
 }
 
-function advancePhase(state) {
-  const activePlayers = state.chips.map((c, i) => {
-    if (state.folded[i] || state.allIn[i] || c <= 0) return 0;
-    return state.bets[i] < state.currentBet ? 1 : 0; // still needs to act
-  }).reduce((a, b) => a + b, 0);
+// state.pot holds every chip committed this hand, including the current street's bets
+function canAct(state, i) {
+  return !state.folded[i] && !state.allIn[i] && state.chips[i] > 0;
+}
 
-  if (activePlayers === 0) {
+function advancePhase(state) {
+  for (;;) {
+    const able = state.chips.map((c, i) => i).filter(i => canAct(state, i));
+    // Everyone who can still bet must have acted this street and matched the bet;
+    // a lone player facing only all-ins just needs to match.
+    const pending = able.filter(i => state.bets[i] < state.currentBet || (able.length > 1 && !state.acted[i]));
+    if (pending.length > 0) return;
+    // All bets matched — advance
     // All bets matched — advance
     if (state.phase === 'preflop') {
       state.phase = 'flop';
@@ -243,12 +249,20 @@ function advancePhase(state) {
       }
       return;
     }
-    // Reset bets for new round
+    // Reset bets for new round (the chips are already in state.pot)
     for (let i = 0; i < state.bets.length; i++) state.bets[i] = 0;
+    state.acted = state.bets.map(() => false);
     state.currentBet = 0;
     state.lastRaise = 0;
     state.currentPlayer = nextActivePlayerAfterDealer(state);
+    // Fewer than two players can still bet: deal the next street straight away
+    if (able.length > 1) return;
   }
+}
+
+function markActed(state, playerIndex, raised) {
+  if (raised) state.acted = state.acted.map(() => false);
+  state.acted[playerIndex] = true;
 }
 
 function nextActivePlayerAfterDealer(state) {
@@ -257,7 +271,7 @@ function nextActivePlayerAfterDealer(state) {
   // Otherwise, start from player after dealer
   for (let i = 1; i <= n; i++) {
     const idx = (state.dealer + i) % n;
-    if (!state.folded[idx] && state.chips[idx] > 0) return idx;
+    if (canAct(state, idx)) return idx;
   }
   return state.dealer;
 }
@@ -281,6 +295,7 @@ exports.createState = () => {
     bets: [],
     folded: [],
     allIn: [],
+    acted: [],
     currentBet: 0,
     lastRaise: 0,
     dealer: 0,
@@ -306,6 +321,7 @@ exports.initGame = function(state, playerCount) {
   state.bets = new Array(playerCount).fill(0);
   state.folded = new Array(playerCount).fill(false);
   state.allIn = new Array(playerCount).fill(false);
+  state.acted = new Array(playerCount).fill(false);
   state.chips = new Array(playerCount).fill(startingChips);
   state.currentBet = 0;
   state.lastRaise = 0;
@@ -348,7 +364,6 @@ exports.initGame = function(state, playerCount) {
   // Post big blind
   if (state.chips[bbIndex] <= bb) {
     state.bets[bbIndex] = state.chips[bbIndex];
-    state.pot += state.bets[bbIndex];
     state.chips[bbIndex] = 0;
     state.allIn[bbIndex] = true;
   } else {
@@ -356,7 +371,7 @@ exports.initGame = function(state, playerCount) {
     state.bets[bbIndex] = bb;
   }
 
-  state.pot += sb + (state.allIn[bbIndex] ? state.chips[bbIndex] : bb);
+  state.pot = state.bets[sbIndex] + state.bets[bbIndex];
 
   // First to act: player after big blind (or dealer+3 for 2 players, meaning dealer acts first)
   const n = playerCount;
@@ -382,12 +397,6 @@ exports.handleMove = (data, state, playerIndex) => {
 
   if (action === 'fold') {
     state.folded[playerIndex] = true;
-    // Move pot amounts
-    for (let i = 0; i < n; i++) {
-      state.pot += state.bets[i];
-      state.bets[i] = 0;
-      state.allIn[i] = false;
-    }
 
     // Check if only one player left
     const notFolded = [];
@@ -409,6 +418,7 @@ exports.handleMove = (data, state, playerIndex) => {
   if (action === 'check') {
     if (state.currentBet > state.bets[playerIndex]) return 'tx_must_call';
 
+    markActed(state, playerIndex, false);
     state.currentPlayer = nextActivePlayer(state, playerIndex);
     advancePhase(state);
     return null;
@@ -421,6 +431,8 @@ exports.handleMove = (data, state, playerIndex) => {
 
     state.chips[playerIndex] -= toCall;
     state.bets[playerIndex] = state.currentBet;
+    state.pot += toCall;
+    markActed(state, playerIndex, false);
 
     state.currentPlayer = nextActivePlayer(state, playerIndex);
     advancePhase(state);
@@ -432,13 +444,15 @@ exports.handleMove = (data, state, playerIndex) => {
     if (typeof amount !== 'number' || amount < (state.currentBet + minRaise)) {
       return 'tx_raise_too_low';
     }
-    if (amount > state.chips[playerIndex]) return 'tx_not_enough_chips';
+    if (amount - state.bets[playerIndex] > state.chips[playerIndex]) return 'tx_not_enough_chips';
 
     const raiseSize = amount - state.bets[playerIndex];
     state.chips[playerIndex] -= raiseSize;
     state.bets[playerIndex] = amount;
     state.currentBet = amount;
     state.lastRaise = raiseSize;
+    state.pot += raiseSize;
+    markActed(state, playerIndex, true);
 
     state.currentPlayer = nextActivePlayer(state, playerIndex);
     return null;
@@ -450,11 +464,13 @@ exports.handleMove = (data, state, playerIndex) => {
     state.bets[playerIndex] += remaining;
     state.chips[playerIndex] = 0;
     state.allIn[playerIndex] = true;
+    state.pot += remaining;
 
     if (remaining > toCall) {
       // This is a raise — handle side pot later
       state.currentBet = state.bets[playerIndex];
     }
+    markActed(state, playerIndex, remaining > toCall);
 
     state.currentPlayer = nextActivePlayer(state, playerIndex);
     advancePhase(state);

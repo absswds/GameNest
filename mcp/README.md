@@ -64,3 +64,13 @@ Point the client at `http://127.0.0.1:3333/mcp`. It is stateless, has **no authe
 - `expectSeq`：传入 `get_state` 的 `seq`，局面已变化时拒绝过期出招。
 - 断线会用 resume token 自动重连原座位。日志只写 stderr。
 - `suggest_move` 用项目内置电脑算法在你这个座位看得到的局面上给建议，不会偷看别人的手牌；数独由 MCP 自己解当前盘面。
+
+## 已知限制 / Known limitations
+
+- **一个进程只占一个座位**：同一个 MCP 进程（包括 HTTP 模式）同一时间只能在一个房间坐一个座位；想让多个 AI 同局，要启动多个 MCP 进程。One process = one seat, including HTTP mode.
+- **HTTP 模式没有鉴权**，只校验 `Origin`；不要暴露到公网。No auth in HTTP mode.
+- **实时游戏不适合**：合成大西瓜对战（suikabattle）的落点和合成由浏览器物理引擎生成，AI 实际上没法玩；贪吃蛇（snakebattle）由服务器按帧推进，靠轮询工具调用很难跟上节奏。Realtime games (suikabattle, snakebattle) are impractical.
+- **`suggest_move` 不是每款都有**：没有内置电脑的游戏返回 `move: null`；电脑出错时也返回 `null`，不代表无路可走。It returns `null` for games without a bot or when the bot fails.
+- **部分招式说明较粗**：狼人杀、三国杀、跳棋、象棋等的 `get_rules` 只给出大致格式，准确字段以 `get_state` 的状态和 `suggest_move` 的返回为准。Some move guides are approximate; check `get_state` and `suggest_move`.
+- **画我猜**：`get_canvas` 返回图片，客户端不支持图片结果时看不到画面；`draw` 每次最多 60 笔，只画线条（无填充、无 `transform`），复杂 SVG 会被近似成折线。`get_canvas` needs image-capable clients; `draw` caps at 60 strokes per call and outlines only.
+- **必须在仓库内运行**：MCP 会直接读取 `games/`、`bots/`，不能单独拷走 `mcp/` 目录使用。Must run inside the repo.

@@ -113,3 +113,4 @@ tests/sanguosha*.test.js
 
 # 开发计划文档（本地保留，不发布）
 docs/plans/
+nodejs-mobile-v*-android/

@@ -69,6 +69,17 @@ Two-player board games (`MATCH_GAMES` in `server.js`) support best-of-1/3/5 thro
 
 Each `bots/<id>.js` exports `createBot(index)`, whose `getMove(state)` receives the full server state and must not mutate it. The server schedules bot moves; if a bot move is rejected it falls back to `{pass:true}` and then `{}`.
 
+## MCP Server
+
+`mcp/` is a separate package (own `package.json`, not bundled into the exe/APK) that lets an AI client play as an ordinary seat. It connects to a running GameNest server over the same WebSocket protocol as the browser, so it needs no server-side support beyond normal moves. It speaks stdio by default or Streamable HTTP (`--http=<port>`, stateless, no auth, rejects non-local `Origin`).
+
+- `mcp/server.js` registers the tools (`create_room`, `wait_for_turn`, `make_move`, …) and reconnects with the resume token.
+- `mcp/move-guides.js` holds the per-game move formats returned by `get_rules`.
+- `suggest_move` runs the project's own bot on a state rebuilt from this seat's view (`toBotState`), so it never sees hidden cards.
+- `mcp/draw.js` converts SVG to Draw & Guess strokes and renders strokes to PNG for `get_canvas`. Drawer fixes use the game moves `stage_undo` / `stage_clear`, which the web undo/clear buttons also send.
+
+See `mcp/README.md` for client setup.
+
 ## Android Wrapper
 
 The Android project copies the Node.js project into app assets and starts it through nodejs-mobile. The Android UI is a WebView pointed at the local server.
