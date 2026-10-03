@@ -37,9 +37,9 @@
   "license": "Apache-2.0",
   "type": "commonjs",
   "dependencies": {
-    "compression": "^1.8.1",
-    "express": "^4.22.2",
+    "compression": "^1.8.2",
+    "express": "^4.22.3",
     "qrcode": "^1.5.4",
-    "ws": "^8.21.0"
+    "ws": "^8.22.0"
   }
 }
