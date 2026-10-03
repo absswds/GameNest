@@ -348,7 +348,7 @@
       icon: '◔',
       subtitle: '物理掉落，越合越大',
       description: '水果物理碰撞，实时对战拼手速。',
-      players: '2-4人',
+      players: '1-4人',
       duration: '约10分钟',
       category: '实时对战',
       tags: ['物理', '爽感'],

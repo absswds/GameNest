@@ -419,6 +419,7 @@
     'not_in_room': '你没有加入任何房间',
     'can_add_bot': '可加 AI',
     'pvp_only': '纯玩家对战',
+    'solo_ok': '可单人玩',
     'featured_label': '精选推荐',
     'featured_title': '先从这些局开始',
     'browse_label': '浏览全部',

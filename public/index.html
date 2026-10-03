@@ -108,7 +108,14 @@ const __isMobileData = (function () {
 })();
 const __allGames = window.gameCatalog.list();
 const __allFeatured = window.gameCatalog.featured();
-function playable(g) { return !__isMobileData || g.supportsAI !== false; }
+// Offline: show games with bots or a solo mode; werewolf bots can't really talk, so it's hidden.
+const __SOLO_GAMES = new Set(['minesweeper', 'suikabattle']);
+const __OFFLINE_HIDDEN = new Set(['werewolf']);
+function playable(g) {
+  if (!__isMobileData) return true;
+  if (__OFFLINE_HIDDEN.has(g.id)) return false;
+  return g.supportsAI !== false || __SOLO_GAMES.has(g.id);
+}
 const catalog = __allGames.filter(playable);
 const featuredGames = __allFeatured.filter(playable);
 
@@ -162,7 +169,7 @@ function buildFeaturedCard(game) {
 
 function buildBrowseCard(game) {
   const selectedClass = game.id === selectedGame ? ' selected' : '';
-  const ai = game.supportsAI ? '<span>' + _t('can_add_bot') + '</span>' : '<span>' + _t('pvp_only') + '</span>';
+  const ai = '<span>' + _t(game.supportsAI ? 'can_add_bot' : __SOLO_GAMES.has(game.id) ? 'solo_ok' : 'pvp_only') + '</span>';
   return '<button class="browse-card' + selectedClass + '" data-game="' + game.id + '">' +
     '<div class="browse-card-media">' + buildCover(game, false) + '</div>' +
     '<div class="browse-card-body">' +
@@ -263,10 +270,7 @@ function toast(msg) {
 }
 
 function createRoom() {
-  if (__isMobileData) {
-    toast(typeof _t === 'function' ? _t('mobile_data_only_msg') : '当前使用流量上网，联机功能不可用。');
-    return;
-  }
+  // Allowed on mobile data too: the room lives on this device's own server, so solo/AI play works.
   const ws = new WebSocket(getSocketURL());
   ws.onopen = function() {
     ws.send(JSON.stringify({ type: 'create_room', data: { game: selectedGame, lang: window.__ACTIVE_LANG || 'zh' } }));

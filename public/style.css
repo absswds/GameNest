@@ -1045,6 +1045,8 @@ body.lobby-page {
   max-width: 1240px;
   margin: 0 auto;
   display: grid;
+  /* minmax(0) so a wide child (the scrolling category chips) can't push the page past the screen */
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   padding-bottom: 96px;
   min-width: 0;

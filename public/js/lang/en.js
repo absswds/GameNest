@@ -419,6 +419,7 @@
     'not_in_room': 'You are not in a room',
     'can_add_bot': 'Bots OK',
     'pvp_only': 'PvP Only',
+    'solo_ok': 'Solo OK',
     'featured_label': 'Featured',
     'featured_title': 'Start Here',
     'browse_label': 'All Games',
