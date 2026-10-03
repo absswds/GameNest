@@ -103,14 +103,7 @@ android/temp-nodejs-mobile.aar
 # Design mockups (not part of the codebase)
 public/mockups/
 
-# 三国杀（开发中，暂不发布；文件保留在本地）
-games/sanguosha.js
-bots/sanguosha.js
-public/js/renderers/sanguosha.js
-public/assets/game-covers/sanguosha.webp
-tests/sanguosha*.test.js
-.sanguosha-hidden/
 
-# 开发计划文档（本地保留，不发布）
+# 
 docs/plans/
 nodejs-mobile-v*-android/
