@@ -1,6 +1,6 @@
 # GameNest
 
-> 35 self-hosted LAN board, card, party, puzzle, and real-time games. Start one server, share one room code or QR code, and play from any browser on the same WiFi.
+> 34 self-hosted LAN board, card, party, puzzle, and real-time games. Start one server, share one room code or QR code, and play from any browser on the same WiFi.
 
 **[🚀 Live Demo](https://gamenest-4kww.onrender.com) — try it without installing.**
 
@@ -9,7 +9,7 @@
 [![Android APK](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml/badge.svg)](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-43853d.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-lightgrey.svg)](https://expressjs.com/)
-[![Games](https://img.shields.io/badge/Games-35-blue.svg)](#game-catalog)
+[![Games](https://img.shields.io/badge/Games-34-blue.svg)](#game-catalog)
 [![No account](https://img.shields.io/badge/Account-Not_Required-green.svg)](#highlights)
 [![Offline](https://img.shields.io/badge/Network-LAN/Offline-orange.svg)](#highlights)
 [![Android](https://img.shields.io/badge/Host-Android_✓-brightgreen.svg)](#android-host)
@@ -20,7 +20,7 @@ GameNest is a lightweight open-source tabletop game room for family nights, dorm
 
 ## Highlights
 
-- 35 built-in games covering classic boards, party cards, poker, deduction, social deduction, puzzle races, and real-time battles.
+- 34 built-in games covering classic boards, party cards, poker, deduction, social deduction, puzzle races, and real-time battles.
 - Local-first multiplayer: no account system, no cloud dependency, just one host and one shared WiFi.
 - Room code and QR-code joining for phones, tablets, and laptops.
 - Waiting-room flow with player names, emoji avatars, ready state, seat swaps, bots, and per-game options.
@@ -145,13 +145,13 @@ More details:
 - `public/js/game-catalog.js` — built-in game metadata
 - `scripts/generate-cover-art.js` — cover art generator
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains the server, WebSocket, and renderer flow.
-- [CONTRIBUTING.md](CONTRIBUTING.md) has the new-game checklist.
+- [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) has the new-game checklist.
 - [mcp/README.md](mcp/README.md) explains how to let any MCP client (Claude, Cursor, Codex, Gemini CLI, ...) play in a room over stdio or HTTP.
 - [docs/releases/](docs/releases/) holds the release notes.
 
 ## Contributing
 
-Bug reports, rules fixes, AI improvements, renderer polish, and new games are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md).
+Bug reports, rules fixes, AI improvements, renderer polish, and new games are welcome. Start with [CONTRIBUTING.md](.github/CONTRIBUTING.md).
 
 ## License
 

@@ -1,6 +1,6 @@
 # GameNest
 
-> 35 款自托管局域网桌游、卡牌、聚会、益智和实时对战游戏。一台设备开服，分享房间号或二维码，同一 WiFi 下用浏览器就能一起玩。
+> 34 款自托管局域网桌游、卡牌、聚会、益智和实时对战游戏。一台设备开服，分享房间号或二维码，同一 WiFi 下用浏览器就能一起玩。
 
 **[🚀 在线试玩](https://gamenest-4kww.onrender.com) — 无需安装，打开即玩。**
 
@@ -9,7 +9,7 @@
 [![Android APK](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml/badge.svg)](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-43853d.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-lightgrey.svg)](https://expressjs.com/)
-[![Games](https://img.shields.io/badge/Games-35-blue.svg)](#game-catalog)
+[![Games](https://img.shields.io/badge/Games-34-blue.svg)](#game-catalog)
 [![No account](https://img.shields.io/badge/Account-Not_Required-green.svg)](#highlights)
 [![Offline](https://img.shields.io/badge/Network-LAN/Offline-orange.svg)](#highlights)
 [![Android](https://img.shields.io/badge/Host-Android_✓-brightgreen.svg)](#android-host)
@@ -20,7 +20,7 @@ GameNest 是一个轻量开源的局域网桌游房间，适合家庭娱乐、�
 
 ## 亮点
 
-- 内置 35 款游戏，覆盖经典棋盘、聚会卡牌、扑克、推理、身份阵营、脑力竞速和实时对战。
+- 内置 34 款游戏，覆盖经典棋盘、聚会卡牌、扑克、推理、身份阵营、脑力竞速和实时对战。
 - 局域网优先：不需要账号，不依赖云服务，一台主机加一个 WiFi 就能开局。
 - 支持房间号和二维码加入，手机、平板、电脑都能直接进房。
 - 等待房间支持昵称、表情头像、准备状态、换座、加 AI 和游戏选项。
@@ -145,14 +145,14 @@ cd android
 - `public/js/game-catalog.js`（游戏元数据）
 - `scripts/generate-cover-art.js`（封面生成）
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 说明服务端、WebSocket 和渲染器流程。
-- [CONTRIBUTING.md](CONTRIBUTING.md) 提供新增游戏清单。
-- [mcp/README.md](mcp/README.md) 说明如何让任意 MCP 客户端（Claude、Cursor、Codex、Gemini CLI 等）通过 stdio 或 HTTP 加入房间对战。
+- [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) 提供新增游戏清单。
+- [mcp/README.zh-CN.md](mcp/README.zh-CN.md) 说明如何让任意 MCP 客户端（Claude、Cursor、Codex、Gemini CLI 等）通过 stdio 或 HTTP 加入房间对战。
 - [docs/releases/](docs/releases/) 是各版本发布说明。
 
 
 ## 参与贡献
 
-欢迎提交 bug 修复、规则修正、AI 优化、渲染器打磨和新游戏。开始前建议先看 [CONTRIBUTING.md](CONTRIBUTING.md)。
+欢迎提交 bug 修复、规则修正、AI 优化、渲染器打磨和新游戏。开始前建议先看 [CONTRIBUTING.md](.github/CONTRIBUTING.md)。
 
 ## 协议
 

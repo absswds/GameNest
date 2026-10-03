@@ -33,4 +33,4 @@ body:
     attributes:
       label: Contributing / 参与
       options:
-        - label: I'd like to help build this (see CONTRIBUTING.md). / 我愿意参与实现。
+        - label: I'd like to help build this (see .github/CONTRIBUTING.md). / 我愿意参与实现。

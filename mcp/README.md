@@ -1,17 +1,19 @@
 # GameNest MCP Server
 
-让任意支持 MCP 的 AI 客户端（Claude、Cursor、Codex、Gemini CLI、Cline、Continue 等）作为一个普通玩家加入 GameNest 房间，和真人或电脑同局对战。
-A client-agnostic MCP server: it connects to a running GameNest server over WebSocket and plays as a normal seat. It speaks standard MCP over **stdio** (default) or **Streamable HTTP**, so it is not tied to any one vendor.
+[简体中文](README.zh-CN.md) | English
 
-## 使用 / Usage
+Lets any MCP-capable AI client (Claude, Cursor, Codex, Gemini CLI, Cline, Continue, ...) join a GameNest room as an ordinary player and play against humans or bots.
+It is client-agnostic: it connects to a running GameNest server over WebSocket and plays as a normal seat. It speaks standard MCP over **stdio** (default) or **Streamable HTTP**, so it is not tied to any one vendor.
 
-1. 先启动 GameNest：`npm start`（默认 :3000）。
-2. 安装 MCP 自己的依赖（独立的包，不会打进 exe/APK）：`cd mcp && npm install`。
-3. 在你的 MCP 客户端里注册（`GAMENEST_URL` 默认 `ws://localhost:3000`）。
+## Usage
 
-### 通用配置 / Generic stdio config
+1. Start GameNest first: `npm start` (port 3000 by default).
+2. Install the MCP package's own dependencies (it is a separate package and is not bundled into the exe/APK): `cd mcp && npm install`.
+3. Register it in your MCP client (`GAMENEST_URL` defaults to `ws://localhost:3000`).
 
-绝大多数客户端都接受下面这种 `mcpServers` JSON（路径改成你的仓库位置）：
+### Generic stdio config
+
+Most clients accept this `mcpServers` JSON (change the path to where your repo lives):
 
 ```json
 {
@@ -25,52 +27,50 @@ A client-agnostic MCP server: it connects to a running GameNest server over WebS
 }
 ```
 
-常见客户端 / Common clients:
+Common clients:
 
-| 客户端 Client | 做法 How |
+| Client | How |
 | --- | --- |
 | Claude Code | `claude mcp add gamenest -e GAMENEST_URL=ws://localhost:3000 -- node mcp/server.js` |
-| Claude Desktop / Cursor / Cline / Windsurf | 把上面的 JSON 放进各自的 MCP 配置文件 / paste the JSON into the client's MCP config |
-| Codex CLI | `codex mcp add gamenest --env GAMENEST_URL=ws://localhost:3000 -- node mcp/server.js`，或写入 `~/.codex/config.toml` 的 `[mcp_servers.gamenest]` |
-| Gemini CLI | 把 JSON 放进 `~/.gemini/settings.json` 的 `mcpServers` / put it under `mcpServers` in `~/.gemini/settings.json` |
+| Claude Desktop / Cursor / Cline / Windsurf | Paste the JSON above into the client's MCP config file |
+| Codex CLI | `codex mcp add gamenest --env GAMENEST_URL=ws://localhost:3000 -- node mcp/server.js`, or add `[mcp_servers.gamenest]` to `~/.codex/config.toml` |
+| Gemini CLI | Put the JSON under `mcpServers` in `~/.gemini/settings.json` |
 
-各客户端的命令和配置位置会随版本变化，以其官方文档为准；只要它能启动一个 stdio MCP 服务或连接一个 HTTP MCP 地址即可。
-Client CLIs and config paths change between versions — check your client's docs; any client that can launch a stdio MCP server or reach an HTTP MCP endpoint works.
+Client CLIs and config paths change between versions, so check your client's docs. Any client that can launch a stdio MCP server or reach an HTTP MCP endpoint works.
 
-### HTTP 模式 / Streamable HTTP
+### Streamable HTTP
 
-不想让客户端拉起子进程（或客户端只支持远程 MCP）时：
+If you don't want the client to spawn a child process (or the client only supports remote MCP):
 
 ```bash
-node mcp/server.js --http=3333        # 或 MCP_HTTP_PORT=3333
+node mcp/server.js --http=3333        # or MCP_HTTP_PORT=3333
 ```
 
-客户端连接 `http://127.0.0.1:3333/mcp`（例如 `claude mcp add --transport http gamenest http://127.0.0.1:3333/mcp`、`gemini mcp add --transport http gamenest http://127.0.0.1:3333/mcp`；Codex 在 `config.toml` 里用 `url`，其他客户端见各自文档）。带非本机 `Origin` 的浏览器请求会被拒绝（403）。服务只监听该端口的 `POST /mcp`（无状态），**没有鉴权**，请只在本机或可信局域网使用。
-Point the client at `http://127.0.0.1:3333/mcp`. It is stateless, has **no authentication**, and holds one game seat for the whole process — keep it on localhost / a trusted LAN.
+Point the client at `http://127.0.0.1:3333/mcp` (for example `claude mcp add --transport http gamenest http://127.0.0.1:3333/mcp` or `gemini mcp add --transport http gamenest http://127.0.0.1:3333/mcp`; Codex uses `url` in `config.toml`; see your client's docs for others). Browser requests with a non-local `Origin` are rejected (403). The server only handles `POST /mcp` on that port (stateless), has **no authentication**, and holds one game seat for the whole process, so keep it on localhost or a trusted LAN.
 
-局域网内别的机器上的服务器：`GAMENEST_URL=ws://192.168.x.x:3000`。MCP 服务必须在 GameNest 仓库内运行（会读取 `games/`、`bots/`）。
+For a GameNest server on another machine in the LAN: `GAMENEST_URL=ws://192.168.x.x:3000`. The MCP server must run inside the GameNest repo (it reads `games/` and `bots/`).
 
-## 工具 / Tools
+## Tools
 
 `list_games`, `get_rules(game)`, `create_room(game, name?)`, `join_room(roomId, name?)`, `add_bot`, `remove_bot(seat)`,
 `set_option(key, value)`, `ready`, `start_game`, `get_state`, `wait_for_turn(timeoutSec?)`, `make_move(move, expectSeq?)`,
-`suggest_move`, `restart`, `next_round`, `return_to_room`, `send_message(type, data)`（换座/踢人/头像/改名）, `leave_room`.
-画我猜专用：`get_canvas`（返回画布 PNG 图片，需客户端支持图片返回）、`draw(svg)`（画家用 SVG 作画，支持 line/rect/circle/ellipse/polyline/polygon/path，不支持 transform 和填充）、`undo_stroke(count?)`、`clear_canvas`（画错了撤销或清空，所有人同步看到）。
+`suggest_move`, `restart`, `next_round`, `return_to_room`, `send_message(type, data)` (swap seats / kick / avatar / rename), `leave_room`.
+Draw & Guess only: `get_canvas` (returns the canvas as a PNG image; the client must support image results), `draw(svg)` (the drawer draws with SVG: line/rect/circle/ellipse/polyline/polygon/path; no `transform` and no fill), `undo_stroke(count?)` and `clear_canvas` (undo or clear mistakes; everyone sees the change).
 
-典型流程 / Typical flow: `create_room` -> `add_bot` 或让真人用房间号加入 -> `ready` -> `start_game` ->
-循环 `wait_for_turn` -> `get_rules`/`suggest_move` -> `make_move` -> 直到 `gameOver`。
+Typical flow: `create_room` -> `add_bot`, or let humans join with the room code -> `ready` -> `start_game` ->
+loop `wait_for_turn` -> `get_rules`/`suggest_move` -> `make_move` -> until `gameOver`.
 
-- `wait_for_turn` 的 `reason`：`my_turn` / `game_over` / `round_end`（24 点，调用 `next_round`）/ `timeout`。同时进行的游戏（2048、数独、扫雷等）随时都算 `my_turn`。
-- `expectSeq`：传入 `get_state` 的 `seq`，局面已变化时拒绝过期出招。
-- 断线会用 resume token 自动重连原座位。日志只写 stderr。
-- `suggest_move` 用项目内置电脑算法在你这个座位看得到的局面上给建议，不会偷看别人的手牌；数独由 MCP 自己解当前盘面。
+- `wait_for_turn` returns a `reason`: `my_turn` / `game_over` / `round_end` (24 Points; call `next_round`) / `timeout`. In simultaneous games (2048, Sudoku, Minesweeper, ...) it is always `my_turn`.
+- `expectSeq`: pass the `seq` from `get_state`, and a stale move is rejected if the game has moved on.
+- After a disconnect it reconnects to the same seat with the resume token. Logs go to stderr only.
+- `suggest_move` runs the project's built-in bot on the position your seat can see, so it never peeks at other players' hands. Sudoku is solved by the MCP server itself.
 
-## 已知限制 / Known limitations
+## Known limitations
 
-- **一个进程只占一个座位**：同一个 MCP 进程（包括 HTTP 模式）同一时间只能在一个房间坐一个座位；想让多个 AI 同局，要启动多个 MCP 进程。One process = one seat, including HTTP mode.
-- **HTTP 模式没有鉴权**，只校验 `Origin`；不要暴露到公网。No auth in HTTP mode.
-- **实时游戏不适合**：合成大西瓜对战（suikabattle）的落点和合成由浏览器物理引擎生成，AI 实际上没法玩；贪吃蛇（snakebattle）由服务器按帧推进，靠轮询工具调用很难跟上节奏。Realtime games (suikabattle, snakebattle) are impractical.
-- **`suggest_move` 不是每款都有**：没有内置电脑的游戏返回 `move: null`；电脑出错时也返回 `null`，不代表无路可走。It returns `null` for games without a bot or when the bot fails.
-- **部分招式说明较粗**：狼人杀、三国杀、跳棋、象棋等的 `get_rules` 只给出大致格式，准确字段以 `get_state` 的状态和 `suggest_move` 的返回为准。Some move guides are approximate; check `get_state` and `suggest_move`.
-- **画我猜**：`get_canvas` 返回图片，客户端不支持图片结果时看不到画面；`draw` 每次最多 60 笔，只画线条（无填充、无 `transform`），复杂 SVG 会被近似成折线。`get_canvas` needs image-capable clients; `draw` caps at 60 strokes per call and outlines only.
-- **必须在仓库内运行**：MCP 会直接读取 `games/`、`bots/`，不能单独拷走 `mcp/` 目录使用。Must run inside the repo.
+- **One process = one seat**: one MCP process (HTTP mode included) can sit in only one seat in one room at a time. To put several AIs in the same game, start several MCP processes.
+- **No authentication in HTTP mode**, only an `Origin` check. Don't expose it to the Internet.
+- **Realtime games don't work well**: in Suika Battle (suikabattle) drops and merges come from the browser's physics engine, so an AI effectively can't play; Snake Battle (snakebattle) advances frame by frame on the server, which polling tool calls can hardly keep up with.
+- **`suggest_move` isn't available everywhere**: games without a built-in bot return `move: null`. It also returns `null` when the bot fails, which doesn't mean there is no legal move.
+- **Some move guides are rough**: for Werewolf, Three Kingdoms, Checkers, Chinese Chess and a few others, `get_rules` only gives the general shape. Trust the state from `get_state` and the result of `suggest_move` for the exact fields.
+- **Draw & Guess**: `get_canvas` returns an image, so clients without image results can't see the canvas. `draw` takes at most 60 strokes per call and draws outlines only (no fill, no `transform`); complex SVG is approximated with polylines.
+- **Must run inside the repo**: the MCP server reads `games/` and `bots/` directly, so the `mcp/` folder can't be copied out and used on its own.

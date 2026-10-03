@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for the report! Chinese or English are both fine. / 感谢反馈，中英文都可以。
-        Security problems: please don't file them here — see [SECURITY.md](https://github.com/absswds/GameNest/blob/master/SECURITY.md). / 安全问题请勿公开提交，见 SECURITY.md。
+        Security problems: please don't file them here — see [SECURITY.md](https://github.com/absswds/GameNest/blob/master/.github/SECURITY.md). / 安全问题请勿公开提交，见 SECURITY.md。
   - type: input
     id: game
     attributes:
