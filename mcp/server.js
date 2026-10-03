@@ -396,6 +396,8 @@ const httpPort = httpArg ? Number(httpArg.split('=')[1] || process.env.MCP_HTTP_
 
 async function startHttp(port) {
   const http = require('http');
+  // Node 18 has no global Web Crypto by default; the SDK's HTTP transport calls crypto.randomUUID().
+  if (!globalThis.crypto) globalThis.crypto = require('crypto').webcrypto;
   const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
   const host = process.env.MCP_HTTP_HOST || '127.0.0.1';
   let chain = Promise.resolve(); // one transport is attached to the shared server at a time
