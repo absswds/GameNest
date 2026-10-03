@@ -12,8 +12,8 @@ android {
         applicationId "com.gamenest.app"
         minSdk 26
         targetSdk 36
-        versionCode 5
-        versionName "1.5.0"
+        versionCode 6
+        versionName "2.0.0"
 
         ndk {
             // 排除 x86_64（仅模拟器用）。每个 ABI 都含一份 47MB 的 libnode.so，
