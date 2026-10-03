@@ -337,4 +337,10 @@ module.exports = {
   'sg_discard_count': '弃牌数量不对',
   'sg_bad_skill': '不能发动这个技能',
   'sg_skill_used': '这个技能本回合已经用过了',
+  // Misc error keys
+  'bt_first_must_have_d3': '首轮出牌必须包含方块3',
+  'ddz_invalid_action': '无效操作',
+  'g_bad_move': '无效的出招',
+  'rv_must_play_if_possible': '有可下的位置，不能跳过',
+  'uno_no_challenge_pending': '当前没有可质疑的+4',
 };

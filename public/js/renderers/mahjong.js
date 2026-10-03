@@ -113,7 +113,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       } catch (e) {
         console.error('[mahjong] init error:', e);
         // 兜底：至少显示一个提示
-        container.innerHTML = '<div style="padding:20px;text-align:center;color:#fff;">渲染器初始化失败: ' + e.message + '</div>';
+        container.innerHTML = '<div style="padding:20px;text-align:center;color:#fff;">' + (typeof getLang === 'function' && getLang() === 'en' ? 'Renderer failed to start: ' : '渲染器初始化失败: ') + e.message + '</div>';
       }
     },
 

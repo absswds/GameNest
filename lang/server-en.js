@@ -337,4 +337,10 @@ module.exports = {
   'sg_discard_count': 'Wrong number of cards',
   'sg_bad_skill': 'You cannot use that skill',
   'sg_skill_used': 'Skill already used this turn',
+  // Misc error keys
+  'bt_first_must_have_d3': 'The first play must include the 3 of Diamonds',
+  'ddz_invalid_action': 'Invalid action',
+  'g_bad_move': 'Invalid move',
+  'rv_must_play_if_possible': 'You have a legal move and cannot pass',
+  'uno_no_challenge_pending': 'There is no +4 to challenge',
 };
