@@ -42,7 +42,7 @@ GameNest runs as a shared LAN lobby, a QR-code waiting room, and browser-based g
 
 Mobile and join-flow previews:
 
-![Mobile same-WiFi host address](docs/media/android-host.jpg)
+![Mobile same-WiFi host address](docs/media/android-host.en.jpg)
 
 ![Create and join flow](docs/media/join-flow.gif)
 
