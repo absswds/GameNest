@@ -27,6 +27,7 @@ GameNest 是一个轻量开源的局域网桌游房间，适合家庭娱乐、�
 - 大多数回合制游戏支持 AI，对局人数不够或单人测试时也能跑起来。
 - 每款游戏都有独立前端渲染器，支持隐藏信息视图、合法走法提示、Canvas 棋盘和轻量动画。
 - 提供 Android 主机包装层，基于 nodejs-mobile，同一套项目也能变成随身局域网主机。
+- 可选 MCP 服务（`mcp/`）：Claude、Cursor、Codex 等 AI 可以像普通玩家一样入座对战，见 [mcp/README.zh-CN.md](mcp/README.zh-CN.md)。
 
 > 如果 GameNest 让你的游戏之夜更开心，欢迎点个 ⭐ 让更多人看到。
 

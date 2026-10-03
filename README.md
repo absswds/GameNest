@@ -27,6 +27,7 @@ GameNest is a lightweight open-source tabletop game room for family nights, dorm
 - AI opponents for most turn-based games, useful for solo testing or small groups.
 - Browser-first renderers with hidden-information views, legal-move hints, canvas boards, and lightweight animations.
 - Optional Android host wrapper powered by nodejs-mobile, so the same project can run as a portable local server.
+- Optional MCP server (`mcp/`), so an AI agent such as Claude, Cursor or Codex can join a room and play as a normal seat. See [mcp/README.md](mcp/README.md).
 
 > If GameNest saved your game night, please ⭐ it so others can find it.
 

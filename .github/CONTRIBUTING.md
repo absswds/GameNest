@@ -32,6 +32,7 @@ A normal game touches these places:
 4. `public/game.html` — 渲染器的 `<script>` 标签 / `<script>` tag for the renderer.
 5. `public/js/game-catalog.js` + `public/js/lang/zh.js` + `public/js/lang/en.js` — 大厅元数据和翻译 / lobby metadata and translations.
 6. `public/js/tutorials.js` — 游戏内规则说明，`TUTORIALS_ZH` 和 `TUTORIALS_EN` 都要写 / the in-game rules text, in both `TUTORIALS_ZH` and `TUTORIALS_EN`.
+7. `mcp/move-guides.js` — 给 AI（MCP 客户端）看的出招格式，`get_rules` 会返回它；游戏的出招结构改了也要同步更新 / the move format shown to AI agents (MCP clients) via `get_rules`; update it whenever a game's move shape changes.
 
 可选：在 `tests/` 里加针对性测试；用 `scripts/generate-cover-art.js <id>` 生成大厅封面。生成器输出 1600×1200 的 PNG，而目录要求 `public/assets/game-covers/<id>.webp` 为 1536×1024，所以要裁剪并转换格式，否则 `tests/game-catalog-covers.test.js` 会失败。
 
