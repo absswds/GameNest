@@ -1,6 +1,6 @@
 # GameNest
 
-> 34 self-hosted LAN board, card, party, puzzle, and real-time games. Start one server, share one room code or QR code, and play from any browser on the same WiFi.
+> 34 LAN games you can play with friends without internet: board, card, mahjong, party, puzzle, and real-time. One phone or PC hosts (a hotspot is enough), everyone else scans a QR code and plays in the browser. No data plan, no app install.
 
 **[🚀 Live Demo](https://gamenest-4kww.onrender.com) — try it without installing.**
 
@@ -18,16 +18,23 @@
 
 GameNest is a lightweight open-source tabletop game room for family nights, dorm rooms, classrooms, offices, and small parties. One laptop or Android phone hosts the room, everyone else joins from a browser on the same local network, and the stack stays intentionally simple: Express 4, `ws`, and plain HTML/CSS/JavaScript.
 
+## Why GameNest
+
+It started on a long flight with friends: hours with no internet and nothing to do, and every game on our phones either needed a connection or was single-player. So we built GameNest. One phone runs a hotspot and hosts the room, everyone else joins from a browser, and nobody needs mobile data or an app install.
+
+Since then it has become our go-to for dorm nights, parties, family evenings, and classrooms.
+
 ## Highlights
 
-- 34 built-in games covering classic boards, party cards, poker, deduction, social deduction, puzzle races, and real-time battles.
-- Local-first multiplayer: no account system, no cloud dependency, just one host and one shared WiFi.
-- Room code and QR-code joining for phones, tablets, and laptops.
-- Waiting-room flow with player names, emoji avatars, ready state, seat swaps, bots, and per-game options.
-- AI opponents for most turn-based games, useful for solo testing or small groups.
-- Browser-first renderers with hidden-information views, legal-move hints, canvas boards, and lightweight animations.
-- Optional Android host wrapper powered by nodejs-mobile, so the same project can run as a portable local server.
-- Optional MCP server (`mcp/`), so an AI agent such as Claude, Cursor or Codex can join a room and play as a normal seat. See [mcp/README.md](mcp/README.md).
+- **Works offline**: planes, trains, campsites, basements. One phone hotspot or one shared WiFi is enough; no internet is needed at any point.
+- **Only the host installs anything**: an Android phone, a Windows PC (standalone exe), or any machine with Node.js can host. Everyone else scans a QR code or types a room code and plays in the browser.
+- **34 games**: board games, poker, mahjong, party games, deduction, social deduction, puzzle races, and real-time battles, for 2 players up to a whole group.
+- **Bots fill empty seats**: most turn-based games have AI players, so you can also practise alone.
+- **Reconnect and resume**: drop out or leave by accident and the lobby's resume card puts you back in your seat.
+- **Hidden info stays hidden**: hands and roles are only sent to their owner, so nobody can peek at the network traffic.
+- **Chinese and English** UI and rules tutorials.
+- **No accounts, no ads, no tracking**: Apache-2.0, with a simple stack (Express 4 + `ws` + plain JS, no build step) that makes adding a game easy.
+- **AI agents can play too**: the optional MCP server (`mcp/`) lets Claude, Cursor, Codex and other agents join a room as a normal seat. See [mcp/README.md](mcp/README.md).
 
 > If GameNest saved your game night, please ⭐ it so others can find it.
 
