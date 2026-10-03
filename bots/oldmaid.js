@@ -34,7 +34,8 @@ exports.createBot = (playerIndex) => ({
     let bestIndex = 0;
     let bestScore = -Infinity;
     for (let cardIndex = 0; cardIndex < targetHand.length; cardIndex++) {
-      const score = scoreKnownDraw(myRanks, targetHand, targetHand[cardIndex], cardIndex);
+      // Random tie-break: a fixed pick when nothing pairs can make 4 bots pass cards around forever.
+      const score = scoreKnownDraw(myRanks, targetHand, targetHand[cardIndex], cardIndex) + Math.random() * 5;
       if (score > bestScore) { bestScore = score; bestIndex = cardIndex; }
     }
     return { drawFrom: targetIndex, cardIndex: bestIndex };

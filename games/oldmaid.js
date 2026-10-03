@@ -85,7 +85,8 @@ exports.initGame = function (state, playerCount) {
 
   state.winner = null;
   state.loser = null;
-  state.currentPlayer = 0;
+  // Seat 0 may have discarded its whole hand; start with the first seat that still holds cards.
+  state.currentPlayer = Math.max(0, state.hands.findIndex(h => h.length > 0));
   state.lastDraw = null;
   state.lastDiscards = null;
   state.handSizes = state.hands.map(h => h.length);
