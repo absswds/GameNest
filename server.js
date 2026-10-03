@@ -1666,7 +1666,7 @@ function getLanIPs() {
   for (const [name, addrs] of Object.entries(interfaces)) {
     for (const addr of addrs) {
       if (addr.family === 'IPv4' && !addr.internal) {
-        ips.push({ name, ip: addr.address });
+        ips.push({ name, ip: addr.address, netmask: addr.netmask });
       }
     }
   }
@@ -1685,10 +1685,12 @@ function getLanIPs() {
 function getShareableLanIPs() {
   const privatePattern = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/;
   const noisyNamePattern = /(wireguard|vpn|vethernet|virtual|hyper-v|loopback|^tun|^ppp)/i;
-  // Phone cellular interfaces and carrier-grade NAT: never reachable from the LAN.
-  const cellularNamePattern = /^(rmnet|ccmni|pdp|clat|v4-)/i;
+  // Phone cellular interfaces, tunnels and carrier-grade NAT: never reachable from the LAN.
+  const cellularNamePattern = /^(rmnet|ccmni|pdp|clat|v4-|tun|ppp)/i;
   const cgnatPattern = /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./;
-  const all = getLanIPs().filter(({ name, ip }) => !cellularNamePattern.test(name) && !cgnatPattern.test(ip));
+  // A /32 address is a point-to-point tunnel (VPN, vendor gateways like vgate0), not a LAN.
+  const all = getLanIPs().filter(({ name, ip, netmask }) =>
+    !cellularNamePattern.test(name) && !cgnatPattern.test(ip) && netmask !== '255.255.255.255');
   const preferred = all.filter(({ name, ip }) => privatePattern.test(ip) && !noisyNamePattern.test(name));
   if (preferred.length) return preferred;
 

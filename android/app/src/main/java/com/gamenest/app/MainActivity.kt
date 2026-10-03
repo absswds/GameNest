@@ -367,7 +367,8 @@ class MainActivity : AppCompatActivity() {
             val interfaces = NetworkInterface.getNetworkInterfaces() ?: return null
             while (interfaces.hasMoreElements()) {
                 val iface = interfaces.nextElement()
-                if (!iface.isUp || iface.isLoopback) continue
+                // Point-to-point links are tunnels (VPN, vendor gateways like vgate0) — never a LAN.
+                if (!iface.isUp || iface.isLoopback || iface.isPointToPoint) continue
                 if (NON_LAN_IFACE.containsMatchIn(iface.name)) continue
                 val addrs = iface.inetAddresses
                 while (addrs.hasMoreElements()) {
