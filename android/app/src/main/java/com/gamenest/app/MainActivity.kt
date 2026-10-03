@@ -47,6 +47,13 @@ class MainActivity : AppCompatActivity() {
         private const val SERVER_PORT = 3000
         private const val SERVER_URL = "http://localhost:$SERVER_PORT"
 
+        // Cellular (rmnet/ccmni/pdp/clat), VPN (tun/ppp/ipsec) and other interfaces no LAN peer can reach.
+        private val NON_LAN_IFACE = Regex("^(rmnet|ccmni|pdp|v4-|clat|tun|ppp|ipsec|dummy|lo|p2p)", RegexOption.IGNORE_CASE)
+        // Hotspot / Wi-Fi / Ethernet / USB-tether interfaces.
+        private val LAN_IFACE = Regex("^(wlan|ap|swlan|softap|eth|rndis|usb)", RegexOption.IGNORE_CASE)
+        // 10/8, 172.16/12, 192.168/16 (excludes 100.64/10 carrier-grade NAT).
+        private val PRIVATE_IPV4 = Regex("^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.)")
+
         init {
             // Native lib loads libnode.so internally via CMakeLists.txt
             System.loadLibrary("native-lib")
@@ -230,9 +237,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onServerReady(lanIp: String?) {
+        serverReady = true
+        currentIsWifi = isOnWifi()
+        currentLanIp = lanIp
         val displayUrl = if (lanIp != null) "http://$lanIp:$SERVER_PORT" else SERVER_URL
-        binding.statusBar.text = statusBarText(isOnWifi(), displayUrl)
-        val wifiFlag = if (isOnWifi()) "1" else "0"
+        binding.statusBar.text = statusBarText(currentIsWifi, displayUrl)
+        val wifiFlag = if (currentIsWifi) "1" else "0"
         binding.webview.loadUrl("$SERVER_URL?wifi=$wifiFlag")
         binding.webview.visibility = View.VISIBLE
         binding.splash.visibility = View.GONE
@@ -254,8 +264,14 @@ class MainActivity : AppCompatActivity() {
         binding.statusBar.text = statusBarText(currentIsWifi, displayUrl)
     }
 
-    /** True when the active network is Wi-Fi or Ethernet (both support LAN peer reachability). */
+    /**
+     * True when other devices can reach this phone over a LAN: the active network is
+     * Wi-Fi/Ethernet, or some non-cellular interface has a private IPv4. The second check
+     * covers the phone acting as a hotspot and Wi-Fi without internet — in both cases
+     * Android keeps cellular as the default network.
+     */
     private fun isOnWifi(): Boolean {
+        if (getLanIp() != null) return true
         return try {
             val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val activeNet = cm.activeNetwork ?: return false
@@ -270,91 +286,108 @@ class MainActivity : AppCompatActivity() {
 
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var currentIsWifi: Boolean = true
+    private var currentLanIp: String? = null
+    private var serverReady = false
     private var currentLang: String = "zh"  // WebView language, updated on page load
 
-    /** Reload the WebView with the latest ?wifi= query when the network type changes. */
+    // Hotspot on/off and DHCP changes don't move the default network, so no callback
+    // fires for them; a cheap interface poll keeps the status bar honest.
+    private val networkPoll = object : Runnable {
+        override fun run() {
+            checkNetwork()
+            handler.postDelayed(this, 5_000)
+        }
+    }
+
+    /** Re-checks LAN reachability on default-network changes and every few seconds. */
     private fun registerNetworkCallback() {
         try {
             val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            currentIsWifi = isOnWifi()
             val cb = object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: android.net.Network) {
-                    val nowWifi = isOnWifi()
-                    if (nowWifi != currentIsWifi) {
-                        currentIsWifi = nowWifi
-                        handler.post { onNetworkTypeChanged(nowWifi) }
-                    }
-                }
-                override fun onCapabilitiesChanged(network: android.net.Network, caps: NetworkCapabilities) {
-                    val nowWifi = isOnWifi()
-                    if (nowWifi != currentIsWifi) {
-                        currentIsWifi = nowWifi
-                        handler.post { onNetworkTypeChanged(nowWifi) }
-                    }
-                }
-                override fun onLost(network: android.net.Network) {
-                    if (currentIsWifi) {
-                        currentIsWifi = false
-                        handler.post { onNetworkTypeChanged(false) }
-                    }
-                }
+                override fun onAvailable(network: android.net.Network) { handler.post { checkNetwork() } }
+                override fun onCapabilitiesChanged(network: android.net.Network, caps: NetworkCapabilities) { handler.post { checkNetwork() } }
+                override fun onLinkPropertiesChanged(network: android.net.Network, lp: android.net.LinkProperties) { handler.post { checkNetwork() } }
+                override fun onLost(network: android.net.Network) { handler.post { checkNetwork() } }
             }
             cm.registerDefaultNetworkCallback(cb)
             networkCallback = cb
         } catch (e: Exception) {
             Log.w(TAG, "registerNetworkCallback failed", e)
         }
+        handler.postDelayed(networkPoll, 5_000)
     }
 
-    private fun onNetworkTypeChanged(nowWifi: Boolean) {
+    private fun checkNetwork() {
+        if (!serverReady) return
         val lanIp = getLanIp()
+        val nowWifi = isOnWifi()
+        if (nowWifi == currentIsWifi && lanIp == currentLanIp) return
+        val typeChanged = nowWifi != currentIsWifi
+        currentIsWifi = nowWifi
+        currentLanIp = lanIp
         val displayUrl = if (lanIp != null) "http://$lanIp:$SERVER_PORT" else SERVER_URL
         binding.statusBar.text = statusBarText(nowWifi, displayUrl)
+        if (typeChanged) onNetworkTypeChanged(nowWifi)
+    }
+
+    /**
+     * Only the lobby depends on ?wifi=, so reload just the lobby. Reloading a game page
+     * would throw the host out of a running game; there we only update the stored flag
+     * that the lobby reads when the player goes back to it.
+     */
+    private fun onNetworkTypeChanged(nowWifi: Boolean) {
         val wifiFlag = if (nowWifi) "1" else "0"
-        val url = "$SERVER_URL?wifi=$wifiFlag"
-        val curUrl = binding.webview.url
-        if (curUrl != null && curUrl.startsWith(SERVER_URL)) {
-            binding.webview.loadUrl(url)
+        val curUrl = binding.webview.url ?: return
+        if (!curUrl.startsWith(SERVER_URL)) return
+        val path = android.net.Uri.parse(curUrl).path ?: "/"
+        if (path == "/" || path == "/index.html") {
+            binding.webview.loadUrl("$SERVER_URL?wifi=$wifiFlag")
+        } else {
+            binding.webview.evaluateJavascript("try{sessionStorage.setItem('wifi','$wifiFlag')}catch(e){}", null)
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        handler.removeCallbacks(networkPoll)
         try {
             val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             networkCallback?.let { cm.unregisterNetworkCallback(it) }
         } catch (e: Exception) { /* ignore */ }
     }
 
-    /** Picks the most likely LAN IP (192.168.x.x > 10.x.x.x > others). */
+    /**
+     * Picks the most likely LAN IP: a private IPv4 on a non-cellular, non-VPN interface.
+     * Hotspot / Wi-Fi / Ethernet / USB-tether interfaces first, then 192.168 > 10 > 172.
+     * Returns null when the phone only has cellular data (no LAN to share).
+     */
     private fun getLanIp(): String? {
-        val candidates = mutableListOf<String>()
+        val candidates = mutableListOf<Pair<String, String>>()  // (interface, ip)
         try {
-            val interfaces = NetworkInterface.getNetworkInterfaces()
+            val interfaces = NetworkInterface.getNetworkInterfaces() ?: return null
             while (interfaces.hasMoreElements()) {
                 val iface = interfaces.nextElement()
                 if (!iface.isUp || iface.isLoopback) continue
+                if (NON_LAN_IFACE.containsMatchIn(iface.name)) continue
                 val addrs = iface.inetAddresses
                 while (addrs.hasMoreElements()) {
-                    val addr = addrs.nextElement()
-                    if (!addr.isLoopbackAddress &&
-                        addr.hostAddress != null &&
-                        addr.hostAddress!!.indexOf(':') == -1) {
-                        candidates += addr.hostAddress!!
+                    val ip = addrs.nextElement().hostAddress ?: continue
+                    if (ip.indexOf(':') == -1 && PRIVATE_IPV4.containsMatchIn(ip)) {
+                        candidates += iface.name to ip
                     }
                 }
             }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to enumerate interfaces", e)
         }
-        // Sort: 192.168.* first, then 10.*, then others
-        return candidates.minByOrNull { ip ->
-            when {
+        return candidates.minByOrNull { (name, ip) ->
+            val ifacePri = if (LAN_IFACE.containsMatchIn(name)) 0 else 10
+            ifacePri + when {
                 ip.startsWith("192.168.") -> 0
                 ip.startsWith("10.") -> 1
                 else -> 2
             }
-        }
+        }?.second
     }
 
     @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")

@@ -1660,7 +1660,8 @@ wss.on('connection', (ws) => {
 // ---- LAN IP Detection ----
 
 function getLanIPs() {
-  const interfaces = os.networkInterfaces();
+  let interfaces = {};
+  try { interfaces = os.networkInterfaces(); } catch (e) { return []; } // can throw on some Android builds
   const ips = [];
   for (const [name, addrs] of Object.entries(interfaces)) {
     for (const addr of addrs) {
@@ -1683,12 +1684,16 @@ function getLanIPs() {
 
 function getShareableLanIPs() {
   const privatePattern = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/;
-  const noisyNamePattern = /(wireguard|vpn|vethernet|virtual|hyper-v|loopback)/i;
-  const preferred = getLanIPs().filter(({ name, ip }) => privatePattern.test(ip) && !noisyNamePattern.test(name));
+  const noisyNamePattern = /(wireguard|vpn|vethernet|virtual|hyper-v|loopback|^tun|^ppp)/i;
+  // Phone cellular interfaces and carrier-grade NAT: never reachable from the LAN.
+  const cellularNamePattern = /^(rmnet|ccmni|pdp|clat|v4-)/i;
+  const cgnatPattern = /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./;
+  const all = getLanIPs().filter(({ name, ip }) => !cellularNamePattern.test(name) && !cgnatPattern.test(ip));
+  const preferred = all.filter(({ name, ip }) => privatePattern.test(ip) && !noisyNamePattern.test(name));
   if (preferred.length) return preferred;
 
-  const privateOnly = getLanIPs().filter(({ ip }) => privatePattern.test(ip));
-  return privateOnly.length ? privateOnly : getLanIPs();
+  const privateOnly = all.filter(({ ip }) => privatePattern.test(ip));
+  return privateOnly.length ? privateOnly : all;
 }
 
 function startServer(port, attempt = 0) {

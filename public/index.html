@@ -97,7 +97,15 @@ let selectedGame = 'monopoly';
 let activeCategory = (typeof _t === 'function' ? _t('all_categories') : '\u5168\u90e8');
 let searchText = '';
 
-const __isMobileData = (new URLSearchParams(location.search).get('wifi') === '0');
+// ?wifi= comes from the Android app; remember it so it survives leaving and returning to the lobby
+const __isMobileData = (function () {
+  var w = new URLSearchParams(location.search).get('wifi');
+  try {
+    if (w === '0' || w === '1') sessionStorage.setItem('wifi', w);
+    else w = sessionStorage.getItem('wifi');
+  } catch (e) {}
+  return w === '0';
+})();
 const __allGames = window.gameCatalog.list();
 const __allFeatured = window.gameCatalog.featured();
 function playable(g) { return !__isMobileData || g.supportsAI !== false; }
@@ -366,7 +374,7 @@ if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
   const params = new URLSearchParams(location.search);
   // Mobile-data mode: hide multiplayer UI, show offline banner
   // (?wifi=0 is set by the Android MainActivity when active network is not WiFi/Ethernet)
-  if (params.get('wifi') === '0') {
+  if (__isMobileData) {
     var joinPanel = document.querySelector('.hero-panels .hero-panel:nth-of-type(2)');
     if (joinPanel) joinPanel.style.display = 'none';
     var qc = document.getElementById('quickCreate');
@@ -401,7 +409,7 @@ if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
   const roomCode = params.get('room');
   if (!roomCode) return;
   // Block room join on mobile data (multiplayer unavailable)
-  if (params.get('wifi') === '0') {
+  if (__isMobileData) {
     if (typeof _t === 'function') {
       toast(_t('mobile_data_only_msg'));
     } else {
