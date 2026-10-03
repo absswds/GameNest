@@ -25,7 +25,7 @@ function canPlayCard(card, state, playerIndex) {
   var isFirstTrick = state.trickCount === 0;
   if (state.currentTrick.length === 0) {
     // Leading
-    if (isFirstTrick && playerIndex === state.trickLeader) {
+    if (isFirstTrick) {
       for (var i = 0; i < hand.length; i++) {
         if (hand[i].id === '2c') return card.id === '2c';
       }

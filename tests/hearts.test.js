@@ -134,3 +134,18 @@ test('a no-pass round starts playing right away (nobody has to send a move)', ()
   assert.equal(s.phase, 'playing');
   assert.ok(s.hands[s.currentPlayer].some((c) => c.id === '2c'), '2♣ holder leads');
 });
+
+test('first trick: the 2♣ holder must lead 2♣ even when they are not seat 0', () => {
+  const s = makeState({ phase: 'playing', trickCount: 0, currentTrick: [], heartsBroken: false });
+  const card = (rank, suit) => ({ rank, suit, id: rank + suit });
+  s.hands = [
+    [card('3', 'c'), card('4', 'c'), card('5', 'c')],
+    [card('3', 'd'), card('4', 'd'), card('5', 'd')],
+    [card('2', 'c'), card('2', 's'), card('3', 's')],
+    [card('3', 'h'), card('4', 'h'), card('5', 'h')],
+  ];
+  s.currentPlayer = 2;
+  s.trickLeader = 0; // stale value, as it is after dealing/passing
+  assert.equal(typeof hearts.handleMove({ card: '2s' }, s, 2), 'string');
+  assert.equal(hearts.handleMove({ card: '2c' }, s, 2), null);
+});

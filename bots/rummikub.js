@@ -52,6 +52,7 @@ function isValidForBot(tiles) {
   // Check duplicates in runs
   const sortedNums = [...nums].sort((a, b) => a - b);
   if (colors.size === 1) {
+    if (tiles.length > 13) return false;
     const s = nonWild.map(t => t.num).sort((a, b) => a - b);
     for (let i = 1; i < s.length; i++) {
       if (s[i] === s[i-1]) return false;
@@ -84,20 +85,22 @@ function findSets(hand, needBreak) {
     tiles.sort((a, b) => a.num - b.num);
     for (let i = 0; i < tiles.length; i++) {
       const run = [tiles[i]];
+      let wildsUsed = 0;
       for (let j = i + 1; j < tiles.length; j++) {
-        if (tiles[j].num === run[run.length - 1].num + 1) {
+        const last = run[run.length - 1].wild ? run[run.length - 2] : run[run.length - 1];
+        if (tiles[j].num === last.num) continue;
+        const gap = tiles[j].num - last.num - 1;
+        if (gap === 0) {
           run.push(tiles[j]);
-        } else if (tiles[j].num > run[run.length - 1].num + 1) {
+        } else if (wildsUsed + gap <= wilds.length) {
           // Use wilds to fill gaps if available
-          const gap = tiles[j].num - run[run.length - 1].num - 1;
-          if (gap <= wilds.length) {
-            run.push(tiles[j]);
-          } else {
-            break;
-          }
+          for (let w = 0; w < gap; w++) run.push(wilds[wildsUsed++]);
+          run.push(tiles[j]);
+        } else {
+          break;
         }
       }
-      if (run.length >= 3) {
+      if (run.length >= 3 && isValidForBot(run)) {
         if (!needBreak || tileScore(run) >= 30) {
           results.push(run);
         }

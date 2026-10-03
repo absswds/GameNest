@@ -102,17 +102,11 @@ function isValidRun(tiles) {
     gaps += nums[i] - nums[i - 1] - 1;
   }
   if (gaps > wilds) return false;
-  // Check run stays within 1-13
-  const minNum = Math.max(1, nums[0] - wilds + gaps); // rough lower bound
-  // More precise: after placing wilds, does the full run fit in 1-13?
-  const span = nums[nums.length - 1] - nums[0] + 1 + wilds; // worst case span
-  // Actually: lowest possible start = nums[0] - wildsBeforeFirst
-  // Let's keep it simple: if the natural range exceeds 1-13, reject
-  const low = nums[0];
+  // The whole run (tiles.length consecutive numbers) must fit inside 1-13 for some start,
+  // and that start must not be above the lowest or below the highest real tile.
+  const len = tiles.length;
   const high = nums[nums.length - 1];
-  // With wilds, the run extends by at most 'gaps' filled + edges
-  if (low - wilds < 1 && high + wilds > 13) return false;
-  return true;
+  return Math.max(1, high - len + 1) <= Math.min(nums[0], 14 - len);
 }
 
 // Check if tiles form a valid group (same number, different colors)

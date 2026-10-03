@@ -966,9 +966,13 @@ function scheduleBattleshipPlacements(room) {
   }
   if (!nextBot) return;  // all bots placed — wait for humans (their move reschedules)
 
+  // 已有放置定时器就别重排：人类每次（含空过）操作都会走到这里，反复重置会让机器人永远放不下去
+  if (room._bsPlacing) return;
   const delay = 250 + Math.random() * 500;
   clearTimeout(room._botTimer);
+  room._bsPlacing = true;
   room._botTimer = setTimeout(() => {
+    room._bsPlacing = false;
     if (!rooms.has(room._roomId)) return;
     try {
       const moveData = nextBot.getMove(state);
@@ -1455,7 +1459,7 @@ wss.on('connection', (ws) => {
       }
 
       // drawguess: reset the step timer after every successful move (updates stepDeadline before broadcast)
-      const isStageLiveAction = currentRoom.game === 'drawguess' && (data.type === 'stage_stroke' || data.type === 'stage_guess');
+      const isStageLiveAction = currentRoom.game === 'drawguess' && (data.type === 'stage_stroke' || data.type === 'stage_guess') && currentRoom.state.phase === 'playing'; // 猜对结束本轮则必须重排（round_result 5 秒定时）
       if (currentRoom.game === 'drawguess' && !isStageLiveAction) scheduleDrawguessTimer(currentRoom);
 
       // Mahjong: settle the round before broadcasting the 'over' game_state so the

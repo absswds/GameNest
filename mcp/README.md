@@ -1,19 +1,17 @@
 # GameNest MCP Server
 
-让 AI（Claude Code / Claude Desktop 等）作为一个普通玩家加入 GameNest 房间，和真人或电脑同局对战。
-A local MCP (stdio) server: it connects to a running GameNest server over WebSocket and plays as a normal seat.
+让任意支持 MCP 的 AI 客户端（Claude、Cursor、Codex、Gemini CLI、Cline、Continue 等）作为一个普通玩家加入 GameNest 房间，和真人或电脑同局对战。
+A client-agnostic MCP server: it connects to a running GameNest server over WebSocket and plays as a normal seat. It speaks standard MCP over **stdio** (default) or **Streamable HTTP**, so it is not tied to any one vendor.
 
 ## 使用 / Usage
 
 1. 先启动 GameNest：`npm start`（默认 :3000）。
 2. 安装 MCP 自己的依赖（独立的包，不会打进 exe/APK）：`cd mcp && npm install`。
-3. 在仓库根目录注册（`GAMENEST_URL` 默认 `ws://localhost:3000`）：
+3. 在你的 MCP 客户端里注册（`GAMENEST_URL` 默认 `ws://localhost:3000`）。
 
-```bash
-claude mcp add gamenest -e GAMENEST_URL=ws://localhost:3000 -- node mcp/server.js
-```
+### 通用配置 / Generic stdio config
 
-Claude Desktop (`claude_desktop_config.json`)：
+绝大多数客户端都接受下面这种 `mcpServers` JSON（路径改成你的仓库位置）：
 
 ```json
 {
@@ -26,6 +24,29 @@ Claude Desktop (`claude_desktop_config.json`)：
   }
 }
 ```
+
+常见客户端 / Common clients:
+
+| 客户端 Client | 做法 How |
+| --- | --- |
+| Claude Code | `claude mcp add gamenest -e GAMENEST_URL=ws://localhost:3000 -- node mcp/server.js` |
+| Claude Desktop / Cursor / Cline / Windsurf | 把上面的 JSON 放进各自的 MCP 配置文件 / paste the JSON into the client's MCP config |
+| Codex CLI | `codex mcp add gamenest --env GAMENEST_URL=ws://localhost:3000 -- node mcp/server.js`，或写入 `~/.codex/config.toml` 的 `[mcp_servers.gamenest]` |
+| Gemini CLI | 把 JSON 放进 `~/.gemini/settings.json` 的 `mcpServers` / put it under `mcpServers` in `~/.gemini/settings.json` |
+
+各客户端的命令和配置位置会随版本变化，以其官方文档为准；只要它能启动一个 stdio MCP 服务或连接一个 HTTP MCP 地址即可。
+Client CLIs and config paths change between versions — check your client's docs; any client that can launch a stdio MCP server or reach an HTTP MCP endpoint works.
+
+### HTTP 模式 / Streamable HTTP
+
+不想让客户端拉起子进程（或客户端只支持远程 MCP）时：
+
+```bash
+node mcp/server.js --http=3333        # 或 MCP_HTTP_PORT=3333
+```
+
+客户端连接 `http://127.0.0.1:3333/mcp`（例如 `claude mcp add --transport http gamenest http://127.0.0.1:3333/mcp`、`gemini mcp add --transport http gamenest http://127.0.0.1:3333/mcp`；Codex 在 `config.toml` 里用 `url`，其他客户端见各自文档）。带非本机 `Origin` 的浏览器请求会被拒绝（403）。服务只监听该端口的 `POST /mcp`（无状态），**没有鉴权**，请只在本机或可信局域网使用。
+Point the client at `http://127.0.0.1:3333/mcp`. It is stateless, has **no authentication**, and holds one game seat for the whole process — keep it on localhost / a trusted LAN.
 
 局域网内别的机器上的服务器：`GAMENEST_URL=ws://192.168.x.x:3000`。MCP 服务必须在 GameNest 仓库内运行（会读取 `games/`、`bots/`）。
 

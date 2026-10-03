@@ -58,7 +58,7 @@
       icon: '♠',
       subtitle: '叫地主，抢节奏',
       description: '经典三人扑克，带 AI 也能随时开局。',
-      players: '2-3人',
+      players: '3人',
       duration: '约10分钟',
       category: '牌桌竞技',
       tags: ['经典', '三人局'],

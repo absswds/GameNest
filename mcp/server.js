@@ -117,6 +117,7 @@ async function connectAndSend(type, data) {
 // Send and wait for the first reaction: server error, predicate true (default: new state), or timeout.
 async function sendAndWait(type, data, pred, ms) {
   await connect();
+  S.lastError = null; // an old error must not outlive the next action
   const errBefore = S.lastError;
   const seqBefore = S.seq;
   return new Promise((resolve) => {
@@ -132,7 +133,8 @@ async function sendAndWait(type, data, pred, ms) {
 }
 
 // ---------- derived info ----------
-const isOver = (st) => !!st && st.winner !== null && st.winner !== undefined;
+// mahjong-style games end with phase 'over' + winners[] and leave state.winner unset
+const isOver = (st) => !!st && ((st.winner !== null && st.winner !== undefined) || st.phase === 'over');
 function actorInfo() {
   const st = S.state;
   if (!st || S.phase !== 'playing') return { currentActor: null, pendingActors: null, isMyTurn: false, over: false };
@@ -342,8 +344,45 @@ tool('leave_room', 'Leave the current room and give up the seat. 离开房间。
   return { left: true };
 });
 
+// Transport: stdio by default (Claude, Cursor, Codex, Gemini CLI... all spawn it as a subprocess).
+// `--http[=port]` or MCP_HTTP_PORT serves the same tools over Streamable HTTP at /mcp for any other MCP client
+// or a remote agent. Bound to 127.0.0.1 unless MCP_HTTP_HOST says otherwise; there is no auth, so keep it local.
+const httpArg = process.argv.find((a) => a === '--http' || a.startsWith('--http='));
+const httpPort = httpArg ? Number(httpArg.split('=')[1] || process.env.MCP_HTTP_PORT || 3333) : Number(process.env.MCP_HTTP_PORT || 0);
+
+async function startHttp(port) {
+  const http = require('http');
+  const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
+  const host = process.env.MCP_HTTP_HOST || '127.0.0.1';
+  let chain = Promise.resolve(); // one transport is attached to the shared server at a time
+  const handle = async (req, res) => {
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    res.on('close', () => { transport.close().catch(() => {}); });
+    await server.connect(transport);
+    let body;
+    if (req.method === 'POST') {
+      const chunks = [];
+      for await (const c of req) chunks.push(c);
+      try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch (e) { body = undefined; }
+    }
+    await transport.handleRequest(req, res, body);
+  };
+  http.createServer((req, res) => {
+    if (!req.url.startsWith('/mcp')) { res.writeHead(404).end(); return; }
+    // MCP spec: validate Origin to block DNS-rebinding from web pages. Non-browser clients send none.
+    const origin = req.headers.origin;
+    if (origin) { let h = ''; try { h = new URL(origin).hostname; } catch (e) {} if (!['localhost', '127.0.0.1', '[::1]'].includes(h)) { res.writeHead(403).end(); return; } }
+    if (req.method !== 'POST') { res.writeHead(405, { Allow: 'POST' }).end(); return; } // stateless: no server-push stream
+    chain = chain.then(() => handle(req, res)).catch((e) => {
+      log('http error', e.message);
+      if (!res.headersSent) res.writeHead(500).end();
+    });
+  }).listen(port, host, () => log('Streamable HTTP on http://' + host + ':' + port + '/mcp'));
+}
+
 (async () => {
-  await server.connect(new StdioServerTransport());
+  if (httpPort) await startHttp(httpPort);
+  else await server.connect(new StdioServerTransport());
   log('ready, GAMENEST_URL=' + URL_BASE);
 })().catch((e) => { log('fatal', e); process.exit(1); });
 process.on('SIGTERM', () => process.exit(0));

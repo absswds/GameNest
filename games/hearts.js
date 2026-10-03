@@ -165,7 +165,7 @@ function canPlayCard(card, state, playerIndex, isFirstTrick) {
   var hand = state.hands[playerIndex];
   if (state.currentTrick.length === 0) {
     // Leading
-    if (isFirstTrick && playerIndex === state.trickLeader) {
+    if (isFirstTrick) {
       // First trick: must play 2♣ if you have it
       for (var i = 0; i < hand.length; i++) {
         if (hand[i].id === '2c') return card.id === '2c';

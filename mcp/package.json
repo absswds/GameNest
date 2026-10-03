@@ -2,7 +2,7 @@
   "name": "gamenest-mcp",
   "version": "1.0.0",
   "private": true,
-  "description": "MCP server that lets a local AI agent take a seat in a GameNest room",
+  "description": "Client-agnostic MCP server (stdio + Streamable HTTP) that lets an AI agent take a seat in a GameNest room",
   "main": "server.js",
   "type": "commonjs",
   "license": "Apache-2.0",

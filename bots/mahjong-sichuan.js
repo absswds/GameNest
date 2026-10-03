@@ -165,7 +165,7 @@ function claimDecision(state, playerIndex, hand, melds) {
     for (const tile of hand) {
       if (tile.k === ld.k && tile.n === ld.n) c++;
     }
-    if (c >= 3 && state.deck.length > 4) {
+    if (c >= 3 && (state.deck ? state.deck.length : state.deckCount) > 4) {
       // Kong when safe (keep a reserve of tiles) for extra fan.
       return { type: 'kong' };
     }

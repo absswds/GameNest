@@ -252,3 +252,8 @@ test('playerView does not leak other hands or the bottom cards through state.boa
   }
   if (b.bottomCards) assert.ok(b.bottomCards.every((c) => c === null), 'bottom cards hidden while bidding');
 });
+
+test('doudizhu needs exactly 3 players (the engine is hard-wired to 3 seats)', () => {
+  assert.strictEqual(ddz.minPlayers, 3);
+  assert.strictEqual(ddz.maxPlayers, 3);
+});

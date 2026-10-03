@@ -77,3 +77,20 @@ test('MCP agent plays tictactoe against a bot', { timeout: 90000, skip: !hasSdk 
   assert.strictEqual(bad.ok, false);
   await call('leave_room');
 });
+
+test('MCP server also speaks Streamable HTTP (non-stdio clients)', { timeout: 30000, skip: !hasSdk && 'run npm install in mcp/ first' }, async (t) => {
+  const { StreamableHTTPClientTransport } = require(SDK + '/dist/cjs/client/streamableHttp.js');
+  const port = await freePort();
+  const proc = spawn(process.execPath, [path.join(ROOT, 'mcp', 'server.js'), '--http=' + port], { stdio: 'ignore' });
+  const client = new Client({ name: 'test-http', version: '1.0.0' });
+  t.after(async () => { try { await client.close(); } catch (e) { /* ignore */ } proc.kill(); });
+  await waitUp(port).catch(() => {});
+  await client.connect(new StreamableHTTPClientTransport(new URL('http://127.0.0.1:' + port + '/mcp')));
+  const names = (await client.listTools()).tools.map((x) => x.name);
+  assert.ok(names.includes('make_move') && names.includes('list_games'));
+  const r = await client.callTool({ name: 'list_games', arguments: {} });
+  assert.ok(JSON.parse(r.content[0].text).find((g) => g.id === 'doudizhu').minPlayers === 3);
+  const post = (origin) => fetch('http://127.0.0.1:' + port + '/mcp', { method: 'POST', headers: Object.assign({ 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, origin ? { origin } : {}), body: '{}' });
+  assert.equal((await post('http://evil.example')).status, 403, 'foreign Origin must be rejected (DNS rebinding)');
+  assert.notEqual((await post('http://localhost:5173')).status, 403);
+});

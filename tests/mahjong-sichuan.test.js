@@ -640,3 +640,13 @@ test('penalties: no penalties when feature disabled', () => {
   const result = game.calculatePenalties(s);
   assert.equal(result.penalties.every(p => p === 0), true, 'no penalties when disabled');
 });
+
+test('sichuan bot works on the masked playerView (no state.deck, only deckCount)', () => {
+  const g = require('../games/mahjong-sichuan');
+  const bot = require('../bots/mahjong-sichuan');
+  const st = g.createState(); g.initGame(st, 4);
+  const view = g.playerView(st, st.currentPlayer);
+  assert.strictEqual(view.deck, undefined);
+  const mv = bot.createBot(st.currentPlayer).getMove(view, st.currentPlayer);
+  assert.ok(mv && typeof mv === 'object');
+});

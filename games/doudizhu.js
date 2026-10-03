@@ -5,6 +5,7 @@ var SUITS = ['s','h','c','d'];
 var RANKS = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
 
 exports.name = 'doudizhu';
+exports.minPlayers = 3;
 exports.maxPlayers = 3;
 
 function rankVal(rank) {
