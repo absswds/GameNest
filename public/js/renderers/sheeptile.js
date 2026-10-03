@@ -7,7 +7,8 @@
   // 高对比牌面：不能再使用接近白色的色块，否则 Windows emoji 会像半透明。
   var EMOJI_BG = ['#ffd6d2', '#ffe39b', '#ffd0a8', '#c9f0a8', '#ffc9c9', '#ddcbff', '#ffd0b5', '#ffe3a8', '#f8c6bd', '#ffc9d7', '#e8d19b', '#fff0a8', '#e4c6ff', '#bfeecb'];
 
-  var canvas, ctx, panel, oppBar;
+  var canvas, ctx, panel, oppBar, wrapEl, stageEl;
+  var SIDE_W = 220; // side panel width on wide screens
   var W, H, TS, boardBottom, slotY, slotCS, slotPad;
   var state, playerIndex, winnerIdx = null;
   var rects = {};      // tileId -> {x,y,s,z} 屏幕矩形（当前关卡）
@@ -40,8 +41,21 @@
 
   // ---------- 尺寸 / 布局 ----------
   function computeSize() {
+    if (wrapEl && stageEl) {
+      var fit = window.boardFit ? window.boardFit(stageEl) : { w: window.innerWidth - 32 };
+      wrapEl.classList.toggle('wide', fit.w >= 560 + SIDE_W * 2 + 48 && window.innerHeight >= 600);
+    }
     W = Math.max(300, Math.min(window.innerWidth - 12, 560));
-    H = Math.max(360, Math.min(window.innerHeight - 210, 720));
+    // 高度 = 视口 - 画布顶部 - 道具栏高度(含边距)，保证槽位和道具栏不用滚动就能看到
+    // 用 .board-wrap 顶部（#boardArea 会在其中居中，自身位置不稳定）
+    var bw = stageEl && stageEl.closest && stageEl.closest('.board-wrap');
+    var top = bw ? bw.getBoundingClientRect().top + (window.scrollY || 0) : 0;
+    var panelH = Math.max(52, panel ? panel.offsetHeight : 0) + 8 +
+      (oppBar && oppBar.offsetParent ? oppBar.offsetHeight + 8 : 0);
+    var ga = document.getElementById('gameActions');
+    panelH += ga && ga.offsetParent ? ga.offsetHeight + 8 : 0; // 底部"离开"操作栏也在流内
+    H = top > 0 ? window.innerHeight - top - panelH - 24 : window.innerHeight - 210;
+    H = Math.max(360, Math.min(H, 720));
     var dpr = window.devicePixelRatio || 1;
     canvas.width = W * dpr; canvas.height = H * dpr;
     canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
@@ -317,15 +331,113 @@
     }
   }
 
+  // ---------- 宽屏侧栏 ----------
+  function esc(v) { return String(v).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pname(i) {
+    if (i === playerIndex) return _t('st_side_you');
+    return (window._players && window._players[i]) ? window._players[i].name : _t('st_player') + (i + 1);
+  }
+  function levelCount(lv) { return state.layout.filter(function (t) { return t.level === lv; }).length; }
+  // 总进度 0..1：已过关卡的牌 + 当前关已消除的牌
+  function progressOf(p) {
+    var total = state.layout.length || 1, done = 0;
+    for (var lv = 1; lv < p.level; lv++) done += levelCount(lv);
+    return Math.min(1, (done + Object.keys(p.removed || {}).length) / total);
+  }
+
+  function buildSides() {
+    var left = document.getElementById('sheep-left'), right = document.getElementById('sheep-right');
+    if (!left || !right || !state || !state.players || !state.players[playerIndex]) return;
+    var p = me(), total = levelCount(p.level);
+    var remain = total - Object.keys(p.removed || {}).length;
+    var size = state.slotSize || 7, fill = p.slot.length;
+    var pct = Math.round(progressOf(p) * 100);
+    var cells = '';
+    for (var i = 0; i < size; i++) {
+      var c = p.slot[i];
+      cells += '<span class="st-cell" style="' + (c ? 'background:' + EMOJI_BG[c.pattern % EMOJI_BG.length] : '') + '">' + (c ? EMOJIS[c.pattern % EMOJIS.length] : '') + '</span>';
+    }
+    var warn = !p.eliminated && fill >= size - 2;
+    var pw = p.powers || {};
+    left.innerHTML =
+      '<div class="st-card"><div class="st-label">' + _t('st_side_mine') + '<span>' + _tf('st_side_level', p.level) + '</span></div>' +
+        '<div class="st-big">' + remain + '<small> / ' + total + ' ' + _t('st_side_tiles') + '</small></div>' +
+        '<div class="st-bar"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="st-sub">' + _t('st_side_cleared') + ' ' + pct + '%</div></div>' +
+      '<div class="st-card' + (warn ? ' warn' : '') + '"><div class="st-label">' + _t('st_side_slot') + '<span>' + fill + ' / ' + size + '</span></div>' +
+        '<div class="st-cells">' + cells + '</div>' +
+        (warn ? '<div class="st-warnmsg">' + _t('st_side_slot_warn') + '</div>' : '') + '</div>' +
+      '<div class="st-card"><div class="st-label">' + _t('st_side_tools') + '</div>' +
+        '<div class="st-tool"><span>' + _t('st_undo') + '</span><b>×' + (pw.undo || 0) + '</b></div>' +
+        '<div class="st-tool"><span>' + _t('st_shuffle') + '</span><b>×' + (pw.shuffle || 0) + '</b></div>' +
+        '<div class="st-tool"><span>' + _t('st_pop3') + '</span><b>×' + (pw.pop3 || 0) + '</b></div></div>';
+
+    var rows = [];
+    for (var k = 0; k < state._playerCount; k++) rows.push(k);
+    rows.sort(function (a, b) {
+      var pa = state.players[a], pb = state.players[b];
+      if (!!pa.eliminated !== !!pb.eliminated) return pa.eliminated ? 1 : -1;
+      return progressOf(pb) - progressOf(pa);
+    });
+    var race = rows.map(function (k, n) {
+      var q = state.players[k], pc = Math.round(progressOf(q) * 100);
+      return '<div class="st-row' + (k === playerIndex ? ' me' : '') + (q.eliminated ? ' out' : '') + '">' +
+        '<span class="st-no">' + (winnerIdx === k ? '🏆' : n + 1) + '</span>' +
+        '<span class="st-who">' + esc(pname(k)) + (q.eliminated ? '<em>' + _t('st_side_out') + '</em>' : '') + '</span>' +
+        '<b>' + pc + '%</b><i style="width:' + pc + '%"></i></div>';
+    }).join('');
+    right.innerHTML =
+      '<div class="st-card"><div class="st-label">' + _t('st_side_race') + '</div>' + race + '</div>' +
+      '<div class="st-card st-tips"><div class="st-label">' + _t('st_side_tips') + '</div><ol>' +
+        '<li>' + _t('st_side_tip_1') + '</li><li>' + _t('st_side_tip_2') + '</li><li>' + _t('st_side_tip_3') + '</li><li>' + _t('st_side_tip_4') + '</li></ol></div>';
+  }
+
+  var CSS = [
+    '.st-wrap{display:flex;justify-content:center;align-items:flex-start;gap:24px;width:100%;padding:6px}',
+    '.st-main{display:flex;flex-direction:column;align-items:center;min-width:0}',
+    '.st-side{display:none;width:' + SIDE_W + 'px;flex:none;flex-direction:column;gap:12px}',
+    '.st-wrap.wide .st-side{display:flex}',
+    '.st-wrap.wide #sheep-opp{display:none !important}',
+    '.st-card{padding:12px 14px;border-radius:var(--radius-sm);background:var(--bg);font-size:13px}',
+    '.st-card.warn{background:#fdecea}',
+    '.st-label{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px}',
+    '.st-label span{font-weight:400;white-space:nowrap}',
+    '.st-big{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;color:#2e6b46}',
+    '.st-big small{font-size:13px;font-weight:400;color:var(--text-muted)}',
+    '.st-bar{height:6px;border-radius:3px;background:var(--surface);margin:8px 0 6px;overflow:hidden}',
+    '.st-bar i{display:block;height:100%;background:#4c8f63;border-radius:3px;transition:width .4s}',
+    '.st-sub{font-size:12px;color:var(--text-muted)}',
+    '.st-cells{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}',
+    '.st-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:6px;background:var(--surface);font-size:15px;line-height:1}',
+    '.st-warnmsg{margin-top:8px;font-size:12px;color:#c45d52;font-weight:600}',
+    '.st-tool{display:flex;justify-content:space-between;padding:4px 0}',
+    '.st-tool b{font-variant-numeric:tabular-nums}',
+    '.st-row{position:relative;display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:10px;overflow:hidden}',
+    '.st-row + .st-row{margin-top:2px}',
+    '.st-row i{position:absolute;left:0;bottom:0;height:3px;background:#4c8f63;opacity:.6;border-radius:2px;transition:width .4s}',
+    '.st-row.me{background:var(--surface);font-weight:600}',
+    '.st-row.out{color:var(--text-muted)}',
+    '.st-row.out i{background:#ccc}',
+    '.st-no{width:20px;color:var(--text-muted);font-size:12px;text-align:center}',
+    '.st-who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.st-who em{margin-left:6px;font-style:normal;font-size:11px;color:#c45d52}',
+    '.st-row b{font-variant-numeric:tabular-nums;font-size:14px}',
+    '.st-tips ol{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text-muted);line-height:1.5}',
+  ].join('\n');
+
   // ---------- 渲染入口 ----------
   window.gameRenderers.set('sheeptile', {
     init: function (container) {
       container.innerHTML = '';
       state = null; prevSlotLen = 0; prevLevel = 1; prevEliminated = false;
       anim.flies = []; anim.merges = []; anim.banners = []; anim.running = false;
-      var wrap = document.createElement('div');
-      wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;padding:6px;';
-      container.appendChild(wrap);
+      window.injectStylesOnce('st-side-styles', CSS);
+      wrapEl = document.createElement('div');
+      wrapEl.className = 'st-wrap';
+      wrapEl.innerHTML = '<aside class="st-side" id="sheep-left"></aside><div class="st-main"></div><aside class="st-side" id="sheep-right"></aside>';
+      container.appendChild(wrapEl);
+      stageEl = container;
+      var wrap = wrapEl.querySelector('.st-main');
       canvas = document.createElement('canvas');
       canvas.style.cssText = 'border-radius:12px;box-shadow:0 4px 18px rgba(46,107,70,.2);touch-action:manipulation;';
       wrap.appendChild(canvas);
@@ -333,7 +445,9 @@
       canvas.addEventListener('click', onClick);
       canvas.addEventListener('touchstart', function (e) { e.preventDefault(); if (e.touches[0]) onClick(e.touches[0]); }, { passive: false });
       computeSize();
-      window.addEventListener('resize', function () { computeSize(); if (state) drawBoard(); });
+      if (window._sheepResize) window.removeEventListener('resize', window._sheepResize);
+      window._sheepResize = function () { computeSize(); if (state) drawBoard(); };
+      window.addEventListener('resize', window._sheepResize);
 
       oppBar = document.createElement('div');
       oppBar.id = 'sheep-opp';
@@ -352,7 +466,11 @@
       winnerIdx = (winner === null || winner === undefined) ? null : winner;
       if (!st || !st.players || !st.players[pi]) return;
 
-      if (newGame) { prevSlotLen = 0; prevLevel = me().level; layoutBoard(); }
+      if (newGame) {
+        prevSlotLen = 0; prevLevel = me().level; layoutBoard();
+        // 页面布局稳定后按实际画布位置重算高度
+        requestAnimationFrame(function () { if (state) { computeSize(); drawBoard(); } });
+      }
 
       // 关卡切换 → 重算布局
       if (me().level !== prevLevel) {
@@ -379,6 +497,7 @@
       drawBoard();
       buildPanel();
       buildOppBar();
+      buildSides();
       ensureLoop();
 
       var statusEl = document.getElementById('status');

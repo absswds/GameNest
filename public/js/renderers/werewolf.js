@@ -200,6 +200,7 @@
   function logLine(e) {
     if (e.t === 'deaths') return e.list.length ? tf('ww_log_deaths', e.day, e.list.map(seat).join('、')) : tf('ww_log_peace', e.day);
     if (e.t === 'night') return tf('ww_log_night', e.night);
+    if (e.t === 'dawn') return tf('ww_log_dawn', e.day) + ' · ' + t('ww_dawn_sheriff_first');
     if (e.t === 'sheriff') return tf('ww_log_sheriff', seat(e.who));
     if (e.t === 'no_sheriff') return t('ww_log_no_sheriff');
     if (e.t === 'exile') return tf('ww_log_exile', seat(e.who));
@@ -240,8 +241,14 @@
   }
 
   function sysHtml(e, fresh) {
-    var big = e.t === 'night' || e.t === 'deaths';
-    var txt = e.t === 'night' ? '🌙 ' + logLine(e) : e.t === 'deaths' ? '☀ ' + tf('ww_log_dawn', e.day) + ' · ' + (e.list.length ? tf('ww_dawn_deaths', e.list.map(seat).join('、')) : t('ww_dawn_peace')) : logLine(e);
+    var big = e.t === 'night' || e.t === 'deaths' || e.t === 'dawn';
+    // Day 1 with a sheriff election: dawn is announced first, the night's result only after the election
+    var revealed = e.t === 'deaths' && (S.log || []).some(function(x) { return x.t === 'dawn' && x.day === e.day; });
+    var result = e.t === 'deaths' ? (e.list.length ? tf('ww_dawn_deaths', e.list.map(seat).join('、')) : t('ww_dawn_peace')) : '';
+    var txt = e.t === 'night' ? '🌙 ' + logLine(e)
+      : e.t === 'dawn' ? '☀ ' + tf('ww_log_dawn', e.day) + ' · ' + t('ww_dawn_sheriff_first')
+      : e.t === 'deaths' ? (revealed ? '📢 ' + t('ww_dawn_reveal') + ' · ' + result : '☀ ' + tf('ww_log_dawn', e.day) + ' · ' + result)
+      : logLine(e);
     return '<div class="m sys' + (big ? ' big' : '') + (fresh ? ' new' : '') + '"><div class="b">' + txt + '</div></div>';
   }
 

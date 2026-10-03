@@ -149,6 +149,8 @@ test('werewolf: sheriff election, 1.5 votes and badge hand-over', () => {
   const s = start(['wolf', 'wolf', 'seer', 'witch', 'hunter', 'villager', 'villager'], { sheriff: true });
   night(s, 5, 0, {});
   assert.equal(s.phase, 'sheriff_sign');
+  assert.equal(s.log[s.log.length - 1].t, 'dawn', 'dawn is announced before the election');
+  assert.equal(s.log.some((e) => e.t === 'deaths'), false, 'the night result waits for the election');
   for (let i = 0; i < 7; i++) move(s, i, { type: 'run', run: i === 2 || i === 3 });
   speakAll(s);
   assert.equal(s.voteKind, 'sheriff');

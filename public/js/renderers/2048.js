@@ -9,6 +9,9 @@
   var _timerEnd = 0;
   var _timerRaf = null;
   var _inited = false;
+  var _container = null;
+  var SIDE_W = 230;      // side panel width on wide screens
+  var LADDER = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048];
 
   // Tile background colors by value (classic 2048 palette).
   var TILE_COLORS = {
@@ -36,7 +39,31 @@
     + '.g2048-stat .value{font-size:22px;font-weight:800;line-height:1.2;}'
     + '.g2048-board-wrap{display:flex;justify-content:center;touch-action:none;}'
     + '.g2048-board-wrap canvas{display:block;border-radius:12px;box-shadow:0 4px 18px rgba(0,0,0,.18);touch-action:none;}'
-    + '.g2048-hint{text-align:center;font-size:13px;color:var(--text-muted);}';
+    + '.g2048-hint{text-align:center;font-size:13px;color:var(--text-muted);}'
+    // wide screens: left stats / right ranking + tips around the board
+    + '.g2k{display:flex;justify-content:center;align-items:flex-start;gap:24px;width:100%;}'
+    + '.g2k-main{flex:1 1 0;min-width:0;display:flex;justify-content:center;}'
+    + '.g2k.wide .g2k-main{flex:0 1 auto;}'
+    + '.g2k-side{display:none;width:' + SIDE_W + 'px;flex:none;flex-direction:column;gap:12px;}'
+    + '.g2k.wide .g2k-side{display:flex;}'
+    + '.g2k.wide .g2048-bar{display:none;}'
+    + '.g2k-card{padding:12px 14px;border-radius:var(--radius-sm);background:var(--bg);font-size:13px;}'
+    + '.g2k-label{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;}'
+    + '.g2k-label span{font-weight:400;white-space:nowrap;}'
+    + '.g2k-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 8px;}'
+    + '.g2k-stats .big{grid-column:1/-1;}'
+    + '.g2k-stats b{display:block;font-size:20px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums;}'
+    + '.g2k-stats .big b{font-size:34px;}'
+    + '.g2k-stats em{display:block;font-style:normal;font-size:11px;color:var(--text-muted);}'
+    + '.g2k-ladder{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}'
+    + '.g2k-step{height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;opacity:.25;filter:grayscale(.7);transition:opacity .3s,filter .3s;}'
+    + '.g2k-step.got{opacity:1;filter:none;}'
+    + '.g2k-step.best{box-shadow:0 0 0 2px var(--accent);}'
+    + '.g2k-row{position:relative;display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:10px;overflow:hidden;}'
+    + '.g2k-row.me{background:var(--surface);font-weight:600;}'
+    + '.g2k-row b{margin-left:auto;font-variant-numeric:tabular-nums;font-size:15px;}'
+    + '.g2k-row i{position:absolute;left:0;bottom:0;height:3px;background:#f39c12;opacity:.55;border-radius:2px;transition:width .4s;}'
+    + '.g2k-tips ol{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text-muted);line-height:1.5;}';
 
   function tileColor(v) { return TILE_COLORS[v] || '#3c3a32'; }
   function textColor(v) { return TILE_TEXT[v] || '#f9f6f2'; }
@@ -49,10 +76,15 @@
   }
   function updateTimer(state) {
     var el = document.getElementById('g2048Timer');
+    var el2 = document.getElementById('g2048TimerSide');
     if (!el) return;
-    if (!state || !state.startTime) { el.textContent = '--:--'; return; }
-    var end = (state.winner !== null && state.winner !== undefined) ? _timerEnd : Date.now();
-    el.textContent = formatTime(end - state.startTime);
+    var txt = '--:--';
+    if (state && state.startTime) {
+      var end = (state.winner !== null && state.winner !== undefined) ? _timerEnd : Date.now();
+      txt = formatTime(end - state.startTime);
+    }
+    el.textContent = txt;
+    if (el2) el2.textContent = txt;
   }
   function startTimer(state) {
     if (_timerRaf) { clearInterval(_timerRaf); _timerRaf = null; }
@@ -69,8 +101,42 @@
     }, 250);
   }
 
+  function updateSides(state) {
+    var left = document.getElementById('g2kLeft');
+    var right = document.getElementById('g2kRight');
+    if (!left || !right || !state) return;
+    var max = state.maxTile || 0, i, ladder = '';
+    for (i = 0; i < LADDER.length; i++) {
+      var v = LADDER[i];
+      ladder += '<span class="g2k-step' + (v <= max ? ' got' : '') + (v === max ? ' best' : '') +
+        '" style="background:' + tileColor(v) + ';color:' + textColor(v) + '">' + v + '</span>';
+    }
+    left.innerHTML =
+      '<div class="g2k-card g2k-stats">' +
+        '<div class="big"><em>' + t('g2048_side_score', 'Score') + '</em><b>' + (state.score || 0) + '</b></div>' +
+        '<div><em>' + t('g2048_side_max', 'Max tile') + '</em><b>' + max + '</b></div>' +
+        '<div><em>' + t('g2048_time', 'Time') + '</em><b id="g2048TimerSide">--:--</b></div>' +
+      '</div>' +
+      '<div class="g2k-card"><div class="g2k-label">' + t('g2048_side_ladder', 'Tile ladder') + '</div><div class="g2k-ladder">' + ladder + '</div></div>';
+
+    var best = Math.max(1, state.highScore || 0), mine = state.score || 0;
+    right.innerHTML =
+      '<div class="g2k-card"><div class="g2k-label">' + t('g2048_side_race', 'Race') + '</div>' +
+        '<div class="g2k-row me"><span>' + t('g2048_side_you', 'You') + '</span><b>' + mine + '</b><i style="width:' + Math.round(mine / best * 100) + '%"></i></div>' +
+        '<div class="g2k-row"><span>' + t('g2048_side_top', 'Room best') + '</span><b>' + (state.highScore || 0) + '</b><i style="width:100%"></i></div></div>' +
+      '<div class="g2k-card g2k-tips"><div class="g2k-label">' + t('g2048_side_tips', 'How to play') + '</div><ol>' +
+        '<li>' + t('g2048_tip_1', 'Arrow keys or WASD to slide') + '</li><li>' + t('g2048_tip_2', 'Equal tiles merge into one') + '</li>' +
+        '<li>' + t('g2048_tip_3', 'First to 2048 wins') + '</li><li>' + t('g2048_tip_4', 'Locked up means out; best score wins') + '</li></ol></div>';
+  }
+
   function computeLayout() {
-    var maxBoard = Math.min(window.innerWidth - 24, 520, window.innerHeight * 0.55);
+    var wrap = _container && _container.querySelector('.g2k');
+    var fit = window.boardFit && _container ? window.boardFit(_container) : { w: window.innerWidth - 24, h: window.innerHeight - 160 };
+    var wide = fit.w >= 380 + SIDE_W * 2 + 72 && fit.h >= 480;
+    if (wrap) wrap.classList.toggle('wide', wide);
+    var maxBoard = wide
+      ? Math.min(fit.w - SIDE_W * 2 - 72, fit.h - 50, 640)
+      : Math.min(window.innerWidth - 24, 520, window.innerHeight * 0.55);
     maxBoard = Math.max(maxBoard, 240);
     var size = Math.floor(maxBoard);
     _layout.size = size;
@@ -246,7 +312,8 @@
   window.gameRenderers.set('2048', {
     init: function (container) {
       injectStylesOnce('g2048Styles', STYLES);
-      container.innerHTML = ''
+      _container = container;
+      container.innerHTML = '<div class="g2k"><aside class="g2k-side" id="g2kLeft"></aside><div class="g2k-main">'
         + '<div class="g2048-wrap">'
           + '<div class="g2048-bar">'
             + '<div class="g2048-stat"><div class="label">' + t('g2048_score', '分数') + '</div><div class="value" id="g2048Score">0</div></div>'
@@ -256,7 +323,7 @@
           + '</div>'
           + '<div class="g2048-board-wrap" id="g2048BoardWrap"></div>'
           + '<div class="g2048-hint" id="g2048Hint">' + t('g2048_hint', '方向键 / 滑动 移动方块') + '</div>'
-        + '</div>';
+        + '</div></div><aside class="g2k-side" id="g2kRight"></aside></div>';
 
       canvas = document.createElement('canvas');
       canvas.id = 'g2048Canvas';
@@ -294,6 +361,7 @@
       var scoreEl = document.getElementById('g2048Score');
       var bestEl = document.getElementById('g2048Best');
       var maxEl = document.getElementById('g2048Max');
+      updateSides(state);
       if (scoreEl) scoreEl.textContent = state.score;
       if (bestEl) bestEl.textContent = state.highScore;
       if (maxEl) maxEl.textContent = state.maxTile;

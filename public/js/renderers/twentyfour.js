@@ -15,6 +15,8 @@
   var _lastState = null;
   var _playerIndex = 0;
 
+  var SIDE_W = 220; // side panel width on wide screens
+
   var STYLES =
     '.tf-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;}' +
     '.tf-round{font-size:14px;font-weight:600;color:var(--accent);text-align:center;}' +
@@ -35,7 +37,33 @@
     '.tf-lb-row:last-child{border-bottom:none;}' +
     '.tf-lb-rank{font-weight:800;font-size:18px;min-width:28px;}' +
     '.tf-lb-wins{font-weight:600;color:var(--accent);}' +
-    '.tf-hint{text-align:center;font-size:13px;color:#5a9e6f;padding:4px;font-weight:600;min-height:18px;}';
+    '.tf-hint{text-align:center;font-size:13px;color:#5a9e6f;padding:4px;font-weight:600;min-height:18px;}' +
+    // Wide screens: side panels left and right of the board
+    '.tf-lay{display:flex;justify-content:center;align-items:flex-start;gap:24px;width:100%;}' +
+    '.tf-lay > .tf-wrap{min-width:0;}' +
+    '.tf-side{display:none;width:' + SIDE_W + 'px;flex:none;flex-direction:column;gap:12px;}' +
+    '.tf-lay.wide > .tf-wrap{width:420px;flex:none;}' +
+    '.tf-lay.wide .tf-side{display:flex;}' +
+    '.tf-lay.wide #tfRound,.tf-lay.wide #tfInfo,.tf-lay.wide #tfLB{display:none !important;}' +
+    '.tf-card{padding:12px 14px;border-radius:var(--radius-sm);background:var(--bg);font-size:13px;}' +
+    '.tf-label{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;}' +
+    '.tf-label span{font-weight:400;white-space:nowrap;}' +
+    '.tf-side-round{font-size:20px;font-weight:800;color:var(--accent);}' +
+    '.tf-side-timer{margin-top:6px;min-height:20px;font-size:14px;}' +
+    '.tf-mini{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}' +
+    '.tf-mini b{display:flex;align-items:center;justify-content:center;aspect-ratio:1;border-radius:10px;background:var(--surface);font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;}' +
+    '.tf-dots{display:flex;gap:6px;align-items:center;}' +
+    '.tf-dots i{flex:1;height:6px;border-radius:3px;background:var(--border);}' +
+    '.tf-dots i.on{background:#5a9e6f;}' +
+    '.tf-srow{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:10px;}' +
+    '.tf-srow + .tf-srow{margin-top:2px;}' +
+    '.tf-srow.me{background:var(--surface);font-weight:600;}' +
+    '.tf-srow .no{width:22px;text-align:center;color:var(--text-muted);font-size:12px;flex:none;}' +
+    '.tf-srow .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+    '.tf-srow .ok{color:#5a9e6f;font-size:12px;font-weight:700;flex:none;}' +
+    '.tf-srow .expr{display:block;font-size:11px;font-weight:400;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;}' +
+    '.tf-srow b{font-variant-numeric:tabular-nums;font-size:15px;color:var(--accent);flex:none;}' +
+    '.tf-tips{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text-muted);line-height:1.5;}';
 
   var _numColors = ['tf-n0', 'tf-n1', 'tf-n2', 'tf-n3'];
 
@@ -46,6 +74,7 @@
       injectStylesOnce('tfStyles', STYLES);
 
       container.innerHTML =
+        '<div class="tf-lay" id="tfLay"><aside class="tf-side" id="tfLeft"></aside>' +
         '<div class="tf-wrap">' +
           '<div class="tf-round" id="tfRound"></div>' +
           '<div class="tf-nums" id="tfNums"></div>' +
@@ -70,7 +99,12 @@
           '<div class="tf-round-winner" id="tfRoundWinner" style="display:none"></div>' +
           '<div class="tf-leaderboard" id="tfLB" style="display:none"></div>' +
           '<div class="tf-info" id="tfInfo"></div>' +
-        '</div>';
+        '</div><aside class="tf-side" id="tfRight"></aside></div>';
+
+      fitSides(container);
+      if (window._tfResize) window.removeEventListener('resize', window._tfResize);
+      window._tfResize = function() { fitSides(container); };
+      window.addEventListener('resize', window._tfResize);
 
       // Surface server-side move errors (e.g. wrong-answer computed result) in the board
       window._gameErrorHandler = function(message) {
@@ -132,6 +166,7 @@
       }
 
       updateDisplay();
+      fitSides(container);
 
       // "Already answered, waiting for countdown" status (timed mode)
       var myStatusEl = document.getElementById('tfMyStatus');
@@ -239,8 +274,57 @@
         var remaining = Math.max(0, Math.ceil(state.roundTime - (Date.now() - _roundLocalStart) / 1000));
         updateCountdownDisplay(remaining);
       }
+      updateSides();
     }
   });
+
+  // Wide screens only: show the side panels when both fit next to the 420px board
+  function fitSides(container) {
+    var lay = document.getElementById('tfLay');
+    if (!lay) return;
+    var fit = window.boardFit ? window.boardFit(container) : { w: window.innerWidth - 32 };
+    lay.classList.toggle('wide', fit.w >= 420 + SIDE_W * 2 + 48);
+  }
+
+  function esc(v) { return String(v).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // Left: round, timer, this round's numbers, hint progress. Right: ranking (+ who solved) and how to play.
+  function updateSides() {
+    var left = document.getElementById('tfLeft');
+    var right = document.getElementById('tfRight');
+    var st = _lastState;
+    if (!left || !right || !st || !st.numbers) return;
+    var infoEl = document.getElementById('tfInfo');
+    var nums = st.numbers.map(function(n) { return '<b>' + esc(n) + '</b>'; }).join('');
+    var dots = '';
+    for (var i = 0; i < HINT_STEPS; i++) dots += '<i class="' + (i < _hintLevel ? 'on' : '') + '"></i>';
+    left.innerHTML =
+      '<div class="tf-card"><div class="tf-label">' + t('tf_side_round') + '</div>' +
+        '<div class="tf-side-round">' + esc(tf('tf_round', st.currentRound || 1, st.maxRounds || 5)) + '</div>' +
+        '<div class="tf-side-timer">' + (infoEl ? infoEl.innerHTML : '') + '</div></div>' +
+      '<div class="tf-card"><div class="tf-label">' + t('tf_side_numbers') + '</div><div class="tf-mini">' + nums + '</div></div>' +
+      '<div class="tf-card"><div class="tf-label">' + t('tf_side_hints') + '<span>' + _hintLevel + ' / ' + HINT_STEPS + '</span></div><div class="tf-dots">' + dots + '</div></div>';
+
+    var subs = st.playerSubmissions || {};
+    var sols = {};
+    if (st.phase !== 'playing') (st.solutions || []).forEach(function(s) { if (sols[s.player] === undefined) sols[s.player] = s.expression; });
+    var rows = [];
+    for (var p = 0; p < (st.roundsWon || []).length; p++) rows.push({ player: p, wins: st.roundsWon[p] || 0 });
+    rows.sort(function(a, b) { return b.wins - a.wins; });
+    var rank = rows.map(function(r, k) {
+      var mySub = subs[r.player] && subs[r.player].correct;
+      var solved = mySub || st.roundWinner === r.player || sols[r.player] !== undefined;
+      var ex = sols[r.player] !== undefined ? sols[r.player] : (r.player === _playerIndex && mySub ? subs[r.player].expression : '');
+      return '<div class="tf-srow' + (r.player === _playerIndex ? ' me' : '') + '"><span class="no">' + (k + 1) + '</span>' +
+        '<span class="who">' + esc(playerName(r.player)) + (ex ? '<span class="expr">' + esc(ex) + '</span>' : '') + '</span>' +
+        (solved ? '<span class="ok">✓ ' + t('tf_side_solved') + '</span>' : '') +
+        '<b>' + r.wins + '</b></div>';
+    }).join('');
+    right.innerHTML =
+      '<div class="tf-card"><div class="tf-label">' + t('tf_leaderboard') + '<span>' + t('tf_wins') + '</span></div>' + rank + '</div>' +
+      '<div class="tf-card"><div class="tf-label">' + t('tf_side_tips') + '</div><ol class="tf-tips">' +
+        '<li>' + t('tf_side_tip_1') + '</li><li>' + t('tf_side_tip_2') + '</li><li>' + t('tf_side_tip_3') + '</li></ol></div>';
+  }
 
   function updateDisplay() {
     var el = document.getElementById('tfExpr');
@@ -332,12 +416,19 @@
     if (!infoEl) return;
     if (remaining <= 0) {
       infoEl.innerHTML = '<span style="color:#e74c3c;font-weight:700;">' + t('tf_time_up') + '</span>';
+      mirrorTimer(infoEl);
       return;
     }
     var mins = Math.floor(remaining / 60);
     var secs = remaining % 60;
     var color = remaining <= 10 ? '#e74c3c' : remaining <= 30 ? '#f39c12' : 'var(--text-muted)';
     infoEl.innerHTML = '<span style="color:' + color + ';font-weight:700;">' + tf('tf_time_remaining', (mins > 0 ? mins + t('tf_minutes') : '') + secs + t('tf_seconds')) + '</span>';
+    mirrorTimer(infoEl);
+  }
+
+  function mirrorTimer(infoEl) {
+    var el = document.querySelector('#tfLeft .tf-side-timer');
+    if (el) el.innerHTML = infoEl.innerHTML;
   }
 
   function showToast(msg) {
@@ -537,6 +628,7 @@
     if (hintEl && hintText) {
       hintEl.textContent = '💡 ' + tf('tf_hint_step', _hintLevel, HINT_STEPS) + '  ' + hintText;
     }
+    updateSides();
     if (_hintLevel >= HINT_STEPS) {
       if (hintBtn) { hintBtn.disabled = true; hintBtn.textContent = t('tf_hint_exhausted'); }
     } else {

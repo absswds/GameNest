@@ -8,6 +8,8 @@
   var _longPressTimer = null;
   var _touchMoved = false;
   var _preventNextClick = false;
+  var _container = null;
+  var SIDE_W = 230; // side panel width on wide screens
 
   var STYLES = '' +
     // === Layout ===
@@ -55,6 +57,35 @@
     '.ms-legend{font-size:11px;color:var(--text-muted);text-align:center;padding:2px 12px;line-height:1.6;' +
       'display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}' +
     '.ms-legend span{white-space:nowrap;}' +
+
+    // === Wide screens: stats on the left, ranking + tips on the right ===
+    '.ms{display:flex;justify-content:center;align-items:flex-start;gap:24px;width:100%;}' +
+    '.ms-main{flex:1 1 0;min-width:0;display:flex;justify-content:center;}' +
+    '.ms.wide .ms-main{flex:0 1 auto;}' +
+    '.ms-side{display:none;width:' + SIDE_W + 'px;flex:none;flex-direction:column;gap:12px;}' +
+    '.ms.wide .ms-side{display:flex;}' +
+    '.ms.wide .ms-players,.ms.wide .ms-legend{display:none;}' +
+    '.ms-card{padding:12px 14px;border-radius:var(--radius-sm);background:var(--bg);font-size:13px;}' +
+    '.ms-label{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;}' +
+    '.ms-label span{font-weight:400;white-space:nowrap;}' +
+    '.ms-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 8px;}' +
+    '.ms-stats .big{grid-column:1/-1;}' +
+    '.ms-stats b{display:block;font-size:20px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums;}' +
+    '.ms-stats .big b{font-size:34px;}' +
+    '.ms-stats em{display:block;font-style:normal;font-size:11px;color:var(--text-muted);}' +
+    '.ms-bar{height:6px;border-radius:3px;background:var(--surface);overflow:hidden;margin-top:8px;}' +
+    '.ms-bar i{display:block;height:100%;background:#58d68d;border-radius:3px;transition:width .4s;}' +
+    '.ms-row{position:relative;display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:10px;overflow:hidden;}' +
+    '.ms-row + .ms-row{margin-top:2px;}' +
+    '.ms-row.me{background:var(--surface);font-weight:600;}' +
+    '.ms-row.out{color:var(--text-muted);}' +
+    '.ms-row .dot{width:8px;height:8px;border-radius:50%;flex:none;}' +
+    '.ms-row .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+    '.ms-row .who em{margin-left:6px;font-style:normal;font-size:11px;color:#e74c3c;}' +
+    '.ms-row b{font-variant-numeric:tabular-nums;font-size:15px;}' +
+    '.ms-row i{position:absolute;left:0;bottom:0;height:3px;background:#58d68d;opacity:.55;border-radius:2px;transition:width .4s;}' +
+    '.ms-row.out i{background:#ccc;}' +
+    '.ms-tips ol{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text-muted);line-height:1.5;}' +
 
     // === Animations ===
     '@keyframes msExplode{0%{transform:scale(1);}30%{transform:scale(1.25);}100%{transform:scale(1);}}' +
@@ -141,10 +172,66 @@
     });
   }
 
+  function esc(v) { return String(v).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // Toggle the side panels when the stage is wide enough for grid + both panels
+  function resize() {
+    var wrap = _container && _container.querySelector('.ms');
+    if (!wrap) return;
+    var grid = document.getElementById('msGrid');
+    var gridW = grid ? grid.offsetWidth : 500;
+    var fit = window.boardFit ? window.boardFit(_container) : { w: window.innerWidth - 32, h: window.innerHeight - 160 };
+    wrap.classList.toggle('wide', fit.w >= gridW + SIDE_W * 2 + 72);
+  }
+
+  function updateSides(state, alive, revealed, playerIndex) {
+    var left = document.getElementById('msLeft');
+    var right = document.getElementById('msRight');
+    if (!left || !right) return;
+    var safe = state.safeCells || 1, mine = revealed[playerIndex] || 0;
+    var flags = 0;
+    if (state.board) {
+      for (var r = 0; r < state.board.length; r++) {
+        for (var c = 0; c < state.board[r].length; c++) if (state.board[r][c].flagged) flags++;
+      }
+    }
+    var pct = Math.min(100, Math.round(mine / safe * 100));
+    left.innerHTML =
+      '<div class="ms-card ms-stats">' +
+        '<div class="big"><em>' + _t('ms_side_left') + '</em><b>' + ((state.mineCount || 0) - flags) + '</b></div>' +
+        '<div><em>' + _t('ms_side_flags') + '</em><b>' + flags + ' / ' + (state.mineCount || 0) + '</b></div>' +
+        '<div><em>' + _t('ms_side_cleared') + '</em><b>' + pct + '%</b></div>' +
+      '</div>' +
+      '<div class="ms-card"><div class="ms-label">' + _t('ms_side_safe') + '<span>' + mine + ' / ' + safe + '</span></div>' +
+        '<div class="ms-bar"><i style="width:' + pct + '%"></i></div></div>';
+
+    var rows = [], players = window._players || [];
+    for (var i = 0; i < alive.length; i++) rows.push(i);
+    rows.sort(function(a, b) { return (revealed[b] || 0) - (revealed[a] || 0); });
+    var colors = ['#5dade2','#f7dc6f','#58d68d','#af7ac5','#f0b27a','#48c9b0'];
+    var rank = rows.map(function(p) {
+      var out = !alive[p];
+      var name = p === playerIndex ? _t('ms_side_you') : (players[p] && players[p].name ? players[p].name : 'P' + (p + 1));
+      var cnt = revealed[p] || 0;
+      return '<div class="ms-row' + (p === playerIndex ? ' me' : '') + (out ? ' out' : '') + '">' +
+        '<span class="dot" style="background:' + (out ? '#e74c3c' : colors[p % colors.length]) + '"></span>' +
+        '<span class="who">' + esc(name) + (out ? '<em>' + _t('ms_side_out') + '</em>' : '') + '</span>' +
+        '<b>' + cnt + '</b><i style="width:' + Math.round(cnt / safe * 100) + '%"></i></div>';
+    }).join('');
+    right.innerHTML =
+      '<div class="ms-card"><div class="ms-label">' + _t('ms_side_rank') + '</div>' + rank + '</div>' +
+      '<div class="ms-card ms-tips"><div class="ms-label">' + _t('ms_side_tips') + '</div><ol>' +
+        '<li>' + _t('ms_tip_1') + '</li><li>' + _t('ms_tip_2') + '</li><li>' + _t('ms_tip_3') + '</li><li>' + _t('ms_tip_4') + '</li></ol></div>';
+  }
+
   window.gameRenderers.set('minesweeper', {
     init: function(container) {
       injectStylesOnce('msStyles', STYLES);
-      container.innerHTML = '' +
+      _container = container;
+      if (window._msResize) window.removeEventListener('resize', window._msResize);
+      window._msResize = resize;
+      window.addEventListener('resize', window._msResize);
+      container.innerHTML = '<div class="ms"><aside class="ms-side" id="msLeft"></aside><div class="ms-main">' +
         '<div class="ms-wrap">' +
           '<div class="ms-players" id="msPlayers"></div>' +
           '<div class="ms-status" id="msStatus"></div>' +
@@ -153,7 +240,7 @@
             '<span>' + _t('ms_click_reveal') + '</span><span>' + _t('ms_right_click_flag') + '</span>' +
             '<span>' + _t('ms_tap_reveal') + '</span><span>' + _t('ms_longpress_flag') + '</span>' +
           '</div>' +
-        '</div>';
+        '</div></div><aside class="ms-side" id="msRight"></aside></div>';
     },
     render: function(state, container, playerIndex, winner) {
       _playerIndex = playerIndex;
@@ -192,8 +279,7 @@
           statusEl.style.color = '#e74c3c';
         } else {
           var aliveCount = alive.filter(function(v) { return v; }).length;
-          var pct = safeCells > 0 ? Math.round((state.revealedCount || 0) / safeCells * 100) : 0;
-          statusEl.textContent = _tf('ms_safe_progress', (state.revealedCount || 0), safeCells, aliveCount);
+          statusEl.textContent = _tf('ms_safe_progress', (revealed[playerIndex] || 0), safeCells, aliveCount);
           statusEl.style.color = '';
         }
       }
@@ -203,6 +289,9 @@
         var wrap = document.getElementById('msGridWrap');
         if (wrap) wrap.innerHTML = renderGrid(state.board, state.rows, state.cols);
       }
+
+      updateSides(state, alive, revealed, playerIndex);
+      resize();
 
       // Attach events per cell
       var cells = document.querySelectorAll('#msGrid .ms-cell');

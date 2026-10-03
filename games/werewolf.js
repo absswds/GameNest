@@ -147,8 +147,11 @@ function endNight(s) {
   else if (s.poisoned >= 0) deaths[0] = [s.poisoned, 'poison'];
   s.pendingDeaths = deaths;
   s.day++;
-  if (s.day === 1 && s.sheriffOn) startSheriff(s);
-  else startDawn(s);
+  if (s.day === 1 && s.sheriffOn) {
+    // Standard order: day 1 opens with the sheriff election, the night's result is announced after it.
+    s.log.push({ day: s.day, t: 'dawn' });
+    startSheriff(s);
+  } else startDawn(s);
 }
 
 // ---------- dawn & death triggers ----------

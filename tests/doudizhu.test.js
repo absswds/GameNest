@@ -213,3 +213,42 @@ test('roundEnd: click next_round advances', function() {
   assert.equal(ddz.handleMove({ action: 'next_round' }, state, 0), null);
   assert.equal(state.phase, 'bidding');
 });
+
+// ── Turn timeout ──
+test('timeout: a player who must lead plays their lowest card instead of a refused pass', function() {
+  var state = makeState({ bidMode: 'score', totalRounds: 1 });
+  bid(state, state.currentBidder, 3);
+  var lp = state.landlord;
+  assert.equal(state.phase, 'playing');
+  var lowest = state.hands[lp][0].id;
+  var mv = ddz.timeoutMove(state);
+  assert.deepEqual(mv, { cards: [lowest] });
+  assert.equal(ddz.handleMove(mv, state, lp), null);
+  assert.notEqual(state.currentPlayer, lp);
+  // the next player may follow, so a timeout passes
+  assert.deepEqual(ddz.timeoutMove(state), { cards: [] });
+  assert.equal(ddz.handleMove(ddz.timeoutMove(state), state, state.currentPlayer), null);
+});
+
+test('firstCaller winner: the last round winner bids first next round', function() {
+  var state = makeState({ bidMode: 'score', firstCaller: 'winner', totalRounds: 3 });
+  for (var r = 0; r < 5; r++) {
+    state.lastRoundWinner = r % 3;
+    state.phase = 'roundEnd';
+    assert.equal(ddz.handleMove({ action: 'next_round' }, state, 0), null);
+    assert.equal(state.currentBidder, r % 3);
+  }
+});
+
+test('playerView does not leak other hands or the bottom cards through state.board', () => {
+  const ddz = require('../games/doudizhu');
+  const s = ddz.createState();
+  ddz.initGame(s, 3);
+  const v = ddz.playerView(s, 0);
+  const b = v.board || {};
+  if (b.hands) {
+    assert.ok(b.hands[1].every((c) => c === null), 'seat 1 hand hidden in board');
+    assert.ok(b.hands[2].every((c) => c === null), 'seat 2 hand hidden in board');
+  }
+  if (b.bottomCards) assert.ok(b.bottomCards.every((c) => c === null), 'bottom cards hidden while bidding');
+});

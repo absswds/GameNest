@@ -237,3 +237,10 @@ test('bot does not mutate state', () => {
   var after = JSON.stringify(state);
   assert.equal(before, after);
 });
+
+test('placing is simultaneous: seat 2 can place first and the view names no current player', () => {
+  const s = freshState();
+  assert.equal(battleship.handleMove({ r: 0, c: 0, orientation: 'h', size: 5 }, s, 1), null);
+  assert.equal(s.placedCount[1], 1);
+  assert.equal(battleship.playerView(s, 1).currentPlayer, -1);
+});

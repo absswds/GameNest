@@ -157,6 +157,12 @@ function resetRoundState(state) {
     state.playTimeLimit = state._options.playTimeLimit || 0;
     state.totalRounds = state._options.totalRounds || 3;
   }
+  // 先叫规则「赢家先叫」：上一局最后出完牌的人先叫
+  if (state.firstCaller === 'winner' && typeof state.lastRoundWinner === 'number') {
+    state.currentBidder = state.lastRoundWinner;
+    state.currentPlayer = state.currentBidder;
+    state.board = syncBoard(state);
+  }
 }
 
 exports.startNextRound = function(state) {
@@ -450,6 +456,7 @@ exports.handleMove = function(data, state, playerIndex) {
 
     // Check win
     if (hand.length === 0) {
+      state.lastRoundWinner = playerIndex;
       if (playerIndex === state.landlord) state.winner = -2;
       else state.winner = -3;
       calculatePerRoundScores(state);
@@ -522,6 +529,15 @@ function finalizeLandlord(state, landlordIdx) {
   state.board = syncBoard(state);
 }
 
+// Move made for the current player when their play timer runs out: pass if they may,
+// otherwise (they must lead) play their lowest single card.
+exports.timeoutMove = function(state) {
+  var cp = state.currentPlayer;
+  var hand = state.hands[cp] || [];
+  if ((!state.lastPlay || state.lastPlay.player === cp) && hand.length) return { cards: [hand[0].id] };
+  return { cards: [] };
+};
+
 function setTurnTimer(state) {
   if (state.playTimeLimit > 0) {
     state.currentTurnDeadline = Date.now() + state.playTimeLimit * 1000;
@@ -548,5 +564,9 @@ exports.getCurrentActor = function(state) {
 // Hide other players' cards (and draw piles) from each client.
 const { maskView } = require('./lib/hidden');
 exports.playerView = function (state, playerIndex) {
-  return maskView(state, playerIndex, { piles: state.phase === 'bidding' ? ['bottomCards'] : [] });
+  var opts = { piles: state.phase === 'bidding' ? ['bottomCards'] : [] };
+  var view = maskView(state, playerIndex, opts);
+  // state.board is a full copy of hands/bottomCards; mask it the same way or it leaks every hand
+  if (view !== state && state.board) view.board = maskView(state.board, playerIndex, opts);
+  return view;
 };

@@ -98,3 +98,39 @@ test('game rejects moves after game over', () => {
   const err = hearts.handleMove({ cardId: 'As' }, s, 0);
   assert.ok(typeof err === 'string', 'should reject move after game over');
 });
+
+test('pass direction rotates left → right → across → none from the first round', () => {
+  const { createBot } = require('../bots/hearts');
+  const s = makeState({ targetScore: 10000 });
+  const bots = [0, 1, 2, 3].map((i) => createBot(i));
+  const dirs = [s.passDirection];
+  for (let steps = 0; dirs.length < 5 && steps < 5000; steps++) {
+    const round = s.round;
+    if (s.phase === 'passing') {
+      const p = [0, 1, 2, 3].find((i) => !s.passSubmissions[i]);
+      hearts.handleMove(bots[p].getMove(s), s, p);
+    } else {
+      hearts.handleMove(bots[s.currentPlayer].getMove(s), s, s.currentPlayer);
+    }
+    if (s.round !== round) dirs.push(s.passDirection);
+  }
+  assert.deepEqual(dirs, ['left', 'right', 'across', 'none', 'left']);
+});
+
+test('a no-pass round starts playing right away (nobody has to send a move)', () => {
+  const s = makeState({ targetScore: 10000, passRound: 2, passDirection: 'across' });
+  // Play round 3 (across) to the end; round 4 must not pass
+  const { createBot } = require('../bots/hearts');
+  const bots = [0, 1, 2, 3].map((i) => createBot(i));
+  for (let steps = 0; s.round === 1 && steps < 5000; steps++) {
+    if (s.phase === 'passing') {
+      const p = [0, 1, 2, 3].find((i) => !s.passSubmissions[i]);
+      hearts.handleMove(bots[p].getMove(s), s, p);
+    } else {
+      hearts.handleMove(bots[s.currentPlayer].getMove(s), s, s.currentPlayer);
+    }
+  }
+  assert.equal(s.passDirection, 'none');
+  assert.equal(s.phase, 'playing');
+  assert.ok(s.hands[s.currentPlayer].some((c) => c.id === '2c'), '2♣ holder leads');
+});

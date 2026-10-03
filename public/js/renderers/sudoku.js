@@ -12,6 +12,8 @@
   var _timerEnd = 0;      // epoch ms when the game ended (freeze timer display)
   var _timerRaf = null;   // interval handle for the live timer
   var _inited = false;
+  var _container = null;
+  var SIDE_W = 230;       // side panel width on wide screens
 
   var ACCENT = '#c8a45c';
   var ACCENT_SOFT = 'rgba(200,164,92,0.18)';
@@ -43,10 +45,75 @@
     + '.su-num.selected{background:var(--accent);color:#1a1a1a;border-color:var(--accent);}'
     + '.su-num[disabled]{opacity:.3;cursor:default;}'
     + '.su-num-clear{font-size:18px;color:var(--text-muted);}'
-    + '@media(min-width:768px){.su-num{height:60px;font-size:22px;}}';
+    + '@media(min-width:768px){.su-num{height:60px;font-size:22px;}}'
+    // wide screens: own stats on the left, digit counts + tips on the right
+    + '.su{display:flex;justify-content:center;align-items:flex-start;gap:24px;width:100%;}'
+    + '.su-main{flex:1 1 0;min-width:0;display:flex;justify-content:center;}'
+    + '.su.wide .su-main{flex:0 1 auto;}'
+    + '.su-side{display:none;width:' + SIDE_W + 'px;flex:none;flex-direction:column;gap:12px;}'
+    + '.su.wide .su-side{display:flex;}'
+    + '.su.wide .su-timer,.su.wide .su-lives{display:none;}'
+    + '.su-card{padding:12px 14px;border-radius:var(--radius-sm);background:var(--bg);font-size:13px;}'
+    + '.su-label{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;}'
+    + '.su-label span{font-weight:400;white-space:nowrap;}'
+    + '.su-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 8px;}'
+    + '.su-stats .big{grid-column:1/-1;}'
+    + '.su-stats b{display:block;font-size:20px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums;}'
+    + '.su-stats .big b{font-size:34px;}'
+    + '.su-stats em{display:block;font-style:normal;font-size:11px;color:var(--text-muted);}'
+    + '.su-bar{height:6px;border-radius:3px;background:var(--surface);overflow:hidden;margin-top:8px;}'
+    + '.su-bar i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .4s;}'
+    + '.su-hearts{display:flex;gap:3px;font-size:18px;line-height:1.2;}'
+    + '.su-digits{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}'
+    + '.su-dg{display:flex;align-items:baseline;justify-content:center;gap:4px;padding:8px 0;border-radius:10px;background:var(--surface);}'
+    + '.su-dg b{font-size:18px;font-weight:800;}'
+    + '.su-dg span{font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums;}'
+    + '.su-dg.done{opacity:.35;}'
+    + '.su-tips ol{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text-muted);line-height:1.5;}';
+
+  function updateSides(state) {
+    var left = document.getElementById('suLeft');
+    var right = document.getElementById('suRight');
+    if (!left || !right || !state || !state.board) return;
+    var blanks = state.blanks || 1, done = state.doneCount || 0;
+    var pct = Math.min(100, Math.round(done / blanks * 100));
+    var lives = state.lives || 0, hearts = '', i;
+    for (i = 0; i < 3; i++) hearts += '<span style="' + (i < lives ? '' : 'opacity:.25') + '">❤️</span>';
+    left.innerHTML =
+      '<div class="su-card su-stats">' +
+        '<div class="big"><em>' + t('sudoku_progress', 'Progress') + '</em><b>' + pct + '%</b></div>' +
+        '<div><em>' + t('sudoku_side_filled', 'Filled') + '</em><b>' + done + ' / ' + blanks + '</b></div>' +
+        '<div><em>' + t('sudoku_side_time', 'Time') + '</em><b id="suTimerSide">--:--</b></div>' +
+        '<div><em>' + t('sudoku_side_lives', 'Lives') + '</em><div class="su-hearts">' + hearts + '</div></div>' +
+        '<div><em>' + t('sudoku_hint', 'Hint') + '</em><b>×' + (state.hints || 0) + '</b></div>' +
+      '</div>' +
+      '<div class="su-card"><div class="su-label">' + t('sudoku_side_bar', 'Blanks left') + '<span>' + (blanks - done) + '</span></div>' +
+        '<div class="su-bar"><i style="width:' + pct + '%"></i></div></div>';
+
+    var cnt = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], r, c, dg = '';
+    for (r = 0; r < N; r++) for (c = 0; c < N; c++) cnt[state.board[r][c].value]++;
+    for (i = 1; i <= 9; i++) {
+      dg += '<div class="su-dg' + (cnt[i] >= 9 ? ' done' : '') + '"><b>' + i + '</b><span>×' + Math.max(0, 9 - cnt[i]) + '</span></div>';
+    }
+    right.innerHTML =
+      '<div class="su-card"><div class="su-label">' + t('sudoku_side_digits', 'Digits left') + '</div><div class="su-digits">' + dg + '</div></div>' +
+      '<div class="su-card su-tips"><div class="su-label">' + t('sudoku_side_tips', 'How to play') + '</div><ol>' +
+        '<li>' + t('sudoku_tip_1', 'Tap a blank cell, then a digit') + '</li><li>' + t('sudoku_tip_2', 'Each row, column and 3x3 box holds 1-9 once') + '</li>' +
+        '<li>' + t('sudoku_tip_3', 'A wrong digit costs a life') + '</li><li>' + t('sudoku_tip_4', 'First to finish wins') + '</li></ol></div>';
+  }
 
   function computeLayout() {
+    var wrap = _container && _container.querySelector('.su');
+    var fit = window.boardFit && _container ? window.boardFit(_container) : { w: window.innerWidth - 24, h: window.innerHeight - 160 };
+    var wide = fit.w >= 380 + SIDE_W * 2 + 72 && fit.h >= 520;
+    if (wrap) wrap.classList.toggle('wide', wide);
     var maxBoard = Math.min(window.innerWidth - 24, 520, window.innerHeight * 0.5);
+    if (wide) {
+      // room for everything in the middle column that is not the board (status, hint, pad)
+      var mid = _container.querySelector('.su-wrap');
+      var extra = mid && canvas ? mid.offsetHeight - canvas.offsetHeight : 260;
+      maxBoard = Math.min(fit.w - SIDE_W * 2 - 72, fit.h - extra - 4, 600);
+    }
     maxBoard = Math.max(maxBoard, 240);
     var size = Math.floor(maxBoard);
     var cell = size / N;
@@ -173,10 +240,15 @@
 
   function updateTimer(state) {
     var el = document.getElementById('suTimer');
+    var el2 = document.getElementById('suTimerSide');
     if (!el) return;
-    if (!state || !state.startTime) { el.textContent = ''; return; }
-    var end = (state.winner !== null && state.winner !== undefined) ? _timerEnd : Date.now();
-    el.textContent = '⏱ ' + formatTime(end - state.startTime);
+    var txt = '';
+    if (state && state.startTime) {
+      var end = (state.winner !== null && state.winner !== undefined) ? _timerEnd : Date.now();
+      txt = formatTime(end - state.startTime);
+    }
+    el.textContent = txt ? '⏱ ' + txt : '';
+    if (el2) el2.textContent = txt || '--:--';
   }
 
   function startTimer(state) {
@@ -273,7 +345,8 @@
   window.gameRenderers.set('sudoku', {
     init: function (container) {
       injectStylesOnce('suStyles', STYLES);
-      container.innerHTML = ''
+      _container = container;
+      container.innerHTML = '<div class="su"><aside class="su-side" id="suLeft"></aside><div class="su-main">'
         + '<div class="su-wrap">'
           + '<div class="su-status" id="suStatus"></div>'
           + '<div class="su-timer" id="suTimer"></div>'
@@ -296,7 +369,7 @@
             + '<button class="su-num" data-v="9" onclick="window._sudokuFill(9)">9</button>'
             + '<button class="su-num su-num-clear" onclick="window._sudokuClear()" style="grid-column:1/-1;">' + t('sudoku_clear', 'Clear') + '</button>'
           + '</div>'
-        + '</div>';
+        + '</div></div><aside class="su-side" id="suRight"></aside></div>';
 
       canvas = document.createElement('canvas');
       canvas.id = 'suCanvas';
@@ -351,6 +424,7 @@
       }
 
       if (!ctx) ctx = canvas.getContext('2d');
+      updateSides(state);
       computeLayout();
       updateStatus(state, winner);
       updateLives(state);

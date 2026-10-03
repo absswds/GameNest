@@ -16,8 +16,100 @@
 
   var COLORS = ['#1a1a1a','#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#ffffff','#95a5a6'];
 
+  var SIDE_W = 220; // side panel width on wide screens
+  var MAIN_W = 520;
+
   function wsSend(data) {
     window.makeGameMove && window.makeGameMove(data);
+  }
+
+  function esc(v) { return String(v).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pname(i) { return window._players && window._players[i] ? window._players[i].name : (_t('dg_player_fallback') + (i + 1)); }
+
+  var CSS = [
+    '.dg-lay{display:flex;justify-content:center;align-items:flex-start;gap:24px;width:100%}',
+    '.dg-main{flex:1 1 0;min-width:0}',
+    '.dg-side{display:none;width:' + SIDE_W + 'px;flex:none;flex-direction:column;gap:12px;padding-top:8px}',
+    '.dg-lay.wide .dg-main{flex:none;width:' + MAIN_W + 'px}',
+    '.dg-lay.wide .dg-side{display:flex}',
+    '.dg-lay.wide #dg-timer,.dg-lay.wide .dg-hdr{display:none !important}',
+    '.dg-card{padding:12px 14px;border-radius:var(--radius-sm);background:var(--bg);font-size:13px}',
+    '.dg-label{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px}',
+    '.dg-label span{font-weight:400;white-space:nowrap}',
+    '.dg-big{font-size:20px;font-weight:800;color:var(--accent);word-break:break-all}',
+    '.dg-sub{margin-top:4px;color:var(--text-muted)}',
+    '.dg-word{font-size:22px;font-weight:800;letter-spacing:3px;word-break:break-all}',
+    '.dg-srow{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:10px}',
+    '.dg-srow + .dg-srow{margin-top:2px}',
+    '.dg-srow.me{background:var(--surface);font-weight:600}',
+    '.dg-srow .no{width:22px;text-align:center;color:var(--text-muted);font-size:12px;flex:none}',
+    '.dg-srow .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.dg-srow .tag{font-size:12px;flex:none;color:#5a9e6f;font-weight:700}',
+    '.dg-srow b{font-variant-numeric:tabular-nums;font-size:15px;color:var(--accent);flex:none}',
+    '.dg-tips{color:var(--text-muted);line-height:1.5}',
+    '.dg-choices{display:grid;grid-template-columns:1fr;gap:12px;width:100%;margin-top:14px}',
+    '.dg-pick{display:flex;flex-direction:column;align-items:center;gap:6px;padding:20px 12px;border-radius:16px;border:2px solid var(--border);background:linear-gradient(180deg,#fffdf6,#f6efe0);cursor:pointer;box-shadow:0 2px 0 #e3d8c0,0 4px 12px rgba(0,0,0,.06);transition:transform .15s,border-color .15s,box-shadow .15s}',
+    '.dg-pick:active{transform:scale(.97)}',
+    '.dg-pick b{font-size:26px;font-weight:800;letter-spacing:2px;color:var(--ge-ink,#1c1b19);word-break:break-all}',
+    '.dg-pick span{font-size:12px;color:var(--text-muted);padding:2px 10px;border-radius:10px;background:rgba(200,164,92,.16)}',
+    '@media (hover:hover){.dg-pick:hover{border-color:#c8a45c;transform:translateY(-3px);box-shadow:0 2px 0 #e3d8c0,0 10px 20px rgba(0,0,0,.12)}}',
+    '@media (min-width:560px){.dg-choices{grid-template-columns:repeat(3,1fr)}}',
+  ].join('\n');
+
+  // Stage mode only: wrap the screen as <aside left> <main> <aside right>. The asides stay hidden unless there is room.
+  // Returns the element the screen should be built in (the container itself outside stage mode).
+  function stageLayout(container) {
+    container.innerHTML = '';
+    if (!state || state.mode !== 'stage') return container;
+    window.injectStylesOnce('dg-side-styles', CSS);
+    var lay = document.createElement('div');
+    lay.className = 'dg-lay';
+    lay.innerHTML = '<aside class="dg-side" id="dg-left"></aside><div class="dg-main"></div><aside class="dg-side" id="dg-right"></aside>';
+    container.appendChild(lay);
+    fitLay(container);
+    if (window._dgResize) window.removeEventListener('resize', window._dgResize);
+    window._dgResize = function () { fitLay(container); };
+    window.addEventListener('resize', window._dgResize);
+    updateSides(lay);
+    return lay.querySelector('.dg-main');
+  }
+
+  function fitLay(container) {
+    var lay = container.querySelector('.dg-lay');
+    if (!lay) return;
+    var fit = window.boardFit ? window.boardFit(container) : { w: window.innerWidth - 32 };
+    lay.classList.toggle('wide', fit.w >= MAIN_W + SIDE_W * 2 + 48);
+  }
+
+  // Left: round, drawer, word (or its mask), timer. Right: ranking with who drew / guessed.
+  function updateSides(lay) {
+    var st = state, task = st.myTask;
+    var left = lay.querySelector('#dg-left'), right = lay.querySelector('#dg-right');
+    var total = (st.scores || []).length;
+    var isDrawer = playerIndex === st.drawerIndex;
+    var word = '';
+    if (st.phase === 'playing' && task) {
+      var raw = isDrawer ? task.word : task.wordMask;
+      var len = Array.from(String(raw || '').replace(/\s+/g, '')).length;
+      word = '<div class="dg-card"><div class="dg-label">' + _t(isDrawer ? 'dg_side_word' : 'dg_side_hint') + '<span>' + len + _t('dg_side_chars') + '</span></div>' +
+        '<div class="dg-word">' + esc(raw || '') + '</div></div>';
+    }
+    left.innerHTML =
+      '<div class="dg-card"><div class="dg-label">' + _t('dg_side_round') + '</div><div class="dg-big">' + st.round + ' / ' + total + '</div>' +
+        '<div class="dg-sub">' + _t('dg_side_drawer') + ' ' + esc(pname(st.drawerIndex)) + (isDrawer ? ' (' + _t('dg_side_you') + ')' : '') + '</div></div>' +
+      word +
+      '<div class="dg-card"><div class="dg-label">' + _t('dg_side_time') + '</div><div class="dg-big" id="dg-side-timer"></div></div>';
+
+    var order = [];
+    for (var i = 0; i < total; i++) order.push(i);
+    order.sort(function (a, b) { return (st.scores[b] || 0) - (st.scores[a] || 0); });
+    var rows = order.map(function (p, k) {
+      var tag = p === st.drawerIndex ? '<span class="tag">✏️</span>' : (st.correct && st.correct[p] ? '<span class="tag">✓ ' + _t('dg_side_guessed') + '</span>' : '');
+      return '<div class="dg-srow' + (p === playerIndex ? ' me' : '') + '"><span class="no">' + (k + 1) + '</span><span class="who">' + esc(pname(p)) + '</span>' + tag + '<b>' + (st.scores[p] || 0) + '</b></div>';
+    }).join('');
+    right.innerHTML =
+      '<div class="dg-card"><div class="dg-label">' + _t('dg_side_rank') + '<span>' + _t('dg_points_suffix') + '</span></div>' + rows + '</div>' +
+      '<div class="dg-card"><div class="dg-label">' + _t('dg_side_tips') + '</div><div class="dg-tips">' + _t(isDrawer ? 'dg_side_tip_draw' : 'dg_side_tip_guess') + '</div></div>';
   }
 
   function setupCanvas(container) {
@@ -212,7 +304,11 @@
         container.appendChild(timerEl);
       }
     }
-    if (!remainingMs || remainingMs <= 0) { timerEl.textContent = _t('dg_no_time_limit'); return; }
+    function syncSide() {
+      var sideEl = document.getElementById('dg-side-timer');
+      if (sideEl) { sideEl.textContent = timerEl.textContent; sideEl.style.color = timerEl.style.color; }
+    }
+    if (!remainingMs || remainingMs <= 0) { timerEl.textContent = _t('dg_no_time_limit'); syncSide(); return; }
     var localDeadline = Date.now() + remainingMs;
     var expired = false;
     function tick() {
@@ -221,11 +317,13 @@
         expired = true;
         clearInterval(timerInterval);
         timerEl.textContent = _t('dg_time_up');
+        syncSide();
         if (onExpire) onExpire();
         return;
       }
       timerEl.textContent = _t('dg_remaining') + rem + _t('dg_seconds');
       timerEl.style.color = rem <= 10 ? '#e74c3c' : 'var(--text-muted)';
+      syncSide();
     }
     tick();
     timerInterval = setInterval(tick, 500);
@@ -319,10 +417,11 @@
 
   // ---- Render word choosing (first drawer picks 1 of N) ----
   function renderChooseWord(container, task) {
-    container.innerHTML = '';
+    var host = stageLayout(container);
+    window.injectStylesOnce('dg-side-styles', CSS);
     var wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;padding:30px 16px;max-width:420px;margin:0 auto;';
-    container.appendChild(wrap);
+    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;padding:30px 16px;max-width:560px;margin:0 auto;';
+    host.appendChild(wrap);
 
     var title = document.createElement('div');
     title.textContent = _t('dg_choose_word_title');
@@ -331,17 +430,18 @@
 
     startTimer(wrap, state && state.stepRemainingMs, null);
 
+    var choices = document.createElement('div');
+    choices.className = 'dg-choices';
+    wrap.appendChild(choices);
     (task.options || []).forEach(function (w, i) {
       var btn = document.createElement('button');
-      btn.textContent = w;
-      btn.style.cssText = 'width:100%;margin-top:12px;padding:16px;border-radius:14px;border:2px solid var(--border);background:#fff;font-size:18px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06);';
-      btn.onmouseenter = function () { btn.style.borderColor = '#c8a45c'; };
-      btn.onmouseleave = function () { btn.style.borderColor = 'var(--border)'; };
+      btn.className = 'dg-pick';
+      btn.innerHTML = '<b>' + esc(w) + '</b><span>' + Array.from(String(w)).length + _t('dg_side_chars') + '</span>';
       btn.onclick = function () {
         wsSend({ type: 'choose_word', index: i });
         renderWaiting(container, _t('dg_word_chosen'));
       };
-      wrap.appendChild(btn);
+      choices.appendChild(btn);
     });
 
     var hint = document.createElement('div');
@@ -352,15 +452,16 @@
 
   // ---- Render waiting ----
   function renderWaiting(container, msg) {
-    container.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted);font-size:15px;">' + (msg || _t('dg_waiting_default')) + '</div>';
+    stageLayout(container).innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted);font-size:15px;">' + (msg || _t('dg_waiting_default')) + '</div>';
   }
 
   function renderStage(container, task) {
-    container.innerHTML = '';
+    var host = stageLayout(container);
     var wrap = document.createElement('div');
     wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;padding:8px;';
-    container.appendChild(wrap);
+    host.appendChild(wrap);
     var header = document.createElement('div');
+    header.className = 'dg-hdr';
     var drawer = (window._players && window._players[state.drawerIndex]) ? window._players[state.drawerIndex].name : (_t('dg_player_fallback') + (state.drawerIndex + 1));
     header.style.cssText = 'font-size:16px;font-weight:800;text-align:center;margin-bottom:6px;';
     header.textContent = task.canDraw ? (_t('dg_round_prefix') + state.round + _t('dg_round_draw') + task.word) : (_t('dg_round_prefix') + state.round + _t('dg_round_sep') + drawer + _t('dg_is_drawing') + (task.correct ? _t('dg_guessed_correct') : task.wordMask));
@@ -379,11 +480,12 @@
   }
 
   function renderStageResult(container, st) {
-    clearInterval(timerInterval); container.innerHTML = '';
+    clearInterval(timerInterval);
+    var host = stageLayout(container);
     var box = document.createElement('div'); box.style.cssText = 'margin:32px auto;padding:24px;max-width:420px;text-align:center;background:#fff9ee;border-radius:16px;font-size:16px;';
     var scores = (st.scores || []).map(function(s, i) { var n = window._players && window._players[i] ? window._players[i].name : (_t('dg_player_fallback') + (i + 1)); return n + ' ' + s + _t('dg_points_suffix'); }).join(' · ');
     box.innerHTML = '<div style="font-size:22px;font-weight:800">' + _t('dg_answer_label') + (st.word || '') + '</div><div style="margin-top:12px;color:var(--text-muted)">' + scores + '</div><div style="margin-top:12px">' + _t('dg_next_round_soon') + '</div>';
-    container.appendChild(box);
+    host.appendChild(box);
   }
 
   // ---- Render reveal ----

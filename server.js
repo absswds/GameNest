@@ -852,6 +852,8 @@ function schedulePhaseGame(room, gameMod) {
 function scheduleBotMove(room) {
   if (!room || !room.state) return;
   const state = room.state;
+  // 斗地主出牌计时：每次落子/广播后都重新挂上（机器人出完轮到真人时也要计时）
+  if (room.game === 'doudizhu') scheduleTurnTimer(room);
   // Mahjong: settle when round is over. Must run BEFORE the winner check below —
   // Cantonese sets state.winner to an index on 胡, so `winner !== null` would
   // return early and skip endOfRound (bot wins would never add points).
@@ -929,7 +931,7 @@ function scheduleBotMove(room) {
 
 function scheduleTurnTimer(room) {
   clearTimeout(room._ddzTurnTimer);
-  if (!room || room.game !== 'doudizhu') return;
+  if (!room || room.game !== 'doudizhu' || !rooms.has(room._roomId)) return;
   var st = room.state;
   if (!st || !st.playTimeLimit || st.playTimeLimit <= 0) return;
   if (st.winner != null || !st.currentTurnDeadline) return;
@@ -937,7 +939,8 @@ function scheduleTurnTimer(room) {
   if (ms <= 0) {
     if (st.phase !== 'playing') return;
     var cp = st.currentPlayer;
-    gameRegistry['doudizhu'].handleMove({ cards: [] }, st, cp);
+    var ddz = gameRegistry['doudizhu'];
+    ddz.handleMove(ddz.timeoutMove(st), st, cp);
     broadcastGameView(room, 'game_state');
     scheduleBotMove(room);
     return;
@@ -1459,7 +1462,6 @@ wss.on('connection', (ws) => {
       // settlement panel draws with the already-updated cumulativeScore (no stale flash).
       checkMahjongRoundEnd(currentRoom);
       broadcastGameView(currentRoom, 'game_state');
-      if (currentRoom.game === 'doudizhu') scheduleTurnTimer(currentRoom);
       scheduleBotMove(currentRoom);
       return;
     }

@@ -2,11 +2,57 @@
 // 数字炸弹 — Guess the number, avoid the bomb!
 // Aesthetic: bold arcade/retro game feel, big numbers, dark card, neon glow
 (function() {
+  var SIDE_W = 220; // side panel width on wide screens
   window.gameRenderers = window.gameRenderers || new Map();
+
+  function esc(v) { return String(v).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pname(i, me) {
+    if (i === me) return _t('nb_side_you');
+    var pl = window._players && window._players[i];
+    return pl && pl.name ? pl.name : 'P' + (i + 1);
+  }
+
+  // Wide screens only: range + turn on the left, history, players and rules on the right
+  function renderSides(state, playerIndex, winner) {
+    var left = document.getElementById('nbLeft'), right = document.getElementById('nbRight');
+    if (!left || !right) return;
+    var low = state.low, high = state.high, size = high - low + 1;
+    var over = winner !== null && winner !== undefined;
+    var turn = over ? '—' : (state.currentPlayer === playerIndex ? _t('nb_side_you_turn') : esc(pname(state.currentPlayer, playerIndex)));
+    left.innerHTML =
+      '<div class="nb-scard"><div class="nb-slabel">' + _t('nb_side_range') + '<span>' + _tf('nb_side_round', state.round || 1) + '</span></div>' +
+        '<div class="nb-sbig' + (low === high ? ' danger' : '') + '">' + (low === high ? low : low + ' ~ ' + high) + '</div>' +
+        '<div class="nb-sbar"><i style="left:' + (low - 1) + '%;width:' + size + '%"></i></div>' +
+        '<div class="nb-sticks"><span>1</span><span>100</span></div></div>' +
+      '<div class="nb-scard"><div class="nb-slabel">' + _t('nb_side_shrunk') + '<span>' + (100 - size) + '%</span></div>' +
+        '<div>' + _tf('nb_side_left', size) + '</div></div>' +
+      '<div class="nb-scard"><div class="nb-slabel">' + _t('nb_side_turn') + '</div>' +
+        '<div class="nb-sturn' + (!over && state.currentPlayer === playerIndex ? ' me' : '') + '">' + turn + '</div></div>';
+
+    var hist = '';
+    var msgs = state.messages || [];
+    for (var m = msgs.length - 1; m >= 0; m--) {
+      var t = esc(msgs[m].text).replace(/↓/g, '<span class="dir down">↓</span>').replace(/↑/g, '<span class="dir up">↑</span>');
+      hist += '<div class="nb-hrow' + (msgs[m].bombHit ? ' hit' : '') + '">' + t + '</div>';
+    }
+    var plist = '';
+    for (var i = 0; i < (state.lives || []).length; i++) {
+      var dead = state.lives[i] <= 0, hearts = '';
+      for (var h = 0; h < state.lives[i]; h++) hearts += '❤️';
+      plist += '<div class="nb-prow' + (i === playerIndex ? ' me' : '') + (dead ? ' out' : '') + (!over && !dead && state.currentPlayer === i ? ' turn' : '') + '">' +
+        '<span class="nb-pwho">' + esc(pname(i, playerIndex)) + '</span><span>' + (dead ? '💀' : hearts) + '</span></div>';
+    }
+    right.innerHTML =
+      '<div class="nb-scard"><div class="nb-slabel">' + _t('nb_side_history') + '</div>' + (hist || '<div class="nb-log-empty">' + _t('nb_waiting_first_guess') + '</div>') + '</div>' +
+      '<div class="nb-scard"><div class="nb-slabel">' + _t('nb_side_players') + '</div>' + plist + '</div>' +
+      '<div class="nb-scard nb-tips"><div class="nb-slabel">' + _t('nb_side_tips') + '</div><ol>' +
+        '<li>' + _t('nb_side_tip_1') + '</li><li>' + _t('nb_side_tip_2') + '</li><li>' + _t('nb_side_tip_3') + '</li><li>' + _t('nb_side_tip_4') + '</li></ol></div>';
+  }
 
   window.gameRenderers.set('numberbomb', {
     init: function(container) {
       container.innerHTML = '' +
+        '<div class="nb-wrap" id="nbWrap"><aside class="nb-side" id="nbLeft"></aside>' +
         '<div class="nb-shell">' +
           // Top: players lives row
           '<div class="nb-lives" id="nbLives"></div>' +
@@ -40,9 +86,37 @@
           '<div class="nb-log" id="nbLog"><div class="nb-log-empty">' + _t('nb_waiting_first_guess') + '</div></div>' +
           // Bomb hit flash overlay
           '<div class="nb-boom" id="nbBoom"><div class="nb-boom-text">💥</div></div>' +
-        '</div>';
+        '</div><aside class="nb-side" id="nbRight"></aside></div>';
 
       injectStylesOnce('nb-styles', '' +
+          // Wide layout: side panels
+          '.nb-wrap{display:flex;justify-content:center;align-items:flex-start;gap:24px;width:100%;}' +
+          '.nb-side{display:none;width:' + SIDE_W + 'px;flex:none;flex-direction:column;gap:12px;}' +
+          '.nb-wrap.wide .nb-side{display:flex;}' +
+          '.nb-wrap.wide .nb-shell{flex:none;width:360px;margin:0;}' +
+          '.nb-wrap.wide .nb-lives,.nb-wrap.wide .nb-log{display:none;}' +
+          '.nb-scard{padding:12px 14px;border-radius:var(--radius-sm);background:var(--bg);font-size:13px;}' +
+          '.nb-slabel{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;}' +
+          '.nb-slabel span{font-weight:400;white-space:nowrap;}' +
+          '.nb-sbig{font-size:32px;font-weight:900;font-variant-numeric:tabular-nums;font-family:SF Mono,Consolas,monospace;}' +
+          '.nb-sbig.danger{color:#e74c3c;}' +
+          '.nb-sbar{position:relative;height:10px;border-radius:5px;background:var(--surface);margin:10px 0 6px;overflow:hidden;}' +
+          '.nb-sbar i{position:absolute;top:0;bottom:0;background:var(--accent);border-radius:5px;transition:left .4s,width .4s;}' +
+          '.nb-sticks{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);}' +
+          '.nb-sturn{font-weight:700;}' +
+          '.nb-sturn.me{color:var(--accent);}' +
+          '.nb-hrow{padding:3px 0;line-height:1.5;word-break:break-word;}' +
+          '.nb-hrow + .nb-hrow{border-top:1px solid var(--border);}' +
+          '.nb-hrow.hit{color:#e74c3c;}' +
+          '.nb-hrow .dir{font-weight:700;}' +
+          '.nb-hrow .dir.up{color:#58d68d;}' +
+          '.nb-hrow .dir.down{color:#e74c3c;}' +
+          '.nb-prow{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;}' +
+          '.nb-prow.me{background:var(--surface);font-weight:600;}' +
+          '.nb-prow.turn{box-shadow:inset 3px 0 0 var(--accent);}' +
+          '.nb-prow.out{color:var(--text-muted);}' +
+          '.nb-pwho{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+          '.nb-tips ol{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text-muted);line-height:1.5;}' +
           // Shell
           '.nb-shell{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:360px;margin:0 auto;}' +
           // Lives row — pill badges
@@ -106,6 +180,17 @@
           '@keyframes nbLogHit{0%{background:rgba(231,76,60,.25);}100%{background:rgba(231,76,60,.06);}}' +
           '@keyframes nbIconBounce{0%{transform:scale(1);}30%{transform:scale(1.2) rotate(-10deg);}60%{transform:scale(.9);}100%{transform:scale(1);}}' +
           '@media(max-width:400px){.nb-card{padding:18px 14px 16px;}.nb-range{font-size:24px;}.nb-key{font-size:19px;}.nb-icon{font-size:44px;}}');
+
+      function fit() {
+        var wrap = document.getElementById('nbWrap');
+        if (!wrap) return;
+        var f = window.boardFit ? window.boardFit(container) : { w: window.innerWidth - 32 };
+        wrap.classList.toggle('wide', f.w >= 360 + SIDE_W * 2 + 48);
+      }
+      fit();
+      if (window._nbResize) window.removeEventListener('resize', window._nbResize);
+      window._nbResize = fit;
+      window.addEventListener('resize', window._nbResize);
 
       var input = document.getElementById('nbInput');
       input.addEventListener('keydown', function(e) {
@@ -196,6 +281,8 @@
         iconEl.textContent = winner >= 0 ? '🎉' : '💀';
         iconEl.classList.add('win');
       }
+
+      renderSides(state, playerIndex, winner);
 
       // Boom overlay
       if (state.lastGuess && state.lastGuess.hit) {

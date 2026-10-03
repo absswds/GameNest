@@ -14,6 +14,8 @@
   };
 
   var canvas, ctx, W, H, TW, TH, DPR;
+  var _portrait = false;    // 手机竖屏：手牌两行占底部，桌面只用上面那块
+  var VH = 0;               // 桌面区高度（对手、弃牌、椭圆在这块里居中）；非竖屏 = H
   var _playerIndex = 0;
   var _hoverIdx = -1;       // hovered own-hand tile index
   var _layout = [];         // hit-test rects for own hand
@@ -261,13 +263,27 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       TW = Math.max(38, Math.min(64, W / 11));
     }
     TH = Math.round(TW * 1.4);
+    // 手机横屏（视口矮）：画布 = 视口高度减去状态行和操作栏，整块滚到视口里，
+    // 手牌和碰/杠/胡按钮不用再滚页面；牌按画布高度缩小
+    var shortLand = !isMobile && window.innerHeight < 500 && window.innerWidth > window.innerHeight;
+    if (shortLand) {
+      var sBar = document.getElementById('mjActions');
+      var sStatus = document.getElementById('mjStatus');
+      H = window.innerHeight - (sStatus ? Math.max(sStatus.offsetHeight, 18) : 18)
+        - (sBar ? Math.max(sBar.offsetHeight, 54) : 54) - 8 - 6;
+      H = Math.max(240, H);
+      TW = Math.max(30, Math.min(TW, Math.floor(H * 0.2 / 1.4)));
+      TH = Math.round(TW * 1.4);
+    }
     // 手机竖屏：画布高度 = 剩余视口高度，整张桌子 + 两行手牌一屏放下，不用滚页面找手牌
-    var portrait = isMobile && window.innerHeight > window.innerWidth;
+    var portrait = _portrait = isMobile && window.innerHeight > window.innerWidth;
     if (portrait) {
       var bar = document.getElementById('mjActions');
       var top = board ? board.getBoundingClientRect().top + window.scrollY : 200;
-      H = Math.max(460, Math.min(900, window.innerHeight - top - (bar ? Math.max(bar.offsetHeight, 50) : 50) - 12));
-      TW = Math.max(36, Math.min(58, Math.floor((W - 20) / 7) - 4)); // 每行 7 张，14 张正好两行
+      H = Math.max(400, Math.min(900, window.innerHeight - top - (bar ? Math.max(bar.offsetHeight, 50) : 50) - 12));
+      // 每行 7 张，14 张正好两行；画布矮时再缩，保证两行手牌不超过画布高度的 40%
+      TW = Math.floor((W - 20) / 7) - 4;
+      TW = Math.max(32, Math.min(58, TW, Math.floor((H * 0.4 / 2 - 6) / 1.4)));
       TH = Math.round(TW * 1.4);
     }
     // 手机端：手牌多行时动态加高 canvas，允许 mjBoard 滚动
@@ -295,6 +311,10 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     // 恢复滚动位置
     if (board && board.scrollHeight > board.clientHeight) {
       board.scrollTop = oldScrollRatio * (board.scrollHeight - board.clientHeight);
+    }
+    if (shortLand) {
+      var wrap = canvas.closest('.mj-wrap');
+      if (wrap && wrap.getBoundingClientRect().top > 2) wrap.scrollIntoView({ block: 'start' });
     }
   }
 
@@ -445,9 +465,16 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     // 背景：深墨绿
     ctx.fillStyle = '#14281d';
     ctx.fillRect(0, 0, W, H);
-    var cx = W / 2, cy = H / 2;
+    VH = H;
+    if (_portrait) {
+      // 桌面区 = 手牌（和自己的明牌、定缺标签）上方的部分
+      var myMelds = _state.melds && _state.melds[_playerIndex];
+      VH = handTopY() - 26 - (myMelds && myMelds.length ? Math.round(TH * 0.3) + 8 : 0);
+    }
+    var cx = W / 2, cy = VH / 2;
     // 中央椭圆桌面（径向渐变，中心亮四周暗 = 聚光灯）
-    var rx = Math.min(W, H) * 0.46, ry = Math.min(W, H) * 0.38;
+    var rx = Math.min(W, VH) * 0.46, ry = Math.min(W, VH) * 0.38;
+    if (_portrait) { rx = W * 0.46; ry = VH * 0.42; }
     var felt = ctx.createRadialGradient(cx, cy * 0.92, ry * 0.1, cx, cy, Math.max(rx, ry));
     felt.addColorStop(0, '#2f5a40');
     felt.addColorStop(0.7, '#234731');
@@ -495,6 +522,11 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     ctx.restore();
   }
 
+  // 对手牌背尺寸（与 drawOpponents 一致，高亮框和名字跟着它走）
+  function oppScale() { return (W < 500 || H < 500) ? 0.28 : 0.5; }
+  function oppTW() { return Math.round(TW * oppScale()); }
+  function oppTH() { return Math.round(TH * oppScale()); }
+
   function drawOpponents() {
     var seats = _state.hands.length;
     // 对手牌背：对家横排在顶部；左右家打横、垂直向下延伸（2列多行网格）
@@ -520,7 +552,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         var rowsL = Math.ceil(count / sideCols);
         var rowHL = th + gap;
         var gridHL = rowsL * rowHL;
-        var startYL = (H - gridHL) / 2;
+        var startYL = (VH - gridHL) / 2;
         var startXL = 20;
         for (var k = 0; k < count; k++) {
           var rowL = Math.floor(k / sideCols);
@@ -532,7 +564,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         var rows = Math.ceil(count / sideCols);
         var rowH = th + gap;
         var gridH = rows * rowH;
-        var startY = (H - gridH) / 2;
+        var startY = (VH - gridH) / 2;
         var gridW = sideCols * (tw + gap);
         var startX = W - gridW - 20;
         for (var j = 0; j < count; j++) {
@@ -544,6 +576,18 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     }
   }
 
+
+  // 自己手牌第一行的 y（与 drawOwnHand 的排法一致）
+  function handTopY() {
+    var hand = _state.hands[_playerIndex];
+    var n = Array.isArray(hand) ? hand.length : 0;
+    if (!n) return H;
+    var rows = 1;
+    if (W < 500 && n * (TW + 4) > W - 20) rows = Math.ceil(n / Math.max(4, Math.floor((W - 20) / (TW + 4))));
+    return H - rows * (TH + 6) - handBottomPad();
+  }
+  // 手牌下沿留白：竖屏多留几像素，"第N局·余牌"不被轮到你的高亮框压住
+  function handBottomPad() { return _portrait ? 22 : 14; }
 
   function drawOwnHand() {
     var hand = _state.hands[_playerIndex];
@@ -566,7 +610,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     var startX = (W - totalW) / 2;
     // 垂直居中多行手牌
     var totalHandH = rows * (th + 6);
-    var y = H - totalHandH - 14;
+    var y = H - totalHandH - handBottomPad();
     _layout = [];
     for (var i = 0; i < n; i++) {
       var row = useMultiRow ? Math.floor(i / perRow) : 0;
@@ -632,14 +676,17 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       ctx.font = 'bold 13px system-ui,"Microsoft YaHei",sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText(t('mj_void_label', '定缺:') + ' ' + vsLabel, startX, y - 22);
+      // x 留出左边距（色点不被画布裁掉），且躲开左家牌背那一列；竖屏左家在桌面区，不会碰到
+      var vsX = Math.max(startX, _portrait ? 24 : 20 + 2 * (oppTW() + 2) + 24);
+      var vsY = _portrait ? y - 18 : y - 22;
+      ctx.fillText(t('mj_void_label', '定缺:') + ' ' + vsLabel, vsX, vsY);
       ctx.shadowColor = 'transparent';
       // 小色点（亮色描边）— 与文字垂直居中对齐
       ctx.fillStyle = vsColor;
       ctx.strokeStyle = 'rgba(255,255,255,.9)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(startX - 10, y - 22, 6, 0, Math.PI*2);
+      ctx.arc(vsX - 10, vsY, 6, 0, Math.PI*2);
       ctx.fill();
       ctx.stroke();
       ctx.restore();
@@ -675,9 +722,30 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     // 更高会贴到对家牌
     var zoneY = (H - zoneH) / 2 - (H * (isMobile ? 0.15 : 0.1));
     // 钳制：顶部永远给对家牌背 + 名牌留出空间，横屏/矮画布下不再压住对家
-    var oppTh = Math.round(TH * (isMobile ? 0.28 : 0.5));
-    zoneY = Math.max(zoneY, 30 + oppTh + 16);
+    var oppTh = oppTH(); // same scale as drawOpponents (landscape phones are short, not narrow)
+    var topClear = 30 + oppTh + 16;
+    // 对家有明牌时，弃牌区从明牌行下方开始，不压在明牌上
+    if (seatHasMelds('top')) topClear = Math.max(topClear, topMeldY() + meldTH() + 8);
+    zoneY = Math.max(zoneY, topClear);
+    if (_portrait) {
+      // 竖屏：夹在左右家牌背（及其明牌）之间，在桌面区（VH）里居中
+      var sideW = Math.max(20 + 2 * (oppTW() + 2) + 8, SIDE_MELD_X + sideMeldWidth() + 6);
+      zoneW = W - sideW * 2;
+      // 下沿停在左右家名字标签上方（名字伸进了弃牌区的横向范围）
+      var zoneBottom = VH - 10;
+      for (var ss = 0; ss < _state.hands.length; ss++) {
+        var sp = ss === _playerIndex ? '' : seatPos(ss);
+        if ((sp === 'left' || sp === 'right') && handCount(ss) > 0) zoneBottom = Math.min(zoneBottom, sideMeldTop(ss) - 26 - 4);
+      }
+      zoneH = Math.max(dh * 3, zoneBottom - topClear);
+      zoneY = topClear;
+      // 牌多到放不下时缩小弃牌（每次缩 1px，最小 12px）
+      while (dw > 12 && Math.ceil(allTiles.length / Math.max(6, Math.floor(zoneW / (dw + gap)))) * (dh + gap) > zoneH) {
+        dw--; dh = Math.round(dw * 1.4);
+      }
+    }
     var perRow = Math.max(6, Math.floor(zoneW / (dw + gap)));
+    if (_portrait) zoneX = (W - perRow * (dw + gap) + gap) / 2;
     // 中央网格：按全局时间从左到右、从上到下，新牌始终在末尾
     for (var idx = 0; idx < allTiles.length; idx++) {
       var row = Math.floor(idx / perRow);
@@ -710,12 +778,40 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     }
   }
 
+  // 明牌尺寸（与 drawMelds 一致）
+  function meldTW() { return Math.round(TW * (W < 500 ? 0.3 : 0.36)); }
+  function meldTH() { return Math.round(TH * (W < 500 ? 0.3 : 0.36)); }
+  // 对家明牌行：紧贴对家牌背下方
+  function topMeldY() { return 30 + oppTH() + 6; }
+  function seatHasMelds(pos) {
+    if (!_state.melds) return false;
+    for (var s = 0; s < _state.melds.length; s++) {
+      if (s !== _playerIndex && _state.melds[s] && _state.melds[s].length && seatPos(s) === pos) return true;
+    }
+    return false;
+  }
+  // 竖屏左右家明牌：x 边距、起始 y（牌背 + 名字标签下方）、占用宽度（弃牌区要让开）
+  var SIDE_MELD_X = 8;
+  function sideMeldTop(s) {
+    var gh = Math.ceil(handCount(s) / 2) * (oppTH() + 2);
+    return (VH - gh) / 2 + gh + 4 + 20 + 6;
+  }
+  function sideMeldWidth() {
+    var maxCnt = 0;
+    for (var s = 0; s < (_state.melds || []).length; s++) {
+      if (s === _playerIndex || !_state.melds[s]) continue;
+      var pos = seatPos(s);
+      if (pos !== 'left' && pos !== 'right') continue;
+      for (var m = 0; m < _state.melds[s].length; m++) maxCnt = Math.max(maxCnt, _state.melds[s][m].type === 'kong' ? 4 : 3);
+    }
+    return maxCnt ? maxCnt * (meldTW() + 2) - 2 : 0;
+  }
+
   // 明牌布局：按组排列（3个/4个一组，不拆散），左上/右上，放满换行
   function drawMelds() {
     if (!_state.melds) return;
     var seats = _state.melds.length;
-    var _isMobile = W < 500;
-    var tw = Math.round(TW * (_isMobile ? 0.3 : 0.36)), th = Math.round(TH * (_isMobile ? 0.3 : 0.36)); // 小屏缩小明牌，大屏原样
+    var tw = meldTW(), th = meldTH(); // 小屏缩小明牌，大屏原样
     var gap = 2;
     var groupGap = 8;
     var maxPerRow = 6; // 每行最多 6 张（约 2 组）
@@ -741,7 +837,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         for (var bg = 0; bg < groups.length; bg++) {
           for (var bk = 0; bk < groups[bg].count; bk++) {
             var bx = W / 2 - bRowW / 2 + bPlaced * (tw + gap) + bg * groupGap;
-            var by = H - TH - 28 - th;
+            var by = _portrait ? handTopY() - th - 26 : H - TH - 28 - th;
             var bt = (groups[bg].md.tiles && groups[bg].md.tiles[bk]) || groups[bg].md.tile;
             drawTileFace(bx, by, tw, th, bt, false);
             bPlaced++;
@@ -756,10 +852,23 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         for (var tg = 0; tg < groups.length; tg++) {
           for (var tk = 0; tk < groups[tg].count; tk++) {
             var tx = W / 2 - tRowW / 2 + tPlaced * (tw + gap) + tg * groupGap;
-            var ty = 30 + Math.round(TH * 0.5) + 6;
+            var ty = topMeldY();
             var tt = (groups[tg].md.tiles && groups[tg].md.tiles[tk]) || groups[tg].md.tile;
             drawTileFace(tx, ty, tw, th, tt, false);
             tPlaced++;
+          }
+        }
+      } else if (_portrait) {
+        // 竖屏：左右家明牌贴在自家牌背 + 名字下方，一组一行（左家靠左、右家靠右），
+        // 不跑到顶角去和对家牌背挤在一起，也不伸进中间弃牌区
+        var pRowH = th + 4;
+        var pY = Math.min(sideMeldTop(s), VH - groups.length * pRowH);
+        for (var pg = 0; pg < groups.length; pg++) {
+          var pw = groups[pg].count * (tw + gap) - gap;
+          var px0 = pos === 'left' ? SIDE_MELD_X : W - SIDE_MELD_X - pw;
+          for (var pk = 0; pk < groups[pg].count; pk++) {
+            var pt = (groups[pg].md.tiles && groups[pg].md.tiles[pk]) || groups[pg].md.tile;
+            drawTileFace(px0 + pk * (tw + gap), pY + pg * pRowH, tw, th, pt, false);
           }
         }
       } else if (pos === 'right') {
@@ -856,8 +965,8 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       var ex, ey;
       if (pos === 'bottom') { ex = W / 2; ey = H - TH - 50 - riseY; }
       else if (pos === 'top') { ex = W / 2; ey = 30 + Math.round(TH * 0.5) + 20 + riseY; }
-      else if (pos === 'left') { ex = 80; ey = H / 2 - riseY; }
-      else { ex = W - 80; ey = H / 2 - riseY; }
+      else if (pos === 'left') { ex = 80; ey = VH / 2 - riseY; }
+      else { ex = W - 80; ey = VH / 2 - riseY; }
       var col = CLAIM_COLORS[e.type] || CLAIM_COLORS.pung;
       ctx.save();
       ctx.globalAlpha = alpha;
@@ -899,25 +1008,28 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     // 在该玩家区域画发光边框
     var pad = 6;
     var bx, by, bw, bh;
-    if (pos === 'bottom') {
+    if (pos === 'bottom' && _portrait) {
+      var hy = handTopY();
+      bx = 6; by = hy - 8; bw = W - 12; bh = H - hy - 12; // 下沿停在 H-20，留出余牌那行字
+    } else if (pos === 'bottom') {
       bx = W / 2 - 14 * (TW + 4) / 2; by = H - TH - 22; bw = 14 * (TW + 4); bh = TH + 8;
     } else if (pos === 'top') {
-      bx = W / 2 - 14 * (Math.round(TW * 0.5) + 2) / 2; by = 26; bw = 14 * (Math.round(TW * 0.5) + 2); bh = Math.round(TH * 0.5) + 8;
+      bx = W / 2 - 14 * (oppTW() + 2) / 2; by = 26; bw = 14 * (oppTW() + 2); bh = oppTH() + 8;
     } else if (pos === 'left') {
       var lCount = handCount(cp);
       var lRows = Math.ceil(lCount / 2);
-      var lTileH = lRows * (Math.round(TH * 0.5) + 2);
+      var lTileH = lRows * (oppTH() + 2);
       bx = 20 - pad;
-      by = (H - lTileH) / 2 - pad;
-      bw = 2 * (Math.round(TW * 0.5) + 2) + pad * 2;
+      by = (VH - lTileH) / 2 - pad;
+      bw = 2 * (oppTW() + 2) + pad * 2;
       bh = lTileH + pad * 2;
     } else {
       var rCount = handCount(cp);
       var rRows = Math.ceil(rCount / 2);
-      var rTileH = rRows * (Math.round(TH * 0.5) + 2);
-      bx = W - 20 - 2 * (Math.round(TW * 0.5) + 2) - pad;
-      by = (H - rTileH) / 2 - pad;
-      bw = 2 * (Math.round(TW * 0.5) + 2) + pad * 2;
+      var rTileH = rRows * (oppTH() + 2);
+      bx = W - 20 - 2 * (oppTW() + 2) - pad;
+      by = (VH - rTileH) / 2 - pad;
+      bw = 2 * (oppTW() + 2) + pad * 2;
       bh = rTileH + pad * 2;
     }
     ctx.save();
@@ -960,17 +1072,19 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       } else if (pos === 'left') {
         // 左家：名字在牌背右侧（靠中央）
         var lTileRows = Math.ceil(count / 2);
-        var lTileH = lTileRows * (Math.round(TH * 0.5) + 2);
-        var lTileTop = (H - lTileH) / 2;
-        nx = 20 + 2 * (Math.round(TW * 0.5) + 2) + bw / 2 + 6;
-        ny = lTileTop - bh / 2 - 4;
+        var lTileH = lTileRows * (oppTH() + 2);
+        var lTileTop = (VH - lTileH) / 2;
+        nx = 20 + 2 * (oppTW() + 2) + bw / 2 + 6;
+        ny = _portrait ? lTileTop + lTileH + bh / 2 + 4 : lTileTop - bh / 2 - 4;
+        if (_portrait) nx = 20 + bw / 2;
       } else {
         // 右家：名字在牌背左侧（靠中央）
         var rTileRows = Math.ceil(count / 2);
-        var rTileH = rTileRows * (Math.round(TH * 0.5) + 2);
-        var rTileTop = (H - rTileH) / 2;
-        nx = W - 20 - 2 * (Math.round(TW * 0.5) + 2) - bw / 2 - 6;
-        ny = rTileTop - bh / 2 - 4;
+        var rTileH = rTileRows * (oppTH() + 2);
+        var rTileTop = (VH - rTileH) / 2;
+        nx = W - 20 - 2 * (oppTW() + 2) - bw / 2 - 6;
+        ny = _portrait ? rTileTop + rTileH + bh / 2 + 4 : rTileTop - bh / 2 - 4;
+        if (_portrait) nx = W - 20 - bw / 2;
       }
       ctx.save();
       if (isWinner) ctx.fillStyle = 'rgba(224,80,80,.9)';

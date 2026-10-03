@@ -32,6 +32,8 @@
   var snapshotRestored = false;
   var aimLineX = BOX_W / 2;
   var DANGER_Y = 60; // overflow line
+  var bestType = 0; // biggest fruit reached this game, for the merge chain
+  var SIDE_W = 230; // side panel width on wide screens
 
   function snapshotKey() {
     var roomId = sessionStorage.getItem('roomId') || 'local';
@@ -189,15 +191,23 @@
     });
     Matter.World.add(world, body);
     fruits.push({ body: body, type: type, merged: false });
+    if (type > bestType) { bestType = type; updateSides(); }
     return body;
+  }
+
+  // Where the held fruit hangs and drops from: just above the danger line, but never cut off by the top edge
+  function holdY(type) {
+    var r = FRUITS[type].r;
+    return Math.max(r + 2, DANGER_Y - r - 5);
   }
 
   function drop(x) {
     if (dropping || gameOver || !Matter || !world) return; // physics lib still loading
     dropping = true;
-    addFruit(x, DANGER_Y - FRUITS[dropFruitType].r - 5, dropFruitType);
+    addFruit(x, holdY(dropFruitType), dropFruitType);
     wsSend({ type: 'drop' });
     dropFruitType = nextFruitType;
+    updateSides();
     saveSnapshot();
 
     // Allow next drop after 500ms
@@ -212,6 +222,31 @@
       }
     }
     return false;
+  }
+
+  function drawFruit(type, fx, fy) {
+    var info = FRUITS[type];
+    var fr = info.r * SCALE;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    ctx.beginPath(); ctx.arc(fx + 2, fy + 2, fr, 0, Math.PI * 2); ctx.fill();
+
+    // Gradient fill
+    var grad = ctx.createRadialGradient(fx - fr * 0.3, fy - fr * 0.3, fr * 0.1, fx, fy, fr);
+    grad.addColorStop(0, '#fff');
+    grad.addColorStop(0.4, info.color);
+    grad.addColorStop(1, info.color);
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(fx, fy, fr, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(fx, fy, fr, 0, Math.PI * 2); ctx.stroke();
+
+    // Emoji
+    if (fr > 12) {
+      ctx.font = Math.max(10, fr * 1.1) + 'px serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(info.emoji, fx, fy);
+    }
   }
 
   function drawFrame() {
@@ -239,42 +274,17 @@
       ctx.setLineDash([4, 4]);
       ctx.beginPath(); ctx.moveTo(ox + aimLineX * SCALE, oy); ctx.lineTo(ox + aimLineX * SCALE, oy + cH); ctx.stroke();
       ctx.setLineDash([]);
-      // Next fruit preview at top
-      var info = FRUITS[dropFruitType];
+      // Held fruit at its real size, so its width can be judged before dropping
       ctx.save();
-      ctx.font = Math.max(12, info.r * SCALE * 1.2) + 'px serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(info.emoji, ox + aimLineX * SCALE, oy + (DANGER_Y / 2) * SCALE);
+      ctx.globalAlpha = 0.85;
+      drawFruit(dropFruitType, ox + aimLineX * SCALE, oy + holdY(dropFruitType) * SCALE);
       ctx.restore();
     }
 
     // Fruits
     fruits.forEach(function (f) {
       if (f.merged) return;
-      var info = FRUITS[f.type];
-      var fx = ox + f.body.position.x * SCALE;
-      var fy = oy + f.body.position.y * SCALE;
-      var fr = info.r * SCALE;
-
-      // Shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.08)';
-      ctx.beginPath(); ctx.arc(fx + 2, fy + 2, fr, 0, Math.PI * 2); ctx.fill();
-
-      // Gradient fill
-      var grad = ctx.createRadialGradient(fx - fr * 0.3, fy - fr * 0.3, fr * 0.1, fx, fy, fr);
-      grad.addColorStop(0, '#fff');
-      grad.addColorStop(0.4, info.color);
-      grad.addColorStop(1, info.color);
-      ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.arc(fx, fy, fr, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(fx, fy, fr, 0, Math.PI * 2); ctx.stroke();
-
-      // Emoji
-      if (fr > 12) {
-        ctx.font = Math.max(10, fr * 1.1) + 'px serif';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(info.emoji, fx, fy);
-      }
+      drawFruit(f.type, ox + f.body.position.x * SCALE, oy + f.body.position.y * SCALE);
     });
 
     // Particles
@@ -317,41 +327,140 @@
     rafId = requestAnimationFrame(loop);
   }
 
+  function esc(v) { return String(v).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function fruitName(info) { return window.__ACTIVE_LANG === 'en' ? (info.nameEn || info.name) : info.name; }
+  // DOM fruit ball, same look as the canvas one; d = diameter in px
+  function ballHtml(type, d, cls) {
+    var info = FRUITS[type];
+    return '<span class="sk-ball' + (cls ? ' ' + cls : '') + '" style="width:' + d + 'px;height:' + d + 'px;font-size:' + Math.round(d * 0.55) + 'px;' +
+      'background:radial-gradient(circle at 35% 35%,#fff 0,' + info.color + ' 40%,' + info.color + ')">' + info.emoji + '</span>';
+  }
+
+  // Wide screens only: held/next fruit + merge chain on the left, ranking + rules on the right
+  function updateSides() {
+    var left = document.getElementById('suika-left');
+    var right = document.getElementById('suika-right');
+    if (!left || !right) return;
+    var cur = FRUITS[dropFruitType], nxt = FRUITS[nextFruitType];
+    var chain = '';
+    for (var i = 0; i < FRUITS.length; i++) {
+      chain += '<span class="sk-step' + (i <= bestType ? ' got' : '') + (i === bestType ? ' best' : '') + '" title="' + esc(fruitName(FRUITS[i])) + '">' +
+        ballHtml(i, 18 + i * 2.6) + '</span>';
+    }
+    left.innerHTML =
+      '<div class="sk-card sk-hold">' +
+        '<div><div class="sk-label">' + _t('sk_side_now') + '</div>' + '<div class="sk-pit">' + ballHtml(dropFruitType, cur.r * 1.3) + '</div>' + '<div class="sk-fname">' + esc(fruitName(cur)) + '</div></div>' +
+        '<div><div class="sk-label">' + _t('sk_side_next') + '</div>' + '<div class="sk-pit">' + ballHtml(nextFruitType, nxt.r * 1.3) + '</div>' + '<div class="sk-fname">' + esc(fruitName(nxt)) + '</div></div>' +
+      '</div>' +
+      '<div class="sk-card"><div class="sk-label">' + _t('sk_side_ladder') + '<span>' + _t('sk_side_best') + ' ' + FRUITS[bestType].emoji + ' ' + esc(fruitName(FRUITS[bestType])) + '</span></div>' +
+        '<div class="sk-chain">' + chain + '</div></div>';
+
+    var st = state || {};
+    var n = st._playerCount || 0, rows = [];
+    for (var p = 0; p < n; p++) rows.push(p);
+    rows.sort(function (a, b) { return ((st.scores && st.scores[b]) || 0) - ((st.scores && st.scores[a]) || 0); });
+    var top = Math.max(1, (st.scores && st.scores[rows[0]]) || 0);
+    var players = window._players || [];
+    var rank = rows.map(function (p, k) {
+      var sc = (st.scores && st.scores[p]) || 0;
+      var out = st.eliminated && st.eliminated[p];
+      var name = p === playerIndex ? _t('sk_side_you') : (players[p] ? players[p].name : (_t('sk_player') + (p + 1)));
+      return '<div class="sk-row' + (p === playerIndex ? ' me' : '') + (out ? ' out' : '') + '">' +
+        '<span class="sk-no">' + (k + 1) + '</span><span class="sk-who">' + esc(name) + (out ? '<em>' + _t('sk_side_out') + '</em>' : '') + '</span>' +
+        '<b>' + sc + '</b><i style="width:' + Math.round(sc / top * 100) + '%"></i></div>';
+    }).join('');
+    right.innerHTML =
+      '<div class="sk-card"><div class="sk-label">' + _t('sk_side_rank') + '</div>' + rank + '</div>' +
+      '<div class="sk-card sk-tips"><div class="sk-label">' + _t('sk_side_tips') + '</div><ol>' +
+        '<li>' + _t('sk_tip_1') + '</li><li>' + _t('sk_tip_2') + '</li><li>' + _t('sk_tip_3') + '</li><li>' + _t('sk_tip_4') + '</li></ol></div>';
+  }
+
+  var CSS = [
+    '.sk{display:flex;justify-content:center;align-items:flex-start;gap:24px;width:100%;padding:6px}',
+    '.sk-main{display:flex;flex-direction:column;align-items:center;min-width:0}',
+    '.sk-side{display:none;width:' + SIDE_W + 'px;flex:none;flex-direction:column;gap:12px}',
+    '.sk.wide .sk-side{display:flex}',
+    '.sk.wide #suika-opp,.sk.wide #suika-info{display:none !important}',
+    '.sk-card{padding:12px 14px;border-radius:var(--radius-sm);background:var(--bg);font-size:13px}',
+    '.sk-label{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px}',
+    '.sk-label span{font-weight:400;white-space:nowrap}',
+    '.sk-hold{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center}',
+    '.sk-hold > div{display:flex;flex-direction:column;align-items:center;justify-content:flex-start}',
+    '.sk-hold .sk-label{align-self:stretch;justify-content:center}',
+    '.sk-pit{height:60px;display:flex;align-items:center;justify-content:center}',
+    '.sk-fname{margin-top:6px;font-size:13px}',
+    '.sk-ball{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;flex:none;line-height:1;box-shadow:2px 2px 0 rgba(0,0,0,.08),inset 0 0 0 1px rgba(0,0,0,.12)}',
+    '.sk-chain{display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px 4px}',
+    '.sk-step{display:inline-flex;opacity:.28;filter:grayscale(.8);transition:opacity .3s,filter .3s,transform .3s}',
+    '.sk-step.got{opacity:1;filter:none}',
+    '.sk-step.best{transform:scale(1.12)}',
+    '.sk-row{position:relative;display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:10px;overflow:hidden}',
+    '.sk-row + .sk-row{margin-top:2px}',
+    '.sk-row i{position:absolute;left:0;bottom:0;height:3px;background:#f39c12;opacity:.55;border-radius:2px;transition:width .4s}',
+    '.sk-row.me{background:var(--surface);font-weight:600}',
+    '.sk-row.out{color:var(--text-muted)}',
+    '.sk-row.out i{background:#ccc}',
+    '.sk-no{width:18px;color:var(--text-muted);font-size:12px;text-align:center}',
+    '.sk-who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.sk-who em{margin-left:6px;font-style:normal;font-size:11px;color:#e74c3c}',
+    '.sk-row b{font-variant-numeric:tabular-nums;font-size:15px}',
+    '.sk-tips ol{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text-muted);line-height:1.5}',
+  ].join('\n');
+
+  // Box size from the space the stage really has; on wide screens leave room for both side panels
+  function resize(container) {
+    if (!canvas) return;
+    var wrap = container.querySelector('.sk');
+    var fit = window.boardFit ? window.boardFit(container) : { w: window.innerWidth - 20, h: window.innerHeight - 160 };
+    var wide = fit.w >= BOX_W * 1.4 + SIDE_W * 2 + 48 && fit.h >= 420;
+    if (wrap) wrap.classList.toggle('wide', wide);
+    var availW = wide ? fit.w - SIDE_W * 2 - 60 : fit.w - 12;
+    var availH = wide ? fit.h - 12 : fit.h - 56; // narrow: score and opponent rows sit above the box
+    SCALE = Math.max(0.6, Math.min(availW / BOX_W, availH / BOX_H, 1.6));
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = BOX_W * SCALE * dpr;
+    canvas.height = BOX_H * SCALE * dpr;
+    canvas.style.width = BOX_W * SCALE + 'px';
+    canvas.style.height = BOX_H * SCALE + 'px';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+    drawFrame(); // setting canvas.width wiped it
+  }
+
   window.gameRenderers.set('suikabattle', {
     init: function (container) {
       container.innerHTML = '';
+      bestType = 0;
       window._beforeLeaveRoom = saveSnapshot;
       window._beforeGameRestart = clearSnapshot;
+      window.injectStylesOnce('suika-styles', CSS);
       var wrap = document.createElement('div');
-      wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;padding:6px;';
+      wrap.className = 'sk';
+      wrap.innerHTML = '<aside class="sk-side" id="suika-left"></aside><div class="sk-main"></div><aside class="sk-side" id="suika-right"></aside>';
       container.appendChild(wrap);
+      var main = wrap.querySelector('.sk-main');
 
       // Opponent bar
       var oppBar = document.createElement('div');
       oppBar.id = 'suika-opp';
       oppBar.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;justify-content:center;font-size:12px;';
-      wrap.appendChild(oppBar);
+      main.appendChild(oppBar);
 
       // Score + next fruit info
       var infoBar = document.createElement('div');
       infoBar.id = 'suika-info';
       infoBar.style.cssText = 'display:flex;gap:16px;align-items:center;margin-bottom:6px;font-size:13px;';
-      wrap.appendChild(infoBar);
+      main.appendChild(infoBar);
 
       canvas = document.createElement('canvas');
       canvas.style.cssText = 'touch-action:none;cursor:crosshair;border-radius:6px;';
-      wrap.appendChild(canvas);
+      main.appendChild(canvas);
       ctx = canvas.getContext('2d');
 
-      // Resize
-      var dpr = window.devicePixelRatio || 1;
-      SCALE = Math.min((window.innerWidth - 20) / BOX_W, (window.innerHeight - 160) / BOX_H, 1.2);
-      SCALE = Math.max(SCALE, 0.6);
-      canvas.width = BOX_W * SCALE * dpr;
-      canvas.height = BOX_H * SCALE * dpr;
-      canvas.style.width = BOX_W * SCALE + 'px';
-      canvas.style.height = BOX_H * SCALE + 'px';
-      ctx.scale(dpr, dpr);
+      resize(container);
+      if (window._suikaResize) window.removeEventListener('resize', window._suikaResize);
+      window._suikaResize = function () { resize(container); };
+      window.addEventListener('resize', window._suikaResize);
 
       // Input handlers
       function handleInput(cx) {
@@ -433,6 +542,7 @@
       if (st.eliminated && st.eliminated[pi] && !gameOver) {
         gameOver = true;
       }
+      updateSides();
     },
   });
 })();

@@ -428,6 +428,8 @@
   const IMMERSIVE_GAMES = ['mahjong-sichuan', 'mahjong-cantonese'];
   // 方形棋盘游戏：宽屏时玩家栏放左侧、操作按钮放右侧，让棋盘占满中间高度
   const SIDE_LAYOUT_GAMES = ['chess', 'checkers', 'reversi', 'go9', 'gomoku', 'chinesechess'];
+  // Other square boards that only borrow the wide three-column stage (no match score / move list)
+  const SIDE_STAGE_GAMES = SIDE_LAYOUT_GAMES.concat(['connect4', 'tictactoe']);
   function setImmersiveLandscape(on) {
     try {
       if (window.GameNestNative && window.GameNestNative.setImmersiveLandscape) {
@@ -449,7 +451,7 @@
     // 动作条现在在文档流最底部、不遮挡棋盘，所有游戏都照常显示
     el.gameActions.style.display = '';
     setImmersiveLandscape(IMMERSIVE_GAMES.indexOf(game) !== -1);
-    el.gameStage.classList.toggle('stage-side', SIDE_LAYOUT_GAMES.indexOf(game) !== -1);
+    el.gameStage.classList.toggle('stage-side', SIDE_STAGE_GAMES.indexOf(game) !== -1);
     // 棋盘在等待房间还显示时就量过尺寸，舞台出现后让各渲染器按真实位置重新量一次
     requestAnimationFrame(function() { window.dispatchEvent(new Event('resize')); });
   }
@@ -676,8 +678,6 @@
         optionsEl.style.display = 'block';
         var bm = roomOptions.bidMode || 'rob';
         var fc = roomOptions.firstCaller || 'random';
-        var ad = roomOptions.allowDouble || false;
-        var ash = roomOptions.allowShowHand || false;
         var pt = roomOptions.playTimeLimit || 20;
         var tr = roomOptions.totalRounds || 3;
         if (isHost) {
@@ -703,16 +703,6 @@
                   '<input type="radio" name="ddzFirstCaller" value="random"' + (fc === 'random' ? ' checked' : '') + ' onchange="window._setGameOption(\'firstCaller\',this.value)">' + _t('ddz_first_caller_random') + '</label>' +
                 '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
                   '<input type="radio" name="ddzFirstCaller" value="winner"' + (fc === 'winner' ? ' checked' : '') + ' onchange="window._setGameOption(\'firstCaller\',this.value)">' + _t('ddz_first_caller_winner') + '</label>' +
-              '</div>' +
-            '</div>' +
-            // Row 3: 游戏规则
-            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;margin-bottom:10px;font-size:13px;">' +
-              '<div style="font-weight:600;padding-top:4px;">' + _t('ddz_game_rules') + '</div>' +
-              '<div style="display:flex;gap:16px;">' +
-                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
-                  '<input type="checkbox"' + (ad ? ' checked' : '') + ' onchange="window._setGameOption(\'allowDouble\',this.checked)">' + _t('ddz_allow_double') + '</label>' +
-                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
-                  '<input type="checkbox"' + (ash ? ' checked' : '') + ' onchange="window._setGameOption(\'allowShowHand\',this.checked)">' + _t('ddz_allow_show_hand') + '</label>' +
               '</div>' +
             '</div>' +
             // Row 4: 出牌时长

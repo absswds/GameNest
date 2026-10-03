@@ -19,8 +19,8 @@
   var EQUIPS = ['zhuge', 'qinggang', 'cixiong', 'hanbing', 'guanshi', 'qinglong', 'zhangba', 'fangtian', 'qilin', 'bagua', 'renwang', 'jueying', 'dilu', 'zhuahuang', 'chitu', 'dawan', 'zixing'];
 
   var S = null, me = -1, selCards = [], selTargets = [], timer = null, lastKey = '';
-  var host = null, root = null, askTotal = 0, showLog = false, openSkill = '';
-  var prevHp = null, prevAlive = null, lastSig = null, prevHand = null, cramped = false;
+  var host = null, root = null, askTotal = 0, showLog = false, openSkill = '', openSeat = -1, openCard = null, cardIndex = {};
+  var prevHp = null, prevAlive = null, lastSig = null, prevHand = null, cramped = false, lastHandHtml = '';
 
   function P(i) { return S.players[i]; }
   function gname(i) { return i === me ? t('sg_you') : t('sg_g_' + P(i).general); }
@@ -32,6 +32,8 @@
     if (name === 'sha' || name === 'shan' || name === 'tao') return 'basic';
     return EQUIPS.indexOf(name) >= 0 ? 'equip' : 'trick';
   }
+  var SLOT_ICON = { weapon: '⚔', armor: '🛡', plus: '+1', minus: '-1' };
+  function cdesc(c) { return t('sg_cd_' + (c.name || c)); }
   function weaponName(i) { return P(i).equip.weapon && P(i).equip.weapon.name; }
   function $(r) { return root && root.querySelector('[data-r="' + r + '"]'); }
   function seatEl(i) { return root && root.querySelector('.sg-seat[data-i="' + i + '"]'); }
@@ -100,8 +102,9 @@
     opts = opts || {};
     var name = cname(c), long = name.length > 2;
     var cls = 'sg-card ' + kindOf(c.name) + (isRed(c) ? ' red' : '') + (opts.sel ? ' sel' : '') + (opts.off ? ' off' : '') + (opts.cls || '');
-    var click = opts.click ? ' onclick="' + opts.click + '"' : ' tabindex="-1"';
-    return '<button class="' + cls + '"' + click + (opts.id !== undefined ? ' data-c="' + opts.id + '"' : '') + '>' +
+    cardIndex[c.id] = c;
+    var click = ' onclick="' + (opts.click || 'window._sgCardInfo(' + c.id + ')') + '"';
+    return '<button class="' + cls + (opts.click ? ' act' : '') + '"' + click + ' title="' + esc(name + '：' + cdesc(c)) + '"' + (opts.id !== undefined ? ' data-c="' + opts.id + '"' : '') + '>' +
       '<span class="r">' + rank(c) + '<small>' + SUIT[c.suit] + '</small></span>' +
       '<span class="n' + (long ? ' long' : '') + '">' + esc(name) + '</span><span class="v">' + esc(name) + '</span>' +
       '<span class="k">' + t('sg_kind_' + kindOf(c.name)) + '</span></button>';
@@ -116,7 +119,7 @@
   function equipHtml(p) {
     var out = '';
     ['weapon', 'armor', 'plus', 'minus'].forEach(function(slot) {
-      if (p.equip && p.equip[slot]) out += '<span title="' + esc(t('sg_slot_' + slot)) + '">' + esc(cname(p.equip[slot])) + (slot === 'plus' ? ' +1' : slot === 'minus' ? ' -1' : '') + '</span>';
+      if (p.equip && p.equip[slot]) out += '<span class="eq-' + slot + '" title="' + esc(cname(p.equip[slot]) + '：' + cdesc(p.equip[slot])) + '"><i>' + SLOT_ICON[slot] + '</i><em>' + esc(cname(p.equip[slot])) + '</em></span>';
     });
     (p.judge || []).forEach(function(c) { out += '<span class="jd" title="' + esc(t('sg_judge_zone')) + '">' + esc(cname(c).charAt(0)) + '</span>'; });
     return out ? '<span class="sg-eq">' + out + '</span>' : '';
@@ -217,6 +220,9 @@
       return '<div class="sg-choice"><div class="cards">' + body + '</div></div>';
     }
     var st = settlement(), out = '';
+    // One card picked from my hand: say what it does (tapping it selects it, so it can't open the info box)
+    var one = selCards.length === 1 && (handCard(selCards[0]) || cardIndex[selCards[0]]);
+    if (one) return '<div class="sg-desc"><b>' + esc(cname(one)) + '</b>' + esc(cdesc(one)) + '</div>';
     if (st && st.items.length) {
       var show = st.items.slice(-5), hidden = st.items.length - show.length;
       out += '<div class="cards pz">' + (hidden ? '<span class="pz-more">+' + hidden + '</span>' : '') + show.map(function(it) {
@@ -306,6 +312,23 @@
   }
 
   function popoverHtml() {
+    if (openCard) {
+      return '<div class="sg-pop" onclick="window._sgCardInfo()"><b>' + esc(cname(openCard)) + ' <small>' + SUIT[openCard.suit] + rank(openCard) + ' · ' + t('sg_kind_' + kindOf(openCard.name)) + '</small></b>' + esc(cdesc(openCard)) + '</div>';
+    }
+    if (openSeat >= 0 && S.players[openSeat]) {
+      var q = P(openSeat), body = '<div class="sec">' + t('sg_info_skills') + '</div>';
+      (SKILLS[q.general] || []).forEach(function(k) { body += '<p><em>' + esc(t('sg_s_' + k)) + '</em>' + esc(t('sg_sd_' + k)) + '</p>'; });
+      var eq = ['weapon', 'armor', 'plus', 'minus'].filter(function(slot) { return q.equip && q.equip[slot]; });
+      if (eq.length) {
+        body += '<div class="sec">' + t('sg_info_equip') + '</div>';
+        eq.forEach(function(slot) { body += '<p><em>' + SLOT_ICON[slot] + ' ' + esc(cname(q.equip[slot])) + '</em>' + esc(cdesc(q.equip[slot])) + '</p>'; });
+      }
+      if (q.judge && q.judge.length) {
+        body += '<div class="sec">' + t('sg_info_judge') + '</div>';
+        q.judge.forEach(function(c) { body += '<p><em>' + esc(cname(c)) + '</em>' + esc(cdesc(c)) + '</p>'; });
+      }
+      return '<div class="sg-pop info" onclick="window._sgInfo(' + openSeat + ')"><b>' + esc(t('sg_g_' + q.general)) + (openSeat === me ? ' <small>' + esc(t('sg_you')) + '</small>' : '') + '</b>' + body + '</div>';
+    }
     if (openSkill) return '<div class="sg-pop" onclick="window._sgSkill(\'\')"><b>' + esc(t('sg_s_' + openSkill)) + '</b>' + esc(t('sg_sd_' + openSkill)) + '</div>';
     if (showLog) {
       var rows = [];
@@ -350,6 +373,7 @@
     }
     root.firstChild.classList.toggle('cramped', cramped);
     $('center').innerHTML = centerHtml();
+    placeCenter();
     $('pop').innerHTML = popoverHtml();
     var pr = prompt();
     $('hint').innerHTML = pr.hint;
@@ -359,10 +383,43 @@
     $('btns').innerHTML = pr.btns;
     $('me').innerHTML = seatHtml(me);
     $('skills').innerHTML = skillsHtml();
-    $('hand').innerHTML = handHtml();
+    // Rebuild the hand only when it changed: a fresh hand re-runs the draw/select animations, so every
+    // broadcast (e.g. the timer restarting) would make the cards jump.
+    var hh = handHtml();
+    if (hh !== lastHandHtml) { $('hand').innerHTML = hh; lastHandHtml = hh; }
     fitHand();
     tick();
     requestAnimationFrame(function() { drawLines(); effects(); });
+  }
+
+  // The CSS top is only a preference: seats are positioned in % of the table, so on some sizes (e.g. 800x600)
+  // the upper seats reach into the middle. Move the pile into the nearest vertical gap between the seats that
+  // overlap its column, and shrink it when no gap is tall enough. (Raising its z-index would hide seat HP.)
+  function placeCenter() {
+    var c = $('center'), tb = $('table');
+    c.style.top = ''; c.style.transform = '';
+    var h = c.offsetHeight, w = c.offsetWidth, H = tb.clientHeight, W = tb.clientWidth, pad = 6;
+    if (!h || !H) return;
+    var want = c.offsetTop, t0 = tb.getBoundingClientRect(), x0 = (W - w) / 2, x1 = (W + w) / 2;
+    var busy = [].map.call(root.querySelectorAll('.sg-seats .sg-seat'), function(s) {
+      var r = s.getBoundingClientRect();
+      return r.right - t0.left > x0 && r.left - t0.left < x1 ? [r.top - t0.top - pad, r.bottom - t0.top + pad] : null;
+    }).filter(Boolean).sort(function(a, b) { return a[0] - b[0]; });
+    var gaps = [], y = pad;
+    busy.forEach(function(b) { if (b[0] > y) gaps.push([y, b[0]]); y = Math.max(y, b[1]); });
+    if (H - pad > y) gaps.push([y, H - pad]);
+    if (!gaps.length) return;
+    var best = null, dist = Infinity, big = gaps[0];
+    gaps.forEach(function(g) {
+      if (g[1] - g[0] > big[1] - big[0]) big = g;
+      if (g[1] - g[0] < h) return;
+      var cy = Math.min(Math.max(want, g[0] + h / 2), g[1] - h / 2);
+      if (Math.abs(cy - want) < dist) { dist = Math.abs(cy - want); best = cy; }
+    });
+    if (best !== null) { if (Math.abs(best - want) > 0.5) c.style.top = best + 'px'; return; }
+    var k = Math.max(0.55, (big[1] - big[0]) / h);
+    c.style.top = (big[0] + big[1]) / 2 + 'px';
+    c.style.transform = 'translate(-50%,-50%) scale(' + k.toFixed(3) + ')';
   }
 
   // Hand: overlap only as much as needed to fit; below ~30% visible width, scroll instead.
@@ -465,14 +522,19 @@
     else { selTargets.push(i); if (selTargets.length > 2) selTargets.shift(); }
     draw();
   };
+  // Tapping a seat (when it is not a target) shows that general's skills, gear and judgement zone
   window._sgInfo = function(i) {
-    var g = P(i).general;
-    openSkill = openSkill === (SKILLS[g] || [])[0] ? '' : (SKILLS[g] || [])[0] || '';
-    showLog = false;
+    openSeat = openSeat === i ? -1 : i;
+    openSkill = ''; openCard = null; showLog = false;
     draw();
   };
-  window._sgSkill = function(k) { openSkill = openSkill === k ? '' : k; showLog = false; draw(); };
-  window._sgLog = function() { showLog = !showLog; openSkill = ''; draw(); };
+  window._sgCardInfo = function(id) {
+    openCard = id !== undefined && cardIndex[id] && !(openCard && openCard.id === id) ? cardIndex[id] : null;
+    openSkill = ''; openSeat = -1; showLog = false;
+    draw();
+  };
+  window._sgSkill = function(k) { openSkill = openSkill === k ? '' : k; openSeat = -1; openCard = null; showLog = false; draw(); };
+  window._sgLog = function() { showLog = !showLog; openSkill = ''; openSeat = -1; openCard = null; draw(); };
   window._sgClear = function() { selCards = []; selTargets = []; draw(); };
   window._sgPlay = function(k) {
     var o = playOptions()[k];
@@ -520,8 +582,10 @@
     '@keyframes sg-beat{50%{transform:scale(1.18)}}' +
     '.hc{font-size:12px;font-weight:700;min-width:22px;height:20px;padding:0 4px;box-sizing:border-box;border-radius:5px;background:#f3e6c8;color:var(--ink);display:flex;align-items:center;justify-content:center;box-shadow:1px 1px 0 #a68b5b}' +
     '.sg-eq{display:flex;flex-wrap:wrap;gap:2px;padding:2px 1px 1px}' +
-    '.sg-eq span{font-size:10px;line-height:15px;padding:0 4px;border-radius:3px;background:rgba(0,0,0,.4);color:#e8d7b0;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}' +
-    '.sg-eq span.jd{background:#7a1f18;color:#ffd9cf;font-family:"Ma Shan Zheng","LXGW WenKai",serif}' +
+    '.sg-eq span{display:flex;align-items:center;gap:3px;font-size:11px;line-height:17px;padding:0 5px 0 3px;border-radius:4px;background:linear-gradient(#5d4526,#3a2a17);border:1px solid rgba(217,180,106,.55);color:#f6e7c1;white-space:nowrap;max-width:100%;overflow:hidden;box-sizing:border-box}' +
+    '.sg-eq span i{font-style:normal;font-size:10px;color:var(--gold2);flex:none}.sg-eq span em{font-style:normal;overflow:hidden;text-overflow:ellipsis}' +
+    '.sg-eq span.eq-plus i,.sg-eq span.eq-minus i{font-weight:800;font-size:9px}' +
+    '.sg-eq span.jd{background:#7a1f18;border-color:#d0574a;color:#ffd9cf;padding:0 5px;font-family:"Ma Shan Zheng","LXGW WenKai",serif}' +
     '.sg-seat.turn{box-shadow:0 0 0 2px var(--gold2),0 0 18px 4px rgba(241,213,149,.55);animation:sg-glow 2s ease-in-out infinite}' +
     '@keyframes sg-glow{50%{box-shadow:0 0 0 2px var(--gold2),0 0 26px 8px rgba(241,213,149,.35)}}' +
     '.sg-seat.asked{box-shadow:0 0 0 2px #ff7a5c,0 0 16px 3px rgba(255,122,92,.5)}' +
@@ -554,6 +618,8 @@
     '.pz-it .who{font-size:11px;color:#f3e6c8;background:rgba(0,0,0,.5);padding:0 6px;border-radius:8px;white-space:nowrap}' +
     '.pz-it:not(:last-child) .sg-card{filter:brightness(.82)}' +
     '.pz-more{align-self:center;margin-right:6px;font-size:12px;color:var(--gold2);background:rgba(0,0,0,.45);border:1px solid rgba(217,180,106,.4);border-radius:10px;padding:2px 8px}' +
+    '.sg-desc{max-width:340px;padding:8px 12px;border-radius:12px;background:rgba(0,0,0,.5);border:1px solid rgba(217,180,106,.35);font-size:13px;line-height:1.55;color:#f3e6c8;text-align:center}' +
+    '.sg-desc b{display:block;font-family:"Ma Shan Zheng","LXGW WenKai",serif;font-weight:400;font-size:18px;color:var(--gold2)}' +
     '.sg-log{display:flex;flex-direction:column;align-items:center;gap:3px}' +
     '.sg-log div{font-size:12px;background:rgba(0,0,0,.4);padding:2px 9px;border-radius:9px;color:#e8d7b0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}' +
     '.sg-log div:nth-child(2){opacity:.7}.sg-log div:nth-child(3){opacity:.45}' +
@@ -570,14 +636,16 @@
     '.sg-pop{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;width:min(320px,80%);max-height:70%;overflow:auto;padding:12px 14px;border-radius:14px;cursor:pointer;' +
       'background:rgba(20,12,8,.94);border:1px solid rgba(217,180,106,.55);box-shadow:0 10px 30px rgba(0,0,0,.55);font-size:13px;line-height:1.6;color:#f3e6c8;animation:sg-in .25s cubic-bezier(.2,.8,.2,1)}' +
     '.sg-pop b{display:block;font-family:"Ma Shan Zheng","LXGW WenKai",serif;font-size:20px;color:var(--gold2);font-weight:400;margin-bottom:4px}' +
+    '.sg-pop b small{font-family:inherit;font-size:12px;color:#cdbb95;margin-left:6px}' +
+    '.sg-pop .sec{margin:8px 0 2px;font-size:11px;color:#cdbb95;letter-spacing:.1em}.sg-pop p{margin:0 0 4px}.sg-pop p em{font-style:normal;color:var(--gold2);font-weight:700;margin-right:6px}' +
     '.sg-pop ul{margin:0;padding:0;list-style:none}.sg-pop li{padding:2px 0;border-bottom:1px solid rgba(217,180,106,.12)}' +
     '@keyframes sg-in{from{opacity:0;transform:translate(-50%,-46%) scale(.96)}}' +
     '.sg-choice{animation-name:sg-in2}@keyframes sg-in2{from{opacity:0;transform:scale(.94)}}' +
     /* cards */
     '.sg-card{--cw:clamp(60px,9.5cqw,84px);all:unset;box-sizing:border-box;position:relative;flex:none;width:var(--cw);height:calc(var(--cw) * 1.4);border-radius:7px;cursor:default;color:var(--ink);' +
       'background:linear-gradient(170deg,#fbf3df,#ecdcb6);box-shadow:0 3px 8px rgba(0,0,0,.45),inset 0 0 0 1px rgba(120,90,50,.35),inset 0 0 0 4px #fbf3df,inset 0 0 0 5px rgba(150,110,60,.35);' +
-      'transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s,opacity .18s,margin .2s}' +
-    '.sg-card[onclick]{cursor:pointer}' +
+      'transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s,opacity .18s}' +
+    '.sg-card[onclick]{cursor:pointer}.sg-card:not(.act){cursor:help}' +
     '.sg-card .r{position:absolute;left:6px;top:5px;font-size:calc(var(--cw) * .17);font-weight:700;line-height:1;text-align:center}.sg-card .r small{display:block;font-size:.85em}' +
     '.sg-card.red .r{color:#c0281c}' +
     '.sg-card .n{position:absolute;left:0;right:0;top:36%;text-align:center;font-family:"Ma Shan Zheng","LXGW WenKai",serif;font-size:calc(var(--cw) * .27);line-height:1.05;padding:0 4px}' +
@@ -631,12 +699,12 @@
       '.sgb{min-width:0;flex:1 1 0;max-width:110px;padding:0 4px;letter-spacing:0;font-size:14px}' +
       '.sg-me{gap:5px}.sg-me .sg-seat{--sw:118px}.sg-skills{flex-direction:column;gap:3px}.sg-skill{width:32px;height:32px;font-size:13px}' +
       '.sg-card{--cw:clamp(54px,15cqw,92px)}' +
-      '.sg-prompt{gap:6px}.sg-prompt .txt{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sg-chip{font-size:11px;padding:0 7px;line-height:22px}.sg-bar{width:48px}' +
+      '.sg-prompt{gap:6px}.sg-prompt .txt{font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.sg-chip{font-size:11px;padding:0 7px;line-height:22px}.sg-bar{width:48px}' +
       '.sg-center{top:50%;max-width:56%}.sg-log,.sg-chip.rd{display:none}.hc{min-width:18px;height:18px;font-size:11px}' +
     '}' +
     '@container sg (orientation:landscape) and (max-height:560px){' +
       '.sg{--sw:clamp(54px,18cqh,96px)}' +
-      '.sg-seats .sg-port{aspect-ratio:1/1}.sg-seats .sg-eq{display:none}' +
+      '.sg-seats .sg-port{aspect-ratio:1/1}.sg-seats .sg-eq span em{display:none}.sg-seats .sg-eq span{padding:0 4px}' +
       '.sg-card{--cw:clamp(46px,14cqh,72px)}' +
       '.sg-me .sg-seat{--sw:clamp(54px,15cqh,80px)}.sg-me .sg-port{aspect-ratio:1/1}' +
       '.sg-dash{padding-top:4px;padding-bottom:6px;gap:4px 8px}.sg-hand{padding-top:10px}' +
@@ -652,8 +720,8 @@
       container.innerHTML = '<div class="sg-root" id="sgRoot"></div>';
       host = container;
       root = document.getElementById('sgRoot');
-      S = null; selCards = []; selTargets = []; lastKey = ''; showLog = false; openSkill = '';
-      prevHp = null; prevAlive = null; lastSig = null; prevHand = null;
+      S = null; selCards = []; selTargets = []; lastKey = ''; showLog = false; openSkill = ''; openSeat = -1; openCard = null; cardIndex = {};
+      prevHp = null; prevAlive = null; lastSig = null; prevHand = null; lastHandHtml = '';
       clearInterval(timer);
       timer = setInterval(tick, 250);
       injectStylesOnce('sg-styles-v2', CSS);

@@ -326,7 +326,8 @@
       winCells = null;
 
       var resize = function() {
-        var avW = window.innerWidth - (window.innerWidth > 600 ? 80 : 32);
+        // Measure the stage column (narrower than the window in the wide three-column layout)
+        var avW = window.boardFit ? window.boardFit(container).w : window.innerWidth - (window.innerWidth > 600 ? 80 : 32);
         var avH = window.innerHeight - 240;
         // 7 columns + some padding; portrait-friendly
         W = Math.min(avW, avH * 1.2, 700);

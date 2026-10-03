@@ -226,7 +226,7 @@
     L.enemyOx = single ? L.myOx : margin + boardW + boardGap;
     var y = oy + boardH + 8;
     var size = SHIP_SIZES[state.placedCount[pi]];
-    if (placing && state.currentPlayer === pi && size) {
+    if (placing && size) {
       var cx = L.myOx + boardW / 2;
       L.btn = { x: cx - 40, y: y, w: 80, h: 28 };
       L.tray = { x: cx - size * c / 2, y: y + 58, w: size * c, h: c, size: size };
@@ -390,7 +390,7 @@
     lay = computeLayout(state, pi);
     ensureHeight(lay.totalH);
     // Placing needs raw pointer events; otherwise let the page scroll through the canvas
-    canvas.style.touchAction = (state.phase === 'placing' && state.currentPlayer === pi) ? 'none' : 'pan-y';
+    canvas.style.touchAction = stillPlacing(state, pi) ? 'none' : 'pan-y';
     var dpr = window.devicePixelRatio || 1;
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
@@ -413,7 +413,7 @@
     }
 
     // Placing: preview on the board, tray with the next ship, drag ghost off-board
-    if (state.phase === 'placing' && state.currentPlayer === pi) {
+    if (stillPlacing(state, pi)) {
       var size = SHIP_SIZES[state.placedCount[pi]];
       if (placePreview) {
         drawPlacingPreview(lay.myOx, oy, placePreview.r, placePreview.c, placeOrientation, size,
@@ -435,7 +435,7 @@
     ctx.textAlign = 'center';
 
     if (state.phase === 'placing') {
-      var isMyTurn = state.currentPlayer === pi;
+      var isMyTurn = stillPlacing(state, pi);
       var placing = getLang() === 'en' ? 'Place your ' : '放置 ';
       var shipType = shipLabel(SHIP_SIZES[state.placedCount[pi]] >= 5 ? 'carrier' :
         SHIP_SIZES[state.placedCount[pi]] >= 4 ? 'battleship' :
@@ -460,6 +460,11 @@
       ctx.font = 'bold 16px "Nunito", sans-serif';
       ctx.fillText(txt3, W / 2, 16);
     }
+  }
+
+  // Both players place their fleets at the same time, so it is "my turn" until my fleet is done
+  function stillPlacing(state, pi) {
+    return state.phase === 'placing' && state.placedCount[pi] < SHIP_SIZES.length;
   }
 
   function canPlacePreview(state, r, c, orientation) {
@@ -517,7 +522,7 @@
       }
       function myPlacing() {
         var st = window._bsState;
-        return !!st && st.phase === 'placing' && st.currentPlayer === window._bsPI;
+        return !!st && stillPlacing(st, window._bsPI);
       }
       function rotate() {
         placeOrientation = placeOrientation === 'h' ? 'v' : 'h';

@@ -3197,3 +3197,17 @@ body.lobby-page {
   .stage-info .si-title { margin-bottom: 2px; }
   .stage-info .si-score b, .stage-info .si-row b { font-size: 16px; }
 }
+/* Phones held upright: the title bar, player bar and turn line used ~185px before the board started,
+   so card tables needed scrolling. Tighten them so the whole table fits on one screen. */
+@media (max-width: 560px) and (orientation: portrait) {
+  .game-page-shell { gap: 6px; }
+  .game-topbar { padding: 0; }
+  .game-title-stack span { display: none; }
+  .game-title-stack strong { font-size: 16px; }
+  .game-topbar .back-btn { padding-top: 4px; padding-bottom: 4px; }
+  .room-stage { gap: 8px; }
+  #gameStage.game-stage-panel { gap: 4px; padding-top: 6px; }
+  #gameStage .player-bar { margin-bottom: 0; padding-bottom: 2px; }
+  #gameStage .player-tag { padding: 4px 6px; }
+  #gameStage .game-status { margin-bottom: 0; min-height: 0; font-size: 14px; line-height: 20px; }
+}

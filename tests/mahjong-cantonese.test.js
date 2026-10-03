@@ -467,3 +467,19 @@ test('switchToCantonese: preserves cumulativeScore/dealerIndex/roundNumber acros
   assert.equal(s.roundNumber, 3, 'roundNumber 不应被 initGame 清空');
   assert.equal(s._variants, 'cantonese');
 });
+
+test('对对和: needs pungs in the concealed hand too, not just the exposed melds', () => {
+  const pung = (k, n) => ({ type: 'pung', tiles: [T(k, n), T(k, n), T(k, n)] });
+  const melds = [pung('wan', 1), pung('tong', 5), pung('tiao', 9)];
+  const win = { type: 'standard' };
+  const names = (h, m) => core.countFanDetailed(h, m, win, core.CANTONESE, {}).details.map((d) => d.name);
+  // concealed chow + pair → not 对对和
+  assert.ok(!names([T('wan', 4), T('wan', 5), T('wan', 6), T('feng', 1), T('feng', 1)], melds).includes('对对和'));
+  // concealed pung + pair → 对对和
+  assert.ok(names([T('wan', 7), T('wan', 7), T('wan', 7), T('feng', 1), T('feng', 1)], melds).includes('对对和'));
+  // fully concealed all-pung hand → 对对和
+  const concealed = [];
+  for (const [k, n] of [['wan', 1], ['wan', 3], ['tong', 5], ['tiao', 9]]) concealed.push(T(k, n), T(k, n), T(k, n));
+  concealed.push(T('feng', 2), T('feng', 2));
+  assert.ok(names(concealed, []).includes('对对和'));
+});

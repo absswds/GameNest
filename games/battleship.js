@@ -266,7 +266,8 @@ exports.playerView = function (state, playerIndex) {
 
   return {
     phase: state.phase,
-    currentPlayer: state.currentPlayer,
+    // Both fleets are placed at the same time, so nobody "has the turn" while placing
+    currentPlayer: state.phase === 'placing' ? -1 : state.currentPlayer,
     winner: state.winner,
     myShips: myShips,
     myShots: state.shots[playerIndex],

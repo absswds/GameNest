@@ -279,6 +279,35 @@ function trySevenPairs(counts) {
   return true;
 }
 
+// Every exposed meld is a pung/kong and the concealed tiles split into pungs + one pair
+// (wildcards, if configured, may fill any gap).
+function isAllPungs(hand, melds, cfg) {
+  if (melds) for (var i = 0; i < melds.length; i++) {
+    if (melds[i].type !== 'pung' && melds[i].type !== 'kong') return false;
+  }
+  var wildcardDef = cfg && cfg.wildcard;
+  var wild = 0, counts = {};
+  for (var j = 0; j < hand.length; j++) {
+    var t = hand[j];
+    if (wildcardDef && t.k === wildcardDef.k && t.n === wildcardDef.n) { wild++; continue; }
+    counts[t.k + ':' + t.n] = (counts[t.k + ':' + t.n] || 0) + 1;
+  }
+  var keys = Object.keys(counts);
+  var fill = 0; // wildcards needed to turn every group into a pung
+  for (var k = 0; k < keys.length; k++) {
+    if (counts[keys[k]] > 3) return false;
+    fill += 3 - counts[keys[k]];
+  }
+  // The pair is one group short of a pung (saves one wildcard) or two spare wildcards
+  var options = keys.length ? [fill - 1] : [];
+  options.push(fill + 2);
+  for (var o = 0; o < options.length; o++) {
+    var left = wild - options[o];
+    if (left >= 0 && left % 3 === 0) return true;
+  }
+  return false;
+}
+
 // ---- countFan: basic scoring ----
 
 function countFan(hand, melds, winInfo, cfg) {
@@ -309,13 +338,9 @@ function countFanDetailed(hand, melds, winInfo, cfg, options) {
   if (winInfo && winInfo.type === 'qidui') {
     details.push({ name: '七对', fan: cfg.honours ? 2 : 4 });
   }
-  // 对对和 (all pungs/kongs, no chows) — must verify every meld is a pung or kong
-  if (winInfo && winInfo.type === 'standard' && melds && melds.length >= 3) {
-    var allPung = true;
-    for (var mp = 0; mp < melds.length; mp++) {
-      if (melds[mp].type !== 'pung' && melds[mp].type !== 'kong') { allPung = false; break; }
-    }
-    if (allPung) details.push({ name: '对对和', fan: 2 });
+  // 对对和 (all pungs/kongs, no chows) — exposed melds AND the concealed tiles
+  if (winInfo && winInfo.type === 'standard' && isAllPungs(hand, melds, cfg)) {
+    details.push({ name: '对对和', fan: 2 });
   }
   // 断幺九 (no terminals or honours) — check concealed hand AND exposed meld tiles
   var hasTerminal = false;

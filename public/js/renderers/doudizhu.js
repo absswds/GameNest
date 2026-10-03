@@ -171,10 +171,10 @@
         var barColor = pct > 0.3 ? '#5a9e6f' : (pct > 0.15 ? '#e67e22' : '#e74c3c');
         var timeHtml = '<div style="width:100%;max-width:200px;">' +
           '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted,#999);margin-bottom:2px;">' +
-          '<span>' + _t('ddz_time_left') + '</span><span>' + Math.ceil(pct * s.playTimeLimit) + 's</span>' +
+          '<span>' + _t('ddz_time_left') + '</span><span id="ddzTimeTxt">' + Math.ceil(pct * s.playTimeLimit) + 's</span>' +
           '</div>' +
           '<div style="height:6px;background:#eee;border-radius:3px;overflow:hidden;">' +
-          '<div style="height:100%;width:' + (pct * 100) + '%;background:' + barColor + ';border-radius:3px;transition:width 0.3s;"></div>' +
+          '<div id="ddzTimeBar" style="height:100%;width:' + (pct * 100) + '%;background:' + barColor + ';border-radius:3px;transition:width 0.3s;"></div>' +
           '</div>' +
           '</div>';
         parts.push(timeHtml);
@@ -243,6 +243,22 @@
       }
 
       el.innerHTML = parts.length > 0 ? parts.join('<div style="height:4px;"></div>') : '';
+
+      // 倒计时实时刷新：只更新文字和进度条，重渲染时替换旧定时器
+      if (window._ddzTimer) { clearInterval(window._ddzTimer); window._ddzTimer = null; }
+      if (s.playTimeLimit > 0 && s.phase === 'playing' && s.currentTurnDeadline) {
+        var total = s.playTimeLimit * 1000, deadline = s.currentTurnDeadline;
+        var tick = function() {
+          var txt = document.getElementById('ddzTimeTxt'), bar = document.getElementById('ddzTimeBar');
+          if (!txt || !bar) { clearInterval(window._ddzTimer); window._ddzTimer = null; return; }
+          var left = Math.max(0, Math.min(1, (deadline - Date.now()) / total));
+          txt.textContent = Math.ceil(left * s.playTimeLimit) + 's';
+          bar.style.width = (left * 100) + '%';
+          bar.style.background = left > 0.3 ? '#5a9e6f' : (left > 0.15 ? '#e67e22' : '#e74c3c');
+          if (left <= 0) { clearInterval(window._ddzTimer); window._ddzTimer = null; }
+        };
+        window._ddzTimer = setInterval(tick, 250);
+      }
     },
 
     renderHand: function(s, selfIdx, cp) {

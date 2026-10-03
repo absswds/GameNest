@@ -342,9 +342,11 @@ exports.handleMove = function(data, state, playerIndex) {
         state.passSubmissions = {};
         // Pass direction: left(0) → right(1) → across(2) → none(3) → left(0) ...
         var dirs = ['left', 'right', 'across', 'none'];
-        state.passDirection = dirs[state.passRound % 4];
         state.passRound++;
+        state.passDirection = dirs[state.passRound % 4];
         dealCards(state);
+        // No-pass round: nobody has a pass to submit, so go straight to play (2♣ holder leads)
+        if (state.passDirection === 'none') state.phase = 'playing';
       }
     } else {
       state.currentPlayer = winner;
