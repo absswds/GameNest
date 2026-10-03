@@ -603,6 +603,7 @@
     'cat_internet': 'Internet Buzzwords',    // ---- Drawguess ----
     'dg_eraser': 'Eraser',
     'dg_clear': 'Clear',
+    'dg_undo': 'Undo',
     'dg_no_time_limit': 'No time limit',
     'dg_time_up': 'Time\'s up!',
     'dg_remaining': 'Remaining ',

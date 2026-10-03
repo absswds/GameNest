@@ -55,6 +55,7 @@ Point the client at `http://127.0.0.1:3333/mcp`. It is stateless, has **no authe
 `list_games`, `get_rules(game)`, `create_room(game, name?)`, `join_room(roomId, name?)`, `add_bot`, `remove_bot(seat)`,
 `set_option(key, value)`, `ready`, `start_game`, `get_state`, `wait_for_turn(timeoutSec?)`, `make_move(move, expectSeq?)`,
 `suggest_move`, `restart`, `next_round`, `return_to_room`, `send_message(type, data)`（换座/踢人/头像/改名）, `leave_room`.
+画我猜专用：`get_canvas`（返回画布 PNG 图片，需客户端支持图片返回）、`draw(svg)`（画家用 SVG 作画，支持 line/rect/circle/ellipse/polyline/polygon/path，不支持 transform 和填充）、`undo_stroke(count?)`、`clear_canvas`（画错了撤销或清空，所有人同步看到）。
 
 典型流程 / Typical flow: `create_room` -> `add_bot` 或让真人用房间号加入 -> `ready` -> `start_game` ->
 循环 `wait_for_turn` -> `get_rules`/`suggest_move` -> `make_move` -> 直到 `gameOver`。

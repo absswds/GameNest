@@ -266,11 +266,25 @@
     eTb.onclick = function () { isEraser = true; };
     tb.appendChild(eTb);
 
+    // Undo
+    var undoBtn = document.createElement('button');
+    undoBtn.textContent = _t('dg_undo');
+    undoBtn.style.cssText = 'padding:4px 8px;border-radius:4px;border:1px solid #ccc;background:#f8f9fa;cursor:pointer;font-size:12px;';
+    undoBtn.onclick = function () {
+      if (!localStrokes.length) return;
+      localStrokes.pop(); redrawCanvas();
+      if (state && state.mode === 'stage') wsSend({ type: 'stage_undo' });
+    };
+    tb.appendChild(undoBtn);
+
     // Clear
     var clrBtn = document.createElement('button');
     clrBtn.textContent = _t('dg_clear');
     clrBtn.style.cssText = 'padding:4px 8px;border-radius:4px;border:1px solid #e74c3c;background:#fff5f5;color:#e74c3c;cursor:pointer;font-size:12px;';
-    clrBtn.onclick = function () { localStrokes = []; redrawCanvas(); };
+    clrBtn.onclick = function () {
+      localStrokes = []; redrawCanvas();
+      if (state && state.mode === 'stage') wsSend({ type: 'stage_clear' });
+    };
     tb.appendChild(clrBtn);
 
     return tb;

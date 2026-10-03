@@ -1459,7 +1459,7 @@ wss.on('connection', (ws) => {
       }
 
       // drawguess: reset the step timer after every successful move (updates stepDeadline before broadcast)
-      const isStageLiveAction = currentRoom.game === 'drawguess' && (data.type === 'stage_stroke' || data.type === 'stage_guess') && currentRoom.state.phase === 'playing'; // 猜对结束本轮则必须重排（round_result 5 秒定时）
+      const isStageLiveAction = currentRoom.game === 'drawguess' && (data.type === 'stage_stroke' || data.type === 'stage_guess' || data.type === 'stage_clear' || data.type === 'stage_undo') && currentRoom.state.phase === 'playing'; // 猜对结束本轮则必须重排（round_result 5 秒定时）
       if (currentRoom.game === 'drawguess' && !isStageLiveAction) scheduleDrawguessTimer(currentRoom);
 
       // Mahjong: settle the round before broadcasting the 'over' game_state so the

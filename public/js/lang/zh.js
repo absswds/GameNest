@@ -603,6 +603,7 @@
     'cat_internet': '网络热词',    // ---- Drawguess ----
     'dg_eraser': '橡皮',
     'dg_clear': '清空',
+    'dg_undo': '撤销',
     'dg_no_time_limit': '不限时',
     'dg_time_up': '时间到！',
     'dg_remaining': '剩余 ',

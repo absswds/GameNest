@@ -211,6 +211,12 @@ exports.handleMove = (data, state, playerIndex) => {
         state.strokes.push(data.stroke);
         return null;
       }
+      if (data.type === 'stage_clear' || data.type === 'stage_undo') {
+        if (playerIndex !== state.drawerIndex) return 'dg_cannot_draw_now';
+        if (data.type === 'stage_clear') state.strokes = [];
+        else state.strokes.splice(Math.max(0, state.strokes.length - Math.min(60, Math.max(1, parseInt(data.count, 10) || 1))));
+        return null;
+      }
       if (data.type === 'stage_guess') {
         if (playerIndex === state.drawerIndex || state.correct[playerIndex]) return 'dg_cannot_repeat_guess';
         if (normalizeWord(data.text) !== normalizeWord(state.word)) return 'dg_wrong_try_again';

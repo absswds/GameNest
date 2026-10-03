@@ -9,6 +9,7 @@ const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
 const { z } = require('zod');
 const guides = require('./move-guides');
+const { svgToStrokes, renderPng } = require('./draw');
 
 const ROOT = path.resolve(__dirname, '..');
 const URL_BASE = process.env.GAMENEST_URL || 'ws://localhost:3000';
@@ -251,6 +252,49 @@ tool('make_move', 'Send a game move object (see get_rules). Optional expectSeq (
   const a = actorInfo();
   return Object.assign({}, r, { seq: S.seq, isMyTurn: a.isMyTurn, gameOver: a.over });
 });
+
+// ---------- drawguess: see and draw the canvas ----------
+const canvasStrokes = () => { const st = S.state; return (st && (st.strokes || (st.myTask && st.myTask.strokes))) || []; };
+server.registerTool('get_canvas', {
+  description: 'drawguess only: the current drawing as a PNG image (280x280 coordinates, shown at 2x) plus stroke count. Use it to look at the picture before guessing or to check my own drawing. 查看画布。',
+}, async () => {
+  try {
+    if (S.game !== 'drawguess') throw new Error('get_canvas only works in drawguess');
+    const strokes = canvasStrokes();
+    return { content: [
+      { type: 'image', data: renderPng(strokes, 2).toString('base64'), mimeType: 'image/png' },
+      { type: 'text', text: JSON.stringify({ strokes: strokes.length, phase: S.state && S.state.phase }) },
+    ] };
+  } catch (e) { return { isError: true, content: [{ type: 'text', text: String((e && e.message) || e) }] }; }
+});
+
+tool('draw', 'drawguess, drawer only: draw an SVG on the canvas. Supported: line rect circle ellipse polyline polygon path (M L H V C S Q T A Z). Coordinates 0-280 (or set viewBox). Each element carries its own stroke="#color" and stroke-width; no transform, no fills (a fill-only shape is outlined). Fix mistakes with undo_stroke / clear_canvas; check with get_canvas. 画画：传入 SVG。', {
+  svg: z.string().max(20000),
+}, async ({ svg }) => {
+  needRoom();
+  const st = S.state;
+  if (S.game !== 'drawguess' || !st || !st.myTask || !st.myTask.canDraw) throw new Error('not the drawer in a playing drawguess round');
+  const strokes = svgToStrokes(svg);
+  if (strokes.length > 60) throw new Error('too many strokes (' + strokes.length + '), max 60 per call');
+  let sent = 0;
+  for (const stroke of strokes) {
+    const r = await sendAndWait('game_move', { type: 'stage_stroke', stroke }, null, 1000);
+    if (!r.ok) return { ok: false, strokesSent: sent, error: r.error };
+    sent++;
+  }
+  return { ok: true, strokesSent: sent, hint: 'call get_canvas to check the result' };
+});
+
+const drawerMove = async (move) => {
+  needRoom();
+  const st = S.state;
+  if (S.game !== 'drawguess' || !st || !st.myTask || !st.myTask.canDraw) throw new Error('not the drawer in a playing drawguess round');
+  const r = await sendAndWait('game_move', move, null, 1500);
+  return Object.assign({}, r, { strokesLeft: canvasStrokes().length });
+};
+tool('undo_stroke', 'drawguess, drawer only: remove the last count strokes (default 1) so everyone sees the fix. 撤销最近几笔。', { count: z.number().int().min(1).max(60).optional() },
+  async ({ count }) => drawerMove({ type: 'stage_undo', count: count || 1 }));
+tool('clear_canvas', 'drawguess, drawer only: wipe the whole canvas. 清空画布。', {}, async () => drawerMove({ type: 'stage_clear' }));
 
 // Some games send a bespoke per-seat view; rebuild the shape their bot reads, with hidden cards left unknown.
 // The bot only ever sees what this seat can see, so suggestions never peek at hidden info.
