@@ -91,10 +91,10 @@
         { h: '游戏目标', p: '最先出完手中所有牌。出完时喊一声"拉密！"。' },
         { h: '牌组', p: '106张牌：4种颜色（黑蓝红橙）× 数字1-13 各2张 + 2张百搭牌（★）。每人发14张。' },
         { h: '合法牌组', p: '①顺组：同颜色、连续数字，至少3张（如 🔴3-4-5）。②群组：不同颜色、相同数字，至少3张（如 🔴7-🔵7-🟠7）。' },
-        { h: '破冰规则', p: '首次出牌的手牌点数需 ≥ 30（百搭牌按 30 分计）：直接出牌时，第一组牌自己就要 ≥ 30 分；通过「重组牌桌」出牌时，用掉的所有手牌合计 ≥ 30 分即可。破冰后才能接牌或重组。可在设置中关闭此规则。' },
+        { h: '破冰规则', p: '首次出牌的手牌点数需 ≥ 30：本回合从手里打出的所有牌组合计 ≥ 30 分即可（百搭牌按它代替的那张牌计分）。回合结束时若仍不足 30，打出的牌会收回手中并改为摸 1 张。破冰后才能接牌或重组。可在设置中关闭此规则。' },
         { h: '破冰后', p: '每回合可出任意多张牌：①打出新的顺组或群组。②在桌面已有牌组上接牌。③点"🔀重组牌桌"进入操作台拿桌面牌重组。无法出牌时摸1张并结束回合。' },
         { h: '重组牌桌', p: '操作台里桌面所有牌组+你的手牌会分格摊开。点牌选中→点目标牌组放入，可拆开、合并、新建牌组，自由拿用桌面上的牌。要求：①每个牌组都合法（绿框）②至少用掉1张自己的手牌③桌面原有的牌不能丢。完成点"提交"，不满意点"取消"还原。' },
-        { h: '百搭牌', p: '可代替任意牌使用。破冰计分和僵局结算时，每张百搭牌按 30 分计。' },
+        { h: '百搭牌', p: '可代替任意牌使用。破冰计分时按它代替的那张牌计分；僵局结算时每张百搭牌按 30 分计。' },
         { h: '牌堆摸完', p: '牌堆摸空后，如果所有人轮流都无法出牌（只能过），本局结束：手牌点数合计最少的人获胜（数字牌按数字计，百搭按 30 分），点数相同则平局。' },
       ]
     },
@@ -112,8 +112,8 @@
     minesweeper: {
       sections: [
         { h: '目标', p: '所有人面对同一张 10×10 的雷区，共 15 颗雷、85 个安全格。谁先翻开全部 85 个安全格谁赢；也可以靠对手踩雷获胜。' },
-        { h: '同时进行', p: '没有回合，大家同时操作，每人有自己独立的棋盘，互相看得到进度但互不影响。雷的位置对所有人相同，别人踩到的雷你也可以参考。' },
-        { h: '翻格与数字', p: '翻开一格会显示周围 8 格的雷数。数字为 0 的格子会自动向四周连锁展开。整局第一次翻格（不论是谁）一定不是雷，若本来是雷会被挪到别处。注意：只保护全局第一下，之后每个人的第一下仍可能踩雷。' },
+        { h: '同时进行', p: '没有回合，大家同时操作，每人有自己独立的棋盘，互相看得到进度但互不影响。每人的雷区是各自独立的一份，开局布局相同，但会因各自的第一下而不同，别人踩到的位置不一定对你有参考价值。' },
+        { h: '翻格与数字', p: '翻开一格会显示周围 8 格的雷数。数字为 0 的格子会自动向四周连锁展开。每位玩家自己的第一次翻格一定不是雷，若本来是雷会在你的棋盘上被挪到别处。' },
         { h: '插旗', p: '对可疑的格子插旗做标记，再点一次取消。旗子数量不限，只是个人记号，不会判断对错；插了旗的格子不能翻开，要先取消旗。已翻开的格子不能插旗。' },
         { h: '淘汰与胜负', p: '踩到雷的人立即出局，棋盘保留供旁观。只剩 1 名存活者时，该玩家立即获胜；所有人同时出局则平局；单人游玩时踩雷即失败。第一个翻完 85 个安全格的人立刻获胜，游戏结束。' },
         { h: '操作', p: '电脑上左键翻开、右键插旗；手机上轻点翻开，长按约 0.5 秒插旗。1 人也可以开局，当作单人扫雷练习。' },
@@ -126,7 +126,7 @@
         { h: '猜数', p: '轮到你时输入一个整数，必须在当前范围内。猜大了，范围上限变成「你猜的数-1」；猜小了，范围下限变成「你猜的数+1」。范围会越来越窄。' },
         { h: '踩雷', p: '猜中炸弹数字就失去 1 条命。如果场上还有不止一人活着，会重新随机藏一个炸弹，范围重置为 1～100，轮数加一。踩雷的人先开始下一轮，若他已出局则交给下一位存活者。' },
         { h: '被迫踩雷', p: '当范围只剩一个数字时，下一位玩家只能猜这个数字，必定踩雷。所以把范围缩到只剩 2 个数时要特别小心。' },
-        { h: '胜负', p: '轮到你时没有时间限制，已淘汰的玩家会被跳过。场上不超过 1 人还有命时游戏结束，最后存活者获胜。单人游玩时第一次踩雷就结束。' },
+        { h: '胜负', p: '轮到你时没有时间限制，已淘汰的玩家会被跳过。场上不超过 1 人还有命时游戏结束，最后存活者获胜。单人游玩同样有 3 条命，命用完游戏结束。' },
         { h: '操作', p: '用屏幕数字键盘（0-9、退格、「猜！」按钮），或直接用键盘输入并按回车，最多 3 位。下方记录最近 10 条事件。支持 1～10 人。' },
         { h: '提示', p: '尽量把范围缩到让下家难以回避的状态：让对方面对 2 个数字的范围，或者自己避免成为那个人。' },
       ]
@@ -172,15 +172,15 @@
         { h: '定缺', p: '开局每人选一门花色（万/筒/条）作为“缺门”，胡牌时手牌里不能再有缺门花色的牌，所以要尽早打光，建议选手里最少的那门。四川麻将只有万、筒、条共 108 张牌，没有风牌、箭牌和花牌，也不能吃牌，只能碰和杠。' },
         { h: '什么叫面子', p: '面子是胡牌的基本组合，有三种：①顺子——同花色连续3张（如2万3万4万、5筒6筒7筒）；②刻子——3张完全相同（如3筒3筒3筒、9条9条9条）；③杠——4张相同（算作一组面子，额外加分）。' },
         { h: '什么叫将', p: '将是一对完全相同的牌（如 5万5万）。普通胡牌必须有且仅有 1 对将。' },
-        { h: '怎么碰牌', p: '别人打出的牌，你手里有 2 张相同 → 可以碰。碰后三张刻子亮在自己面前，然后你必须立即打出一张牌，不摸牌。四川麻将不能吃牌。' },
+        { h: '怎么碰牌', p: '别人打出的牌，你手里有 2 张相同 → 可以碰。碰后三张刻子亮在自己面前，然后你必须立即打出一张牌，不摸牌，这一回合不能自摸胡牌也不能杠。多人同时响应一张弃牌时，按出牌者之后的座次依次表态，优先级为胡 > 杠 > 碰。四川麻将不能吃牌。' },
         { h: '怎么杠牌', p: '三种杠：①暗杠——自己摸齐 4 张相同的牌；②点杠——手里有 3 张，别人打出第 4 张；③补杠——先碰，之后自己摸到第 4 张。杠后从牌尾补一张牌。' },
         { h: '怎么胡牌', p: '两种方式：①自摸——自己摸到的牌凑成胡牌牌型；②点炮（接炮）——别人打出的牌你正好需要。胡牌公式：4组面子 + 1对将 = 胡。或者凑成7个对子（七对）。' },
         { h: '胡牌牌型详解', p: '标准型：4 组面子（顺子或刻子）+ 1 对将。例如：234万+567万+222筒+888条+99条 = 胡。七对：7 个对子（不能有碰/杠；同一张牌的 4 张可算两对），例如 22万+55万+33筒+44筒+66条+88条+99条。' },
         { h: '番种与计分', p: '每次胡牌至少 1 分（平胡）。加番：自摸 +1、断幺九（手牌全无 1 和 9）+1、对对和（碰/杠了 3 组以上且全是刻子）+2、七对 +4、清一色（只有一种花色）+8、海底捞（最后一张牌自摸）+1；每个杠 +2~3；每一“根”（手里有 4 张相同的牌却没杠）+1。番数即得分：自摸时每个还没胡的对手各付该分，点炮时由点炮者一人付。' },
         { h: '刮风下雨（可选）', p: '房主开启「刮风下雨」后，杠牌的分数计入本局结算：点杠由点炮者付 2 分；暗杠每个还没胡牌的对手各付 2 分；补杠每个还没胡牌的对手各付 1 分。开启后，本局结束时的花猪和未听牌赔分也会一并结算。' },
         { h: '血战到底规则', p: '一家胡牌后不结束！已胡的玩家退出，剩余玩家继续打，直到第3家胡或牌摸完。先胡的不一定是赢家——后胡的番数可能更大。策略：有时可以等更大的番再胡。' },
-        { h: '房间选项', p: '房主可开关：血战到底（默认开；关闭则一家胡牌就结束本局）、一炮多响（同一张炮牌可多家同时胡）、刮风下雨（杠牌收分）、流局查花猪、流局查大叫、最后四张自动胡（牌墙只剩 4 张时能胡必须胡）、换三张（开局前每家选 3 张同花色牌与对家交换）。除血战到底外默认都是关闭的。' },
-        { h: '流局（荒庄）', p: '牌墙摸完本局结束，没有人胡牌就是荒庄流局。若房主开启了「流局查花猪」：手里还留着缺门花色的人要赔分给其他人；若开启了「流局查大叫」：没听牌的人要赔分给听牌的人。两项默认关闭。' },
+        { h: '房间选项', p: '房主可开关：血战到底（默认开；关闭则一家胡牌就结束本局）、一炮多响（同一张炮牌可多家同时胡）、刮风下雨（杠牌收分）、流局查花猪、流局查大叫、最后四张自动胡（牌墙剩 4 张及以下时，别人打出的牌你能胡就自动胡牌，不能放过）、换三张（开局前每家选 3 张同花色牌交换：4 人与对家换，3 人按座位顺序轮转，2 人互换）。除血战到底外默认都是关闭的。' },
+        { h: '流局（荒庄）', p: '牌墙摸完本局结束，没有人胡牌就是荒庄流局。花猪和大叫只在牌墙摸完时才查。若房主开启了「流局查花猪」：手里还留着缺门花色的人要赔分给其他人；若开启了「流局查大叫」：没听牌的人要赔分给听牌的人。赔分是零和的（赔出多少，对方就收到多少）。两项默认关闭。' },
         { h: '多局积分制', p: '每局结算后分数累计到总分。胡牌者下局坐庄，荒庄则顺时针换庄。没有固定局数，可以一直开下一局，总分最高者领先。' },
         { h: '获胜策略', p: '①优先打缺——先把缺门花色打完，否则胡不了；②留搭子——保留能组成顺子的牌（如2万3万等1万或4万）；③注意别人碰杠——判断谁在做什么牌型，避免点炮；④血战到底时——先胡不一定赢，有时可以等更大的番；⑤听牌优先——尽早听牌（只差1张就能胡），提高胡牌概率。' },
       ]
@@ -205,11 +205,11 @@
     texas: {
       sections: [
         { h: '目标', p: '德州扑克最多 8 人。每人手握 2 张底牌，与桌面 5 张公共牌组成最大的 5 张牌，赢得底池。本版本每场只打一手牌，打完即结束。' },
-        { h: '筹码与盲注', p: '每位玩家开局有 1000 筹码。庄家位固定为 0 号座位，小盲位于庄家下家，下注 10；大盲再下一位，下注 20。' },
+        { h: '筹码与盲注', p: '每位玩家开局有 1000 筹码。庄家位随机，小盲位于庄家下家，下注 10；大盲再下一位，下注 20。两人单挑时庄家下小盲。' },
         { h: '流程', p: '翻牌前（每人 2 张底牌）→ 翻牌（3 张公共牌）→ 转牌（1 张）→ 河牌（1 张）→ 摊牌。每一轮下注结束后进入下一阶段。翻牌前由大盲下家先行动，两人单挑时由庄家先行动。' },
-        { h: '可用操作', p: '弃牌：放弃本手牌。过牌：当前无需补注时可以不下注。跟注：补到当前最高注。加注：填写本轮的总下注额，至少要比当前最高注多出上一次加注的幅度，本轮还没人下注时至少下 10。全下：把剩下的筹码全部推出。' },
+        { h: '可用操作', p: '弃牌：放弃本手牌。过牌：当前无需补注时可以不下注。跟注：补到当前最高注。加注：填写本轮的总下注额，至少要比当前最高注多出上一次加注的幅度，本轮还没人下注时至少下 20（一个大盲）。短码全下不足最小加注时，之前已行动的人只能跟注或弃牌，不能再加注。全下：把剩下的筹码全部推出。' },
         { h: '牌型大小', p: '从小到大：高牌、一对、两对、三条、顺子、同花、葫芦、四条、同花顺。取 7 张牌（2 张底牌加 5 张公共牌）中最好的 5 张。A-2-3-4-5 是最小的顺子（轮子）。牌型相同时比较踢脚牌。' },
-        { h: '胜负', p: '除一人以外全部弃牌时，剩下的那位直接赢下底池。否则摊牌时牌型最大者赢下底池。若牌型完全相同，本版本不分池，取先出现的最大者全赢。本版本也没有边池，全下玩家和其他人共用一个底池。' },
+        { h: '胜负', p: '除一人以外全部弃牌时，剩下的那位直接赢下底池。否则摊牌时牌型最大者赢下底池。牌型完全相同则平分，多出的筹码给庄家左手边最近的人。有人全下时按投入分成主池和边池，每个池只由投入过它的未弃牌玩家争夺。' },
         { h: '提示', p: '起手强牌（大对子、AK）可以主动加注，弱牌在后位不必勉强跟注。观察对手的下注力度来判断牌力。全下前请确认胜率，因为一局只有一手牌，输光就没有下一手了。' },
       ]
     },
@@ -241,7 +241,7 @@
         { h: '游戏目标', p: '将死对方的将/帅获胜。9×10 的棋盘，红黑各 16 子，红方在下方先手。' },
         { h: '棋子走法', p: '车：横竖直线任意格，不能越子。马：走日字，若马腿（先直走的那一格）有子则被蹩住。炮：不吃子时同车；吃子必须隔一子（炮架），恰好跳过一子吃其后第一个子。相/象：田字对角走两格，田心有子则被塞住，不能过河。仕/士：只在九宫内斜走一格。将/帅：只在九宫内直走一格。兵/卒：过河前只能向前一格，过河后可前进或横走一格，不能后退。' },
         { h: '将军与对面笑', p: '走完后自己的将/帅不能处于被攻击状态，也不能与对方将/帅在同一列且中间无子（对面笑），违反的走法不会被接受。' },
-        { h: '胜负判定', p: '轮到一方时若没有任何合法走法，无论是被将死还是被困毙，都判该方输。出现同一局面三次，或连续 120 步（每方 60 步）无人吃子，则判和棋。' },
+        { h: '胜负判定', p: '轮到一方时若没有任何合法走法，无论是被将死还是被困毙，都判该方输。出现同一局面三次时：一方在整个循环里一直将军（长将）则该方判负；双方都长将或都没有长将则判和棋。连续 120 步（每方 60 步）无人吃子也判和棋。' },
         { h: '比赛设置', p: '房间可设置 1/3/5 局制，多局时每局后交换座位，使先后手（红方）交替。' },
         { h: '操作与提示', p: '点击己方棋子选中，会显示可走位置，再点击目标位置落子。非法走法会被服务器拒绝。开局可先出车、跳马，炮常用于牵制；注意自己的帅是否暴露在炮或车的攻击线上。' },
       ]
@@ -264,7 +264,7 @@
         { h: '普通子走法', p: '普通子只能向前斜走一格到空格，不能后退。吃子也只能向前：跳过相邻的敌子，落在其正后方的空格上，被跳过的敌子被移除。' },
         { h: '王', p: '普通子走到对方底线（红方到最上一行，黑方到最下一行）即升为王。王可向前或向后斜走一格，也可向前后跳吃，但每次只走一格（不是飞王）。' },
         { h: '强制吃子', p: '只要有吃子的走法，就必须吃，不能走普通的步。吃子后若同一棋子落脚处还能继续吃，必须继续连跳；有多个选择时由你选。若普通子在连跳中途刚好升王，则本回合立即结束。' },
-        { h: '胜负判定', p: '一方走完后，对方已无棋子或无任何合法走法，该方获胜。本游戏没有和棋判定。' },
+        { h: '胜负判定', p: '一方走完后，对方已无棋子或无任何合法走法，该方获胜。同一局面（同一方走棋）出现三次，或连续 80 步（每方 40 步）既无吃子也无普通子移动，则判和棋。' },
         { h: '比赛设置', p: '房间可设置 1/3/5 局制，多局时每局后交换座位，使先后手交替。' },
         { h: '操作与提示', p: '点击己方棋子选中，再点击目标格；连跳时继续点击下一个落点。合法目标会被标出。尽量保留后排棋子，延缓对方升王；留意会逼你吃子、反而让对手连跳的交换陷阱。' },
       ]
@@ -317,7 +317,7 @@
         { h: '掷骰移动', p: '轮到你点「掷骰子」，棋子按两枚骰子点数之和前进。经过或停在起点可领 200 元。' },
         { h: '买地与收租', p: '停在无主的地产/车站/电力公司可花钱购买（不买就保持无主，没有拍卖）。停在别人的地产要付租金：地产租金随房子数增加；车站按对方拥有的车站数收 60/120/240/420 元；电力公司按本次骰子点数之和 ×10 收租。' },
         { h: '垄断与建房', p: '集齐同色组的全部地产即垄断：空地租金翻倍，并且在自己的回合里可以花钱盖房（每级造价为地价的一半，最多 5 级 = 旅馆），租金大涨。' },
-        { h: '机会卡', p: '停在「❓机会」格抽一张卡：可能得钱、罚款、向每位玩家收 50 元、前进/后退、回到起点、直接入狱，或获得免租卡（免一次地产租金，用掉即失效，对车站和电力公司无效）。' },
+        { h: '机会卡', p: '停在「❓机会」格抽一张卡：可能得钱、罚款、向每位玩家收 50 元、前进/后退、回到起点、直接入狱，或获得免租卡（免一次租金，用掉即失效，地产、车站和电力公司都适用）。抽到前进/后退卡后，会在新位置继续结算（购买、付租金、交税）。' },
         { h: '税与其他格子', p: '「所得税」格要交 200 元；「探监」和「免费停车」格没有任何效果。' },
         { h: '监狱', p: '踩到「入狱」角格或抽到入狱卡会被关进监狱。在监狱里每回合掷骰：掷出双数立即出狱并按点数前进；连续 3 次没掷出双数，则交 50 元出狱并按第 3 次的点数前进。' },
         { h: '破产', p: '现金一旦为负立即破产出局（没有抵押、出售或交易），名下地产变回无主。最后剩下的玩家获胜。' },
@@ -382,7 +382,7 @@
     },
     hearts: {
       sections: [
-        { h: '目标', p: '红心大战固定 4 人，每人 13 张牌。目标是尽量少拿分：每张红桃 1 分，黑桃 Q 13 分，一轮共 26 分。累计分数最先达到 100 分时游戏结束，总分最低者获胜，并列时座位靠前者优先。' },
+        { h: '目标', p: '红心大战固定 4 人，每人 13 张牌。目标是尽量少拿分：每张红桃 1 分，黑桃 Q 13 分，一轮共 26 分。有人累计达到 100 分时游戏结束，总分最低者获胜；若最低分并列则继续打下一轮。' },
         { h: '传牌', p: '每轮开始先传 3 张牌，方向按轮次循环：向左、向右、对家、不传。不传的那一轮直接开始出牌。如果超时或直接确认，系统会自动选择你手中最大的 3 张传出。' },
         { h: '出牌规则', p: '持有梅花 2 的玩家先出，且第一墩必须出梅花 2。之后每墩必须跟出与首家相同的花色，没有该花色时可以垫任何牌。首墩如果你手中有非得分牌，就不能垫红桃或黑桃 Q。' },
         { h: '红心破冰', p: '红桃被打出之前（破冰），任何人都不能领出红桃，除非手中只剩红桃。注意只有红桃本身会破冰，黑桃 Q 落地不算。' },
@@ -495,10 +495,10 @@
         { h: 'Objective', p: 'Be the first to play all your tiles. Shout "Rummikub!" when you clear your rack.' },
         { h: 'Tile Set', p: '106 tiles: 4 colors (Black, Blue, Red, Orange) × numbers 1-13 (two of each) + 2 Jokers (★). Each player starts with 14 tiles.' },
         { h: 'Legal Sets', p: '① Run: same color, consecutive numbers, at least 3 tiles (e.g. 🔴3-4-5). ② Group: different colors, same number, at least 3 tiles (e.g. 🔴7-🔵7-🟠7).' },
-        { h: 'Initial Meld', p: 'Your first play must be worth at least 30 points from your own tiles (a Joker counts as 30). When laying tiles down directly, the first set alone must reach 30; when using the workbench, all of your own tiles you use add up together. Only after melding can you add to table sets or rearrange them. This rule can be turned off in settings.' },
+        { h: 'Initial Meld', p: 'Your first play must be worth at least 30 points from your own tiles: all sets you lay down from your hand this turn add up together (a Joker counts as the tile it replaces). If your turn ends below 30, the tiles go back to your hand and you draw 1 tile instead. Only after melding can you add to table sets or rearrange them. This rule can be turned off in settings.' },
         { h: 'After Melding', p: 'Each turn you may play any number of tiles: ① lay down new runs or groups. ② Add tiles to existing sets on the table. ③ Click "🔀 Manipulate" to enter the workbench and rearrange table tiles. If you can\'t play, draw 1 tile and end your turn.' },
         { h: 'Manipulation', p: 'In the workbench, all table sets + your hand are spread out in a grid. Click a tile to select it → click a target set to insert it. You can split, merge, and create new sets freely using table tiles. Requirements: ① every set must be legal (green border) ② at least 1 of your own tiles must be used ③ no original table tiles may be lost. Click "Submit" when done, or "Cancel" to revert.' },
-        { h: 'Jokers', p: 'Jokers can substitute for any tile. For the initial meld and for the stalemate count, each Joker is worth 30 points.' },
+        { h: 'Jokers', p: 'Jokers can substitute for any tile. For the initial meld a Joker counts as the tile it replaces; for the stalemate count each Joker is worth 30 points.' },
         { h: 'Empty Pool', p: 'Once the pool is empty, if every player in turn has to pass, the game ends: the player whose remaining tiles add up to the least wins (number tiles count their number, Jokers 30). Equal totals are a draw.' },
       ]
     },
@@ -516,8 +516,8 @@
     minesweeper: {
       sections: [
         { h: 'Goal', p: 'Everyone faces the same 10x10 field with 15 mines and 85 safe cells. Reveal all 85 safe cells first to win, or outlast the rest when they hit mines.' },
-        { h: 'Simultaneous Play', p: 'There are no turns. Everyone plays at the same time on their own independent board, and you can see each other progress. The mine layout is identical for all players.' },
-        { h: 'Revealing', p: 'A revealed cell shows the number of mines among its 8 neighbors. A zero cell opens its neighbors automatically. The very first reveal of the whole game (by anyone) is never a mine; if it was one, the mine is moved. Only that first reveal is protected, so later players can still hit a mine on their first click.' },
+        { h: 'Simultaneous Play', p: 'There are no turns. Everyone plays at the same time on their own independent board, and you can see each other progress. Each player has a private mine layout, so boards never affect each other.' },
+        { h: 'Revealing', p: 'A revealed cell shows the number of mines among its 8 neighbors. A zero cell opens its neighbors automatically. Your own first reveal is never a mine; if it was one, the mine is moved on your board.' },
         { h: 'Flags', p: 'Flag suspicious cells and click again to remove. The number of flags is unlimited and they are only your own notes, never checked. A flagged cell cannot be revealed until unflagged, and a revealed cell cannot be flagged.' },
         { h: 'Elimination and Winning', p: 'Hitting a mine puts you out; your board stays visible for spectating. If exactly one player is still alive, they win at once. If everyone is out at the same time it is a draw. In solo play, hitting a mine is a loss. The first to reveal all 85 safe cells wins immediately.' },
         { h: 'Controls', p: 'On desktop, left click reveals and right click flags. On touch, tap to reveal and long-press for about half a second to flag. One player can start a game for solo practice.' },
@@ -530,7 +530,7 @@
         { h: 'Guessing', p: 'On your turn enter an integer within the current range. A guess above the bomb sets the upper limit to your guess minus 1; a guess below sets the lower limit to your guess plus 1. The range keeps shrinking.' },
         { h: 'Hitting the Bomb', p: 'Hitting the bomb costs 1 life. If more than one player is still alive, a new bomb is picked, the range resets to 1-100 and the round counter goes up. The player who hit it starts the next round, or the next living player if they are out.' },
         { h: 'Forced Hit', p: 'When only one number is left in the range, the next player can only guess that number and must hit the bomb. So be careful about leaving a two-number range for yourself.' },
-        { h: 'Winning', p: 'There is no turn timer, and eliminated players are skipped. The game ends when at most one player still has lives and that player wins. In solo play the first hit ends the game.' },
+        { h: 'Winning', p: 'There is no turn timer, and eliminated players are skipped. The game ends when at most one player still has lives and that player wins. Solo play also has 3 lives, and the game ends when they run out.' },
         { h: 'Controls', p: 'Use the on-screen keypad (0-9, backspace and the Guess button) or type with the keyboard and press Enter, up to 3 digits. A log shows the last 10 events. 1 to 10 players.' },
         { h: 'Tips', p: 'Aim to leave the next player a range where every choice is bad, such as two numbers left, and avoid being that player yourself.' },
       ]
@@ -576,15 +576,15 @@
         { h: 'Void Suit', p: 'At the start everyone picks one suit (万/筒/条) as their "void" suit. You cannot win while any tile of that suit remains in your hand, so discard it early - pick the suit you hold the fewest of. Sichuan Mahjong uses only the 108 suit tiles (no winds, dragons or flowers) and has no chow: you can only pung or kong.' },
         { h: 'What is a Meld', p: 'Three types: ①Sequence (顺子) — 3 consecutive tiles of same suit (e.g. 2万3万4万); ②Triplet (刻子) — 3 identical tiles (e.g. 3筒3筒3筒); ③Kong (杠) — 4 identical tiles (counts as a meld, bonus points).' },
         { h: 'What is a Pair', p: 'The pair ("将") is 2 identical tiles (e.g. 5万 5万). A standard winning hand needs exactly 1 pair.' },
-        { h: 'How to Pung', p: 'When another player discards a tile you hold 2 of, you may pung to make a triplet. After punging you must discard a tile immediately (no draw). There is no chow in Sichuan Mahjong.' },
+        { h: 'How to Pung', p: 'When another player discards a tile you hold 2 of, you may pung to make a triplet. After punging you must discard a tile immediately (no draw), and that turn you cannot win by self-draw or kong. When several players react to one discard they answer in seat order after the discarder, with priority Win > Kong > Pung. There is no chow in Sichuan Mahjong.' },
         { h: 'How to Kong', p: 'Three types: ①Concealed Kong (暗杠) - you hold all 4 yourself; ②Exposed Kong (点杠) - you hold 3 and an opponent discards the 4th; ③Added Kong (补杠) - you already have a pung and draw the 4th. After any kong you draw a replacement tile from the wall tail.' },
         { h: 'How to Win', p: 'Two ways: ①Self-draw (自摸) — complete the hand yourself; ②Discard win (点炮) — claim another player\'s discard. Formula: 4 melds + 1 pair = win. Or 7 pairs (七对).' },
         { h: 'Winning Patterns', p: 'Standard: 4 melds (sequences/triplets) + 1 pair. Example: 234万+567万+222筒+888条+99条 = win. Seven Pairs: 7 pairs with no pung/kong (four identical tiles count as two pairs). Example: 22万+55万+33筒+44筒+66条+88条+99条.' },
         { h: 'Fan & Scoring', p: 'A win is worth at least 1 point (plain win). Bonuses: self-draw +1, all simples (no 1s or 9s) +1, all pungs (3+ melds laid down, all pungs/kongs) +2, seven pairs +4, one suit only +8, last-tile self-draw +1, each kong +2 to +3, each "root" (4 identical tiles in hand that were not konged) +1. Points equal the fan: on a self-draw every opponent who has not won yet pays that amount, on a discard win only the discarder pays.' },
         { h: 'Kong Payments (optional)', p: 'If the host turns on "Wind and Rain", kong points count in the round result: an exposed kong costs the discarder 2 points; a concealed kong costs every opponent who has not won 2 points each; an added kong costs each of them 1 point. With this on, the Flower Pig and Big Call payments at the end of the round also apply.' },
         { h: 'Blood Battle', p: 'After one player wins, they exit. Remaining players continue until 3 win or wall empties. First winner isn\'t necessarily the final winner — later wins can score higher.' },
-        { h: 'Room Options', p: 'The host can toggle: Blood Battle (on by default; off means the round ends at the first win), multiple winners on one discard, Wind and Rain (kongs score points), check Flower Pig at draw, check Big Call at draw, last four tiles auto-win (you must win if you can when 4 tiles remain in the wall), and swap three (before play each player swaps 3 same-suit tiles with the player opposite). Everything except Blood Battle is off by default.' },
-        { h: 'Draw (荒庄)', p: 'The round ends when the wall runs out; if nobody has won it is a draw. If the host enabled "check Flower Pig", players still holding void-suit tiles pay the others; if "check Big Call" is on, players who are not ready (听牌) pay those who are. Both are off by default.' },
+        { h: 'Room Options', p: 'The host can toggle: Blood Battle (on by default; off means the round ends at the first win), multiple winners on one discard, Wind and Rain (kongs score points), check Flower Pig at draw, check Big Call at draw, last four tiles auto-win (when 4 or fewer tiles remain in the wall, a player who can win on a discard wins automatically and cannot pass), and swap three (before play each player swaps 3 same-suit tiles: with the player opposite in a 4-player game, rotating by seat order with 3 players, and swapping with each other with 2). Everything except Blood Battle is off by default.' },
+        { h: 'Draw (荒庄)', p: 'The round ends when the wall runs out; if nobody has won it is a draw. If the host enabled "check Flower Pig", players still holding void-suit tiles pay the others; if "check Big Call" is on, players who are not ready (听牌) pay those who are. These are only checked when the wall runs out, and payments are zero-sum. Both are off by default.' },
         { h: 'Multi-Round Scoring', p: 'After each round the points are added to a running total. The winner becomes the next dealer; after a draw the deal rotates clockwise. There is no fixed number of rounds; keep playing and the highest total leads.' },
         { h: 'Winning Strategy', p: '①Discard your void suit first — you can\'t win with it; ②Keep "搭子" (partial sequences like 2万3万 waiting for 1万/4万); ③Watch opponents\' pungs/kongs — deduce their hand; ④In Blood Battle — sometimes wait for bigger fan; ⑤Prioritize reaching "ready" (听牌) status ASAP.' },
       ]
@@ -609,11 +609,11 @@
     texas: {
       sections: [
         { h: 'Goal', p: 'Texas Hold em supports up to 8 players. Each player has 2 hole cards and makes the best 5-card hand using the 5 community cards to win the pot. This version plays a single hand per game.' },
-        { h: 'Chips and blinds', p: 'Every player starts with 1000 chips. The dealer button is fixed at seat 0. The small blind is the next seat and posts 10, and the big blind is the seat after that and posts 20.' },
+        { h: 'Chips and blinds', p: 'Every player starts with 1000 chips. The dealer button is random. The small blind is the next seat and posts 10, and the big blind is the seat after that and posts 20. Heads-up, the dealer posts the small blind.' },
         { h: 'Flow', p: 'Preflop (2 hole cards each), flop (3 community cards), turn (1), river (1), then showdown. Each betting round ends before the next stage. Preflop, the seat after the big blind acts first, and when heads-up the dealer acts first.' },
-        { h: 'Actions', p: 'Fold gives up the hand. Check passes when there is nothing to call. Call matches the current bet. Raise sets your total bet for the round, which must exceed the current bet by at least the size of the last raise, or be at least 10 when nobody has bet this round. All-in pushes all remaining chips.' },
+        { h: 'Actions', p: 'Fold gives up the hand. Check passes when there is nothing to call. Call matches the current bet. Raise sets your total bet for the round, which must exceed the current bet by at least the size of the last raise, or be at least 20 (one big blind) when nobody has bet this round. A short all-in that is below the minimum raise does not reopen raising for players who already acted: they can only call or fold. All-in pushes all remaining chips.' },
         { h: 'Hand ranking', p: 'From low to high: high card, pair, two pair, three of a kind, straight, flush, full house, four of a kind, straight flush. The best 5 of the 7 available cards counts. A-2-3-4-5 is the lowest straight (the wheel). Equal hands are decided by kickers.' },
-        { h: 'Result', p: 'If everyone else folds, the last player wins the pot. Otherwise the best hand at showdown wins the pot. If hands are exactly equal this version does not split the pot and the first best player takes it all. There are no side pots either, so everyone shares a single pot.' },
+        { h: 'Result', p: 'If everyone else folds, the last player wins the pot. Otherwise the best hand at showdown wins the pot. Exactly equal hands split the pot, with any odd chip going to the player closest left of the dealer. When someone is all-in the chips are split into a main pot and side pots, and each pot is contested only by the non-folded players who put chips into it.' },
         { h: 'Tips', p: 'Raise with strong starting hands such as big pairs or ace-king, and do not chase weak hands from late position. Watch bet sizing to read opponents. Think before going all-in, because there is only one hand per game.' },
       ]
     },
@@ -645,7 +645,7 @@
         { h: 'Objective', p: 'Checkmate the enemy general. The board is 9x10 with 16 pieces per side; red is at the bottom and moves first.' },
         { h: 'Piece Moves', p: 'Chariot: any distance in a straight line, cannot jump. Horse: moves like an L, blocked if the square next to it in its first (straight) step is occupied. Cannon: moves like a chariot, but captures only by jumping over exactly one piece (the screen). Elephant: two squares diagonally, blocked if the middle point is occupied, cannot cross the river. Advisor: one square diagonally inside the palace. General: one square orthogonally inside the palace. Soldier: one step forward before the river; after crossing it can also step sideways, never backward.' },
         { h: 'Check and Flying General', p: 'After your move your own general must not be attacked, and the two generals must not face each other on a file with nothing between them. Moves that break this are not accepted.' },
-        { h: 'Winning', p: 'If the player to move has no legal move, they lose, whether checkmated or stalemated. A position repeated three times, or 120 consecutive plies (60 per side) without a capture, is a draw.' },
+        { h: 'Winning', p: 'If the player to move has no legal move, they lose, whether checkmated or stalemated. When a position occurs three times: a side that gave check throughout the whole cycle (perpetual check) loses; if both sides or neither did, it is a draw. 120 consecutive plies (60 per side) without a capture is also a draw.' },
         { h: 'Match Settings', p: 'The room can use best-of 1, 3 or 5; between games the seats swap so the red (first) side alternates.' },
         { h: 'Controls and Tips', p: 'Click one of your pieces to select it and see where it can go, then click the target. Illegal moves are rejected by the server. Develop chariots and horses early, use cannons to pin pieces, and always check whether your general is exposed to a cannon or chariot.' },
       ]
@@ -668,7 +668,7 @@
         { h: 'Men', p: 'A man moves one square diagonally forward onto an empty square and can never move backward. It also captures only forward: jump over an adjacent enemy piece onto the empty square right behind it, and the jumped piece is removed.' },
         { h: 'Kings', p: 'A man reaching the far row (top for red, bottom for black) becomes a king. A king moves or captures diagonally in all four directions, but only one square at a time (no flying kings).' },
         { h: 'Forced Capture', p: 'If any capture exists you must capture; a plain move is not allowed. After a capture, if the same piece can jump again from where it landed, it must keep jumping; if there are several options you choose. If a man becomes a king in the middle of a jump, its turn ends at once.' },
-        { h: 'Winning', p: 'You win when, after your move, the opponent has no pieces or no legal move. This game has no draw rule.' },
+        { h: 'Winning', p: 'You win when, after your move, the opponent has no pieces or no legal move. A position repeated three times (same side to move), or 80 consecutive plies (40 per side) with no capture and no man move, is a draw.' },
         { h: 'Match Settings', p: 'The room can use best-of 1, 3 or 5; between games the seats swap so the first move alternates.' },
         { h: 'Controls and Tips', p: 'Click one of your pieces, then a target square; during a multi-jump keep clicking the next landing square. Legal targets are marked. Keep your back row as long as possible to delay enemy kings, and watch for trades that force you to capture into a multi-jump.' },
       ]
@@ -721,7 +721,7 @@
         { h: 'Movement', p: 'On your turn, click "Roll Dice" to advance by the total of both dice. Passing or landing on GO collects $200.' },
         { h: 'Buying & Rent', p: 'Land on an unowned property/railroad/utility to buy it (decline and it stays unowned - no auctions). Landing on someone else’s property costs rent: property rent grows with houses; railroads charge $60/$120/$240/$420 for 1/2/3/4 owned; utilities charge 10x the dice total.' },
         { h: 'Monopoly & Building', p: 'Owning every property of a color group is a monopoly: unimproved rent doubles, and on your own turn you can buy houses (each costs half the property price, up to 5 = Hotel) to drastically raise rent.' },
-        { h: 'Chance Cards', p: 'Landing on "❓ Chance" draws a card: gain or lose money, collect $50 from every player, advance or go back, return to GO, go directly to Jail, or keep a Free Rent card that waives one property rent (not railroads or utilities) and is then used up.' },
+        { h: 'Chance Cards', p: 'Landing on "❓ Chance" draws a card: gain or lose money, collect $50 from every player, advance or go back, return to GO, go directly to Jail, or keep a Free Rent card that waives one rent payment (properties, railroads and utilities) and is then used up. A card that moves you resolves the new space (buy, rent, tax).' },
         { h: 'Tax & Other Spaces', p: 'The "Income Tax" space costs $200. "Just Visiting" jail and "Free Parking" do nothing.' },
         { h: 'Jail', p: 'Landing on "Go to Jail" or drawing the Jail card sends you to Jail. Each turn there, roll: doubles frees you and you move by that roll; after 3 failed rolls you pay $50 and move by the third roll.' },
         { h: 'Bankruptcy', p: 'The moment your cash goes negative you are bankrupt and eliminated (there is no mortgaging, selling or trading) and your properties become unowned. Last player standing wins.' },
@@ -786,7 +786,7 @@
     },
     hearts: {
       sections: [
-        { h: 'Goal', p: 'Hearts is for exactly 4 players, 13 cards each. The aim is to take as few points as possible: each heart is 1 point and the queen of spades is 13, for 26 points per round. The game ends when anyone reaches 100 points, and the lowest total wins. Ties go to the lower seat.' },
+        { h: 'Goal', p: 'Hearts is for exactly 4 players, 13 cards each. The aim is to take as few points as possible: each heart is 1 point and the queen of spades is 13, for 26 points per round. The game ends when anyone reaches 100 points, and the lowest total wins. If the lowest total is tied, play continues.' },
         { h: 'Passing', p: 'Each round starts by passing 3 cards. The direction cycles: left, right, across, then no pass. On the no-pass round play starts right away. If you confirm without choosing, the 3 highest cards are passed automatically.' },
         { h: 'Playing tricks', p: 'The holder of the 2 of clubs leads and must play it on the first trick. After that you must follow the suit led, and if you have none you may discard anything. On the first trick you cannot discard a heart or the queen of spades if you hold any other card.' },
         { h: 'Breaking hearts', p: 'Hearts cannot be led until a heart has been played, unless you hold only hearts. Only a heart breaks hearts. Playing the queen of spades does not.' },

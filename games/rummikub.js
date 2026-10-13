@@ -55,6 +55,7 @@ exports.createState = () => ({
   savedHand: null,    // snapshot for cancel
   savedHandIds: null, // IDs of original hand tiles to verify at least one used
   passesSinceLastPlay: 0, // consecutive passes while pool empty — draw detection
+  meldPending: null,  // initial meld in progress this turn: { score, table, hand } snapshot to revert to
 });
 
 function initGame(state, playerCount) {
@@ -78,6 +79,7 @@ function initGame(state, playerCount) {
   state.savedHand = null;
   state.savedHandIds = null;
   state.passesSinceLastPlay = 0;
+  state.meldPending = null;
 }
 exports.initGame = initGame;
 
@@ -141,12 +143,81 @@ function isValidSet(tiles) {
   return false;
 }
 
-// Calculate total score
+// Calculate total score (used for the end-game rack penalty, where a joker costs 30)
 function tileScore(tiles) {
   if (!tiles || !Array.isArray(tiles)) return 0;
   return tiles.reduce((sum, t) => sum + (t.wild ? 30 : t.num), 0);
 }
 
+// Is this valid set a group (same number) rather than a run?
+function isGroupSet(tiles) {
+  const nonWild = tiles.filter(t => !t.wild);
+  return nonWild.length >= 2 && new Set(nonWild.map(t => t.num)).size === 1;
+}
+
+// Lay out a valid run: returns { tiles, values } with jokers in the slot they stand for.
+// The submitted order is kept when it is already a consistent run; otherwise the tiles
+// are sorted and jokers fill the gaps, then extend upward (to 13) and finally downward.
+function arrangeRun(tiles) {
+  const len = tiles.length;
+  const k = tiles.findIndex(t => !t.wild);
+  if (k >= 0) {
+    const start = tiles[k].num - k;
+    if (start >= 1 && start + len - 1 <= 13 &&
+        tiles.every((t, i) => t.wild || t.num === start + i)) {
+      return { tiles: tiles.slice(), values: tiles.map((t, i) => start + i) };
+    }
+  }
+  const real = tiles.filter(t => !t.wild).sort((a, b) => a.num - b.num);
+  const wilds = tiles.filter(t => t.wild);
+  const out = [];
+  const values = [];
+  for (let i = 0; i < real.length; i++) {
+    if (i > 0) {
+      for (let v = real[i - 1].num + 1; v < real[i].num; v++) {
+        out.push(wilds.shift()); values.push(v);
+      }
+    }
+    out.push(real[i]); values.push(real[i].num);
+  }
+  let top = real[real.length - 1].num;
+  while (wilds.length && top < 13) { out.push(wilds.shift()); values.push(++top); }
+  let low = real[0].num;
+  while (wilds.length) { out.unshift(wilds.shift()); values.unshift(--low); }
+  return { tiles: out, values };
+}
+
+// Per-tile point values of a valid set, jokers counting as the tile they replace
+// (official initial-meld rule). Returns { tiles, values } with tiles in display order.
+function setLayout(tiles) {
+  if (isGroupSet(tiles)) {
+    const num = tiles.find(t => !t.wild).num;
+    return { tiles: tiles.slice(), values: tiles.map(() => num) };
+  }
+  return arrangeRun(tiles);
+}
+
+// Initial-meld points of a valid set (jokers count as the tile they replace)
+function meldPoints(tiles) {
+  return setLayout(tiles).values.reduce((a, b) => a + b, 0);
+}
+
+// Draw one tile (or count a stalemate pass) and hand the turn over. Returns true if the game ended.
+function drawAndEnd(state, hand) {
+  if (state.pool.length > 0) {
+    hand.push(state.pool.pop());
+    sortHand(hand);
+    state.passesSinceLastPlay = 0;
+  } else {
+    state.passesSinceLastPlay++;
+    if (state.passesSinceLastPlay >= state.hands.length) {
+      state.winner = lowestRackWinner(state);
+      state.phase = 'over';
+      return true;
+    }
+  }
+  return false;
+}
 // Stalemate (pool empty, nobody can play): lowest total in hand wins, equal totals draw.
 function lowestRackWinner(state) {
   const totals = state.hands.map(tileScore);
@@ -180,11 +251,7 @@ exports.handleMove = (data, state, playerIndex) => {
 
     if (action === 'cancel') {
       // Restore saved snapshot
-      for (let i = 0; i < state.hands.length; i++) {
-        if (i === playerIndex) {
-          state.hands[i] = state.savedHand.slice();
-        }
-      }
+      state.hands[playerIndex] = state.savedHand.slice();
       state.table = state.savedTable.slice();
       state.savedTable = null;
       state.savedHand = null;
@@ -197,18 +264,28 @@ exports.handleMove = (data, state, playerIndex) => {
     if (action === 'submit') {
       if (!groups || !Array.isArray(groups) || groups.length === 0) return 'rk_submit_at_least_one_set';
 
-      // Flatten all submitted tiles
+      // Only tile ids are trusted: map each one to the real tile in the workspace
+      // (table + this player's hand); a tile may appear only once.
+      const real = new Map(state.workspace.map(t => [t.id, t]));
+      const seen = new Set();
       const allTiles = [];
+      const realGroups = [];
       for (const g of groups) {
         if (!Array.isArray(g)) return 'rk_invalid_set';
+        const rg = [];
         for (const t of g) {
-          if (!t || !t.id) return 'rk_invalid_tile';
-          allTiles.push(t);
+          const id = typeof t === 'string' ? t : (t && t.id);
+          const tile = typeof id === 'string' ? real.get(id) : undefined;
+          if (!tile || seen.has(id)) return 'rk_invalid_tile';
+          seen.add(id);
+          rg.push(tile);
+          allTiles.push(tile);
         }
+        realGroups.push(rg);
       }
 
       // Validate each group
-      for (const g of groups) {
+      for (const g of realGroups) {
         if (!isValidSet(g)) return 'rk_illegal_sets';
       }
 
@@ -221,27 +298,29 @@ exports.handleMove = (data, state, playerIndex) => {
       if (!handTileUsed) return 'rk_use_at_least_one_own';
 
       // Every tile originally on the table must be re-formed into a group (none lost)
-      const groupedIds = new Set(allTiles.map(t => t.id));
       for (const set of state.savedTable) {
         for (const t of set) {
-          if (!groupedIds.has(t.id)) return 'rk_all_table_tiles_must_regroup';
+          if (!seen.has(t.id)) return 'rk_all_table_tiles_must_regroup';
         }
       }
 
-      // Check break requirement. Jokers score 30 pts in the initial meld
-      // (official rule: a joker used to break the ice is worth 30).
+      // Lay each set out in display order (jokers in the slot they stand for)
+      const layouts = realGroups.map(setLayout);
+
+      // Check break requirement: the hand tiles played total >= 30. A joker counts as
+      // the tile it stands for (official rule; 30 is only the end-of-game penalty).
       if (!state.hasBroken[playerIndex] && requireBreak) {
         let handScore = 0;
-        for (const t of allTiles) {
-          if (handIds.has(t.id)) handScore += (t.wild ? 30 : t.num);
+        for (const lay of layouts) {
+          lay.tiles.forEach((t, i) => { if (handIds.has(t.id)) handScore += lay.values[i]; });
         }
         if (handScore < 30) return 'rk_need_break_ice';
       }
 
       // Success — update table and hand
-      state.table = groups.map(g => g.slice());
+      state.table = layouts.map(l => l.tiles);
       // Remove used hand tiles from player's hand
-      const usedIds = new Set(allTiles.map(t => t.id));
+      const usedIds = seen;
       state.hands[playerIndex] = state.hands[playerIndex].filter(t => !usedIds.has(t.id));
       sortHand(state.hands[playerIndex]);
 
@@ -272,6 +351,8 @@ exports.handleMove = (data, state, playerIndex) => {
     // Start manipulate mode
     if (action === 'start_manipulate') {
       if (state.table.length === 0) return 'rk_table_empty';
+      // Initial meld must be laid down before touching the table
+      if (state.meldPending) return 'rk_need_break_ice';
       // Save snapshot
       state.savedTable = state.table.map(s => s.slice());
       state.savedHand = hand.slice();
@@ -286,35 +367,38 @@ exports.handleMove = (data, state, playerIndex) => {
       return null;
     }
 
+    // Initial meld not completed (< 30 points) when the turn ends: take the tiles back, draw instead.
+    const endWithoutBreak = () => {
+      const p = state.meldPending;
+      state.meldPending = null;
+      state.table = p.table;
+      state.hands[playerIndex] = p.hand;
+      state.playedThisTurn[playerIndex] = false;
+      if (!drawAndEnd(state, state.hands[playerIndex])) {
+        state.currentPlayer = (state.currentPlayer + 1) % state.hands.length;
+      }
+      return null;
+    };
+
     // End turn without drawing (only if already played)
     if (endTurn && state.playedThisTurn[playerIndex]) {
+      if (state.meldPending) return endWithoutBreak();
       state.playedThisTurn[playerIndex] = false;
       state.currentPlayer = (state.currentPlayer + 1) % state.hands.length;
       return null;
     }
 
     if (pass) {
+      if (state.meldPending) return endWithoutBreak();
       if (state.playedThisTurn[playerIndex]) return 'rk_already_played';
-      if (state.pool.length > 0) {
-        hand.push(state.pool.pop());
-        sortHand(hand);
-        state.passesSinceLastPlay = 0;
-      } else {
-        // Pool empty — increment stalemate counter
-        state.passesSinceLastPlay++;
-        if (state.passesSinceLastPlay >= state.hands.length) {
-          state.winner = lowestRackWinner(state);
-          state.phase = 'over';
-          return null;
-        }
-      }
+      if (drawAndEnd(state, hand)) return null;
       state.playedThisTurn[playerIndex] = false;
       state.currentPlayer = (state.currentPlayer + 1) % state.hands.length;
       return null;
     }
 
     // Play tiles from hand
-    if (tileIds && Array.isArray(tileIds) && tileIds.length > 0) {
+    if (Array.isArray(tileIds) && tileIds.length > 0) {
       // Validate all tiles exist in hand
       const toPlay = [];
       const remaining = [...hand];
@@ -328,56 +412,60 @@ exports.handleMove = (data, state, playerIndex) => {
       if (toPlay.length >= 3) {
         if (!isValidSet(toPlay)) return 'rk_cannot_form_set';
 
-        // Check break requirement
-        if (!state.hasBroken[playerIndex] && requireBreak) {
-          const score = tileScore(toPlay);
-          if (score < 30) return 'rk_need_break_ice';
+        // Initial meld: the sets played this turn together must reach 30 points
+        // (jokers count as the tile they stand for); earlier sets stay pending until then.
+        const needBreak = !state.hasBroken[playerIndex] && requireBreak;
+        const pts = meldPoints(toPlay);
+        if (needBreak && !state.meldPending) {
+          state.meldPending = { score: 0, table: state.table.map(s => s.slice()), hand: hand.slice() };
         }
 
         // Remove from hand
-        for (const id of tileIds) {
-          const idx = hand.findIndex(t => t.id === id);
-          hand.splice(idx, 1);
+        state.hands[playerIndex] = remaining;
+        state.table.push(setLayout(toPlay).tiles);
+        if (state.meldPending) {
+          state.meldPending.score += pts;
+          if (state.meldPending.score >= 30) {
+            state.meldPending = null;
+            state.hasBroken[playerIndex] = true;
+          }
+        } else {
+          state.hasBroken[playerIndex] = true;
         }
-        state.table.push(toPlay);
-        state.hasBroken[playerIndex] = true;
         state.playedThisTurn[playerIndex] = true;
         state.passesSinceLastPlay = 0;
 
-        if (hand.length === 0) {
+        if (remaining.length === 0 && state.hasBroken[playerIndex]) {
           state.winner = playerIndex;
           state.phase = 'over';
-          return null;
         }
         // Player can continue, manipulate, or end turn
         return null;
       }
 
       // Adding to existing table set
-      if (toPlay.length === 1 && targetSet !== undefined && targetSet >= 0 && targetSet < state.table.length) {
+      if (toPlay.length === 1 && Number.isInteger(targetSet) && targetSet >= 0 && targetSet < state.table.length) {
         const tile = toPlay[0];
         const set = state.table[targetSet];
         if (!canAddToSet(tile, set)) return 'rk_cannot_join_set';
 
         if (!state.hasBroken[playerIndex] && requireBreak) return 'rk_need_break_ice';
 
-        const idx = hand.findIndex(t => t.id === tile.id);
-        hand.splice(idx, 1);
+        state.hands[playerIndex] = remaining;
         set.push(tile);
 
-        // Re-sort if run
-        if (new Set(set.filter(t => !t.wild).map(t => t.color)).size === 1) {
-          set.sort((a, b) => a.num - b.num);
+        // Keep a run in order, with jokers in the slot they stand for
+        if (!isGroupSet(set)) {
+          set.splice(0, set.length, ...arrangeRun(set).tiles);
         }
 
         state.hasBroken[playerIndex] = true;
         state.playedThisTurn[playerIndex] = true;
         state.passesSinceLastPlay = 0;
 
-        if (hand.length === 0) {
+        if (remaining.length === 0) {
           state.winner = playerIndex;
           state.phase = 'over';
-          return null;
         }
         return null;
       }
@@ -386,18 +474,9 @@ exports.handleMove = (data, state, playerIndex) => {
     }
 
     // Draw if can't play (no action specified)
-    if (state.pool.length > 0) {
-      hand.push(state.pool.pop());
-      sortHand(hand);
-      state.passesSinceLastPlay = 0;
-    } else {
-      state.passesSinceLastPlay++;
-      if (state.passesSinceLastPlay >= state.hands.length) {
-        state.winner = lowestRackWinner(state);
-        state.phase = 'over';
-        return null;
-      }
-    }
+    if (state.meldPending) return endWithoutBreak();
+    if (state.playedThisTurn[playerIndex]) return 'rk_already_played';
+    if (drawAndEnd(state, hand)) return null;
     state.playedThisTurn[playerIndex] = false;
     state.currentPlayer = (state.currentPlayer + 1) % state.hands.length;
     return null;
@@ -406,8 +485,15 @@ exports.handleMove = (data, state, playerIndex) => {
   return 'g_unknown_action';
 };
 
-// Hide other players' cards (and draw piles) from each client.
-const { maskView } = require('./lib/hidden');
+// Hide other players' cards (and draw piles) from each client. The current player's
+// working copies of the hand (workspace / saved snapshots / pending meld) are hidden too.
+const { maskView, blank } = require('./lib/hidden');
 exports.playerView = function (state, playerIndex) {
-  return maskView(state, playerIndex, { piles: ['pool'] });
+  const view = maskView(state, playerIndex, { piles: ['pool'] });
+  if (view === state || playerIndex === state.currentPlayer) return view;
+  view.workspace = blank(state.workspace);
+  view.savedHand = blank(state.savedHand);
+  view.savedHandIds = blank(state.savedHandIds);
+  view.meldPending = state.meldPending ? { score: state.meldPending.score } : null;
+  return view;
 };

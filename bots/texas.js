@@ -1,6 +1,7 @@
 exports.name = 'texas';
 
 const { botName } = require('./lib/bot-name');
+const texas = require('../games/texas');
 
 function rankVal(rank) {
   return ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'].indexOf(rank);
@@ -32,15 +33,15 @@ function handStrength(holeCards, communityCards) {
   return score;
 }
 
-// A raise the table would reject (short stack, below the minimum raise) becomes a call/check/all-in.
+// A raise the table would reject (short stack, below the minimum raise, betting closed) becomes
+// a call/check/all-in. The rules live in games/texas.js so the bot cannot drift from the server.
 function legalRaise(state, playerIndex, move) {
   if (!move || move.action !== 'raise') return move;
   const chips = state.chips[playerIndex];
-  const currentBet = state.currentBet || 0;
   const bet = state.bets[playerIndex] || 0;
-  const minRaise = state.lastRaise > 0 ? state.lastRaise : currentBet > 0 ? currentBet - bet : 10;
-  if (typeof move.amount === 'number' && move.amount >= currentBet + minRaise && move.amount <= chips) return move;
-  const toCall = currentBet - bet;
+  const amount = Math.min(move.amount, bet + chips); // amount is the street total, not extra chips
+  if (!texas.checkRaise(state, playerIndex, amount)) return { action: 'raise', amount };
+  const toCall = (state.currentBet || 0) - bet;
   if (toCall <= 0) return { action: 'check' };
   return chips <= toCall ? { action: 'all_in' } : { action: 'call' };
 }
@@ -64,11 +65,11 @@ exports.createBot = function(playerIndex) {
       if (toCall <= 0) {
         if (strength >= 220 && chips > 120) {
           const raiseTo = currentBet + Math.max(20, Math.floor(Math.max(pot, 40) * 0.6));
-          return { action: 'raise', amount: Math.min(chips, raiseTo) };
+          return { action: 'raise', amount: Math.min(invested + chips, raiseTo) };
         }
         if (strength >= 170 && chips > 90) {
           const raiseTo = currentBet + Math.max(12, Math.floor(Math.max(pot, 30) * 0.35));
-          return { action: 'raise', amount: Math.min(chips, raiseTo) };
+          return { action: 'raise', amount: Math.min(invested + chips, raiseTo) };
         }
         return { action: 'check' };
       }
@@ -83,7 +84,7 @@ exports.createBot = function(playerIndex) {
       // 10% bluff chance on weak hands — keeps the bot unpredictable
       if (strength < 50 && Math.random() < 0.1 && chips > toCall + 40) {
         const raiseTo = currentBet + Math.max(20, Math.floor(Math.max(pot, 35) * 0.55));
-        return { action: 'raise', amount: Math.min(chips, raiseTo) };
+        return { action: 'raise', amount: Math.min(invested + chips, raiseTo) };
       }
 
       if (toCall > chips * 0.45 && strength < 180) {
@@ -100,12 +101,12 @@ exports.createBot = function(playerIndex) {
 
       if (strength >= 260 && chips > toCall + 40) {
         const raiseTo = currentBet + Math.max(24, Math.floor(Math.max(pot, 50) * 0.7));
-        return { action: 'raise', amount: Math.min(chips, raiseTo) };
+        return { action: 'raise', amount: Math.min(invested + chips, raiseTo) };
       }
 
       if (strength >= 200 && toCall <= Math.max(30, Math.floor(chips * 0.2))) {
         const raiseTo = currentBet + Math.max(18, Math.floor(Math.max(pot, 40) * 0.45));
-        return { action: 'raise', amount: Math.min(chips, raiseTo) };
+        return { action: 'raise', amount: Math.min(invested + chips, raiseTo) };
       }
 
       return { action: 'call' };

@@ -54,7 +54,7 @@ exports.positionKey = positionKey;
 
 // ---- Move Generation ----
 
-function inBounds(r, c) { return r >= 0 && r < ROWS && c >= 0 && c < COLS; }
+function inBounds(r, c) { return Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < ROWS && c >= 0 && c < COLS; }
 
 // Get king position for a side
 function findKing(board, side) {
@@ -79,15 +79,6 @@ function getPieceMoves(board, r, c) {
     const target = board[tr][tc];
     if (target && target.side === side) return; // can't capture own piece
     moves.push({ fromRow: r, fromCol: c, toRow: tr, toCol: tc });
-  }
-
-  function countBetween(dr, dc) {
-    let count = 0;
-    let cr = r + dr, cc = c + dc;
-    while (inBounds(cr, cc) && cr !== dr === cr !== dr) {
-      // just counting pieces between
-    }
-    // Re-implement per caller
   }
 
   switch (type) {
@@ -277,7 +268,40 @@ function getLegalMoves(board, side) {
   return allMoves;
 }
 
+// Legal moves of the single piece at (r,c): same filter as getLegalMoves, one piece only.
+function getLegalMovesFrom(board, r, c) {
+  const piece = board[r][c];
+  if (!piece) return [];
+  const result = [];
+  for (const move of getPieceMoves(board, r, c)) {
+    const captured = makeMove(board, move);
+    if (!isInCheck(board, piece.side) && !kingsAreFacing(board)) result.push(move);
+    undoMove(board, move, captured);
+  }
+  return result;
+}
+
 // ---- Handle Move ----
+
+// Repetition outcome (Asian xiangqi rules): the side that keeps checking through the whole
+// cycle must change its move, so it loses; if both sides keep checking, or neither does, draw.
+function repetitionResult(plies, key) {
+  const first = plies.findIndex(p => p.key === key);
+  const cycle = plies.slice(first + 1);
+  const perpetual = [true, true];
+  const moved = [false, false];
+  for (const p of cycle) {
+    if (p.mover === null) continue;
+    moved[p.mover] = true;
+    if (!p.check) perpetual[p.mover] = false;
+  }
+  const red = moved[RED] && perpetual[RED], black = moved[BLACK] && perpetual[BLACK];
+  if (red && !black) return BLACK;
+  if (black && !red) return RED;
+  return -1;
+}
+
+exports.repetitionResult = repetitionResult;
 
 exports.handleMove = (data, state, playerIndex) => {
   if (state.winner !== null) return 'g_game_over';
@@ -299,11 +323,19 @@ exports.handleMove = (data, state, playerIndex) => {
   if (target && target.side === playerIndex) return 'xq_cannot_take_own';
 
   // Validate move against legal moves
-  const legalMoves = getLegalMoves(state.board, playerIndex);
+  const legalMoves = getLegalMovesFrom(state.board, fr, fc);
   const found = legalMoves.find(m =>
     m.fromRow === fr && m.fromCol === fc && m.toRow === tr && m.toCol === tc
   );
   if (!found) return 'xq_illegal_move';
+
+  // The opening position counts as the first occurrence (otherwise returning to it needs 4 visits).
+  if (!state._plies) {
+    state._seen = state._seen || {};
+    const k0 = positionKey(state.board, playerIndex);
+    state._seen[k0] = (state._seen[k0] || 0) + 1;
+    state._plies = [{ key: k0, mover: null, check: false }];
+  }
 
   // Execute
   const captured = makeMove(state.board, found);
@@ -321,15 +353,14 @@ exports.handleMove = (data, state, playerIndex) => {
 
   // Check if enemy has no legal moves → checkmate or stalemate
   const enemyMoves = getLegalMoves(state.board, enemy);
+  const gaveCheck = isInCheck(state.board, enemy);
+  state._plies.push({ key, mover: playerIndex, check: gaveCheck });
   if (enemyMoves.length === 0) {
-    if (isInCheck(state.board, enemy)) {
-      // Checkmate — current player wins
-      state.winner = playerIndex;
-    } else {
-      // Stalemate — stalemated player loses in Chinese chess
-      state.winner = playerIndex;
-    }
-  } else if (state._seen[key] >= 3 || state._quiet >= QUIET_LIMIT) {
+    // Checkmate and stalemate both lose for the side to move in Chinese chess
+    state.winner = playerIndex;
+  } else if (state._seen[key] >= 3) {
+    state.winner = repetitionResult(state._plies, key);
+  } else if (state._quiet >= QUIET_LIMIT) {
     state.winner = -1;
   }
 

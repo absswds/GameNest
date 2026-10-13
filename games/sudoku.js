@@ -64,6 +64,14 @@ exports.initGame = (state, playerCount) => {
 
 // Per-player view. NEVER includes the solution.
 exports.playerView = (state, playerIndex) => {
+  // Before initGame (join while waiting) or for a seat that has no board: nothing to show yet.
+  if (!state.given || !state.given.length || !state.filled[playerIndex]) {
+    return {
+      board: [], doneCount: 0, blanks: state.blanks, winner: state.winner,
+      currentPlayer: state.currentPlayer, lives: MAX_LIVES, hints: MAX_HINTS,
+      eliminated: false, startTime: state.startTime,
+    };
+  }
   const board = [];
   for (let r = 0; r < 9; r++) {
     board[r] = [];
@@ -89,6 +97,7 @@ exports.playerView = (state, playerIndex) => {
 
 exports.handleMove = (data, state, playerIndex) => {
   if (state.winner !== null) return 'g_game_over';
+  if (!state.filled[playerIndex]) return 'su_invalid';
   if (state.eliminated[playerIndex]) return 'su_eliminated';
 
   // ---- HINT ----
@@ -110,17 +119,20 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   // ---- FILL ----
+  if (!data) return 'su_invalid';
   const row = data.row, col = data.col, val = data.val;
 
-  if (row < 0 || row > 8 || col < 0 || col > 8) return 'su_invalid';
+  if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || row > 8 || col < 0 || col > 8) return 'su_invalid';
   if (state.given[row][col]) return 'su_illegal_cell';
-  if (typeof val !== 'number' || val < 1 || val > 9 || !isFinite(val)) return 'su_invalid';
+  if (!Number.isInteger(val) || val < 1 || val > 9) return 'su_invalid';
   if (state.filled[playerIndex][row][col]) return null; // already correct, ignore
 
   if (state.solution[row][col] !== val) {
     // Wrong guess: lose a life
     state.lives[playerIndex]--;
+    let ended = false;
     if (state.lives[playerIndex] <= 0) {
+      ended = true;
       state.eliminated[playerIndex] = true;
       // Check if game is over (only one player left)
       const remaining = [];
@@ -129,7 +141,9 @@ exports.handleMove = (data, state, playerIndex) => {
       if (remaining.length === 1) state.winner = remaining[0];
       else if (remaining.length === 0) state.winner = -1; // all dead: draw
     }
-    return 'su_wrong';
+    // A fatal mistake changed the whole game state (elimination / result): report success so the
+    // server broadcasts it right away instead of only sending this player an error.
+    return ended ? null : 'su_wrong';
   }
 
   state.filled[playerIndex][row][col] = true;

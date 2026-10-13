@@ -139,11 +139,26 @@ test('getCurrentActor: cantonese returns currentPlayer during play', () => {
 
 // ---- setCurrentActor routing (used by server.skipDisconnectedTurn) ----
 
-test('setCurrentActor: sichuan advances currentPlayer', () => {
+test('setCurrentActor: sichuan makes the absent seat play a minimal move (void -> discard)', () => {
   const s = game.createState();
   game.initGame(s, 4);
-  game.setCurrentActor(s, 2);
-  assert.equal(s.currentPlayer, 2);
+  // void phase: the missing seat picks a suit, the turn moves on (no actor is skipped)
+  for (let i = 0; i < 4; i++) {
+    assert.equal(game.getCurrentActor(s), i);
+    game.setCurrentActor(s, (i + 1) % 4);
+    assert.ok(s.voidSuit[i], 'seat ' + i + ' got a void suit');
+  }
+  assert.equal(s.phase, 'play');
+  assert.equal(s.currentPlayer, 0);
+  // play phase: the actor discards (no draw is skipped, hand size stays consistent)
+  game.setCurrentActor(s, 1);
+  assert.equal(s.discards[0].length, 1);
+  assert.equal(s.hands[0].length, 13);
+  if (s.phase === 'claim') {
+    const actor = game.getCurrentActor(s);
+    game.setCurrentActor(s, 0);
+    assert.ok(!(s.phase === 'claim' && game.getCurrentActor(s) === actor), 'claim response passed');
+  }
 });
 
 test('setCurrentActor: cantonese is a no-op (matches standalone Cantonese)', () => {

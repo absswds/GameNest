@@ -588,7 +588,9 @@
       wrap.appendChild(canvas);
       ctx = canvas.getContext('2d');
       computeSize();
-      window.addEventListener('resize', function () { computeSize(); if (displayState) drawFrame(displayState); });
+      if (window._monoResize) window.removeEventListener('resize', window._monoResize);
+      window._monoResize = function () { computeSize(); if (displayState) drawFrame(displayState); };
+      window.addEventListener('resize', window._monoResize);
       var panel = document.createElement('div');
       panel.id = 'mono-panel';
       panel.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;max-width:' + W + 'px;justify-content:center;';

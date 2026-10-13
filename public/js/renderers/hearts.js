@@ -242,7 +242,7 @@
             isLegal = true;
           }
         }
-        if (s.trickCount === 0 && s.trickLeader === myIdx) {
+        if (s.trickCount === 0 && (!s.currentTrick || s.currentTrick.length === 0)) {
           var has2c = hand.some(function(c) { return c.id === '2c'; });
           if (has2c && card.id !== '2c') isLegal = false;
         }

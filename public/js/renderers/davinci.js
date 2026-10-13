@@ -26,7 +26,8 @@
 '.dv-tile-white{background:linear-gradient(145deg,#fafafa,#e8e8e8);color:#333;border:1px solid #ddd;box-shadow:0 1px 3px rgba(0,0,0,.08);}' +
 '.dv-tile-black{background:linear-gradient(145deg,#444,#222);color:#fff;border:1px solid #555;box-shadow:0 1px 3px rgba(0,0,0,.25);}' +
 '.dv-tile-hidden{background:linear-gradient(145deg,#666,#444);color:#fff;border:1px solid #777;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.2);}' +
-'.dv-tile-hidden:hover,.dv-tile-hidden:active{background:linear-gradient(145deg,#777,#555);}' +
+'.dv-tile-hidden:active{background:linear-gradient(145deg,#777,#555);}' +
+'@media (hover:hover){.dv-tile-hidden:hover{background:linear-gradient(145deg,#777,#555);}}' +
 '.dv-tile-revealed-self{box-shadow:0 0 0 2px #3498db,0 0 6px rgba(52,152,219,.4);}' +
 '.dv-tile-color{font-size:9px;text-transform:uppercase;opacity:.7;line-height:1;}' +
 '.dv-tile-num{font-size:22px;font-weight:800;line-height:1;margin-top:2px;}' +

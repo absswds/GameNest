@@ -157,6 +157,12 @@ function applyPass(state) {
   for (var i = 0; i < 4; i++) sortHand(state.hands[i]);
 }
 
+function defaultPassCards(hand) {
+  return hand.slice().sort(function(a, b) {
+    return rankVal(b.rank) - rankVal(a.rank);
+  }).slice(0, 3).map(function(c) { return c.id; });
+}
+
 function hasOnlyHearts(hand) {
   return hand.every(function(c) { return c.suit === 'h'; });
 }
@@ -212,11 +218,10 @@ exports.handleMove = function(data, state, playerIndex) {
       return null;
     }
 
-    // Fallback: if pass:true or empty, auto-select 3 highest cards
+    // Fallback: if pass:true or empty, auto-select the 3 highest-ranked cards
     var cards = data.cards;
     if (data.pass || (!cards && !data.card)) {
-      var hand = state.hands[playerIndex].slice();
-      cards = hand.slice(-3).map(function(c) { return c.id; });
+      cards = defaultPassCards(state.hands[playerIndex]);
       data.cards = cards;
     }
     if (!Array.isArray(cards) || cards.length !== 3) return 'ht_select_3_to_pass';
@@ -235,6 +240,7 @@ exports.handleMove = function(data, state, playerIndex) {
       }
       if (!found) return 'ht_card_not_in_hand';
     }
+    if (state.passSubmissions[playerIndex]) return 'ht_already_passed';
     state.passSubmissions[playerIndex] = cards;
     // Check if all 4 submitted
     var count = Object.keys(state.passSubmissions).length;
@@ -252,8 +258,10 @@ exports.handleMove = function(data, state, playerIndex) {
         }
       }
     } else {
-      // Advance to next player so bot scheduler picks up the next bot
-      state.currentPlayer = (state.currentPlayer + 1) % 4;
+      // The bot scheduler follows currentPlayer: keep it on a seat that still has to submit
+      for (var k = 0; k < 4 && state.passSubmissions[state.currentPlayer]; k++) {
+        state.currentPlayer = (state.currentPlayer + 1) % 4;
+      }
     }
     return null;
   }
@@ -263,8 +271,16 @@ exports.handleMove = function(data, state, playerIndex) {
 
   var hand = state.hands[playerIndex];
   if (!hand || hand.length === 0) return 'ht_no_hand';
+  if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
 
   var cardId = data.card;
+  if (!cardId && (data.pass || Object.keys(data).length === 0)) {
+    // Server bot fallback ({pass:true} / {}): play the first legal card
+    var isFirst = state.trickCount === 0;
+    for (var f = 0; f < hand.length; f++) {
+      if (canPlayCard(hand[f], state, playerIndex, isFirst)) { cardId = hand[f].id; break; }
+    }
+  }
   if (!cardId) return 'ht_select_a_card';
 
   // Find card in hand
@@ -323,14 +339,12 @@ exports.handleMove = function(data, state, playerIndex) {
       // Check if game over
       var minScore = Math.min.apply(null, state.scores);
       var maxScore = Math.max.apply(null, state.scores);
-      if (maxScore >= state.targetScore) {
+      var lowest = [];
+      for (var i = 0; i < 4; i++) if (state.scores[i] === minScore) lowest.push(i);
+      // Game ends once someone reaches the target; a tie for lowest score plays on (standard rule)
+      if (maxScore >= state.targetScore && lowest.length === 1) {
         state.phase = 'over';
-        // Winner is player with lowest score
-        var winnerIdx = 0;
-        for (var i = 1; i < 4; i++) {
-          if (state.scores[i] < state.scores[winnerIdx]) winnerIdx = i;
-        }
-        state.winner = winnerIdx;
+        state.winner = lowest[0];
       } else {
         // New round
         state.phase = 'passing';
@@ -399,3 +413,7 @@ exports.initGame = function(state, playerCount) {
   state.passRound = 0;
   dealCards(state);
 };
+
+exports.canPlayCard = canPlayCard;
+exports.cardPoints = cardPoints;
+exports.hasOnlyHearts = hasOnlyHearts;

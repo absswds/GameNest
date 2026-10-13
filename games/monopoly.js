@@ -146,6 +146,21 @@ function setLastCardEffect(state, playerIndex, extra) {
   }, extra);
 }
 
+// Pay rent to a property owner. A free-rent card waives it (any rentable space); the owner only
+// receives what the payer can actually cover, so a bankrupt payer does not mint money.
+function payRent(state, payer, prop, rent, pos) {
+  if (state.freeRentCards[payer]) {
+    state.freeRentCards[payer] = false;
+    state.lastCard = { text: '使用免租卡，本次免租！', textEn: 'Free rent card activated! Rent waived!' };
+    state.lastRent = { payer: payer, owner: prop.owner, amount: 0, space: pos };
+    return;
+  }
+  const paid = Math.max(0, Math.min(rent, state.cash[payer]));
+  state.cash[payer] -= rent;
+  state.cash[prop.owner] += paid;
+  state.lastRent = { payer: payer, owner: prop.owner, amount: paid, owed: rent, space: pos };
+}
+
 function applyLanding(state, playerIndex) {
   const pos = state.positions[playerIndex];
   const space = BOARD[pos];
@@ -169,14 +184,7 @@ function applyLanding(state, playerIndex) {
       const groupSpaces = getGroupSpaces(space.group);
       const monopoly = groupSpaces.every(x => state.properties[x.i] && state.properties[x.i].owner === prop.owner);
       const rent = calculatePropertyRent(space, houses, monopoly);
-      if (state.freeRentCards[playerIndex]) {
-        state.freeRentCards[playerIndex] = false;
-        state.lastCard = { text: '使用免租卡，本次免租！', textEn: 'Free rent card activated! Rent waived!' };
-        state.lastRent = { payer: playerIndex, owner: prop.owner, amount: 0, space: pos };
-      } else {
-        state.cash[playerIndex] -= rent; state.cash[prop.owner] += rent;
-        state.lastRent = { payer: playerIndex, owner: prop.owner, amount: rent, space: pos };
-      }
+      payRent(state, playerIndex, prop, rent, pos);
       checkBankruptcy(state);
       if (state.phase !== 'gameover') state.phase = 'end_turn';
     }
@@ -190,8 +198,7 @@ function applyLanding(state, playerIndex) {
       let rrCount = 0;
       BOARD.forEach((s, i) => { if (s && s.type === 'railroad' && state.properties[i] && state.properties[i].owner === prop.owner) rrCount++; });
       const rent = [60, 120, 240, 420][rrCount - 1] || 60;
-      state.cash[playerIndex] -= rent; state.cash[prop.owner] += rent;
-      state.lastRent = { payer: playerIndex, owner: prop.owner, amount: rent, space: pos };
+      payRent(state, playerIndex, prop, rent, pos);
       checkBankruptcy(state);
       if (state.phase !== 'gameover') state.phase = 'end_turn';
     } else { state.phase = 'end_turn'; }
@@ -203,8 +210,7 @@ function applyLanding(state, playerIndex) {
     if (!prop) { state.pendingAction = 'can_buy'; state.phase = 'landed'; }
     else if (prop.owner !== playerIndex) {
       const rent = (state.dice[0] + state.dice[1]) * 10;
-      state.cash[playerIndex] -= rent; state.cash[prop.owner] += rent;
-      state.lastRent = { payer: playerIndex, owner: prop.owner, amount: rent, space: pos };
+      payRent(state, playerIndex, prop, rent, pos);
       checkBankruptcy(state);
       if (state.phase !== 'gameover') state.phase = 'end_turn';
     } else { state.phase = 'end_turn'; }
@@ -247,7 +253,12 @@ function applyLanding(state, playerIndex) {
       setLastCardEffect(state, playerIndex, { tone: card.amount > 0 ? 'gain' : 'loss', delta: card.amount, summary: (card.amount > 0 ? '+' : '') + card.amount + ' · ' + _t(state, card.text, card.textEn) });
     }
     checkBankruptcy(state);
-    if (state.phase !== 'gameover') state.phase = 'end_turn';
+    if (state.phase === 'gameover') return;
+    if ((card.type === 'goto' || card.type === 'advance') && !state.eliminated[playerIndex]) {
+      applyLanding(state, playerIndex); // a card that moves you resolves the new space (buy / rent / tax)
+      return;
+    }
+    state.phase = 'end_turn';
     return;
   }
 
@@ -262,12 +273,18 @@ function applyLanding(state, playerIndex) {
 }
 
 exports.handleMove = (data, state, playerIndex) => {
-  if (state.phase === 'gameover') return _t(state, '游戏已结束', 'Game over');
-  if (state.eliminated[playerIndex]) return _t(state, '你已出局', 'You are out');
-  if (state.currentPlayer !== playerIndex) return _t(state, '还没轮到你', 'Not your turn yet');
+  if (state.phase === 'gameover') return 'g_game_over';
+  if (state.eliminated[playerIndex]) {
+    // A player who went bankrupt on their own turn is still the current player: any input from
+    // them (a human end_turn, or the bot's pass) hands the turn on, otherwise the game stalls.
+    if (state.currentPlayer === playerIndex && state.phase === 'end_turn') { nextPlayer(state); return null; }
+    return 'mp_eliminated';
+  }
+  if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
+  if (!data || typeof data.type !== 'string') return 'g_invalid_action';
 
   if (data.type === 'roll') {
-    if (state.phase !== 'waiting') return _t(state, '现在不能掷骰', 'Cannot roll now');
+    if (state.phase !== 'waiting') return 'mp_cannot_roll';
     const dice = rollDice();
     state.dice = dice;
     const steps = dice[0] + dice[1];
@@ -276,7 +293,13 @@ exports.handleMove = (data, state, playerIndex) => {
       if (dice[0] === dice[1]) { state.inJail[playerIndex] = false; }
       else {
         state.jailTurns[playerIndex]++;
-        if (state.jailTurns[playerIndex] >= 3) { state.inJail[playerIndex] = false; state.cash[playerIndex] -= 50; }
+        if (state.jailTurns[playerIndex] >= 3) {
+          state.inJail[playerIndex] = false; state.cash[playerIndex] -= 50;
+          // The fine can bankrupt: settle it now, before the roll moves a broke player onto a quiet space.
+          checkBankruptcy(state);
+          if (state.phase === 'gameover') return null;
+          if (state.eliminated[playerIndex]) { state.phase = 'end_turn'; return null; }
+        }
         else { state.phase = 'end_turn'; return null; }
       }
     }
@@ -293,10 +316,10 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   if (data.type === 'buy') {
-    if (state.phase !== 'landed' || state.pendingAction !== 'can_buy') return _t(state, '现在不能购买', 'Cannot buy now');
+    if (state.phase !== 'landed' || state.pendingAction !== 'can_buy') return 'mp_cannot_buy';
     const pos = state.positions[playerIndex]; const space = BOARD[pos];
-    if (!space || !space.price) return _t(state, '此处不可购买', 'Cannot buy this');
-    if (state.cash[playerIndex] < space.price) return _t(state, '余额不足', 'Insufficient funds');
+    if (!space || !space.price) return 'mp_not_buyable';
+    if (state.cash[playerIndex] < space.price) return 'mp_insufficient_funds';
     state.cash[playerIndex] -= space.price;
     state.properties[pos] = { owner: playerIndex, houses: 0 };
     state.pendingAction = null; state.phase = 'end_turn';
@@ -304,23 +327,24 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   if (data.type === 'skip_buy') {
-    if (state.phase !== 'landed') return _t(state, '无需跳过', 'Nothing to skip');
+    if (state.phase !== 'landed') return 'mp_nothing_to_skip';
     state.pendingAction = null; state.phase = 'end_turn';
     return null;
   }
 
   if (data.type === 'build') {
-    const pos = data.spaceIndex !== undefined ? data.spaceIndex : state.positions[playerIndex];
-    if (pos === undefined) return _t(state, '未指定地产', 'No property specified');
+    const pos = data.spaceIndex !== undefined && data.spaceIndex !== null ? data.spaceIndex : state.positions[playerIndex];
+    if (!Number.isInteger(pos)) return 'mp_no_property';
+    if (pos === undefined) return 'mp_no_property';
     const space = BOARD[pos];
-    if (!space || space.type !== 'property') return _t(state, '不是地产', 'Not a property');
+    if (!space || space.type !== 'property') return 'mp_not_property';
     const prop = state.properties[pos];
-    if (!prop || prop.owner !== playerIndex) return _t(state, '你不拥有此地产', "You don't own this");
-    if (prop.houses >= 5) return _t(state, '已建满（含旅馆）', 'Already fully built');
+    if (!prop || prop.owner !== playerIndex) return 'mp_not_owner';
+    if (prop.houses >= 5) return 'mp_fully_built';
     const groupSpaces = getGroupSpaces(space.group);
-    if (!groupSpaces.every(x => state.properties[x.i] && state.properties[x.i].owner === playerIndex)) return _t(state, '需垄断整个色组才能盖房', 'Need color group monopoly');
+    if (!groupSpaces.every(x => state.properties[x.i] && state.properties[x.i].owner === playerIndex)) return 'mp_need_monopoly';
     const houseCost = space.price / 2;
-    if (state.cash[playerIndex] < houseCost) return _t(state, '余额不足', 'Insufficient funds');
+    if (state.cash[playerIndex] < houseCost) return 'mp_insufficient_funds';
     state.cash[playerIndex] -= houseCost;
     prop.houses++;
     if (state.phase === 'landed' && state.pendingAction === 'can_build' && pos === state.positions[playerIndex]) { state.pendingAction = null; state.phase = 'end_turn'; }
@@ -328,10 +352,10 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   if (data.type === 'end_turn') {
-    if (state.phase !== 'end_turn') return _t(state, '还不能结束回合', 'Cannot end turn yet');
+    if (state.phase !== 'end_turn') return 'mp_cannot_end_turn';
     nextPlayer(state);
     return null;
   }
 
-  return _t(state, '未知操作', 'Unknown action');
+  return 'mp_unknown_action';
 };

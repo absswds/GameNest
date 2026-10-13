@@ -10,41 +10,11 @@ var RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 
 function rankVal(rank) { return RANKS.indexOf(rank); }
 
-function cardPoints(card) {
-  if (card.suit === 'h') return 1;
-  if (card.suit === 's' && card.rank === 'Q') return 13;
-  return 0;
-}
-
-function hasOnlyHearts(hand) {
-  return hand.every(function(c) { return c.suit === 'h'; });
-}
+const hearts = require('../games/hearts');
+const cardPoints = hearts.cardPoints;
 
 function canPlayCard(card, state, playerIndex) {
-  var hand = state.hands[playerIndex];
-  var isFirstTrick = state.trickCount === 0;
-  if (state.currentTrick.length === 0) {
-    // Leading
-    if (isFirstTrick) {
-      for (var i = 0; i < hand.length; i++) {
-        if (hand[i].id === '2c') return card.id === '2c';
-      }
-    }
-    if (!state.heartsBroken) {
-      if (card.suit === 'h' && !hasOnlyHearts(hand)) return false;
-    }
-    return true;
-  }
-  // Following
-  var leadSuit = state.currentTrick[0].card.suit;
-  if (card.suit === leadSuit) return true;
-  var hasLead = hand.some(function(c) { return c.suit === leadSuit; });
-  if (hasLead) return false;
-  if (isFirstTrick) {
-    var hasNonPenalty = hand.some(function(c) { return cardPoints(c) === 0; });
-    if (hasNonPenalty && cardPoints(card) > 0) return false;
-  }
-  return true;
+  return hearts.canPlayCard(card, state, playerIndex, state.trickCount === 0);
 }
 
 function getLegalMoves(state, playerIndex) {
@@ -129,16 +99,9 @@ function choosePlayNormal(state, playerIndex) {
 function choosePlayHard(state, playerIndex) {
   var moves = getLegalMoves(state, playerIndex);
   if (moves.length === 0) return { card: state.hands[playerIndex][0].id };
-  var hand = state.hands[playerIndex];
   var trick = state.currentTrick;
   var roundScores = state.roundScores;
   var totalPoints = roundScores.reduce(function(a, b) { return a + b; }, 0);
-
-  // Check if someone might be shooting the moon
-  var moonSuspect = -1;
-  for (var i = 0; i < 4; i++) {
-    if (i !== playerIndex && roundScores[i] >= 20) moonSuspect = i;
-  }
 
   if (trick.length === 0) {
     // Leading
@@ -153,12 +116,6 @@ function choosePlayHard(state, playerIndex) {
         hearts.sort(function(a, b) { return rankVal(b.rank) - rankVal(a.rank); });
         return { card: hearts[0].id };
       }
-    }
-
-    // If suspect is shooting, try to dodge by leading low
-    if (moonSuspect >= 0) {
-      pool.sort(function(a, b) { return rankVal(a.rank) - rankVal(b.rank); });
-      return { card: pool[0].id };
     }
 
     // Normal: lead lowest safe card

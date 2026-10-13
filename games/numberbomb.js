@@ -55,7 +55,9 @@ exports.handleMove = function (data, state, playerIndex) {
     for (let i = 0; i < state.lives.length; i++) {
       if (state.lives[i] > 0) alivePlayers.push(i);
     }
-    if (alivePlayers.length <= 1) {
+    // Solo play ends only when the last life is gone (no winner); otherwise last one standing wins
+    const solo = state.lives.length === 1;
+    if (solo ? alivePlayers.length === 0 : alivePlayers.length <= 1) {
       state.winner = alivePlayers.length === 1 ? alivePlayers[0] : -1;
       return null;
     }
@@ -99,4 +101,10 @@ exports.handleMove = function (data, state, playerIndex) {
   }
 
   return null;
+};
+
+// The bomb number stays secret until the game is over.
+exports.playerView = function (state) {
+  if (!state || state.winner !== null) return state;
+  return Object.assign({}, state, { bomb: null });
 };

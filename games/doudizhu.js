@@ -139,6 +139,7 @@ function resetRoundState(state) {
   state.passStreak = 0;
   state.passed = [false, false, false];
   state.winner = null;
+  state.roundWinner = null;
   state.multiplier = 1;
   state.calledPlayers = [];
   state.passedCall = [false, false, false];
@@ -166,44 +167,24 @@ function resetRoundState(state) {
   }
 }
 
-exports.startNextRound = function(state) {
-  state.currentRound = (state.currentRound || 1) + 1;
-  if (state.currentRound > state.totalRounds) return; // game over, should not reach here
-  dealCards(state);
-  // Check if this is the last round about to start → show continue vote
-  if (state.currentRound === state.totalRounds && !state._continueVoteShown) {
-    state._continueVoteShown = true;
-    state.phase = 'continue_vote';
-    state.continueVoting = {
-      continueYesVotes: 0,
-      continueNoVotes: 0,
-      votes: [],
-      totalPlayers: (state._playerCount || 3),
-      resolved: false,
-    };
-  }
-};
-
 function calculatePerRoundScores(state) {
   var base = 100;
   var multiplier = state.gameMultiplier || 1;
-  if (state.winner === -2) {
+  if (state.roundWinner === -2) {
     // Landlord wins
     state.cumulativeScore[state.landlord] += 2 * base * multiplier;
     for (var f = 0; f < (state._playerCount || 3); f++) {
       if (f !== state.landlord) state.cumulativeScore[f] -= base * multiplier;
     }
-  } else if (state.winner === -3) {
+  } else if (state.roundWinner === -3) {
     // Farmers win
     state.cumulativeScore[state.landlord] -= 2 * base * multiplier;
     for (var g = 0; g < (state._playerCount || 3); g++) {
       if (g !== state.landlord) state.cumulativeScore[g] += base * multiplier;
     }
   }
-  state.roundHistory.push({ winner: state.winner, multiplier: multiplier, landlord: state.landlord, scores: state.cumulativeScore.slice() });
+  state.roundHistory.push({ winner: state.roundWinner, multiplier: multiplier, landlord: state.landlord, scores: state.cumulativeScore.slice() });
 }
-
-var nextRoundResult = null;
 
 // ---- Card type detection ----
 
@@ -320,22 +301,30 @@ exports.handleMove = function(data, state, playerIndex) {
     if (bidMode === 'score') {
       // ---- 叫分 mode (keep existing 1-3 bidding logic) ----
       var score = data.score;
-      if (typeof score !== 'number' || score < 0 || score > 3) return 'ddz_bid_must_be_0_3';
+      // {pass:true} / {} (server bot fallback) count as "no bid"
+      if (score === undefined && (data.pass === true || Object.keys(data).length === 0)) score = 0;
+      if (!Number.isInteger(score) || score < 0 || score > 3) return 'ddz_bid_must_be_0_3';
+      if (score !== 0 && score <= state.currentBid) return 'ddz_bid_must_be_0_3';
       state.bids[playerIndex] = score;
       if (score > state.currentBid) { state.currentBid = score; state.landlord = playerIndex; }
       state.passCount++;
-      if (score === 3) { finalizeLandlord(state, playerIndex); return null; }
+      if (score === 3) { state.gameMultiplier = 3; finalizeLandlord(state, playerIndex); return null; }
       state.currentBidder = (state.currentBidder + 1) % (state._playerCount || 3);
       state.currentPlayer = state.currentBidder;
       if (state.passCount >= (state._playerCount || 3)) {
         if (state.landlord === null) { dealCards(state); return null; }
+        state.gameMultiplier = state.currentBid;
         finalizeLandlord(state, state.landlord);
+        return null;
       }
       state.board = syncBoard(state);
       return null;
     }
 
     // ---- 叫抢 mode ----
+    // Server bot fallback ({pass:true} / {}) is "不叫" / "不抢"
+    if (Object.keys(data).length === 0) data = { pass: true };
+    if (data.pass === true && state.callPhase === 'rob') data = { passRob: true };
 
     if (state.callPhase === 'call') {
       // 叫地主 / 不叫
@@ -357,7 +346,6 @@ exports.handleMove = function(data, state, playerIndex) {
         state.eligibleForRob[playerIndex] = false;
         state.passCount++;
         if (state.passCount >= (state._playerCount || 3)) {
-          if (state.landlordCandidate === null) { dealCards(state); return null; }
           // All passed during call phase → re-deal
           dealCards(state); return null;
         }
@@ -417,6 +405,8 @@ exports.handleMove = function(data, state, playerIndex) {
   if (state.phase === 'playing') {
     if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
     var cardIds = data.cards;
+    // Server bot fallback ({pass:true} / {}): same as the turn-timeout move
+    if (!Array.isArray(cardIds) && (data.pass === true || Object.keys(data).length === 0)) cardIds = exports.timeoutMove(state).cards;
     if (!Array.isArray(cardIds)) return 'ddz_invalid_format';
 
     // PASS
@@ -458,30 +448,29 @@ exports.handleMove = function(data, state, playerIndex) {
     // Check win
     if (hand.length === 0) {
       state.lastRoundWinner = playerIndex;
-      if (playerIndex === state.landlord) state.winner = -2;
-      else state.winner = -3;
+      state.roundWinner = playerIndex === state.landlord ? -2 : -3;
+      state.currentTurnDeadline = null;
       calculatePerRoundScores(state);
-      // Multi-round: check if more rounds remain
-      if (state.totalRounds > 1) {
-        var wasLastRound = state.currentRound >= state.totalRounds;
-        if (wasLastRound) {
-          state.phase = 'over';
+      // state.winner is only set when the whole match is over; otherwise the
+      // game goes on through roundEnd / continue_vote (handleMove refuses moves once winner is set).
+      if (state.totalRounds <= 1 || state.currentRound >= state.totalRounds) {
+        state.winner = state.roundWinner;
+        if (state.totalRounds > 1) state.phase = 'over';
+      } else {
+        // currentRound stays the round just finished; startNewBiddingRound advances it
+        // Check continue vote: if NEXT round will be the last
+        if (!state._continueVoteShown && state.currentRound + 1 === state.totalRounds) {
+          state._continueVoteShown = true;
+          state.phase = 'continue_vote';
+          state.continueVoting = {
+            continueYesVotes: 0,
+            continueNoVotes: 0,
+            votes: [],
+            totalPlayers: (state._playerCount || 3),
+            resolved: false,
+          };
         } else {
-          state.currentRound++;
-          // Check continue vote: if NEXT round will be the last
-          if (!state._continueVoteShown && state.currentRound === state.totalRounds) {
-            state._continueVoteShown = true;
-            state.phase = 'continue_vote';
-            state.continueVoting = {
-              continueYesVotes: 0,
-              continueNoVotes: 0,
-              votes: [],
-              totalPlayers: (state._playerCount || 3),
-              resolved: false,
-            };
-          } else {
-            state.phase = 'roundEnd';
-          }
+          state.phase = 'roundEnd';
         }
       }
       state.board = syncBoard(state);
@@ -496,6 +485,10 @@ exports.handleMove = function(data, state, playerIndex) {
 
   return 'g_unknown_action';
 };
+
+// Shared with the bot so it only ever proposes plays the server will accept.
+exports.detectType = detectType;
+exports.canBeat = canBeat;
 
 function nextPlayer(state, current) {
   return (current + 1) % (state._playerCount || 3);
@@ -548,6 +541,7 @@ function setTurnTimer(state) {
 }
 
 function startNewBiddingRound(state) {
+  state.currentRound = (state.currentRound || 1) + 1;
   state.phase = 'bidding';
   dealCards(state);
 }

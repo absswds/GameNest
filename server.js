@@ -20,7 +20,11 @@ function serverT(room, key) {
   const pack = SERVER_LANGS[lang] || SERVER_LANGS.zh;
   return pack[key] || key;
 }
+// Startup trace is only for Android crash triage (nodejs-mobile reports platform 'android');
+// elsewhere it would append ~70 sync writes per start. GAMENEST_STARTUP_LOG=1 forces it on.
+const STARTUP_LOG = process.platform === 'android' || process.env.GAMENEST_STARTUP_LOG === '1';
 function logStep(message) {
+  if (!STARTUP_LOG) return;
   try {
     fs.appendFileSync(startupLogPath, message + '\n');
   } catch (err) {}
@@ -112,18 +116,20 @@ app.use(express.static(path.join(__dirname, 'public'), {
 app.get('/qr', async (req, res) => {
   try {
     const room = req.query.room;
-    if (!room) { res.status(400).send('missing room'); return; }
+    if (typeof room !== 'string' || !/^[A-Za-z0-9]{1,8}$/.test(room)) { res.status(400).send('missing room'); return; }
     // Prefer a real LAN IP so the QR is scannable from a phone on the same WiFi.
     // When the requester came via localhost/127.0.0.1, using that Host makes the
     // QR point at the phone's own loopback — useless. Fall back to the first
     // shareable 192.168.x.x / 10.x.x.x address.
     let host = req.get('Host') || 'localhost:3000';
+    // Only a plain host[:port] is trusted; a crafted Host header falls back to localhost handling.
+    if (!/^[A-Za-z0-9.-]+(:\d{1,5})?$/.test(host)) host = 'localhost:' + activePort;
     if (/^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host)) {
       const lan = getShareableLanIPs()[0];
       if (lan) host = `${lan.ip}:${activePort}`;
     }
     const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
-    const url = `${proto}://${host}/?room=${room}`;
+    const url = `${proto}://${host}/?room=${encodeURIComponent(room)}`;
     const png = await QRCode.toBuffer(url, { width: 256, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
     res.set('Content-Type', 'image/png');
     res.send(png);
@@ -225,6 +231,7 @@ app.post('/api/debug/room/:roomId/forceWin', express.json(), (req, res) => {
   if (!room) return res.json({ error: 'room not found' });
   const state = room.state;
   try {
+    if (!state || (room.game !== 'mahjong-sichuan' && room.game !== 'mahjong-cantonese')) return res.json({ error: 'not mahjong' });
     const isCantonese = !!state.wall; // 广东有 wall，四川有 deck/voidSuit
     if (!isCantonese) {
       // 四川必赢：1w2w3w 4w5w6w 7w8w9w 1t1t1t 2t2t (清一色+碰) 缺 tong，非血战一胡即结束以验积分
@@ -246,7 +253,7 @@ app.post('/api/debug/room/:roomId/forceWin', express.json(), (req, res) => {
       checkMahjongRoundEnd(room);
       broadcastGameView(room);
       return res.json({ ok:true, winners: state.winners, winner: state.winner, winInfo: state.winInfo, cumulativeScore: state.cumulativeScore, phase: state.phase, roundScores: state._lastRoundScores });
-    } else if (isCantonese) {
+    } else {
       // 广东必赢：123m456m789m 222s 11s + 自摸
       const core=require('./games/lib/mahjong-core');
       let _tid=9000;
@@ -266,8 +273,6 @@ app.post('/api/debug/room/:roomId/forceWin', express.json(), (req, res) => {
       checkMahjongRoundEnd(room);
       broadcastGameView(room);
       return res.json({ ok:true, winner: state.winner, winInfo: state.winInfo, cumulativeScore: state.cumulativeScore, phase: state.phase });
-    } else {
-      return res.json({ error: 'not mahjong' });
     }
   } catch(e){ return res.json({ error: e.message, stack: e.stack }); }
 });
@@ -296,10 +301,10 @@ wss.on('close', () => clearInterval(wssHeartbeat));
 const rooms = new Map();
 
 // Short memorable room IDs: 3-4 char alphanumeric, easy to type & share
-function generateRoomId() {
+function generateRoomId(minLen) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let id = '';
-  const len = Math.random() < 0.5 ? 3 : 4;
+  const len = minLen || (Math.random() < 0.5 ? 3 : 4);
   for (let i = 0; i < len; i++) id += chars[Math.floor(Math.random() * chars.length)];
   return id;
 }
@@ -315,7 +320,9 @@ function createRoom(ws, gameType, lang) {
     console.error('createState failed for game "' + gameType + '":', e && e.message);
     return null;
   }
-  const roomId = generateRoomId();
+  // Never overwrite a live room; after many collisions fall back to longer IDs.
+  let roomId = generateRoomId();
+  for (let tries = 0; rooms.has(roomId); tries++) roomId = generateRoomId(tries > 20 ? 5 : 0);
   const room = {
     game: gameType,
     maxPlayers: gameMod.maxPlayers,
@@ -394,23 +401,29 @@ function skipDisconnectedTurn(room) {
   if (!Number.isInteger(cp)) return false;
   if (cp < 0) return false; // no turn owner yet (e.g. choosing phase)
 
+  // A player only counts as gone once the reconnect grace has run out: a phone that locks for a
+  // few seconds must keep its turn (and its freshly drawn tiles / open claim window).
+  const now = Date.now();
   const active = new Set();
-  for (const [ws, info] of room.players) {
-    if (ws.readyState === 1 && !info.disconnectedAt) active.add(info.index);
+  for (const [, info] of room.players) {
+    if (!info.disconnectedAt || now - info.disconnectedAt < DISCONNECT_GRACE_MS) active.add(info.index);
   }
   for (const index of room.bots.keys()) active.add(index);
   if (active.has(cp) || active.size === 0) return false;
+  // A custom-actor game we cannot advance for: leave the state alone.
+  if (gameMod && gameMod.getCurrentActor && !gameMod.setCurrentActor) return false;
 
-  const seatCount = Array.isArray(state.hands) && state.hands.length
-    ? state.hands.length
-    : Math.max(1, room.maxPlayers || 0, ...active);
+  const seatCount = Number.isInteger(state._playerCount) && state._playerCount > 0
+    ? state._playerCount
+    : (Array.isArray(state.hands) && state.hands.length
+      ? state.hands.length
+      : Math.max(1, room.maxPlayers || 0, ...active));
   for (let offset = 1; offset <= seatCount; offset++) {
     const candidate = (cp + offset) % seatCount;
     if (active.has(candidate)) {
       // Update whichever field the game uses for current actor
       if (gameMod && gameMod.getCurrentActor) {
-        // Game uses custom actor — let it handle the update
-        if (gameMod.setCurrentActor) gameMod.setCurrentActor(state, candidate);
+        gameMod.setCurrentActor(state, candidate);
       } else {
         state.currentPlayer = candidate;
       }
@@ -420,13 +433,16 @@ function skipDisconnectedTurn(room) {
   return false;
 }
 
+// Names/avatars end up in client innerHTML: keep only plain strings without markup or control chars.
+function sanitizeText(v) {
+  if (typeof v !== 'string') return '';
+  return v.replace(/[<>&"'`\u0000-\u001f\u007f]/g, '').trim();
+}
+
 // The state a given seat is allowed to see (hidden info filtered by the game module).
 function viewFor(room, index) {
   const gameMod = gameRegistry[room.game];
   if (!room.state || !gameMod || index === undefined || index === null) return room.state;
-  if (room.game === 'minesweeper' && gameMod.playerBoardView) {
-    return Object.assign({}, room.state, { board: gameMod.playerBoardView(room.state, index) });
-  }
   if (gameMod.playerView) {
     // A throwing view (e.g. on a not-yet-initialised state) must not crash the whole server.
     // Return null rather than the raw state so hidden info never leaks.
@@ -477,17 +493,11 @@ function broadcastGameView(room, msgType) {
   const players = roomPlayersList(room);
   tallyMatch(room);
   const match = room.match || null;
-  if (room.game === 'minesweeper' && gameMod.playerBoardView) {
+  if (!gameMod) return;
+  if (gameMod.playerView) {
     for (const [client, info] of room.players) {
       if (client.readyState === 1) {
-        const viewState = Object.assign({}, room.state, { board: gameMod.playerBoardView(room.state, info.index) });
-        client.send(JSON.stringify({ type: t, state: viewState, players, match }));
-      }
-    }
-  } else if (gameMod.playerView) {
-    for (const [client, info] of room.players) {
-      if (client.readyState === 1) {
-        client.send(JSON.stringify({ type: t, state: gameMod.playerView(room.state, info.index), players, match }));
+        client.send(JSON.stringify({ type: t, state: viewFor(room, info.index), players, match }));
       }
     }
   } else {
@@ -515,7 +525,11 @@ function clearAllRoomTimers(room) {
   clearTimeout(room._tfTimer);
   clearTimeout(room._dgTimer);
   clearTimeout(room._phaseTimer);
+  clearTimeout(room._ddzTurnTimer);
+  room._bsPlacing = false;
+  room._tfBotState = null;
   room._phaseDeadline = 0;
+  room._phaseBotStuck = null;
   if (room._phaseBotTimers) {
     for (const h of room._phaseBotTimers) clearTimeout(h);
     room._phaseBotTimers = [];
@@ -607,16 +621,12 @@ function endOfRound(room) {
     }
   }
 
-  try {
-    if (!state.cumulativeScore) state.cumulativeScore = new Array(playerCount).fill(0);
-    for (var i = 0; i < playerCount; i++) {
-      state.cumulativeScore[i] = (state.cumulativeScore[i] || 0) + roundScores[i];
-    }
-  } catch(e) {
-    console.error('[endOfRound] ERROR:', e.message);
+  if (!state.cumulativeScore) state.cumulativeScore = new Array(playerCount).fill(0);
+  for (var i = 0; i < playerCount; i++) {
+    state.cumulativeScore[i] = (state.cumulativeScore[i] || 0) + roundScores[i];
   }
   // 刮风下雨：杠收入累加到累计分 + 本局变动
-  if (state._rain && state._gangScore && state._gangScore) {
+  if (state._rain && state._gangScore) {
     for (var i2 = 0; i2 < playerCount; i2++) {
       if (state._gangScore[i2]) {
         state.cumulativeScore[i2] += state._gangScore[i2];
@@ -655,14 +665,22 @@ function checkMahjongRoundEnd(room) {
 
 function scheduleTwentyFourBots(room) {
   if (!room.bots || room.bots.size === 0) return;
+  const state = room.state;
+  // Every human move re-enters here: each bot gets one answer timer per round, not one per move.
+  const round = state.currentRound || 0;
+  if (room._tfBotState === state && room._tfBotRound === round) return;
+  room._tfBotState = state;
+  room._tfBotRound = round;
   for (const [idx, bot] of room.bots) {
     const realCount = room.state._realPlayerCount || room.players.size;
     const delay = realCount < 3
       ? 20000 + Math.random() * 10000   // 1-2 real players: 20~30s
       : 30000 + Math.random() * 10000;  // 3+ real players: 30~40s
     const attempt = (retries) => {
-      setTimeout(() => {
-        if (!rooms.has(room._roomId)) return;
+      // Tracked so clearAllRoomTimers can cancel them (round change, restart, return to lobby).
+      const handle = setTimeout(() => {
+        if (room._tfBotTimers) room._tfBotTimers = room._tfBotTimers.filter(h => h !== handle);
+        if (!rooms.has(room._roomId) || room.state !== state) return;
         if (room.state.phase !== 'playing') {
           // round hasn't started yet — retry once after a short wait
           if (retries > 0) attempt(retries - 1);
@@ -674,9 +692,11 @@ function scheduleTwentyFourBots(room) {
           const gameMod = gameRegistry[room.game];
           const err = gameMod.handleMove(moveData, room.state, idx);
           if (err) { console.error('24 Bot error:', err); return; }
-          broadcastRoom(room, { type: 'game_state', state: room.state, players: roomPlayersList(room) });
+          broadcastGameView(room, 'game_state');
         } catch(e) { console.error('24 Bot exception:', e.message); }
       }, retries === 3 ? delay : 300);
+      room._tfBotTimers = room._tfBotTimers || [];
+      room._tfBotTimers.push(handle);
     };
     attempt(3);
   }
@@ -707,7 +727,7 @@ function scheduleTwentyFourTimer(room) {
       state.roundWinner = -1; // nobody got it
     }
     state.phase = 'round_end';
-    broadcastRoom(room, { type: 'game_state', state: state, players: roomPlayersList(room) });
+    broadcastGameView(room, 'game_state');
   }, ms);
 }
 
@@ -764,30 +784,39 @@ function scheduleRealtimeGame(room) {
   // out bot moves. Without it, bots act every tick and finish far too fast.
   const interval = gameMod.botInterval || null;
   room._botNextMove = room._botNextMove || {}; // index -> timestamp (ms) when bot may act
+  room._rtErrors = 0;
   room._realtimeTimer = setInterval(() => {
     if (!rooms.has(room._roomId) || room.phase !== 'playing' || room.state.winner !== null) {
       stopRealtimeGame(room);
       return;
     }
-    try {
-      const now = Date.now();
-      for (const [index, bot] of room.bots) {
-        const nextAllowed = room._botNextMove[index] || 0;
-        if (now < nextAllowed) continue; // still on cooldown
+    // One bad bot move or tick must not freeze the game: log it and keep ticking.
+    // Only a tick that keeps failing (20 in a row) stops the loop.
+    const now = Date.now();
+    for (const [index, bot] of room.bots) {
+      const nextAllowed = room._botNextMove[index] || 0;
+      if (now < nextAllowed) continue; // still on cooldown
+      try {
         const move = bot.getMove(room.state);
         gameMod.handleMove(move, room.state, index);
-        // Schedule next move after a random delay within the game's interval
-        if (interval) {
-          const delay = interval.min + Math.floor(Math.random() * (interval.max - interval.min));
-          room._botNextMove[index] = now + delay;
-        }
+      } catch (e) {
+        console.error('Realtime bot exception:', e.message);
       }
+      // Schedule next move after a random delay within the game's interval
+      if (interval) {
+        const delay = interval.min + Math.floor(Math.random() * (interval.max - interval.min));
+        room._botNextMove[index] = now + delay;
+      }
+    }
+    try {
       gameMod.tick(room.state);
       broadcastGameView(room, 'game_state');
+      room._rtErrors = 0;
       if (room.state.winner !== null) stopRealtimeGame(room);
     } catch (e) {
       console.error('Realtime game exception:', e.message);
-      stopRealtimeGame(room);
+      room._rtErrors = (room._rtErrors || 0) + 1;
+      if (room._rtErrors >= 20) stopRealtimeGame(room);
     }
   }, gameMod.tickMs || 120);
 }
@@ -812,9 +841,12 @@ function schedulePhaseGame(room, gameMod) {
           gameMod.onTimeout(state);
         } catch (e) {
           console.error('[game=' + room.game + ' room=' + room._roomId + '] onTimeout exception:', e.message);
+          // Remember the deadline we failed on so the scheduler does not re-arm a 0ms timer for
+          // it forever; the next real move (new deadline) arms normally again.
+          room._phaseDeadline = deadline;
         }
-        broadcastGameView(room, 'game_state');
-        scheduleBotMove(room);
+        try { broadcastGameView(room, 'game_state'); } catch (e) { console.error('[broadcast]', e.message); }
+        try { scheduleBotMove(room); } catch (e) { console.error('[scheduleBotMove]', e.message); }
       }, Math.max(0, deadline - Date.now()));
     }
   }
@@ -824,6 +856,10 @@ function schedulePhaseGame(room, gameMod) {
   for (const idx of gameMod.getPendingActors(state) || []) {
     const bot = room.bots.get(idx);
     if (!bot || room._phaseBotPending.has(idx)) continue;
+    // A bot whose move and fallbacks were all refused for this ask sits it out (until the
+    // deadline passes it by) instead of retrying the same failing move every second.
+    const stuckKey = idx + '@' + deadline;
+    if (room._phaseBotStuck && room._phaseBotStuck.get(stuckKey) > Date.now()) continue;
     room._phaseBotPending.add(idx);
     const delay = 900 + Math.random() * 1500;
     const handle = setTimeout(() => {
@@ -833,16 +869,29 @@ function schedulePhaseGame(room, gameMod) {
       const pending = gameMod.getPendingActors(state) || [];
       if (pending.indexOf(idx) < 0) return;
       try {
-        const err = gameMod.handleMove(bot.getMove(state, idx), state, idx);
-        if (err) {
-          console.error('[game=' + room.game + ' actor=' + idx + ' room=' + room._roomId + '] Bot error:', err, '— passing');
-          gameMod.handleMove({ pass: true }, state, idx);
+        let err;
+        try {
+          err = gameMod.handleMove(bot.getMove(state, idx), state, idx);
+        } catch (e) {
+          console.error('[game=' + room.game + ' actor=' + idx + ' room=' + room._roomId + '] Bot exception:', e.message);
+          err = 'bot_exception';
         }
+        if (err) {
+          console.error('[game=' + room.game + ' actor=' + idx + ' room=' + room._roomId + '] Bot error:', err, '- passing');
+          try { err = gameMod.handleMove({ pass: true }, state, idx); } catch (e) { err = 'pass_exception'; }
+          if (err) {
+            try { err = gameMod.handleMove({}, state, idx); } catch (e) { err = 'empty_exception'; }
+          }
+          if (err) {
+            room._phaseBotStuck = room._phaseBotStuck || new Map();
+            room._phaseBotStuck.set(stuckKey, Date.now() + 15000);
+          }
+        }
+        broadcastGameView(room);
+        scheduleBotMove(room);
       } catch (e) {
-        console.error('[game=' + room.game + ' actor=' + idx + ' room=' + room._roomId + '] Bot exception:', e.message);
+        console.error('[game=' + room.game + ' actor=' + idx + ' room=' + room._roomId + '] phase bot timer exception:', e.message);
       }
-      broadcastGameView(room);
-      scheduleBotMove(room);
     }, delay);
     room._phaseBotTimers = room._phaseBotTimers || [];
     room._phaseBotTimers.push(handle);
@@ -904,7 +953,7 @@ function scheduleBotMove(room) {
   }
   clearTimeout(room._botTimer);
   room._botTimer = setTimeout(() => {
-    if (!rooms.has(room._roomId)) return;
+    if (!rooms.has(room._roomId) || room.state !== state) return;
     try {
       const moveData = bot.getMove(room.state);
       let err = gameMod.handleMove(moveData, room.state, cp);
@@ -920,18 +969,26 @@ function scheduleBotMove(room) {
       broadcastGameView(room);
       scheduleBotMove(room);
     } catch(e) {
-        console.error('[game=' + room.game + ' actor=' + cp + ' room=' + room._roomId + '] Bot exception:', e.message);
-        gameMod.handleMove({ pass: true }, room.state, cp);
-        skipDisconnectedTurn(room);
-        broadcastGameView(room);
-        scheduleBotMove(room);
+      console.error('[game=' + room.game + ' actor=' + cp + ' room=' + room._roomId + '] Bot exception:', e.message);
+      // The fallback runs inside a timer: it must never throw out of the callback.
+      try {
+        if (room.state === state) {
+          gameMod.handleMove({ pass: true }, room.state, cp);
+          skipDisconnectedTurn(room);
+          broadcastGameView(room);
+          scheduleBotMove(room);
+        }
+      } catch (e2) {
+        console.error('[game=' + room.game + ' room=' + room._roomId + '] Bot fallback exception:', e2.message);
       }
+    }
   }, delay);
 }
 
 function scheduleTurnTimer(room) {
+  if (!room) return;
   clearTimeout(room._ddzTurnTimer);
-  if (!room || room.game !== 'doudizhu' || !rooms.has(room._roomId)) return;
+  if (room.game !== 'doudizhu' || !rooms.has(room._roomId) || room.phase !== 'playing') return;
   var st = room.state;
   if (!st || !st.playTimeLimit || st.playTimeLimit <= 0) return;
   if (st.winner != null || !st.currentTurnDeadline) return;
@@ -940,8 +997,19 @@ function scheduleTurnTimer(room) {
     if (st.phase !== 'playing') return;
     var cp = st.currentPlayer;
     var ddz = gameRegistry['doudizhu'];
-    ddz.handleMove(ddz.timeoutMove(st), st, cp);
-    broadcastGameView(room, 'game_state');
+    var before = st.currentTurnDeadline;
+    try {
+      ddz.handleMove(ddz.timeoutMove(st), st, cp);
+      broadcastGameView(room, 'game_state');
+    } catch (e) {
+      console.error('[doudizhu] turn timeout exception:', e.message);
+    }
+    if (st.currentTurnDeadline === before) {
+      // The timeout move did not advance the deadline: retry later instead of recursing
+      // scheduleBotMove -> scheduleTurnTimer on the same expired deadline.
+      room._ddzTurnTimer = setTimeout(function() { scheduleTurnTimer(room); }, 1000);
+      return;
+    }
     scheduleBotMove(room);
     return;
   }
@@ -973,7 +1041,7 @@ function scheduleBattleshipPlacements(room) {
   room._bsPlacing = true;
   room._botTimer = setTimeout(() => {
     room._bsPlacing = false;
-    if (!rooms.has(room._roomId)) return;
+    if (!rooms.has(room._roomId) || room.state !== state) return;
     try {
       const moveData = nextBot.getMove(state);
       const err = gameMod.handleMove(moveData, state, nextBotIdx);
@@ -986,6 +1054,73 @@ function scheduleBattleshipPlacements(room) {
   }, delay);
 }
 
+// ---- Seat / room helpers ----
+
+// A finished game (any of the shapes the modules use) - only then may a non-host leave the table.
+function isGameOver(state) {
+  if (!state) return true;
+  if (state.winner !== null && state.winner !== undefined) return true;
+  if (Array.isArray(state.winners) && state.winners.length) return true;
+  return state.phase === 'over' || state.phase === 'finished' || state.phase === 'gameover' || state.gameOver === true;
+}
+
+// initGame(state, n) assumes seats 0..n-1. remove_bot/kick/leave leave gaps, so close them
+// (humans and bots keep their relative order) before a game starts.
+function compactSeats(room) {
+  const entries = [];
+  for (const [, info] of room.players) entries.push({ human: true, info, index: info.index });
+  for (const [index, bot] of room.bots) entries.push({ human: false, bot, index });
+  entries.sort((a, b) => a.index - b.index);
+  if (entries.every((e, i) => e.index === i)) return;
+  const botMod = botRegistry[room.game];
+  const ready = new Set();
+  const bots = new Map();
+  entries.forEach((e, i) => {
+    if (e.human) {
+      if (room.readyPlayers.has(e.index)) ready.add(i);
+      e.info.index = i;
+    } else {
+      const nb = botMod ? botMod.createBot(i) : e.bot;
+      nb.name = /^(电脑|Bot )\d+$/.test(e.bot.name || '') ? (room._lang === 'zh' ? '电脑' : 'Bot ') + (i + 1) : e.bot.name;
+      bots.set(i, nb);
+    }
+  });
+  room.readyPlayers = ready;
+  room.bots = bots;
+  for (const [client, info] of room.players) {
+    if (client.readyState === 1) client.send(JSON.stringify({ type: 'player_index_updated', playerIndex: info.index }));
+  }
+}
+
+// Drop a human seat. Returns false when that emptied (and deleted) the room.
+function removeSeat(room, roomId, ws, info) {
+  room.players.delete(ws);
+  room.readyPlayers.delete(info.index);
+  if (room.hostWS === ws) {
+    room.hostWS = Array.from(room.players.keys()).find(client => client.readyState === 1) || null;
+  }
+  if (room.players.size === 0) {
+    clearAllRoomTimers(room);
+    if (rooms.get(roomId) === room) rooms.delete(roomId);
+    return false;
+  }
+  return true;
+}
+
+// Grace period over for a disconnected / left seat: free it and let the game go on.
+function expireSeat(room, roomId, ws, info) {
+  try {
+    if (!info.disconnectedAt || room.players.get(ws) !== info) return;
+    if (!removeSeat(room, roomId, ws, info)) return;
+    const skipped = room.phase === 'playing' && skipDisconnectedTurn(room);
+    broadcastRoom(room, { type: 'player_left', players: roomPlayersList(room), phase: room.phase });
+    if (room.phase === 'playing' && room.state && skipped) broadcastGameView(room);
+    scheduleBotMove(room);
+  } catch (e) {
+    console.error('[expireSeat]', e && e.message);
+  }
+}
+
 // ---- WebSocket Handler ----
 
 wss.on('connection', (ws) => {
@@ -995,19 +1130,35 @@ wss.on('connection', (ws) => {
   let currentRoomId = null;
   let currentRoom = null;
 
-  ws.on('message', (raw) => {
+  // This socket is about to enter another room: free its seat in the old one first.
+  const leaveCurrentRoom = () => {
+    const room = currentRoom, roomId = currentRoomId;
+    currentRoom = null;
+    currentRoomId = null;
+    if (!room) return;
+    const info = room.players.get(ws);
+    if (!info) return;
+    if (info._disconnectTimer) clearTimeout(info._disconnectTimer);
+    info._disconnectTimer = null;
+    info.disconnectedAt = Date.now();
+    expireSeat(room, roomId, ws, info);
+  };
+
+  const onMessage = (raw) => {
     let msg;
     try { msg = JSON.parse(raw.toString()); } catch (e) { return; }
+    if (!msg || typeof msg !== 'object') return;
     const { type, data } = msg;
 
     // --- create_room ---
     if (type === 'create_room') {
       const { game, lang } = data || {};
-      if (!gameRegistry[game]) {
+      if (typeof game !== 'string' || !gameRegistry[game]) {
         ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'invalid_game_type') }));
         return;
       }
-      const result = createRoom(ws, game, lang || 'zh');
+      if (currentRoom) leaveCurrentRoom();
+      const result = createRoom(ws, game, typeof lang === 'string' && lang ? lang : 'zh');
       if (!result) {
         ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'create_room_failed') }));
         return;
@@ -1134,14 +1285,14 @@ wss.on('connection', (ws) => {
     // --- join_room ---
     if (type === 'join_room') {
       const { roomId, resumeToken, lang } = data || {};
-      const room = rooms.get(roomId);
+      const room = typeof roomId === 'string' ? rooms.get(roomId) : null;
       if (!room) {
         ws.send(JSON.stringify({ type: 'error', code: 'ROOM_NOT_FOUND', message: serverT(currentRoom, 'room_not_found') }));
         return;
       }
-      if (lang && !room._lang) room._lang = lang;
+      if (currentRoom && currentRoom !== room) leaveCurrentRoom();
       // Resume an existing seat after returning to the lobby / temporary disconnect.
-      const resumable = resumeToken && Array.from(room.players.entries())
+      const resumable = typeof resumeToken === 'string' && resumeToken && Array.from(room.players.entries())
         .find(([, info]) => info.resumeToken === resumeToken);
       if (resumable) {
         const oldWs = resumable[0];
@@ -1149,6 +1300,7 @@ wss.on('connection', (ws) => {
         if (info._disconnectTimer) clearTimeout(info._disconnectTimer);
         info._disconnectTimer = null;
         info.disconnectedAt = null;
+        info._left = false;
         room.players.delete(oldWs);
         room.players.set(ws, info);
         if (room.hostWS === oldWs) room.hostWS = ws;
@@ -1285,6 +1437,7 @@ wss.on('connection', (ws) => {
       const gameMod = gameRegistry[currentRoom.game];
       const totalPlayers = currentRoom.players.size + (currentRoom.bots ? currentRoom.bots.size : 0);
       const minPlayers = (gameMod && gameMod.minPlayers) || 2;
+      if (totalPlayers > (currentRoom.maxPlayers || totalPlayers)) return;
       if (totalPlayers < minPlayers) {
         ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'min_players').replace('%s', minPlayers) }));
         return;
@@ -1296,6 +1449,7 @@ wss.on('connection', (ws) => {
         return;
       }
 
+      compactSeats(currentRoom); // seats must be 0..n-1 for initGame
       currentRoom.phase = 'playing';
       applyRuntimeState(currentRoom, totalPlayers);
       // 麻将首局随机坐庄：不让房主默认当庄先摸牌先出牌
@@ -1323,8 +1477,15 @@ wss.on('connection', (ws) => {
         return;
       }
       const { fromIndex, toIndex } = data || {};
-      if (typeof fromIndex !== 'number' || typeof toIndex !== 'number') return;
+      const validSeat = (n) => Number.isInteger(n) && n >= 0 && n < currentRoom.maxPlayers;
+      if (!validSeat(fromIndex) || !validSeat(toIndex)) return;
       if (fromIndex === toIndex) return;
+      // Only the host may rearrange other people's seats; everyone may move their own.
+      const swapper = currentRoom.players.get(ws);
+      if (ws !== currentRoom.hostWS && !(swapper && (swapper.index === fromIndex || swapper.index === toIndex))) {
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'swap_own_seat_only') }));
+        return;
+      }
 
       const fromPlayer = Array.from(currentRoom.players.entries())
         .find(([, info]) => info.index === fromIndex);
@@ -1359,12 +1520,7 @@ wss.on('connection', (ws) => {
       if (fromReady) currentRoom.readyPlayers.add(toIndex);
       if (toReady) currentRoom.readyPlayers.add(fromIndex);
 
-      // Transfer host if host player swapped
-      if (currentRoom.hostWS === (fromPlayer ? fromPlayer[0] : null)) {
-        currentRoom.hostWS = fromPlayer[0]; // host follows the player
-      } else if (currentRoom.hostWS === (toPlayer ? toPlayer[0] : null)) {
-        currentRoom.hostWS = toPlayer[0];
-      }
+      // Transfer host: not needed - hostWS is a socket, not a seat index, so the host follows its player.
 
       broadcastRoom(currentRoom, {
         type: 'room_update',
@@ -1400,7 +1556,7 @@ wss.on('connection', (ws) => {
         return;
       }
       const { key, value } = data || {};
-      if (!key) return;
+      if (typeof key !== 'string' || !key || key === '__proto__' || key === 'constructor' || key === 'prototype') return;
       currentRoom.options[key] = value;
       broadcastRoom(currentRoom, {
         type: 'room_update',
@@ -1417,8 +1573,9 @@ wss.on('connection', (ws) => {
       const info = currentRoom.players.get(ws);
       if (!info) return;
       const { name } = data || {};
-      if (name && name.trim().length > 0 && name.trim().length <= 8) {
-        info.name = name.trim();
+      const clean = sanitizeText(name);
+      if (clean.length > 0 && clean.length <= 8) {
+        info.name = clean;
         broadcastRoom(currentRoom, { type: 'room_update', phase: currentRoom.phase, players: roomPlayersList(currentRoom) });
       }
       return;
@@ -1430,8 +1587,9 @@ wss.on('connection', (ws) => {
       const info = currentRoom.players.get(ws);
       if (!info) return;
       const { avatar } = data || {};
-      if (avatar && avatar.length <= 4) {
-        info.avatar = avatar;
+      const cleanAv = sanitizeText(avatar);
+      if (cleanAv && cleanAv.length <= 4) {
+        info.avatar = cleanAv;
         broadcastRoom(currentRoom, { type: 'room_update', phase: currentRoom.phase, players: roomPlayersList(currentRoom) });
       }
       return;
@@ -1444,6 +1602,11 @@ wss.on('connection', (ws) => {
       if (!gameMod) return;
       const playerInfo = currentRoom.players.get(ws);
       if (!playerInfo) return;
+      // After return_to_room / before start there is no state to move on.
+      if (currentRoom.phase !== 'playing' || !currentRoom.state) {
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'game_not_playing'), code: 'game_not_playing' }));
+        return;
+      }
 
       let err;
       try {
@@ -1454,6 +1617,8 @@ wss.on('connection', (ws) => {
       }
       if (err) {
         ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, err), code: err }));
+        // A non-fatal wrong sudoku entry costs a life: let everyone see it now, not on the next tick.
+        if (currentRoom.game === 'sudoku' && err === 'su_wrong') broadcastGameView(currentRoom, 'game_state');
         return;
       }
 
@@ -1465,7 +1630,7 @@ wss.on('connection', (ws) => {
       }
 
       // drawguess: reset the step timer after every successful move (updates stepDeadline before broadcast)
-      const isStageLiveAction = currentRoom.game === 'drawguess' && (data.type === 'stage_stroke' || data.type === 'stage_guess' || data.type === 'stage_clear' || data.type === 'stage_undo') && currentRoom.state.phase === 'playing'; // 猜对结束本轮则必须重排（round_result 5 秒定时）
+      const isStageLiveAction = currentRoom.game === 'drawguess' && data && (data.type === 'stage_stroke' || data.type === 'stage_guess' || data.type === 'stage_clear' || data.type === 'stage_undo') && currentRoom.state.phase === 'playing'; // 猜对结束本轮则必须重排（round_result 5 秒定时）
       if (currentRoom.game === 'drawguess' && !isStageLiveAction) scheduleDrawguessTimer(currentRoom);
 
       // Mahjong: settle the round before broadcasting the 'over' game_state so the
@@ -1500,7 +1665,20 @@ wss.on('connection', (ws) => {
       }
       const gameMod = gameRegistry[currentRoom.game];
       if (!gameMod) return;
+      // Restart is for a game that is (or just was) running; from the lobby the host must use
+      // start_game, which enforces ready/min-player checks.
+      if (currentRoom.phase !== 'playing' || !currentRoom.state) {
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'game_not_playing'), code: 'game_not_playing' }));
+        return;
+      }
+      clearAllRoomTimers(currentRoom); // old bot / phase / 24-point timers must not leak into the new game
       const totalPlayers = currentRoom.players.size + (currentRoom.bots ? currentRoom.bots.size : 0);
+      const minPlayersR = gameMod.minPlayers || 2;
+      if (totalPlayers < minPlayersR) {
+        scheduleBotMove(currentRoom);
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'min_players').replace('%s', minPlayersR) }));
+        return;
+      }
 
       // Mahjong multi-round: snapshot the previous round's tracking fields
       // before createState() replaces the state object.
@@ -1519,6 +1697,7 @@ wss.on('connection', (ws) => {
       if (currentRoom.match && !currentRoom.match.over && currentRoom.state && currentRoom.state.winner != null) {
         swapMatchSeats(currentRoom);
       }
+      compactSeats(currentRoom);
       currentRoom.state = gameMod.createState();
       applyRuntimeState(currentRoom, totalPlayers);
 
@@ -1564,23 +1743,10 @@ wss.on('connection', (ws) => {
       if (!info) return;
       // Don't delete immediately — start grace timer so the player can resume
       info.disconnectedAt = Date.now();
+      info._left = true; // the socket close that follows must not shorten this 5-minute window
       if (info._disconnectTimer) clearTimeout(info._disconnectTimer);
-      info._disconnectTimer = setTimeout(() => {
-        if (info.disconnectedAt && currentRoom.players.get(ws) === info) {
-          currentRoom.players.delete(ws);
-          currentRoom.readyPlayers.delete(info.index);
-          if (currentRoom.hostWS === ws) {
-            currentRoom.hostWS = Array.from(currentRoom.players.keys()).find(client => client.readyState === 1) || null;
-          }
-          if (currentRoom.players.size === 0) {
-            clearAllRoomTimers(currentRoom);
-            rooms.delete(currentRoomId);
-          } else {
-            broadcastRoom(currentRoom, { type: 'player_left', players: roomPlayersList(currentRoom), phase: currentRoom.phase });
-            scheduleBotMove(currentRoom);
-          }
-        }
-      }, 300000);  // 5-minute grace for rejoin
+      const leftRoom = currentRoom, leftRoomId = currentRoomId; // not the connection-scoped vars: the socket may join another room
+      info._disconnectTimer = setTimeout(() => expireSeat(leftRoom, leftRoomId, ws, info), 300000);  // 5-minute grace for rejoin
       ws.send(JSON.stringify({ type: 'left_room' }));
       return;
     }
@@ -1588,6 +1754,11 @@ wss.on('connection', (ws) => {
     // --- return_to_room ---
     if (type === 'return_to_room') {
       if (!currentRoom) return;
+      // Mid-game only the host may abort the table; anyone may leave once the game is over.
+      if (currentRoom.phase === 'playing' && ws !== currentRoom.hostWS && !isGameOver(currentRoom.state)) {
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'host_only_return_midgame') }));
+        return;
+      }
       currentRoom.phase = 'lobby';
       currentRoom.readyPlayers = new Set();
       currentRoom.state = null;
@@ -1606,6 +1777,10 @@ wss.on('connection', (ws) => {
       if (!currentRoom) return;
       if (currentRoom.game !== 'twentyfour') return;
       const state = currentRoom.state;
+      if (currentRoom.phase !== 'playing' || !state || !currentRoom.players.has(ws)) return;
+      // Only once the round is really over: stops a click on a running round (or two players
+      // clicking together) from skipping rounds.
+      if (state.phase !== 'round_end') return;
       const totalPlayers = currentRoom.players.size + (currentRoom.bots ? currentRoom.bots.size : 0);
 
       if (state.currentRound >= state.maxRounds) {
@@ -1615,7 +1790,7 @@ wss.on('connection', (ws) => {
           if (state.roundsWon[i] > bestWins) { bestWins = state.roundsWon[i]; best = i; }
         }
         state.winner = best;
-        broadcastRoom(currentRoom, { type: 'game_state', state: state, players: roomPlayersList(currentRoom) });
+        broadcastGameView(currentRoom, 'game_state');
         return;
       }
 
@@ -1632,33 +1807,32 @@ wss.on('connection', (ws) => {
       scheduleBotMove(currentRoom);
       return;
     }
+  };
+
+  // Any exception from a message (a game module bug, a malformed payload) must only fail that
+  // one message: an uncaught throw in a ws listener would take the whole server down.
+  ws.on('message', (raw) => {
+    try {
+      onMessage(raw);
+    } catch (e) {
+      console.error('[ws message] handler threw:', e);
+      try {
+        if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'g_invalid_action'), code: 'g_invalid_action' }));
+      } catch (e2) { /* socket already gone */ }
+    }
   });
 
   ws.on('close', () => {
     if (currentRoom && currentRoomId) {
       const info = currentRoom.players.get(ws);
       if (!info) return;
-      info.disconnectedAt = Date.now();
-      if (info._disconnectTimer) clearTimeout(info._disconnectTimer);
-      info._disconnectTimer = setTimeout(() => {
-        if (info.disconnectedAt && currentRoom.players.get(ws) === info) {
-          currentRoom.players.delete(ws);
-          currentRoom.readyPlayers.delete(info.index);
-          if (currentRoom.hostWS === ws) {
-            currentRoom.hostWS = Array.from(currentRoom.players.keys()).find(client => client.readyState === 1) || null;
-          }
-          const skipped = skipDisconnectedTurn(currentRoom);
-          if (currentRoom.players.size === 0) {
-            clearAllRoomTimers(currentRoom);
-            rooms.delete(currentRoomId);
-            return;
-          }
-          broadcastRoom(currentRoom, { type: 'player_left', players: roomPlayersList(currentRoom), phase: currentRoom.phase });
-          if (currentRoom.phase === 'playing' && currentRoom.state && skipped) broadcastGameView(currentRoom);
-          scheduleBotMove(currentRoom);
-        }
-      }, DISCONNECT_GRACE_MS);
-      broadcastRoom(currentRoom, { type: 'player_left', players: roomPlayersList(currentRoom), phase: currentRoom.phase });
+      const room = currentRoom, roomId = currentRoomId;
+      if (!info._left) { // leave_room already armed the longer 5-minute window
+        info.disconnectedAt = Date.now();
+        if (info._disconnectTimer) clearTimeout(info._disconnectTimer);
+        info._disconnectTimer = setTimeout(() => expireSeat(room, roomId, ws, info), DISCONNECT_GRACE_MS);
+      }
+      broadcastRoom(room, { type: 'player_left', players: roomPlayersList(room), phase: room.phase });
     }
   });
 });

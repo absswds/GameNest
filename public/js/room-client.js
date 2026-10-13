@@ -135,7 +135,7 @@
       btn.disabled = i === fromIndex;
       btn.innerHTML =
         '<div class="seat-swap-slot">' + _t('seat_label') + (i + 1) + '</div>' +
-        '<div class="seat-swap-player">' + summary.title + '</div>' +
+        '<div class="seat-swap-player">' + escapeHtml(summary.title) + '</div>' +
         '<div class="seat-swap-tags">' + summary.meta + '</div>';
       btn.addEventListener('click', function() {
         const toIdx = parseInt(this.dataset.seatIndex, 10);
@@ -575,10 +575,10 @@
         html +=
           '<div class="waiting-slot occupied' + meClass + '">' +
             '<div class="waiting-slot-avatar" style="background:' + getSlotColor(i) + '">' +
-              (player.avatar || (player.isBot ? '🤖' : '😊')) +
+              escapeHtml(player.avatar || (player.isBot ? '🤖' : '😊')) +
             '</div>' +
             '<div class="waiting-slot-info">' +
-              '<div class="waiting-slot-name">' + player.name + (isMe ? ' (' + _t('you') + ')' : '') + '</div>' +
+              '<div class="waiting-slot-name">' + escapeHtml(player.name) + (isMe ? ' (' + _t('you') + ')' : '') + '</div>' +
               '<div class="waiting-slot-tags">' + tagsHtml + '</div>' +
             '</div>' +
             '<button class="waiting-slot-swap" data-from="' + i + '" title="⇅">⇅</button>' +
@@ -1135,7 +1135,7 @@
       tag.className = 'player-tag p' + p.index;
       if (state && state.currentPlayer === p.index) tag.classList.add('active');
       const avatar = p.avatar || (p.isBot ? '\u{1F916}' : '\u{1F60A}');
-      tag.innerHTML = '<span class="dot"></span><span class="player-tag-avatar">' + avatar + '</span><span class="player-tag-name">' + p.name + (p.isBot ? ' \u{1F916}' : '') + '</span>';
+      tag.innerHTML = '<span class="dot"></span><span class="player-tag-avatar">' + escapeHtml(avatar) + '</span><span class="player-tag-name">' + escapeHtml(p.name) + (p.isBot ? ' \u{1F916}' : '') + '</span>';
       // Tap to show name tooltip (works on touch + mouse)
       tag.addEventListener('click', function(e) {
         e.stopPropagation();

@@ -346,6 +346,8 @@
         if (!animState.running) drawFrame(null);
       };
       resize();
+      if (window._c4Resize) window.removeEventListener('resize', window._c4Resize);
+      window._c4Resize = resize;
       window.addEventListener('resize', resize);
 
       // Click handler — drop piece in column

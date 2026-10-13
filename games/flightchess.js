@@ -41,13 +41,14 @@ exports.handleMove = (data, state, playerIndex) => {
 
     // Pity mechanism: if all planes are in base (or home) and player has rolled
     // non-6 for 5 consecutive turns, force a 6 so they can launch
+    let pity = false;
     const allInBase = pData.planes.every(function(p) { return p === -1 || p === HOME; });
     if (allInBase && dice !== 6) {
       pData.noSixStreak = (pData.noSixStreak || 0) + 1;
       if (pData.noSixStreak >= 5) {
         dice = 6;
         pData.noSixStreak = 0;
-        state.lastMoveResult = pick(state, '🎲 保底机制触发！自动获得6点', '🎲 Guaranteed 6 activated!');
+        pity = true;
       }
     } else if (dice === 6 || !allInBase) {
       pData.noSixStreak = 0;
@@ -56,6 +57,7 @@ exports.handleMove = (data, state, playerIndex) => {
     state.dice = dice; state.hasRolled = true;
     const name = windowNames(playerIndex, state);
     state.lastMoveResult = pick(state, `${name} 掷了 ${dice} 点`, `${name} rolled ${dice}`);
+    if (pity) state.lastMoveResult += pick(state, '（🎲 保底机制触发）', ' (guaranteed 6 activated)');
 
     if (dice === 6) state.consecutiveSixes++;
     else state.consecutiveSixes = 0;
@@ -81,7 +83,7 @@ exports.handleMove = (data, state, playerIndex) => {
   if (action === 'move') {
     if (!state.hasRolled) return 'fc_roll_dice_first';
     const idx = data.planeIndex;
-    if (typeof idx !== 'number' || idx < 0 || idx >= PLANES) return 'fc_invalid_plane';
+    if (!Number.isInteger(idx) || idx < 0 || idx >= PLANES) return 'fc_invalid_plane';
 
     const pos = pData.planes[idx];
     if (pos === HOME) return 'fc_plane_already_home';

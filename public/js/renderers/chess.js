@@ -427,7 +427,7 @@
           window.gameRenderers.get('chess').render(window._chState, container, pi, window._chState.winner);
         }
       };
-      resize(); window.addEventListener('resize', resize);
+      resize(); if (window._chessResize) window.removeEventListener('resize', window._chessResize); window._chessResize = resize; window.addEventListener('resize', resize);
 
       canvas.addEventListener('click', function(e) {
         var rect = canvas.getBoundingClientRect();

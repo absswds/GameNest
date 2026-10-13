@@ -37,7 +37,7 @@
           window.gameRenderers.get('go9').render(window._goState, container, pi, window._goState.winner);
         }
       };
-      resize(); window.addEventListener('resize', resize);
+      resize(); if (window._go9Resize) window.removeEventListener('resize', window._go9Resize); window._go9Resize = resize; window.addEventListener('resize', resize);
 
       document.getElementById('goPassBtn').addEventListener('click', function() {
         window.makeGameMove({ pass: true });

@@ -43,16 +43,20 @@ exports.initGame = (state, playerCount) => {
 
 // Per-player view: only this player's own board, never anyone else's.
 // highScore (the race leaderboard max) is public, so it's included.
-exports.playerView = (state, playerIndex) => ({
-  board: state.boards[playerIndex],
-  score: state.scores[playerIndex],
-  alive: state.alive[playerIndex],
-  winner: state.winner,
-  currentPlayer: state.currentPlayer,
-  maxTile: maxTile(state.boards[playerIndex]),
-  highScore: state.scores.reduce((m, v) => (v > m ? v : m), 0),
-  startTime: state.startTime,
-});
+// Before initGame (join while waiting) or for a seat without a board there is nothing to show yet.
+exports.playerView = (state, playerIndex) => {
+  const board = state.boards[playerIndex];
+  return {
+    board: board,
+    score: state.scores[playerIndex],
+    alive: state.alive[playerIndex],
+    winner: state.winner,
+    currentPlayer: state.currentPlayer,
+    maxTile: board ? maxTile(board) : 0,
+    highScore: state.scores.reduce((m, v) => (v > m ? v : m), 0),
+    startTime: state.startTime,
+  };
+};
 
 const DIRS = ['up', 'down', 'left', 'right'];
 
@@ -63,9 +67,9 @@ exports.handleMove = (data, state, playerIndex) => {
   const dir = data && data.dir;
   if (DIRS.indexOf(dir) === -1) return 'g2048_bad_dir';
 
-  // Compute on a copy so an illegal (no-change) move mutates nothing.
+  // move() works on its own copy and only writes back when something changed.
   const board = state.boards[playerIndex];
-  const res = move(copy(board), dir);
+  const res = move(board, dir);
   if (!res.changed) return 'g2048_no_move';
 
   // Commit the move.

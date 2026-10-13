@@ -20,6 +20,9 @@ module.exports = {
   'host_only_settings': '只有房主可以修改设置',
   'game_started_no_settings': '游戏已开始，不能修改设置',
   'host_only_restart': '只有房主可以重新开局',
+  'game_not_playing': '游戏尚未开始',
+  'host_only_return_midgame': '对局进行中只有房主可以返回房间',
+  'swap_own_seat_only': '只能调整自己的座位',
 
   // Common gameplay errors
   'g_game_over': '游戏已结束',
@@ -168,6 +171,7 @@ module.exports = {
   'tx_you_can_check': '你可以过牌',
   'tx_not_enough_chips_go_allin': '筹码不足，请全下',
   'tx_raise_too_low': '加注至少需要 X 筹码',
+  'tx_raise_closed': '现在不能加注：没有人能跟注，或对方全下未达最小加注额而不重开加注',
   'tx_not_enough_chips': '筹码不足',
 
   // Rummikub (rk_)
@@ -189,6 +193,19 @@ module.exports = {
   'fc_need_to_select_plane': '请先移动飞机',
   'fc_roll_dice_first': '请先掷骰子',
   'fc_invalid_plane': '无效的飞机',
+  'mp_eliminated': '你已出局',
+  'mp_cannot_roll': '现在不能掷骰',
+  'mp_cannot_buy': '现在不能购买',
+  'mp_not_buyable': '此处不可购买',
+  'mp_nothing_to_skip': '无需跳过',
+  'mp_no_property': '未指定地产',
+  'mp_not_property': '不是地产',
+  'mp_not_owner': '你不拥有此地产',
+  'mp_fully_built': '已建满（含旅馆）',
+  'mp_need_monopoly': '需垄断整个色组才能盖房',
+  'mp_cannot_end_turn': '还不能结束回合',
+  'mp_unknown_action': '未知操作',
+  'mp_insufficient_funds': '余额不足',
   'fc_plane_already_home': '这架飞机已经到家了',
   'fc_must_roll_6_to_launch': '只有掷到6才能起飞',
 
@@ -215,6 +232,7 @@ module.exports = {
   'ht_no_hand': '手牌为空',
   'ht_select_a_card': '请选一张牌',
   'ht_illegal_card': '非法出牌',
+  'ht_already_passed': '你已经传过牌了',
 
   // Minesweeper (ms_)
   'ms_you_are_out': '你已出局，只能观战',

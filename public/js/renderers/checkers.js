@@ -327,7 +327,7 @@
           window.gameRenderers.get('checkers').render(window._ckState, container, pi, window._ckState.winner);
         }
       };
-      resize(); window.addEventListener('resize', resize);
+      resize(); if (window._checkersResize) window.removeEventListener('resize', window._checkersResize); window._checkersResize = resize; window.addEventListener('resize', resize);
 
       canvas.addEventListener('click', function(e) {
         var rect = canvas.getBoundingClientRect();

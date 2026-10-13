@@ -39,9 +39,9 @@ function findBeat(hand, lastPlay) {
       if (cards.length >= 2) {
         if (rankVal(rank) > tp.rank) return cards.slice(0, 2);
         if (rankVal(rank) === tp.rank) {
-          // Check if any pair of this rank beats previous suit
-          const best = cards.sort((a,b) => suitVal(b.suit) - suitVal(a.suit))[1];
-          if (suitVal(best.suit) > (tp.suit || 0)) return cards.slice(0, 2);
+          // A pair's suit is its highest card: use the two highest suits of this rank
+          const bySuit = [...cards].sort((a,b) => suitVal(b.suit) - suitVal(a.suit));
+          if (suitVal(bySuit[0].suit) > (tp.suit || 0)) return bySuit.slice(0, 2);
         }
       }
     }
@@ -81,6 +81,15 @@ function findBeat(hand, lastPlay) {
           const result = [];
           for (let j = 0; j < len; j++) {
             result.push(sortedHand.find(c => c.rank === RANKS[startRank + j]));
+          }
+          // Five same-suit cards would be a straight flush (a different type): swap one card's suit
+          if (len === 5 && result.every(c => c.suit === result[0].suit)) {
+            let fixed = false;
+            for (let j = 0; j < len && !fixed; j++) {
+              const alt = sortedHand.find(c => c.rank === result[j].rank && c.suit !== result[0].suit);
+              if (alt) { result[j] = alt; fixed = true; }
+            }
+            if (!fixed) continue;
           }
           return result;
         }

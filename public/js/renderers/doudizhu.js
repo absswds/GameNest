@@ -95,7 +95,7 @@
 
       // Last played cards
       if (s.lastPlay) {
-        var who = s.lastPlay.player === selfIdx ? _t('ddz_you') : ((window.gamePlayers && window.gamePlayers[s.lastPlay.player]) ? window.gamePlayers[s.lastPlay.player].name : (_t('ddz_player_fallback') + ' ' + (s.lastPlay.player + 1)));
+        var who = escHtml(s.lastPlay.player === selfIdx ? _t('ddz_you') : ((window.gamePlayers && window.gamePlayers[s.lastPlay.player]) ? window.gamePlayers[s.lastPlay.player].name : (_t('ddz_player_fallback') + ' ' + (s.lastPlay.player + 1))));
         var lpHtml = '<div style="font-size:12px;color:var(--text-muted,#999);margin-bottom:4px;">' + who + ' ' + _t('ddz_played') + '</div>' +
           '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">';
         for (var c = 0; c < s.lastPlay.cards.length; c++) {
@@ -111,7 +111,7 @@
         if (bidMode === 'rob' && s.callPhase) {
           var bidInfo = '<div style="font-size:13px;color:var(--text-muted,#999);margin-bottom:6px;">' + _t('ddz_bidding_phase') + '</div>';
           for (var cr = 0; cr < (s._playerCount || 3); cr++) {
-            var crName = (window.gamePlayers && window.gamePlayers[cr]) ? window.gamePlayers[cr].name : (_t('ddz_player_fallback') + ' ' + (cr + 1));
+            var crName = escHtml((window.gamePlayers && window.gamePlayers[cr]) ? window.gamePlayers[cr].name : (_t('ddz_player_fallback') + ' ' + (cr + 1)));
             var crLabel = '';
             var crActive = s.currentBidder === cr;
             if (s.callPhase === 'call') {
@@ -138,7 +138,7 @@
             bidInfo += '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">';
             for (var bi = 0; bi < (s._playerCount || 3); bi++) {
               var bidVal = s.bids[bi];
-              var biName = (window.gamePlayers && window.gamePlayers[bi]) ? window.gamePlayers[bi].name : (_t('ddz_player_fallback') + ' ' + (bi + 1));
+              var biName = escHtml((window.gamePlayers && window.gamePlayers[bi]) ? window.gamePlayers[bi].name : (_t('ddz_player_fallback') + ' ' + (bi + 1)));
               if (bidVal !== undefined) {
                 var bidColor = bidVal === 0 ? 'var(--text-muted,#999)' : (bidVal === 3 ? '#c0392b' : 'var(--accent,#c8a45c)');
                 bidInfo += '<span style="font-size:12px;font-weight:700;color:' + bidColor + ';">' + biName + ': ' + (bidVal === 0 ? _t('ddz_no_bid_display') : bidVal) + '</span>';
@@ -152,7 +152,7 @@
 
       // Current round info
       if (s.landlord != null && s.phase === 'playing') {
-        var landlordName = (window.gamePlayers && window.gamePlayers[s.landlord]) ? window.gamePlayers[s.landlord].name : (_t('ddz_player_fallback') + ' ' + (s.landlord + 1));
+        var landlordName = escHtml((window.gamePlayers && window.gamePlayers[s.landlord]) ? window.gamePlayers[s.landlord].name : (_t('ddz_player_fallback') + ' ' + (s.landlord + 1)));
         var landHtml = '<div style="font-size:12px;color:#c0392b;">&#x1F451; ' + _t('ddz_landlord_label') + ': ' + landlordName + '</div>';
         parts.push(landHtml);
       }
@@ -189,7 +189,7 @@
         if (s.scores) {
           reHtml += '<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:4px;font-size:13px;">';
           for (var ri = 0; ri < s.scores.length; ri++) {
-            var riName = (window.gamePlayers && window.gamePlayers[ri]) ? window.gamePlayers[ri].name : (_t('ddz_player_fallback') + ' ' + (ri + 1));
+            var riName = escHtml((window.gamePlayers && window.gamePlayers[ri]) ? window.gamePlayers[ri].name : (_t('ddz_player_fallback') + ' ' + (ri + 1)));
             var riScore = s.scores[ri] !== undefined ? s.scores[ri] : 0;
             reHtml += '<span style="font-weight:600;color:' + (riScore >= 0 ? '#5a9e6f' : '#e74c3c') + ';">' + riName + ': ' + (riScore >= 0 ? '+' : '') + riScore + '</span>';
           }
@@ -198,7 +198,7 @@
         if (s.cumulativeScore) {
           reHtml += '<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:2px;font-size:12px;color:var(--text-muted,#999);">';
           for (var ci = 0; ci < s.cumulativeScore.length; ci++) {
-            var ciName = (window.gamePlayers && window.gamePlayers[ci]) ? window.gamePlayers[ci].name : (_t('ddz_player_fallback') + ' ' + (ci + 1));
+            var ciName = escHtml((window.gamePlayers && window.gamePlayers[ci]) ? window.gamePlayers[ci].name : (_t('ddz_player_fallback') + ' ' + (ci + 1)));
             reHtml += '<span>' + ciName + ': ' + s.cumulativeScore[ci] + '</span>';
           }
           reHtml += '</div>';
@@ -212,7 +212,7 @@
         if (s.cumulativeScore) {
           cvHtml += '<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:4px;font-size:13px;">';
           for (var vi = 0; vi < s.cumulativeScore.length; vi++) {
-            var viName = (window.gamePlayers && window.gamePlayers[vi]) ? window.gamePlayers[vi].name : (_t('ddz_player_fallback') + ' ' + (vi + 1));
+            var viName = escHtml((window.gamePlayers && window.gamePlayers[vi]) ? window.gamePlayers[vi].name : (_t('ddz_player_fallback') + ' ' + (vi + 1)));
             cvHtml += '<span style="font-weight:600;">' + viName + ': ' + s.cumulativeScore[vi] + '</span>';
           }
           cvHtml += '</div>';

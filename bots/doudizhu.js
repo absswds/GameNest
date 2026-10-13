@@ -3,6 +3,7 @@ exports.name = 'doudizhu';
 
 const { RANKS, rankGroups } = require('./lib/cards');
 const { botName } = require('./lib/bot-name');
+const ddz = require('../games/doudizhu');
 
 function rankVal(rank) {
   if (rank === '小王') return 13;
@@ -19,62 +20,59 @@ function countBombs(hand) {
   return bombs;
 }
 
+// Lowest play that beats lastPlay, or null. Candidates are validated with the server's own
+// detectType/canBeat so the bot never proposes an illegal play (which would hang the room).
 function findBeat(hand, lastPlay) {
   if (!lastPlay || !lastPlay.play) return null;
   const tp = lastPlay.play;
-  const groups = rankGroups(hand);
+  const ok = (cards) => {
+    const t = ddz.detectType(cards);
+    return t && ddz.canBeat(t, tp) ? cards : null;
+  };
+  const sorted = [...hand].sort((a, b) => rankVal(a.rank) - rankVal(b.rank));
+  const groups = [...rankGroups(hand)].sort((a, b) => rankVal(a[0]) - rankVal(b[0]));
+  const byRank = new Map(groups);
+  const normal = groups.filter(([r]) => r !== '大王' && r !== '小王');
+  let found = null;
 
-  // Try same type with higher rank
   if (tp.type === 'single') {
-    const singles = [];
-    for (const c of hand) singles.push(c);
-    singles.sort((a,b) => rankVal(a.rank) - rankVal(b.rank));
-    const match = singles.find(c => rankVal(c.rank) > tp.rank && c.id !== 'SJ' && c.id !== 'BJ');
-    if (match) return [match];
-    // Try rocket or bomb
-    const sj = hand.find(c => c.id === 'SJ');
-    const bj = hand.find(c => c.id === 'BJ');
-    if (sj && bj) return [sj, bj];
-    for (const [rank, cards] of groups) {
-      if (cards.length === 4) return cards.slice();
+    for (const c of sorted) { if ((found = ok([c]))) return found; }
+  } else if (tp.type === 'pair') {
+    for (const [, cs] of normal) { if (cs.length >= 2 && (found = ok(cs.slice(0, 2)))) return found; }
+  } else if (tp.type === 'triple' || tp.type === 'triple_one' || tp.type === 'triple_two') {
+    for (const [r, cs] of normal) {
+      if (cs.length < 3) continue;
+      const tri = cs.slice(0, 3);
+      if (tp.type === 'triple') found = ok(tri);
+      else if (tp.type === 'triple_one') {
+        const k = sorted.find(c => c.rank !== r);
+        found = k && ok(tri.concat([k]));
+      } else {
+        const pr = normal.find(([r2, c2]) => r2 !== r && c2.length >= 2);
+        found = pr && ok(tri.concat(pr[1].slice(0, 2)));
+      }
+      if (found) return found;
     }
-    return null;
+  } else if (tp.type === 'straight' || tp.type === 'consecutive_pairs' || tp.type === 'plane') {
+    const per = tp.type === 'straight' ? 1 : tp.type === 'consecutive_pairs' ? 2 : 3;
+    const len = tp.length;
+    // ranks 3..A (index 0..11) only; 2 and jokers cannot be part of a run
+    for (let start = 0; start + len <= 12; start++) {
+      const cards = [];
+      for (let i = start; i < start + len; i++) {
+        const cs = byRank.get(RANKS[i]);
+        if (!cs || cs.length < per) { cards.length = 0; break; }
+        cards.push(...cs.slice(0, per));
+      }
+      if (cards.length && (found = ok(cards))) return found;
+    }
   }
 
-  if (tp.type === 'pair') {
-    for (const [rank, cards] of groups) {
-      if (cards.length >= 2 && rankVal(rank) > tp.rank && rank !== '大王' && rank !== '小王')
-        return cards.slice(0, 2);
-    }
-    // Try bomb
-    for (const [rank, cards] of groups) {
-      if (cards.length === 4) return cards.slice();
-    }
-    return null;
-  }
-
-  if (tp.type === 'triple' || tp.type === 'triple_one' || tp.type === 'triple_two') {
-    for (const [rank, cards] of groups) {
-      if (cards.length >= 3 && rankVal(rank) > tp.rank && rank !== '大王' && rank !== '小王')
-        return cards.slice(0, 3);
-    }
-    for (const [rank, cards] of groups) {
-      if (cards.length === 4) return cards.slice();
-    }
-    return null;
-  }
-
-  // For other complex types, try bomb
-  for (const [rank, cards] of groups) {
-    if (cards.length === 4 && rankVal(rank) > tp.rank) return cards.slice();
-  }
-  // Try rocket against bomb
-  if (tp.type === 'bomb' || tp.type === 'rocket') {
-    const sj = hand.find(c => c.id === 'SJ');
-    const bj = hand.find(c => c.id === 'BJ');
-    if (sj && bj) return [sj, bj];
-  }
-
+  // A bomb beats any non-bomb play; a bigger bomb beats a bomb; the rocket beats everything.
+  for (const [, cs] of groups) { if (cs.length === 4 && (found = ok(cs.slice()))) return found; }
+  const sj = hand.find(c => c.id === 'SJ');
+  const bj = hand.find(c => c.id === 'BJ');
+  if (sj && bj && tp.type !== 'rocket') return [sj, bj];
   return null;
 }
 
@@ -100,11 +98,11 @@ exports.createBot = function(playerIndex) {
         const highCards = hand.filter(c => rankVal(c.rank) >= 12).length;
         var strong = (bombs >= 1 && highCards >= 3) || bombs >= 2;
 
-        // 叫抢 mode
-        if (state.callPhase === 'call') {
+        // 叫抢 mode (state.bidMode === 'score' uses the 0-3 bids below)
+        if (state.bidMode !== 'score' && state.callPhase === 'call') {
           return strong ? { call: true } : { pass: true };
         }
-        if (state.callPhase === 'rob') {
+        if (state.bidMode !== 'score' && state.callPhase === 'rob') {
           if (!state.eligibleForRob || !state.eligibleForRob[playerIndex]) return { passRob: true };
           if (state.robAttempts && state.robAttempts.indexOf(playerIndex) >= 0) return { passRob: true };
           // Rob if hand is very strong; caller also gets a rob chance

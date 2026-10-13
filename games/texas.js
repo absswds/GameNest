@@ -168,50 +168,78 @@ function compareHands(a, b) {
   return 0;
 }
 
-function showdown(state) {
-  const active = [];
-  for (let i = 0; i < state.hands.length; i++) {
-    if (!state.folded[i]) active.push(i);
-  }
-  if (active.length === 0) return -1;
-
-  let bestPlayer = active[0];
-  let bestScore = evaluateHand([...state.hands[bestPlayer], ...state.communityCards]);
-
-  for (let i = 1; i < active.length; i++) {
-    const score = evaluateHand([...state.hands[active[i]], ...state.communityCards]);
-    if (compareHands(score, bestScore) > 0) {
-      bestPlayer = active[i];
-      bestScore = score;
-    } else if (compareHands(score, bestScore) === 0) {
-      // Tie — split pot (simplified: first best wins, we handle split in pot distribution)
-    }
-  }
-
-  // Simplified: winner takes main pot
-  state.chips[bestPlayer] += state.pot;
-  state.pot = 0;
-  // Handle side pots roughly: give to same winner for now
-  for (const sp of state.sidePots) {
-    state.chips[bestPlayer] += sp.amount;
-  }
-  state.sidePots = [];
-
-  // Eliminate players with 0 chips
-  let alive = 0;
-  for (let i = 0; i < state.chips.length; i++) {
-    if (state.chips[i] > 0) alive++;
-  }
-  if (alive <= 1) {
-    state.winner = bestPlayer;
-  }
-
-  return bestPlayer;
-}
+const BIG_BLIND = 20;
+const SMALL_BLIND = 10;
 
 // state.pot holds every chip committed this hand, including the current street's bets
 function canAct(state, i) {
   return !state.folded[i] && !state.allIn[i] && state.chips[i] > 0;
+}
+
+// Move `amount` (capped at the stack) from a player's chips into the pot; all-in when the stack hits 0.
+function commit(state, i, amount) {
+  const pay = Math.min(amount, state.chips[i]);
+  state.chips[i] -= pay;
+  state.bets[i] += pay;
+  state.totalBet[i] += pay;
+  state.pot += pay;
+  if (state.chips[i] === 0) state.allIn[i] = true;
+  return pay;
+}
+
+// Split the pot into layers by contribution (main pot + side pots), pay each layer to the best
+// hand(s) among the players who put money into it. A layer with one eligible player is simply
+// returned to him (an uncalled over-bet). Ties split evenly; odd chips go left of the dealer.
+function showdown(state) {
+  const n = state.hands.length;
+  const scores = [];
+  state.showdownHands = [];
+  for (let i = 0; i < n; i++) {
+    if (state.folded[i]) continue;
+    const hand = evaluateHand([...state.hands[i], ...state.communityCards]);
+    scores[i] = hand;
+    state.showdownHands.push({ player: i, cards: state.hands[i].map(c => ({ ...c })), hand });
+  }
+  const alive = scores.map((s, i) => (s ? i : -1)).filter(i => i >= 0);
+  if (alive.length === 0) return -1;
+
+  const levels = [...new Set(alive.map(i => state.totalBet[i]).filter(v => v > 0))].sort((a, b) => a - b);
+  const pots = [];
+  let prev = 0;
+  for (const level of levels) {
+    let amount = 0;
+    for (let i = 0; i < n; i++) amount += Math.max(0, Math.min(state.totalBet[i], level) - prev);
+    const players = alive.filter(i => state.totalBet[i] >= level);
+    if (amount > 0) pots.push({ amount, players });
+    prev = level;
+  }
+  // Chips a folded player put in above every live player's total (cannot normally happen) stay in the last pot
+  const paid = pots.reduce((a, p) => a + p.amount, 0);
+  if (pots.length === 0) pots.push({ amount: state.pot, players: alive });
+  else if (paid < state.pot) pots[pots.length - 1].amount += state.pot - paid;
+
+  const winnersAll = new Set();
+  for (const pot of pots) {
+    let best = [pot.players[0]];
+    for (const i of pot.players.slice(1)) {
+      const c = compareHands(scores[i], scores[best[0]]);
+      if (c > 0) best = [i];
+      else if (c === 0) best.push(i);
+    }
+    const share = Math.floor(pot.amount / best.length);
+    let odd = pot.amount - share * best.length;
+    best.sort((a, b) => ((a - state.dealer + n - 1) % n) - ((b - state.dealer + n - 1) % n));
+    for (const i of best) {
+      state.chips[i] += share + (odd > 0 ? 1 : 0);
+      if (odd > 0) odd--;
+      winnersAll.add(i);
+    }
+    pot.winners = best.slice();
+  }
+  state.pot = 0;
+  state.sidePots = pots;
+  state.showdownWinners = [...winnersAll].sort((a, b) => a - b);
+  return state.showdownWinners[0];
 }
 
 function advancePhase(state) {
@@ -221,7 +249,6 @@ function advancePhase(state) {
     // a lone player facing only all-ins just needs to match.
     const pending = able.filter(i => state.bets[i] < state.currentBet || (able.length > 1 && !state.acted[i]));
     if (pending.length > 0) return;
-    // All bets matched — advance
     // All bets matched — advance
     if (state.phase === 'preflop') {
       state.phase = 'flop';
@@ -237,23 +264,14 @@ function advancePhase(state) {
       state.phase = 'showdown';
       state.showdownWinner = winner;
       state.winner = winner; // one hand per game, like a fold-out: otherwise nothing ever starts the next hand
-      state.showdownHands = [];
-      for (let i = 0; i < state.hands.length; i++) {
-        if (!state.folded[i]) {
-          state.showdownHands.push({
-            player: i,
-            cards: state.hands[i].map(c => ({ ...c })),
-            hand: evaluateHand([...state.hands[i], ...state.communityCards]),
-          });
-        }
-      }
       return;
     }
     // Reset bets for new round (the chips are already in state.pot)
     for (let i = 0; i < state.bets.length; i++) state.bets[i] = 0;
     state.acted = state.bets.map(() => false);
+    state.raiseClosed = state.bets.map(() => false);
     state.currentBet = 0;
-    state.lastRaise = 0;
+    state.lastRaise = BIG_BLIND;
     state.currentPlayer = nextActivePlayerAfterDealer(state);
     // Fewer than two players can still bet: deal the next street straight away
     if (able.length > 1) return;
@@ -261,14 +279,16 @@ function advancePhase(state) {
 }
 
 function markActed(state, playerIndex, raised) {
-  if (raised) state.acted = state.acted.map(() => false);
+  if (raised) {
+    state.acted = state.acted.map(() => false);
+    state.raiseClosed = state.raiseClosed.map(() => false);
+  }
   state.acted[playerIndex] = true;
 }
 
+// First to act after the flop: the first live seat left of the dealer (heads-up: the big blind)
 function nextActivePlayerAfterDealer(state) {
   const n = state.chips.length;
-  // In heads-up, dealer acts first preflop
-  // Otherwise, start from player after dealer
   for (let i = 1; i <= n; i++) {
     const idx = (state.dealer + i) % n;
     if (canAct(state, idx)) return idx;
@@ -293,18 +313,21 @@ exports.createState = () => {
     sidePots: [],
     chips: [],
     bets: [],
+    totalBet: [],
     folded: [],
     allIn: [],
     acted: [],
+    raiseClosed: [],
     currentBet: 0,
-    lastRaise: 0,
-    dealer: 0,
+    lastRaise: BIG_BLIND, // size of the last full raise this street (big blind if none) = minimum raise increment
+    dealer: null, // null = pick a random dealer in initGame
     currentPlayer: 0,
     phase: 'preflop', // preflop | flop | turn | river | showdown
     smallBlind: 0,
     bigBlind: 0,
     winner: null,
     showdownWinner: null,
+    showdownWinners: [],
     showdownHands: [],
   };
 };
@@ -319,18 +342,21 @@ exports.initGame = function(state, playerCount) {
   state.pot = 0;
   state.sidePots = [];
   state.bets = new Array(playerCount).fill(0);
+  state.totalBet = new Array(playerCount).fill(0);
   state.folded = new Array(playerCount).fill(false);
   state.allIn = new Array(playerCount).fill(false);
   state.acted = new Array(playerCount).fill(false);
+  state.raiseClosed = new Array(playerCount).fill(false);
   state.chips = new Array(playerCount).fill(startingChips);
   state.currentBet = 0;
-  state.lastRaise = 0;
+  state.lastRaise = BIG_BLIND;
   state.winner = null;
   state.showdownWinner = null;
+  state.showdownWinners = [];
   state.showdownHands = [];
 
-  // Rotate dealer
-  state.dealer = (state.dealer || 0) % playerCount;
+  // Every game is a fresh hand with fresh stacks, so the button is random unless the caller preset it
+  state.dealer = Number.isInteger(state.dealer) ? state.dealer % playerCount : Math.floor(Math.random() * playerCount);
 
   // Deal 2 hole cards each
   state.hands = [];
@@ -339,51 +365,49 @@ exports.initGame = function(state, playerCount) {
   }
 
   state.phase = 'preflop';
-  state.currentBet = 0;
 
-  // Post blinds
-  const bbIndex = (state.dealer + 2) % playerCount;
-  const sbIndex = (state.dealer + 1) % playerCount;
-  const bb = 20;
-  const sb = 10;
-
+  // Heads-up the dealer posts the small blind and the other player the big blind
+  const sbIndex = playerCount === 2 ? state.dealer : (state.dealer + 1) % playerCount;
+  const bbIndex = (sbIndex + 1) % playerCount;
   state.smallBlind = sbIndex;
   state.bigBlind = bbIndex;
-  state.currentBet = bb;
+  commit(state, sbIndex, SMALL_BLIND);
+  commit(state, bbIndex, BIG_BLIND);
+  state.currentBet = BIG_BLIND;
 
-  // Post small blind
-  if (state.chips[sbIndex] <= sb) {
-    state.bets[sbIndex] = state.chips[sbIndex];
-    state.chips[sbIndex] = 0;
-    state.allIn[sbIndex] = true;
-  } else {
-    state.chips[sbIndex] -= sb;
-    state.bets[sbIndex] = sb;
-  }
-
-  // Post big blind
-  if (state.chips[bbIndex] <= bb) {
-    state.bets[bbIndex] = state.chips[bbIndex];
-    state.chips[bbIndex] = 0;
-    state.allIn[bbIndex] = true;
-  } else {
-    state.chips[bbIndex] -= bb;
-    state.bets[bbIndex] = bb;
-  }
-
-  state.pot = state.bets[sbIndex] + state.bets[bbIndex];
-
-  // First to act: player after big blind (or dealer+3 for 2 players, meaning dealer acts first)
+  // First to act preflop: left of the big blind (heads-up that is the dealer / small blind)
   const n = playerCount;
-  let firstToAct = (bbIndex + 1) % n;
-  if (playerCount === 2) firstToAct = state.dealer; // dealer acts first preflop heads-up
-  state.currentPlayer = firstToAct;
-
-  // Skip folded/all-in/bust players
-  while (state.folded[state.currentPlayer] || state.allIn[state.currentPlayer] || state.chips[state.currentPlayer] <= 0) {
-    state.currentPlayer = (state.currentPlayer + 1) % n;
-  }
+  state.currentPlayer = (bbIndex + 1) % n;
+  while (!canAct(state, state.currentPlayer)) state.currentPlayer = (state.currentPlayer + 1) % n;
 };
+
+// null if `amount` (the total bet for this street) is a legal raise for the player, else an error key.
+// Standard no-limit: the raise must be at least the last raise increment (big blind if none); a bet that
+// uses the whole stack is always allowed; a short all-in does not reopen the betting for players who
+// already acted.
+exports.checkRaise = function(state, playerIndex, amount) {
+  if (!Number.isInteger(amount) || amount <= state.currentBet) return 'tx_raise_too_low';
+  const need = amount - state.bets[playerIndex];
+  if (need > state.chips[playerIndex]) return 'tx_not_enough_chips';
+  if (state.raiseClosed[playerIndex] || !state.chips.some((c, i) => i !== playerIndex && canAct(state, i))) return 'tx_raise_closed';
+  if (need < state.chips[playerIndex] && amount < state.currentBet + state.lastRaise) return 'tx_raise_too_low';
+  return null;
+};
+
+function applyRaiseTo(state, playerIndex, amount) {
+  const increment = amount - state.currentBet;
+  commit(state, playerIndex, amount - state.bets[playerIndex]);
+  state.currentBet = amount;
+  const full = increment >= state.lastRaise;
+  if (full) state.lastRaise = increment;
+  markActed(state, playerIndex, full);
+  if (!full) {
+    // Short all-in: everyone who already acted must still call it, but may not raise again
+    for (let i = 0; i < state.acted.length; i++) {
+      if (i !== playerIndex && state.acted[i]) state.raiseClosed[i] = true;
+    }
+  }
+}
 
 exports.handleMove = (data, state, playerIndex) => {
   if (state.winner !== null) return 'g_game_over';
@@ -392,8 +416,12 @@ exports.handleMove = (data, state, playerIndex) => {
   if (state.folded[playerIndex]) return 'tx_you_folded';
   if (state.allIn[playerIndex]) return 'tx_you_all_in';
 
-  const { action, amount } = data;
+  let { action, amount } = data;
   const n = state.chips.length;
+  // Server bot fallback ({pass:true} / {}): check if free, otherwise fold
+  if (action === undefined && (data.pass === true || Object.keys(data).length === 0)) {
+    action = state.currentBet > state.bets[playerIndex] ? 'fold' : 'check';
+  }
 
   if (action === 'fold') {
     state.folded[playerIndex] = true;
@@ -429,9 +457,7 @@ exports.handleMove = (data, state, playerIndex) => {
     if (toCall <= 0) return 'tx_you_can_check';
     if (state.chips[playerIndex] < toCall) return 'tx_not_enough_chips_go_allin';
 
-    state.chips[playerIndex] -= toCall;
-    state.bets[playerIndex] = state.currentBet;
-    state.pot += toCall;
+    commit(state, playerIndex, toCall);
     markActed(state, playerIndex, false);
 
     state.currentPlayer = nextActivePlayer(state, playerIndex);
@@ -440,37 +466,24 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   if (action === 'raise') {
-    const minRaise = state.lastRaise > 0 ? state.lastRaise : state.currentBet > 0 ? state.currentBet - state.bets[playerIndex] : 10;
-    if (typeof amount !== 'number' || amount < (state.currentBet + minRaise)) {
-      return 'tx_raise_too_low';
-    }
-    if (amount - state.bets[playerIndex] > state.chips[playerIndex]) return 'tx_not_enough_chips';
-
-    const raiseSize = amount - state.bets[playerIndex];
-    state.chips[playerIndex] -= raiseSize;
-    state.bets[playerIndex] = amount;
-    state.currentBet = amount;
-    state.lastRaise = raiseSize;
-    state.pot += raiseSize;
-    markActed(state, playerIndex, true);
+    const err = exports.checkRaise(state, playerIndex, amount);
+    if (err) return err;
+    applyRaiseTo(state, playerIndex, amount);
 
     state.currentPlayer = nextActivePlayer(state, playerIndex);
+    advancePhase(state);
     return null;
   }
 
   if (action === 'all_in') {
-    const toCall = state.currentBet - state.bets[playerIndex];
-    const remaining = state.chips[playerIndex];
-    state.bets[playerIndex] += remaining;
-    state.chips[playerIndex] = 0;
-    state.allIn[playerIndex] = true;
-    state.pot += remaining;
-
-    if (remaining > toCall) {
-      // This is a raise — handle side pot later
-      state.currentBet = state.bets[playerIndex];
+    const total = state.bets[playerIndex] + state.chips[playerIndex];
+    if (total > state.currentBet) {
+      if (state.raiseClosed[playerIndex]) return 'tx_raise_closed';
+      applyRaiseTo(state, playerIndex, total);
+    } else {
+      commit(state, playerIndex, state.chips[playerIndex]);
+      markActed(state, playerIndex, false);
     }
-    markActed(state, playerIndex, remaining > toCall);
 
     state.currentPlayer = nextActivePlayer(state, playerIndex);
     advancePhase(state);
@@ -486,11 +499,12 @@ exports.playerView = function(state, playerIndex) {
     phase: state.phase,
     communityCards: state.communityCards.map(c => ({ ...c })),
     pot: state.pot,
-    sidePots: state.sidePots ? state.sidePots.map(s => ({ ...s })) : [],
+    sidePots: state.sidePots ? state.sidePots.map(s => ({ ...s, players: s.players.slice(), winners: s.winners ? s.winners.slice() : [] })) : [],
     chips: state.chips ? state.chips.slice() : [],
     bets: state.bets ? state.bets.slice() : [],
     currentBet: state.currentBet,
     lastRaise: state.lastRaise,
+    raiseClosed: !!(state.raiseClosed && state.raiseClosed[playerIndex]),
     dealer: state.dealer,
     currentPlayer: state.currentPlayer,
     folded: state.folded ? state.folded.slice() : [],
@@ -499,6 +513,7 @@ exports.playerView = function(state, playerIndex) {
     bigBlind: state.bigBlind,
     winner: state.winner,
     showdownWinner: state.showdownWinner,
+    showdownWinners: state.showdownWinners ? state.showdownWinners.slice() : [],
     showdownHands: state.showdownHands ? state.showdownHands.map(h => ({
       player: h.player,
       cards: h.cards.map(c => ({ ...c })),

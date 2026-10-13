@@ -16,7 +16,7 @@
     '.om-other{background:linear-gradient(160deg,#2c2c30,#383840);border-radius:14px;padding:8px 14px;text-align:center;' +
       'min-width:68px;border:1px solid rgba(255,255,255,.06);box-shadow:0 2px 8px rgba(0,0,0,.2);' +
       'cursor:pointer;transition:transform .15s,border-color .2s,box-shadow .2s;}' +
-    '.om-other:hover{transform:translateY(-2px);}' +
+    '@media (hover:hover){.om-other:hover{transform:translateY(-2px);}}' +
     '.om-other.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,164,92,.15),0 4px 16px rgba(0,0,0,.25);}' +
     '.om-other.picked{border-color:#e74c3c;box-shadow:0 0 0 3px rgba(231,76,60,.25),0 4px 12px rgba(0,0,0,.25);background:linear-gradient(160deg,#3d2828,#4a2c30);}' +
     '.om-other.out{opacity:.3;cursor:default;pointer-events:none;}' +
@@ -48,13 +48,13 @@
       'background:linear-gradient(145deg,#1a3a5c,#1e4470);color:rgba(255,255,255,.85);font-size:22px;' +
       'position:relative;box-shadow:0 3px 8px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.1);}' +
     '.om-opp-card::after{content:"";position:absolute;inset:3px;border:1px solid rgba(255,255,255,.1);border-radius:6px;pointer-events:none;}' +
-    '.om-opp-card:hover{transform:translateY(-8px);box-shadow:0 10px 22px rgba(0,0,0,.4);}' +
+    '@media (hover:hover){.om-opp-card:hover{transform:translateY(-8px);box-shadow:0 10px 22px rgba(0,0,0,.4);}}' +
     '.om-opp-card:active{transform:scale(.88);}' +
 
     // === Back button ===
     '.om-back-btn{display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;color:rgba(255,255,255,.6);' +
       'background:rgba(255,255,255,.06);padding:5px 14px;border-radius:20px;margin-bottom:8px;transition:background .15s;}' +
-    '.om-back-btn:hover{background:rgba(255,255,255,.12);}' +
+    '@media (hover:hover){.om-back-btn:hover{background:rgba(255,255,255,.12);}}' +
 
     // === My hand ===
     '.om-hand-title{font-size:13px;font-weight:700;color:var(--text-muted);margin-top:4px;letter-spacing:1px;}' +

@@ -6,9 +6,7 @@
 
   // Smallest legal raise target; mirrors games/texas.js handleMove 'raise'
   function minRaiseTo(s, idx) {
-    var myBet = (s.bets || [])[idx] || 0;
-    var cb = s.currentBet || 0;
-    return cb + ((s.lastRaise || 0) > 0 ? s.lastRaise : cb > 0 ? cb - myBet : 10);
+    return (s.currentBet || 0) + (s.lastRaise || 20);
   }
 
   window.gameRenderers.set('texas', {
@@ -162,19 +160,20 @@
       var toCall = (s.currentBet || 0) - myBet;
       var canCheck = toCall <= 0;
       var raiseCost = minRaiseTo(s, selfIdx) - myBet;
+      var canRaise = !s.raiseClosed && chips >= raiseCost;
 
       var html = '';
       html += '<button class="btn btn-sm btn-outline" onclick="window._txFold()">' + _t('tx_fold') + '</button>';
       if (canCheck) {
         html += '<button class="btn btn-sm btn-primary" onclick="window._txCheck()">' + _t('tx_check') + '</button>';
-        if (chips >= raiseCost) html += '<button class="btn btn-sm btn-accent" onclick="window._txShowRaise()">' + _t('tx_raise') + '</button>';
+        if (canRaise) html += '<button class="btn btn-sm btn-accent" onclick="window._txShowRaise()">' + _t('tx_raise') + '</button>';
         if (chips > 0) html += '<button class="btn btn-sm" style="background:var(--danger);color:#fff;" onclick="window._txAllIn()">' + _t('tx_all_in') + '</button>';
       } else {
         if (chips > toCall) {
           html += '<button class="btn btn-sm btn-primary" onclick="window._txCall()">' + _t('tx_call') + toCall + '</button>';
-          if (chips >= raiseCost) html += '<button class="btn btn-sm btn-accent" onclick="window._txShowRaise()">' + _t('tx_raise') + '</button>';
+          if (canRaise) html += '<button class="btn btn-sm btn-accent" onclick="window._txShowRaise()">' + _t('tx_raise') + '</button>';
         }
-        html += '<button class="btn btn-sm" style="background:var(--danger);color:#fff;" onclick="window._txAllIn()">' + _t('tx_all_in') + '</button>';
+        if (!s.raiseClosed || chips <= toCall) html += '<button class="btn btn-sm" style="background:var(--danger);color:#fff;" onclick="window._txAllIn()">' + _t('tx_all_in') + '</button>';
       }
 
       el.innerHTML = html;
@@ -191,7 +190,7 @@
         var name = window.getPlayerName ? window.getPlayerName(h.player) : (_t('tx_player') + (h.player + 1));
         var isMe = h.player === selfIdx;
         var handType = typeNames[h.hand.type] || h.hand.type;
-        var isWinner = s.showdownWinner === h.player;
+        var isWinner = (s.showdownWinners && s.showdownWinners.length ? s.showdownWinners.indexOf(h.player) >= 0 : s.showdownWinner === h.player);
 
         html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;' + (isWinner ? 'background:#fef9e7;border-radius:8px;padding:8px;' : '') + '">';
         html += '<span style="font-size:13px;font-weight:600;">' + (isMe ? '⭐' : '') + escHtml(name) + '</span>';

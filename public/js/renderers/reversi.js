@@ -316,7 +316,7 @@
           drawFrame(null);
         }
       };
-      resize(); window.addEventListener('resize', resize);
+      resize(); if (window._reversiResize) window.removeEventListener('resize', window._reversiResize); window._reversiResize = resize; window.addEventListener('resize', resize);
 
       canvas.addEventListener('click', function(e) {
         var rect = canvas.getBoundingClientRect();

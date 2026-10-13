@@ -20,6 +20,9 @@ module.exports = {
   'host_only_settings': 'Only the host can change settings',
   'game_started_no_settings': 'Game already started, cannot change settings',
   'host_only_restart': 'Only the host can restart the game',
+  'game_not_playing': 'The game has not started',
+  'host_only_return_midgame': 'Only the host can return to the room during a game',
+  'swap_own_seat_only': 'You can only move your own seat',
 
   // Common gameplay errors
   'g_game_over': 'Game is over',
@@ -168,6 +171,7 @@ module.exports = {
   'tx_you_can_check': 'You can check',
   'tx_not_enough_chips_go_allin': 'Not enough chips, go all in',
   'tx_raise_too_low': 'Raise must be at least X chips',
+  'tx_raise_closed': 'You cannot raise now: nobody can call it, or an all-in below the minimum raise did not reopen the betting',
   'tx_not_enough_chips': 'Not enough chips',
 
   // Rummikub (rk_)
@@ -189,6 +193,19 @@ module.exports = {
   'fc_need_to_select_plane': 'Need to select a plane first',
   'fc_roll_dice_first': 'Roll the dice first',
   'fc_invalid_plane': 'Invalid plane',
+  'mp_eliminated': 'You are out',
+  'mp_cannot_roll': 'Cannot roll now',
+  'mp_cannot_buy': 'Cannot buy now',
+  'mp_not_buyable': 'Cannot buy this',
+  'mp_nothing_to_skip': 'Nothing to skip',
+  'mp_no_property': 'No property specified',
+  'mp_not_property': 'Not a property',
+  'mp_not_owner': 'You do not own this property',
+  'mp_fully_built': 'Already fully built',
+  'mp_need_monopoly': 'Need the whole color group to build',
+  'mp_cannot_end_turn': 'Cannot end turn yet',
+  'mp_unknown_action': 'Unknown action',
+  'mp_insufficient_funds': 'Insufficient funds',
   'fc_plane_already_home': 'This plane is already home',
   'fc_must_roll_6_to_launch': 'Must roll 6 to launch',
 
@@ -215,6 +232,7 @@ module.exports = {
   'ht_no_hand': 'No cards in hand',
   'ht_select_a_card': 'Select a card',
   'ht_illegal_card': 'Illegal card',
+  'ht_already_passed': 'You have already passed cards',
 
   // Minesweeper (ms_)
   'ms_you_are_out': 'You are out, spectating only',

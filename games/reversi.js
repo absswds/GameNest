@@ -7,7 +7,8 @@ exports.maxPlayers = 2;
 const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 
 function getSize(state) {
-  var bs = (state._options && state._options.boardSize) || 8;
+  var bs = Number(state._options && state._options.boardSize);
+  if (bs !== 10 && bs !== 12) bs = 8; // only the sizes the UI offers; anything else would break the start position
   return { ROWS: bs, COLS: bs };
 }
 
@@ -110,7 +111,7 @@ exports.handleMove = (data, state, playerIndex) => {
   }
 
   var row = data && data.row, col = data && data.col;
-  if (row === undefined || col === undefined) return 'rv_invalid_move';
+  if (!Number.isInteger(row) || !Number.isInteger(col)) return 'rv_invalid_move';
   if (!inBounds(row, col, ROWS, COLS)) return 'rv_out_of_bounds';
   if (state.board[row][col] !== null) return 'rv_cell_occupied';
 

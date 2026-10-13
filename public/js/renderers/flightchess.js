@@ -453,7 +453,7 @@
           doRender(window._fcSt, parseInt(sessionStorage.getItem('playerIndex')), window._fcSt.winner);
         }
       };
-      rs(); window.addEventListener('resize', rs);
+      rs(); if (window._fcResize) window.removeEventListener('resize', window._fcResize); window._fcResize = rs; window.addEventListener('resize', rs);
 
       document.getElementById('fcRollBtn').addEventListener('click', function() {
         var s = window._fcSt; if (!s) return;

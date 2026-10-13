@@ -43,26 +43,22 @@ function generateNumbers() {
   return base;
 }
 
-function genResults(nums) {
-  if (nums.length === 1) return [nums[0]];
-  const results = [];
+// Can these numbers reach 24 with + - * / (any bracketing)? Stops at the first hit.
+function hasSolution(nums) {
+  if (nums.length === 1) return Math.abs(nums[0] - 24) < 0.0001;
   for (let i = 0; i < nums.length; i++) {
     for (let j = i + 1; j < nums.length; j++) {
       const a = nums[i], b = nums[j];
       const rest = nums.filter((_, k) => k !== i && k !== j);
-      const pairs = [a + b, a - b, b - a, a * b];
-      if (b !== 0) pairs.push(a / b);
-      if (a !== 0) pairs.push(b / a);
-      for (const val of pairs) {
-        results.push(...genResults([val, ...rest]));
+      const vals = [a + b, a - b, b - a, a * b];
+      if (b !== 0) vals.push(a / b);
+      if (a !== 0) vals.push(b / a);
+      for (const val of vals) {
+        if (hasSolution([val, ...rest])) return true;
       }
     }
   }
-  return results;
-}
-
-function hasSolution(nums) {
-  return genResults(nums).some(v => Math.abs(v - 24) < 0.0001);
+  return false;
 }
 
 exports.createState = () => ({
@@ -113,12 +109,17 @@ exports.handleMove = function(data, state, playerIndex) {
   const { expression } = data || {};
   if (typeof expression !== 'string' || !expression.trim()) return 'tf_enter_expression';
 
+  // Only digits, + - * / and brackets; no ** (power), no comments (// or /*), no decimal points
+  if (expression.length > 100 || !/^[\d+\-*/()\s]+$/.test(expression) || /\*\*|\/\/|\/\*/.test(expression)) {
+    return 'tf_invalid_chars';
+  }
+
   // Extract numbers used
-  const numPattern = /\b(\d+)\b/g;
+  const numPattern = /\d+/g;
   const usedNums = [];
   let m;
   while ((m = numPattern.exec(expression)) !== null) {
-    usedNums.push(parseInt(m[1]));
+    usedNums.push(parseInt(m[0], 10));
   }
 
   // Must use exactly the 4 numbers, each exactly once
@@ -129,8 +130,6 @@ exports.handleMove = function(data, state, playerIndex) {
     return 'tf_wrong_numbers';
   }
 
-  if (!/^[\d\+\-\*\/\(\)\s\.]+$/.test(expression)) return 'tf_invalid_chars';
-
   let result;
   try {
     result = Function('"use strict"; return (' + expression + ')')();
@@ -139,8 +138,6 @@ exports.handleMove = function(data, state, playerIndex) {
   }
 
   if (typeof result !== 'number' || !isFinite(result)) return 'tf_invalid_result';
-  // Round the result for a clean message (e.g. 23.999999 -> 24)
-  const shown = Math.round(result * 100) / 100;
   if (Math.abs(result - 24) > 0.0001) return 'tf_not_24';
 
   if (timed) {
@@ -157,4 +154,17 @@ exports.handleMove = function(data, state, playerIndex) {
   state.solutions.push({ player: playerIndex, expression });
   state.phase = 'round_end';
   return null;
+};
+
+// Timed mode keeps answers secret until the round ends: others only see that someone solved it.
+exports.playerView = function (state, playerIndex) {
+  if (!state || state.phase !== 'playing') return state;
+  const view = Object.assign({}, state, { solutions: [] });
+  const subs = {};
+  for (const key of Object.keys(state.playerSubmissions || {})) {
+    const sub = state.playerSubmissions[key];
+    subs[key] = String(key) === String(playerIndex) ? sub : { correct: sub.correct, submittedAt: sub.submittedAt };
+  }
+  view.playerSubmissions = subs;
+  return view;
 };

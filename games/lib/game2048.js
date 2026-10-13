@@ -7,7 +7,7 @@ const N = 4;
 exports.copy = (g) => g.map((r) => r.slice());
 
 // Slide+merge a single row toward index 0 (i.e. "left").
-// Mutates + returns { row, score }.
+// Returns a new { row, score }; the input row is left untouched.
 function slideRow(row) {
   // Drop zeros
   const tiles = row.filter((v) => v !== 0);
@@ -29,8 +29,8 @@ function slideRow(row) {
   return { row: out, score };
 }
 
-// Move the whole grid in a direction. Mutates `grid` in place and returns
-// { grid, score, changed }.
+// Move the whole grid in a direction. Writes the result back into `grid` and returns
+// { grid, score, changed } (`grid` is left as it was when nothing moved).
 exports.move = (grid, dir) => {
   const work = grid.map((r) => r.slice());
   let score = 0;

@@ -5,7 +5,7 @@ exports.name = 'suikabattle';
 exports.maxPlayers = 4;
 exports.minPlayers = 1;
 
-const FRUIT_COUNT = 11;
+const POINTS = [1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66];
 
 function randFruit() { return Math.floor(Math.random() * 5); } // 只随机小水果(0-4)
 
@@ -15,6 +15,8 @@ exports.createState = () => ({
   current: [],   // current fruit type per player
   next: [],      // next fruit type per player
   eliminated: [],
+  drops: [],     // fruits dropped per player (a merge needs two fruits, so merges <= drops)
+  merges: [],    // merges reported per player
   winner: null,
   _playerCount: 0,
 });
@@ -25,11 +27,15 @@ exports.initGame = (state, playerCount) => {
   state.current = [];
   state.next = [];
   state.eliminated = [];
+  state.drops = [];
+  state.merges = [];
   for (let i = 0; i < playerCount; i++) {
     state.scores.push(0);
     state.current.push(randFruit());
     state.next.push(randFruit());
     state.eliminated.push(false);
+    state.drops.push(0);
+    state.merges.push(0);
   }
   state.phase = 'playing';
   state.winner = null;
@@ -38,8 +44,10 @@ exports.initGame = (state, playerCount) => {
 exports.handleMove = (data, state, playerIndex) => {
   if (state.phase !== 'playing') return 'g_game_over';
   if (state.eliminated[playerIndex]) return 'sk_you_are_out';
+  if (!data || typeof data !== 'object') return 'g_unknown_action';
 
   if (data.type === 'drop') {
+    state.drops[playerIndex]++;
     // Client dropped a fruit, advance to next fruit
     state.current[playerIndex] = state.next[playerIndex];
     state.next[playerIndex] = randFruit();
@@ -48,8 +56,11 @@ exports.handleMove = (data, state, playerIndex) => {
 
   if (data.type === 'merge') {
     // Client reports a merge (two fruits combined)
-    const points = [1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66];
-    state.scores[playerIndex] += points[data.fruitType] || 1;
+    if (!Number.isInteger(data.fruitType) || data.fruitType < 0 || data.fruitType >= POINTS.length) return 'g_unknown_action';
+    // Every merge removes one fruit, so a player cannot report more merges than fruits dropped
+    if (state.merges[playerIndex] >= state.drops[playerIndex]) return 'g_unknown_action';
+    state.merges[playerIndex]++;
+    state.scores[playerIndex] += POINTS[data.fruitType];
     return null;
   }
 

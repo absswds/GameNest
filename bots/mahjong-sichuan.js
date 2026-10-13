@@ -42,17 +42,19 @@ exports.createBot = (playerIndex) => {
       return claimDecision(state, playerIndex, hand, melds);
     }
 
-    // Play phase (or blood-battle win continuation): discard, or win if possible.
-    if (phase === 'play' || phase === 'win') {
+    // Play phase: discard, or win if possible.
+    if (phase === 'play') {
+      // 碰牌后没有摸牌（_noDraw）：不能自摸，也不能暗杠/补杠，只能出牌。
+      const noDraw = state._noDraw === true;
       // Win if hand is complete (self-draw).
-      const info = huCheck(hand, melds, state.cfg || core.SICHUAN);
+      const info = noDraw ? null : huCheck(hand, melds, state.cfg || core.SICHUAN);
       if (info && info.win) {
         if (voidSatisfied(hand, voidSuit)) {
           return { type: 'win' };
         }
       }
       // Self-kong (暗杠): if we have 4 identical tiles and rain is on
-      if (state._rain) {
+      if (state._rain && !noDraw) {
         const selfKong = chooseSelfKong(hand);
         if (selfKong) {
           return { type: 'selfkong', suit: selfKong.k, num: selfKong.n };
@@ -148,7 +150,7 @@ function chooseSelfKong(hand) {
 }
 
 function claimDecision(state, playerIndex, hand, melds) {
-  const ld = state.lastDiscard;
+  const ld = state.claim ? state.claim.tile : state.lastDiscard;
   if (!ld) return { type: 'pass' };
   const voidSuit = state.voidSuit[playerIndex];
 

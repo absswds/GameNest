@@ -15,7 +15,17 @@ exports.createState = () => ({
   board: null,
   moveHistory: [],
   _playerCount: 2,
+  _positions: {},   // position key -> times seen (threefold repetition)
 });
+
+// Position identity for repetition: board, side to move, castling, en passant (not the clocks).
+function posKey(fen) {
+  return fen.split(' ').slice(0, 4).join(' ');
+}
+
+function validSquare(p) {
+  return !!p && Number.isInteger(p.row) && Number.isInteger(p.col) && p.row >= 0 && p.row < 8 && p.col >= 0 && p.col < 8;
+}
 
 function snapshotBoard(c) {
   var raw = c.board();
@@ -46,6 +56,8 @@ function coordToSq(coord) {
 exports.initGame = (state) => {
   var c = new Chess(state.fen);
   state.board = snapshotBoard(c);
+  state._positions = {};
+  state._positions[posKey(state.fen)] = 1;
 };
 
 exports.handleMove = (data, state, playerIndex) => {
@@ -54,13 +66,13 @@ exports.handleMove = (data, state, playerIndex) => {
 
   var from = data && data.from;
   var to = data && data.to;
-  if (!from || !to) return 'ch_invalid_move';
+  if (!validSquare(from) || !validSquare(to)) return 'ch_invalid_move';
 
   var sqFrom = coordToSq(from);
   var sqTo = coordToSq(to);
 
   var c = new Chess(state.fen);
-  var promotion = (data.promote || 'q').toLowerCase();
+  var promotion = (typeof data.promote === 'string' && data.promote ? data.promote : 'q').toLowerCase();
   var mv = c.move({ from: sqFrom, to: sqTo, promotion: promotion }, { sloppy: true });
   if (!mv) return 'ch_illegal_move';
 
@@ -75,9 +87,14 @@ exports.handleMove = (data, state, playerIndex) => {
     san: mv.san,
   });
 
+  // A fresh Chess(fen) has no move history, so its own repetition check never fires: count here.
+  if (!state._positions) state._positions = {};
+  var key = posKey(state.fen);
+  state._positions[key] = (state._positions[key] || 0) + 1;
+
   if (c.in_checkmate()) {
     state.winner = playerIndex;
-  } else if (c.in_stalemate() || c.in_draw() || c.insufficient_material() || c.in_threefold_repetition()) {
+  } else if (c.in_draw() || state._positions[key] >= 3) { // in_draw: stalemate, insufficient material, 50-move
     state.winner = -1;
   } else {
     state.currentPlayer = 1 - state.currentPlayer;

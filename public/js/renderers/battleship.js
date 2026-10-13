@@ -514,6 +514,8 @@
         drawFrame(null);
       }
       resize();
+      if (window._bsResize) window.removeEventListener('resize', window._bsResize);
+      window._bsResize = resize;
       window.addEventListener('resize', resize);
 
       function pt(e) {

@@ -125,8 +125,9 @@ test('discard: dealer discards one tile, moves to claim phase', () => {
   assert.equal(s.hands[0].length, handLen - 1);
   assert.equal(s.discards[0].length, 1);
   assert.equal(s.discards[0][0].id, tileId);
-  assert.equal(s.phase, 'claim');
-  assert.equal(s.lastDiscard.id, tileId);
+  // 没人能碰/杠/胡时直接进入下一家摸牌，否则进入响应阶段
+  assert.ok(s.phase === 'claim' || (s.phase === 'play' && s.currentPlayer === 1));
+  if (s.phase === 'claim') assert.equal(s.lastDiscard.id, tileId);
 });
 
 test('discard: not your turn rejected', () => {
@@ -315,15 +316,10 @@ test('multi-winner: two players can win from same discard', () => {
   game.initGame(s, 4);
   assert.equal(s._multiWinner, true, 'multi-winner enabled');
   dealAllVoid(s, ['tong', 'tong', 'tong', 'tong']);
-  // Player 0 discards a wan:5
   const discardTile = t('wan', 5, 7001);
   s.hands[0].push(discardTile);
   if (s.hands[0].length > 14) s.hands[0].shift();
-  assert.equal(game.handleMove({ type: 'discard', tileId: discardTile.id }, s, 0), null);
-  assert.equal(s.phase, 'claim');
-  // Player 1 and Player 2 both have winning hands that need wan:5
-  // Void suit is 'tong' for all, so hands must only use wan + tiao
-  // Build: 123wan 456wan 789wan 11tiao + wan:5 = 14 tiles, wins with wan:5
+  // Void suit is 'tong' for all: 123wan 456wan 789wan 11tiao 55wan + wan:5 wins
   function winningHandNeeding() {
     return [
       t('wan', 1, 8001), t('wan', 2, 8002), t('wan', 3, 8003),
@@ -335,18 +331,20 @@ test('multi-winner: two players can win from same discard', () => {
   }
   s.hands[1] = winningHandNeeding();
   s.hands[2] = winningHandNeeding();
-  // Player 1 wins
+  s.hands[3] = [t('tiao', 2, 8301), t('tiao', 4, 8302), t('tiao', 6, 8303)];
+  assert.equal(game.handleMove({ type: 'discard', tileId: discardTile.id }, s, 0), null);
+  assert.equal(s.phase, 'claim');
+  assert.deepEqual(s.claim.order, [1, 2], 'only the two seats that can win respond');
+  assert.equal(game.getCurrentActor(s), 1);
+  assert.equal(game.handleMove({ type: 'win' }, s, 2), 'g_not_your_turn');
   assert.equal(game.handleMove({ type: 'win' }, s, 1), null);
-  assert.ok(s.winners.includes(1));
-  // In multi-winner mode, claim phase continues
-  assert.equal(s.phase, 'claim', 'claim phase continues for other winners');
-  // Player 2 also wins
+  assert.equal(s.phase, 'claim', 'claim phase continues for the other winner');
+  assert.equal(game.getCurrentActor(s), 2);
   assert.equal(game.handleMove({ type: 'win' }, s, 2), null);
-  assert.ok(s.winners.includes(2));
-  // Player 3 passes → claim phase ends
-  assert.equal(game.handleMove({ type: 'pass' }, s, 3), null);
-  // Both winners recorded
   assert.ok(s.winners.includes(1) && s.winners.includes(2));
+  assert.equal(s.discards[0].length, 0, 'winning tile leaves the discard pile');
+  assert.equal(s.phase, 'play', 'blood battle continues');
+  assert.equal(s.currentPlayer, 3, 'next live seat after the discarder draws');
 });
 
 test('multi-winner: disabled by default', () => {
@@ -405,8 +403,6 @@ test('multi-winner: 3 winners ends game immediately (no claim-phase deadlock)', 
   const discardTile = t('wan', 5, 7001);
   s.hands[0].push(discardTile);
   if (s.hands[0].length > 14) s.hands[0].shift();
-  assert.equal(game.handleMove({ type: 'discard', tileId: discardTile.id }, s, 0), null);
-  assert.equal(s.phase, 'claim');
   // Players 1, 2, 3 all hold 13-tile hands that win with wan:5
   function winningHandNeeding() {
     return [
@@ -420,6 +416,8 @@ test('multi-winner: 3 winners ends game immediately (no claim-phase deadlock)', 
   s.hands[1] = winningHandNeeding();
   s.hands[2] = winningHandNeeding();
   s.hands[3] = winningHandNeeding();
+  assert.equal(game.handleMove({ type: 'discard', tileId: discardTile.id }, s, 0), null);
+  assert.equal(s.phase, 'claim');
   // All three win from the same discard
   assert.equal(game.handleMove({ type: 'win' }, s, 1), null);
   assert.equal(game.handleMove({ type: 'win' }, s, 2), null);
@@ -442,14 +440,14 @@ test('rain: 直杠 (kong from discard) scores immediately', () => {
   const w5 = t('wan', 5, 7001);
   s.hands[0].push(w5);
   if (s.hands[0].length > 14) s.hands[0].shift();
-  assert.equal(game.handleMove({ type: 'discard', tileId: w5.id }, s, 0), null);
-  // Player 1 has 3x wan:5 and kongs (直杠)
   s.hands[1] = [
     t('wan', 5, 9001), t('wan', 5, 9002), t('wan', 5, 9003),
     t('tong', 1, 9004), t('tong', 2, 9005), t('tong', 3, 9006),
     t('tong', 4, 9007), t('tong', 5, 9008), t('tong', 6, 9009),
     t('tiao', 1, 9010), t('tiao', 2, 9011), t('tiao', 3, 9012), t('tiao', 4, 9013),
   ];
+  assert.equal(game.handleMove({ type: 'discard', tileId: w5.id }, s, 0), null);
+  assert.equal(s.phase, 'claim');
   assert.equal(game.handleMove({ type: 'kong' }, s, 1), null);
   // 直杠: player 1 gets +2, player 0 (discarder) gets -2
   assert.equal(s._gangScore[1], 2, 'kong player gains 2 from 直杠');
@@ -487,13 +485,14 @@ test('rain: disabled by default (no gang scoring)', () => {
   const w5 = t('wan', 5, 7001);
   s.hands[0].push(w5);
   if (s.hands[0].length > 14) s.hands[0].shift();
-  assert.equal(game.handleMove({ type: 'discard', tileId: w5.id }, s, 0), null);
   s.hands[1] = [
     t('wan', 5, 9001), t('wan', 5, 9002), t('wan', 5, 9003),
     t('tong', 1, 9004), t('tong', 2, 9005), t('tong', 3, 9006),
     t('tong', 4, 9007), t('tong', 5, 9008), t('tong', 6, 9009),
     t('tiao', 1, 9010), t('tiao', 2, 9011), t('tiao', 3, 9012), t('tiao', 4, 9013),
   ];
+  assert.equal(game.handleMove({ type: 'discard', tileId: w5.id }, s, 0), null);
+  assert.equal(s.phase, 'claim');
   assert.equal(game.handleMove({ type: 'kong' }, s, 1), null);
   assert.equal(s._gangScore[0], 0, 'no gang scoring when rain disabled');
   assert.equal(s._gangScore[1], 0, 'no gang scoring when rain disabled');
@@ -509,6 +508,7 @@ test('penalties: 查花猪 detects player with void suit tiles', () => {
   // Simulate round end: deck empty, no winners
   s.deck = [];
   s.phase = 'over';
+  s._exhausted = true;
   // Player 0 still has wan tiles (void=wan) → flower pig
   s.hands[0] = [
     t('wan', 1, 7001), t('wan', 2, 7002), t('wan', 3, 7003),
@@ -543,17 +543,14 @@ test('penalties: 查花猪 detects player with void suit tiles', () => {
 
 // ---- 最后四张自动胡 ----
 
-test('lastFourAutoWin: must win when deck <= 4 and can win', () => {
+test('lastFourAutoWin: auto-wins when deck <= 4 and can win (no pass option)', () => {
   const s = game.createState();
   s._options = { mahjongMode: 'sichuan', mj_lastFourAutoWin: true };
   game.initGame(s, 4);
   dealAllVoid(s, ['tong', 'tong', 'tong', 'tong']);
-  // Player 0 discards wan:5
   const w5 = t('wan', 5, 7001);
   s.hands[0].push(w5);
   if (s.hands[0].length > 14) s.hands[0].shift();
-  assert.equal(game.handleMove({ type: 'discard', tileId: w5.id }, s, 0), null);
-  // Player 1 has winning hand needing wan:5
   s.hands[1] = [
     t('wan', 1, 8001), t('wan', 2, 8002), t('wan', 3, 8003),
     t('wan', 4, 8004), t('wan', 5, 8005), t('wan', 6, 8006),
@@ -561,13 +558,10 @@ test('lastFourAutoWin: must win when deck <= 4 and can win', () => {
     t('tiao', 1, 8010), t('tiao', 1, 8011),
     t('wan', 5, 8012), t('wan', 5, 8013),
   ];
-  // Set deck to 4 tiles
   s.deck = [t('tong', 9, 9901), t('tong', 9, 9902), t('tong', 9, 9903), t('tong', 9, 9904)];
-  // Player 1 tries to pass → should be rejected
-  const err = game.handleMove({ type: 'pass' }, s, 1);
-  assert.equal(err, 'mj_last_four_must_win', 'cannot pass when can win on last 4');
-  // Player 1 wins → should succeed
-  assert.equal(game.handleMove({ type: 'win' }, s, 1), null);
+  assert.equal(game.handleMove({ type: 'discard', tileId: w5.id }, s, 0), null);
+  assert.ok(s.winners.includes(1), 'player 1 is forced to win on the last four tiles');
+  assert.ok(!s.claim || !s.claim.order.includes(1));
 });
 
 // ---- 换三张 ----

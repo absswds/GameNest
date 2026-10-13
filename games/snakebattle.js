@@ -101,23 +101,31 @@ exports.tick = state => {
     if (state.food && next.x === state.food.x && next.y === state.food.y) growers.add(snake.player);
   });
 
-  const blocked = new Set();
-  state.snakes.forEach(snake => {
-    const keepsTail = !snake.alive || growers.has(snake.player);
-    const length = snake.body.length - (keepsTail ? 0 : 1);
-    for (let i = 0; i < length; i++) blocked.add(`${snake.body[i].x},${snake.body[i].y}`);
-  });
-
-  const crashes = new Set();
   const headCounts = new Map();
   moving.forEach(snake => {
     const next = nextHeads.get(snake.player);
     const key = `${next.x},${next.y}`;
-    if (next.x < 0 || next.x >= state.width || next.y < 0 || next.y >= state.height || blocked.has(key)) {
-      crashes.add(snake.player);
-    }
     headCounts.set(key, (headCounts.get(key) || 0) + 1);
   });
+
+  // A moving snake vacates its tail cell, but a snake that crashes this tick does not move,
+  // so its tail stays blocked. That can crash further snakes, so repeat until nothing changes.
+  const crashes = new Set();
+  for (;;) {
+    const blocked = new Set();
+    state.snakes.forEach(snake => {
+      const keepsTail = !snake.alive || growers.has(snake.player) || crashes.has(snake.player);
+      const length = snake.body.length - (keepsTail ? 0 : 1);
+      for (let i = 0; i < length; i++) blocked.add(`${snake.body[i].x},${snake.body[i].y}`);
+    });
+    const before = crashes.size;
+    moving.forEach(snake => {
+      const next = nextHeads.get(snake.player);
+      if (next.x < 0 || next.x >= state.width || next.y < 0 || next.y >= state.height ||
+          blocked.has(`${next.x},${next.y}`)) crashes.add(snake.player);
+    });
+    if (crashes.size === before) break;
+  }
   moving.forEach(snake => {
     const next = nextHeads.get(snake.player);
     if (headCounts.get(`${next.x},${next.y}`) > 1) crashes.add(snake.player);

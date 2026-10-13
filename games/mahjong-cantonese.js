@@ -18,6 +18,8 @@ function getCfg(state) {
   return CANTONESE;
 }
 
+exports.getCfg = getCfg;
+exports.findChowPairs = findChowPairs;
 exports.name = 'mahjong-cantonese';
 exports.maxPlayers = 4;
 exports.minPlayers = 2;
@@ -131,6 +133,7 @@ exports.initGame = function (state, playerCount) {
   state.claim = null;
   state.drawn = null;
   state.hasDrawn = false;
+  state._afterClaim = false;
   // dealer draws first tile
   beginTurn(state, dealer);
 };
@@ -151,6 +154,7 @@ function beginTurn(state, player) {
   state.hasDrawn = true;
   state.drawn = tile.id;
   state._gangShangHua = false; // 普通摸牌不算杠上花
+  state._afterClaim = false;   // 正常摸牌：可以自摸/暗杠
   state.phase = 'play';
 }
 
@@ -164,6 +168,8 @@ exports.handleMove = function (data, state, playerIndex) {
 
     // self-draw win
     if (d.type === 'win') {
+      // 吃/碰之后没有摸牌，手牌是 14 张但不是自摸：不能在出牌阶段喊胡
+      if (state._afterClaim) return 'mj_not_winning';
       const info = core.huCheck(state.hands[playerIndex], state.melds[playerIndex], getCfg(state));
       if (!info.win) return 'mj_not_winning';
       var scoreInfo = scoreHand(state.hands[playerIndex], state.melds[playerIndex], info, true, state.wall.length, state, state._gangShangHua);
@@ -190,14 +196,10 @@ exports.handleMove = function (data, state, playerIndex) {
 
     // 暗杠：自己回合手中有 4 张相同牌，杠出并补牌
     if (d.type === 'selfkong') {
-      const suit = d.suit, num = d.num;
-      const hand = state.hands[playerIndex];
-      let removed = 0;
-      for (let i = hand.length - 1; i >= 0 && removed < 4; i--) {
-        if (hand[i].k === suit && hand[i].n === num) { hand.splice(i, 1); removed++; }
+      if (state._afterClaim) return 'mj_cannot_kong';
+      if (!core.doSelfKong(state.hands[playerIndex], state.melds[playerIndex], d.suit, d.num, playerIndex)) {
+        return 'mj_cannot_kong';
       }
-      if (removed < 4) return 'mj_cannot_kong';
-      state.melds[playerIndex].push({ type: 'kong', tile: { k: suit, n: num }, tiles: [], from: playerIndex });
       if (state.wall.length > 0) {
         const rep = state.wall.pop();
         state.hands[playerIndex].push(rep);
@@ -213,22 +215,10 @@ exports.handleMove = function (data, state, playerIndex) {
 
     // 补杠（加杠）：已碰的刻子，摸到第 4 张时升级成杠并补牌
     if (d.type === 'addkong') {
-      const suit = d.suit, num = d.num;
-      const hand = state.hands[playerIndex];
-      const melds = state.melds[playerIndex];
-      // 找到对应的碰（pung）副露
-      const mi = melds.findIndex(m => {
-        if (m.type !== 'pung') return false;
-        if (m.tile) return m.tile.k === suit && m.tile.n === num;
-        return m.tiles && m.tiles[0] && m.tiles[0].k === suit && m.tiles[0].n === num;
-      });
-      if (mi < 0) return 'mj_cannot_kong';
-      // 手中必须有第 4 张
-      const ti = hand.findIndex(t => t.k === suit && t.n === num);
-      if (ti < 0) return 'mj_cannot_kong';
-      const meld = melds[mi];
-      meld.type = 'kong';
-      meld.tiles.push(hand.splice(ti, 1)[0]);
+      if (state._afterClaim) return 'mj_cannot_kong';
+      if (!core.doAddKong(state.hands[playerIndex], state.melds[playerIndex], d.suit, d.num)) {
+        return 'mj_cannot_kong';
+      }
       // 补牌（杠后若胡算杠上花）
       if (state.wall.length > 0) {
         const rep = state.wall.pop();
@@ -429,9 +419,11 @@ function resolveClaims(state) {
       // no replacement available — still must discard; hand is short by one
       state.hasDrawn = true;
       state.drawn = null;
+      state._afterClaim = true;
       state.phase = 'play';
       return;
     }
+    state._afterClaim = false;
     const rep = state.wall.pop();
     state.hands[p].push(rep);
     sortHand(state.hands[p]);
@@ -440,27 +432,21 @@ function resolveClaims(state) {
   } else {
     state.drawn = null;
     state._gangShangHua = false;
+    state._afterClaim = true; // 吃/碰后没有摸牌，不能自摸或杠
   }
   state.hasDrawn = true;
   state.phase = 'play';
 }
 
 // Cantonese scoring wrapper.
-//  - core honours-mode returns 清一色 = 4, but rules (and tutorial) = 8
-//  - 平胡 = 1 is the base for a plain hand; 自摸 = +1 always stacks on top
-//  - minimum winning hand = 1 fan
+//  - fan values come from CANTONESE.fan in the core (清一色 8 etc.); core adds 平胡 = 1
+//    when no pattern scores
+//  - 自摸 = +1 always stacks on top (counted here, so core is called with selfDraw:false)
 function scoreHand(hand, melds, winInfo, selfDraw, wallCount, state, gangShangHua) {
-  // Compute pattern fans WITHOUT self-draw (handled separately below).
   var result = core.countFanDetailed(hand, melds, winInfo, CANTONESE, {
     selfDraw: false,
     wallCount: wallCount || 0,
   });
-  // 清一色: core honours-mode returns 4, but Cantonese rules = 8 (per tutorial)
-  for (var i = 0; i < result.details.length; i++) {
-    if (result.details[i].name === '清一色') { result.details[i].fan = 8; }
-  }
-  // Base: a plain hand with no pattern fans is 平胡 = 1
-  if (result.fan === 0) { result.details.push({ name: '平胡', fan: 1 }); result.fan = 1; }
   // 自摸 always stacks as +1; plus 海底捞月 if the winning tile is the last one.
   if (selfDraw) {
     if ((wallCount || 0) === 0) { result.details.push({ name: '海底捞', fan: 1 }); result.fan += 1; }
@@ -475,6 +461,15 @@ function scoreHand(hand, melds, winInfo, selfDraw, wallCount, state, gangShangHu
   }
   return result;
 }
+
+// 供 bot 使用：这手牌（hand 已含自摸牌/点炮牌）按当前规则能不能胡（含起胡番数）。
+exports.winAllowed = function (state, hand, melds, selfDraw) {
+  const info = core.huCheck(hand, melds, getCfg(state));
+  if (!info.win) return false;
+  if (!state._minFan || state._minFan <= 0) return true;
+  const wallCount = Array.isArray(state.wall) ? state.wall.length : (state.wall || 0);
+  return scoreHand(hand, melds, info, selfDraw, wallCount, state, selfDraw && state._gangShangHua).fan >= state._minFan;
+};
 
 // 买码：胡牌后从牌尾买牌加分（花牌/字牌每张 +1 番）
 function buyTiles(state, winnerIndex) {
@@ -512,6 +507,8 @@ exports.playerView = function (state, playerIndex) {
     buyTiles: state.winInfo && state.winInfo.buyTiles ? state.winInfo.buyTiles.map(t => ({ k: t.k, n: t.n, id: t.id })) : null,
     buyFan: state.winInfo ? state.winInfo.buyFan || 0 : 0,
     hasDrawn: state.hasDrawn,
+    _afterClaim: state._afterClaim === true, // 吃/碰后没摸牌：不能自摸/杠
+    _gangShangHua: state._gangShangHua === true,
     // 刚摸的牌进的是暗手，只能让摸牌者本人看见，否则对手能逐回合还原他的手牌
     drawn: state.currentPlayer === playerIndex ? (state.drawn || null) : null,
     // own hand: full tiles; others: count only

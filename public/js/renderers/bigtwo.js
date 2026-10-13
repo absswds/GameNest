@@ -177,20 +177,20 @@
       result = { type: 'pair', rank: rvals[0], suit: maxSuit };
     }
     else if (groups[3].length === 1 && n === 3) { typeName = _t('bt_triple'); result = { type: 'triple', rank: groups[3][0] }; }
+    else if (n === 5 && allSameSuit && _isConsecutive(rvals, 5)) {
+      typeName = _t('bt_straight_flush');
+      result = { type: 'straight_flush', rank: rvals[0], suit: Math.max.apply(null, suits.map(function(x) { return ({s:3,h:2,c:1,d:0})[x]||0; })) };
+    }
     else if (n >= 5 && groups[1].length === n && _isConsecutive(groups[1], n)) {
       typeName = _t('bt_straight'); result = { type: 'straight', rank: groups[1][0], length: n };
     }
-    else if (n === 5 && allSameSuit && !_isConsecutive([...rvals].sort(function(a,b){return a-b;}), 5)) {
+    else if (n === 5 && allSameSuit && !_isConsecutive(rvals, 5)) {
       typeName = _t('bt_flush');
       var maxSuit2 = Math.max.apply(null, cards.map(function(c) { return ({s:3,h:2,c:1,d:0})[c.suit]||0; }));
       result = { type: 'flush', rank: rvals[rvals.length-1], suit: maxSuit2 };
     }
     else if (n === 5 && groups[3].length === 1 && groups[2].length === 1) { typeName = _t('bt_full_house'); result = { type: 'full_house', rank: groups[3][0] }; }
     else if (n === 5 && groups[4].length === 1) { typeName = _t('bt_four_one'); result = { type: 'four_one', rank: groups[4][0] }; }
-    else if (n === 5 && allSameSuit && _isConsecutive([...rvals].sort(function(a,b){return a-b;}), 5)) {
-      typeName = _t('bt_straight_flush');
-      result = { type: 'straight_flush', rank: groups[1][0], suit: Math.max.apply(null, cards.map(function(c) { return ({s:3,h:2,c:1,d:0})[c.suit]||0; })) };
-    }
 
     if (result) { result.name = typeName; return result; }
     return null;

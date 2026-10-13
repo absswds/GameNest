@@ -73,6 +73,10 @@ function detectType(cards) {
   if (groups[3].length === 1 && n === 3)
     return { type: 'triple', rank: groups[3][0] };
 
+  // Straight flush: 5 consecutive same suit (checked before the plain straight)
+  if (n === 5 && new Set(cards.map(c => c.suit)).size === 1 && isConsecutive(rvals, 5))
+    return { type: 'straight_flush', rank: rvals[0], suit: suitVal(cards[0].suit) };
+
   // Straight: >=5 consecutive singles, max 13
   if (n >= 5 && groups[1].length === n && isConsecutive(groups[1], n))
     return { type: 'straight', rank: groups[1][0], length: n };
@@ -88,10 +92,6 @@ function detectType(cards) {
   // Four of a kind + one
   if (n === 5 && groups[4].length === 1)
     return { type: 'four_one', rank: groups[4][0] };
-
-  // Straight flush: 5 consecutive same suit
-  if (n === 5 && new Set(cards.map(c => c.suit)).size === 1 && isConsecutive(rvals, 5))
-    return { type: 'straight_flush', rank: rvals[0], suit: suitVal(cards[0].suit) };
 
   return null;
 }
@@ -169,8 +169,14 @@ exports.handleMove = (data, state, playerIndex) => {
   if (state.winner !== null) return 'g_game_over';
   if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
 
-  const { cards: cardIds } = data;
-  if (!Array.isArray(cardIds)) return 'bt_invalid_format';
+  let cardIds = data.cards;
+  if (!Array.isArray(cardIds)) {
+    // Server bot fallback ({pass:true} / {}): pass if allowed, otherwise lead the lowest single
+    if (!data.pass && Object.keys(data).length > 0) return 'bt_invalid_format';
+    const mustLead = !state.lastPlay || state.lastPlayPlayer === playerIndex;
+    const own = state.hands[playerIndex] || [];
+    cardIds = mustLead && own.length ? [own[0].id] : [];
+  }
 
   // PASS
   if (cardIds.length === 0) {
@@ -189,7 +195,6 @@ exports.handleMove = (data, state, playerIndex) => {
       state.lastPlayPlayer = -1;
       state.passCount = 0;
       state.passed = new Array(state.hands.length).fill(false);
-      state.currentPlayer = state.currentPlayer; // stays on the reset player
     }
     return null;
   }
@@ -222,7 +227,7 @@ exports.handleMove = (data, state, playerIndex) => {
     }
   }
   // First play of the game must contain the ♦3 (official rule).
-  if (!state._opened && !state.lastPlay && state.currentPlayer === findDiamond3Player(state)) {
+  if (!state._opened) {
     const hasDiamond3 = played.some(function(c) { return c.rank === '3' && c.suit === 'd'; });
     if (!hasDiamond3) {
       hand.push(...played); sortHand(hand);
@@ -257,3 +262,6 @@ const { maskView } = require('./lib/hidden');
 exports.playerView = function (state, playerIndex) {
   return maskView(state, playerIndex);
 };
+
+exports.detectType = detectType;
+exports.canBeat = canBeat;

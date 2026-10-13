@@ -37,6 +37,8 @@ exports.initGame = function(state) {
   state.board = createInitialBoard();
   state.mustCapture = false;
   state.moveHistory = [];
+  state.quietPlies = 0;
+  state._seen = {};
 };
 
 // ---- Bounds Check ----
@@ -197,6 +199,18 @@ exports.handleMove = function(data, state, playerIndex) {
   // Draw after 40 moves each without a capture or a man moving (keeps king-chases from running forever)
   state.quietPlies = (isCapture || piece.type === 'm') ? 0 : (state.quietPlies || 0) + 1;
   if (state.quietPlies >= QUIET_PLY_LIMIT) state.winner = -1;
+
+  // Draw when the same position (with the same side to move) occurs a third time.
+  // A capture or a man move is irreversible, so the counter only matters across quiet king moves.
+  if (state.winner === null) {
+    if (isCapture || piece.type === 'm') state._seen = {};
+    var posKey = state.currentPlayer + ':' + state.board.map(function(row) {
+      return row.map(function(p) { return p ? (p.side === 0 ? (p.type === 'k' ? 'R' : 'r') : (p.type === 'k' ? 'B' : 'b')) : '.'; }).join('');
+    }).join('/');
+    if (!state._seen) state._seen = {};
+    state._seen[posKey] = (state._seen[posKey] || 0) + 1;
+    if (state._seen[posKey] >= 3) state.winner = -1;
+  }
 
   return null;
 };

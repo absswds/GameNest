@@ -194,6 +194,7 @@ function levelTiles(state, level) { return state.layout.filter(t => t.level === 
 // ---------- 走子 ----------
 exports.handleMove = (data, state, playerIndex) => {
   if (state.phase !== 'playing') return 'g_game_over';
+  if (!data || typeof data !== 'object') return 'g_unknown_action';
   const me = state.players[playerIndex];
   if (!me) return 'st_no_such_player';
   if (me.eliminated) { state.currentPlayer = nextAlive(state, playerIndex); return 'st_you_are_out'; }
@@ -311,6 +312,39 @@ function settle(state) {
     state.phase = 'gameover';
   }
 }
+
+// 同时竞速：所有未出局玩家都可行动，这样 bot 按各自节奏走，不依赖 currentPlayer（交给通用的 phase 调度器）
+exports.getPendingActors = (state) => {
+  const out = [];
+  if (state.phase !== 'playing') return out;
+  for (let i = 0; i < state._playerCount; i++) {
+    if (state.players[i] && !state.players[i].eliminated) out.push(i);
+  }
+  return out;
+};
+
+// 视图：暗牌（被压住、背面朝上的牌）的图案不下发，别人的棋盘和洗牌覆盖也不下发。
+exports.playerView = (state, playerIndex) => {
+  if (!state.layout || !state.layout.length || !state.patterns.length) return state;
+  const me = state.players[playerIndex];
+  const visible = {};
+  if (me) {
+    const lvTiles = levelTiles(state, me.level);
+    for (const t of lvTiles) {
+      if (!(t.faceDown && isBlockedAt(t, lvTiles, me.removed))) visible[t.id] = true;
+    }
+  }
+  const only = (src) => {
+    const out = {};
+    if (src) for (const id in visible) if (src[id] !== undefined) out[id] = src[id];
+    return out;
+  };
+  const mine = state.sameBoard ? 0 : playerIndex;
+  const view = Object.assign({}, state);
+  view.patterns = state.patterns.map((p, b) => (b === mine ? only(p) : {}));
+  view.players = state.players.map((p, i) => Object.assign({}, p, { shuffleOverride: i === playerIndex ? only(p.shuffleOverride) : {} }));
+  return view;
+};
 
 // 导出给 bot/测试用
 exports._internal = { peelOrder, simulateOrder, generateSolvableLevel, isBlockedAt, effPattern, levelTiles, buildLayout, LEVELS };

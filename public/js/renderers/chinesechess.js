@@ -361,7 +361,7 @@
           window.gameRenderers.get('chinesechess').render(window._ccState, container, pi, window._ccState.winner);
         }
       };
-      resize(); window.addEventListener('resize', resize);
+      resize(); if (window._ccResize) window.removeEventListener('resize', window._ccResize); window._ccResize = resize; window.addEventListener('resize', resize);
 
       canvas.addEventListener('click', function(e) {
         var rect = canvas.getBoundingClientRect();

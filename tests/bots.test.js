@@ -64,14 +64,18 @@ test('oldmaid bot skips players who are out of cards when choosing whom to draw 
 test('texas bot raises more assertively with a premium made hand when checked to', () => {
   const bot = texasBot.createBot(0);
   const move = bot.getMove({
-    chips: [300],
+    chips: [300, 300],
     currentBet: 40,
-    bets: [40],
+    lastRaise: 20,
+    bets: [40, 40],
+    folded: [false, false],
+    allIn: [false, false],
+    raiseClosed: [false, false],
     pot: 120,
     hands: [[
       { rank: 'A', suit: 's' },
       { rank: 'A', suit: 'h' },
-    ]],
+    ], []],
     communityCards: [],
   });
 
