@@ -185,5 +185,11 @@ exports.handleMove = function (data, state, playerIndex) {
 // Hide other players' cards (and draw piles) from each client.
 const { maskView } = require('./lib/hidden');
 exports.playerView = function (state, playerIndex) {
-  return maskView(state, playerIndex);
+  const view = maskView(state, playerIndex);
+  if (view === state) return view;
+  // Only the two players involved know which card changed hands.
+  const sees = d => d.from === playerIndex || d.to === playerIndex;
+  if (state.lastDraw && !sees(state.lastDraw)) view.lastDraw = Object.assign({}, state.lastDraw, { card: null });
+  view.messages = (state.messages || []).map(m => (m.cardDrawn && !sees(m) ? Object.assign({}, m, { cardDrawn: null }) : m));
+  return view;
 };

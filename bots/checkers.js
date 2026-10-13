@@ -94,19 +94,7 @@ function applyMove(board, move) {
 
 function undoMove(board, move, captured) {
   var piece = board[move.to.row][move.to.col];
-  // Check if piece was promoted
-  if (piece && piece.type === 'k') {
-    var origPiece = null;
-    if (captured !== null && move.captures && move.captures.length > 0) {
-      // Restore captured piece
-    }
-    // Check if original was man
-    var origSide = piece.side;
-    var fromR = move.from.row;
-    if ((origSide === 0 && fromR !== 0) || (origSide === 1 && fromR !== 7)) {
-      piece = { type: 'm', side: origSide };
-    }
-  }
+  // applyMove never promotes, so the piece is restored unchanged
   board[move.from.row][move.from.col] = piece;
   board[move.to.row][move.to.col] = null;
   if (move.captures && move.captures.length > 0) {
@@ -216,6 +204,7 @@ exports.createBot = function(playerIndex) {
           }
         }
         if (contCaptures.length > 0) moves = contCaptures;
+        else if (Array.isArray(state.legalMoves) && state.legalMoves.length > 0) moves = state.legalMoves;
       }
 
       // Sort captures first

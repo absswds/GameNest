@@ -133,8 +133,8 @@ function scoreGame(board) {
     }
   }
 
-  // 中国规则：黑贴 3.75 子
-  return { black: blackArea - 3.75, white: whiteArea };
+  // 中国规则：黑贴 3.75 子（双方差值 7.5）
+  return { black: blackArea - 7.5, white: whiteArea };
 }
 
 // ---- Handle Move ----
@@ -165,7 +165,7 @@ exports.handleMove = (data, state, playerIndex) => {
     return null;
   }
 
-  if (typeof row !== 'number' || typeof col !== 'number') return 'g_invalid_action';
+  if (!Number.isInteger(row) || !Number.isInteger(col)) return 'g_invalid_action';
 
   const result = validateMove(state.board, playerIndex, row, col, state.koPoint);
   if (!result.valid) return result.reason;

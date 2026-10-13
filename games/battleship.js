@@ -24,7 +24,7 @@ exports.createState = function () {
 };
 
 function inBounds(r, c) {
-  return r >= 0 && r < ROWS && c >= 0 && c < COLS;
+  return Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < ROWS && c >= 0 && c < COLS;
 }
 
 function getShipCells(r, c, orientation, size) {
@@ -84,6 +84,7 @@ function findShipAt(ships, r, c) {
 
 exports.handleMove = function (data, state, playerIndex) {
   if (state.winner !== null) return 'g_game_over';
+  data = data || {};
   if (state.phase === 'placing') {
     return handlePlacing(data, state, playerIndex);
   } else if (state.phase === 'shooting') {
@@ -216,14 +217,6 @@ exports.playerView = function (state, playerIndex) {
         shot: shotAt, // 'hit' | 'miss' | 'sunk' | null
         shipType: null,
       };
-      // Sunk ships are public: expose which ship each cell belongs to (for hull drawing)
-      if (shotAt === 'sunk') {
-        var ship = findShipAt(enemyShips, r, c);
-        if (ship) {
-          enemyBoard[r][c].shipId = enemyShips.indexOf(ship);
-          if (state.winner !== null) enemyBoard[r][c].shipType = ship.type;
-        }
-      }
     }
   }
 
@@ -233,6 +226,7 @@ exports.playerView = function (state, playerIndex) {
     enemyShips[si].cells.forEach(function (cl) {
       enemyBoard[cl.r][cl.c].shot = 'sunk';
       enemyBoard[cl.r][cl.c].shipId = si;
+      if (state.winner !== null) enemyBoard[cl.r][cl.c].shipType = enemyShips[si].type;
     });
   }
 

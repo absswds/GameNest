@@ -21,7 +21,7 @@ test('numberbomb bot guesses the exact midpoint without random drift', () => {
   assert.equal(move.guess, 50);
 });
 
-test('oldmaid bot draws from the next player and takes the card that pairs with its hand', () => {
+test('oldmaid bot draws blindly from the next player', () => {
   const bot = oldmaidBot.createBot(0);
   const move = bot.getMove({
     hands: [
@@ -40,7 +40,9 @@ test('oldmaid bot draws from the next player and takes the card that pairs with 
     ],
   });
 
-  assert.deepEqual(move, { drawFrom: 1, cardIndex: 1 });
+  // The opponent's cards are face down, so the bot may not prefer the pairing ace.
+  assert.equal(move.drawFrom, 1);
+  assert.ok(move.cardIndex === 0 || move.cardIndex === 1);
 });
 
 test('oldmaid bot skips players who are out of cards when choosing whom to draw from', () => {

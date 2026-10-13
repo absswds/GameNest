@@ -2,6 +2,7 @@
 // 8×8 board, dark squares only, forced captures, king promotion
 
 const ROWS = 8, COLS = 8;
+const QUIET_PLY_LIMIT = 80;
 
 exports.name = 'checkers';
 exports.maxPlayers = 2;
@@ -40,7 +41,7 @@ exports.initGame = function(state) {
 
 // ---- Bounds Check ----
 
-function inBounds(r, c) { return r >= 0 && r < ROWS && c >= 0 && c < COLS; }
+function inBounds(r, c) { return Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < ROWS && c >= 0 && c < COLS; }
 
 // ---- Move Generation ----
 
@@ -95,11 +96,6 @@ function getForwardDirs(side, type) {
   if (type === 'k') return [[-1,-1],[-1,1],[1,-1],[1,1]];
   if (side === 0) return [[-1,-1],[-1,1]]; // red goes up
   return [[1,-1],[1,1]]; // black goes down
-}
-
-// All 4 diagonal directions for king
-function getAllDirs(type) {
-  return [[-1,-1],[-1,1],[1,-1],[1,1]];
 }
 
 // ---- Handle Move ----
@@ -195,7 +191,12 @@ exports.handleMove = function(data, state, playerIndex) {
   }
   if (!hasOpponentPieces || opponentMoves.length === 0) {
     state.winner = playerIndex;
+    return null;
   }
+
+  // Draw after 40 moves each without a capture or a man moving (keeps king-chases from running forever)
+  state.quietPlies = (isCapture || piece.type === 'm') ? 0 : (state.quietPlies || 0) + 1;
+  if (state.quietPlies >= QUIET_PLY_LIMIT) state.winner = -1;
 
   return null;
 };

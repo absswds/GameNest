@@ -67,6 +67,7 @@ function initGame(state, playerCount) {
   state.drawStack = 0;
   state.unoCalled = Array(playerCount).fill(true); // start true (no need at game start)
   state.pendingChallenge = null;
+  state.lastChallenge = null;
 }
 exports.initGame = initGame;
 
@@ -105,12 +106,6 @@ function drawCards(hand, count, state) {
 exports.handleMove = (data, state, playerIndex) => {
   if (state.winner !== null) return 'g_game_over';
 
-  // Initialize if first move
-  if (state.hands.length === 0) {
-    const count = state._playerCount || 2;
-    initGame(state, count);
-  }
-
   const hand = state.hands[playerIndex];
   const { cardId, chosenColor, uno, challengeResponse } = data || {};
 
@@ -118,33 +113,16 @@ exports.handleMove = (data, state, playerIndex) => {
   // When a +4 is pending, the turn belongs to the challenge target — not the
   // player recorded in state.currentPlayer (which still points at the +4
   // player). Handle this first so the target can act.
-  if (challengeResponse) {
+  if (challengeResponse !== undefined) {
     const ch = state.pendingChallenge;
     if (!ch) return 'uno_no_challenge_pending';
     if (playerIndex !== ch.target) return 'g_not_your_turn';
-
-    if (challengeResponse === 'accept') {
-      // Target draws 4 and is skipped (normal +4 effect).
-      drawCards(state.hands[ch.target], 4, state);
-      state.currentPlayer = nextPlayerFrom(state, ch.target); // skip the target
-    } else if (challengeResponse === 'challenge') {
-      // Reveal: did the +4 player hold any card matching the prior color?
-      const hadMatch = ch.handSnapshot.some(function(c) { return c.color === ch.priorColor; });
-      if (hadMatch) {
-        // Challenge succeeds -> the +4 player drew illegally, they draw 4.
-        drawCards(state.hands[ch.by], 4, state);
-        state.currentPlayer = ch.target; // turn passes to the challenger
-      } else {
-        // Challenge fails -> challenger draws 6 (4 + 2 penalty).
-        drawCards(state.hands[ch.target], 6, state);
-        state.currentPlayer = nextPlayerFrom(state, ch.target); // skip the challenger
-      }
-    }
-    state.pendingChallenge = null;
-    state.drawStack = 0;
+    if (challengeResponse !== 'accept' && challengeResponse !== 'challenge') return 'g_unknown_action';
+    resolveChallenge(state, challengeResponse === 'challenge');
     return null;
   }
 
+  if (state.pendingChallenge) return 'g_not_your_turn';
   if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
 
   // ---- UNO call ----
@@ -175,6 +153,10 @@ exports.handleMove = (data, state, playerIndex) => {
   if (cardIdx === -1) return 'uno_card_not_in_hand';
   const card = hand[cardIdx];
 
+  if (state.drawStack > 0 && card.value !== '+2' && card.value !== '+4') return 'uno_must_draw_or_play';
+  if (!canPlay(card, state) && state.drawStack === 0) return 'uno_cannot_play_card';
+  if (card.color === 'wild' && chosenColor !== undefined && !COLORS.includes(chosenColor)) return 'uno_invalid_color';
+
   // UNO penalty: playing last card without calling UNO → instant loss
   if (hand.length === 1 && !state.unoCalled[playerIndex]) {
     hand.splice(cardIdx, 1);
@@ -183,9 +165,6 @@ exports.handleMove = (data, state, playerIndex) => {
     state.phase = 'over';
     return null;
   }
-
-  if (state.drawStack > 0 && card.value !== '+2' && card.value !== '+4') return 'uno_must_draw_or_play';
-  if (!canPlay(card, state) && state.drawStack === 0) return 'uno_cannot_play_card';
 
   // Snapshot the hand BEFORE removing the card, so a later +4 challenge can
   // check whether the player actually held a matching-color card.
@@ -254,16 +233,54 @@ exports.handleMove = (data, state, playerIndex) => {
     state.currentPlayer = nextPlayer(state);
   }
 
-  if (hand.length === 0) {
-    state.winner = playerIndex;
-    return null;
-  }
-
   return null;
+};
+
+// Settle a pending +4. Any +2s stacked under it still land on whoever ends up drawing.
+function resolveChallenge(state, challenged) {
+  const ch = state.pendingChallenge;
+  const stack = state.drawStack;
+  let hadMatch = null;
+  if (!challenged) {
+    // Target draws 4 (plus the stack) and is skipped (normal +4 effect).
+    drawCards(state.hands[ch.target], stack + 4, state);
+    state.currentPlayer = nextPlayerFrom(state, ch.target);
+  } else {
+    // Reveal: did the +4 player hold any card matching the prior color?
+    hadMatch = ch.handSnapshot.some(function(c) { return c.color === ch.priorColor; });
+    if (hadMatch) {
+      // Challenge succeeds -> the +4 player drew illegally, they draw 4; the target still owes the stack.
+      drawCards(state.hands[ch.by], 4, state);
+      drawCards(state.hands[ch.target], stack, state);
+      state.currentPlayer = ch.target; // turn passes to the challenger
+    } else {
+      // Challenge fails -> challenger draws 6 (4 + 2 penalty) plus the stack.
+      drawCards(state.hands[ch.target], stack + 6, state);
+      state.currentPlayer = nextPlayerFrom(state, ch.target); // skip the challenger
+    }
+  }
+  state.lastChallenge = { by: ch.by, challenged: challenged, hadMatch: hadMatch };
+  state.pendingChallenge = null;
+  state.drawStack = 0;
+}
+
+// While a +4 is pending, the challenge target is the one who must act.
+exports.getCurrentActor = function (state) {
+  return state.pendingChallenge ? state.pendingChallenge.target : state.currentPlayer;
+};
+exports.setCurrentActor = function (state, idx) {
+  // A disconnected target accepts the +4 so the game keeps moving.
+  if (state.pendingChallenge) resolveChallenge(state, false);
+  else state.currentPlayer = idx;
 };
 
 // Hide other players' cards (and draw piles) from each client.
 const { maskView } = require('./lib/hidden');
 exports.playerView = function (state, playerIndex) {
-  return maskView(state, playerIndex, { piles: ['deck'] });
+  const view = maskView(state, playerIndex, { piles: ['deck'] });
+  if (view !== state && state.pendingChallenge) {
+    // The +4 player's hand is only used server-side to settle a challenge.
+    view.pendingChallenge = Object.assign({}, state.pendingChallenge, { handSnapshot: undefined });
+  }
+  return view;
 };

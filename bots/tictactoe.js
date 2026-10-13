@@ -9,7 +9,7 @@ exports.createBot = (playerIndex) => ({
   name: botName(playerIndex, 'zh'),
   playerIndex,
   getMove(state) {
-    const board = state.board;
+    const board = state.board.slice();
     const me = playerIndex;
     const opp = 1 - me;
     const empty = board.map((v, i) => v === null ? i : -1).filter(i => i >= 0);

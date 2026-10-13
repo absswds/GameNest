@@ -2,7 +2,8 @@
 (function () {
   window.gameRenderers = window.gameRenderers || new Map();
 
-  var canvas, ctx, overlayDiv;
+  var canvas, ctx;
+  var submittedFor = null; // round:step already submitted, so a late broadcast does not rebuild the turn
   var W, H;
   var state, playerIndex;
   var isDrawing = false;
@@ -118,12 +119,6 @@
     wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;height:100%;overflow:hidden;';
     container.appendChild(wrap);
 
-    // Overlay for waiting/info messages
-    overlayDiv = document.createElement('div');
-    overlayDiv.id = 'dg-overlay';
-    overlayDiv.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;display:flex;align-items:center;justify-content:center;';
-    container.appendChild(overlayDiv);
-
     canvas = document.createElement('canvas');
     canvas.style.cssText = 'touch-action:none;cursor:crosshair;border-radius:8px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.1);';
     wrap.appendChild(canvas);
@@ -141,6 +136,7 @@
     canvas.addEventListener('touchstart', onTouchStart, { passive: false });
     canvas.addEventListener('touchmove', onTouchMove, { passive: false });
     canvas.addEventListener('touchend', onPointerUp);
+    canvas.addEventListener('touchcancel', onPointerUp);
   }
 
   function resizeCanvas() {
@@ -200,8 +196,6 @@
       strokes = localStrokes;
     } else if (state && state.mode === 'stage' && state.myTask) {
       strokes = state.myTask.strokes || [];
-    } else if (state && state.myTask && state.myTask.type === 'draw' && state.phase === 'playing') {
-      strokes = localStrokes;
     } else if (state && state.myTask && state.myTask.prevContent) {
       strokes = state.myTask.prevContent;
     } else {
@@ -246,7 +240,7 @@
         btn.style.borderColor = '#c8a45c';
       };
       btn.className = 'clr-btn';
-      if (c === '#1a1a1a') btn.style.borderColor = '#c8a45c';
+      if (c === color) btn.style.borderColor = '#c8a45c';
       tb.appendChild(btn);
     });
 
@@ -332,7 +326,7 @@
         clearInterval(timerInterval);
         timerEl.textContent = _t('dg_time_up');
         syncSide();
-        if (onExpire) onExpire();
+        if (onExpire) setTimeout(onExpire, 0); // after the caller has finished building its UI
         return;
       }
       timerEl.textContent = _t('dg_remaining') + rem + _t('dg_seconds');
@@ -360,6 +354,7 @@
     wrap.appendChild(canvas);
     function doSubmitDraw() {
       wsSend({ type: 'submit', content: localStrokes });
+      submittedFor = taskKey();
       clearInterval(timerInterval);
       localStrokes = [];
       renderWaiting(container, _t('dg_drawing_submitted'));
@@ -388,6 +383,7 @@
     startTimer(wrap, state && state.stepRemainingMs, function () {
       var val = (input && input.value.trim()) || _t('dg_timeout_fallback');
       wsSend({ type: 'submit', content: val });
+      submittedFor = taskKey();
       renderWaiting(container, _t('dg_guess_submitted'));
     });
 
@@ -421,6 +417,7 @@
       var val = input.value.trim();
       if (!val) { input.focus(); return; }
       wsSend({ type: 'submit', content: val });
+      submittedFor = taskKey();
       clearInterval(timerInterval);
       renderWaiting(container, _t('dg_guess_submitted'));
     }
@@ -432,7 +429,6 @@
   // ---- Render word choosing (first drawer picks 1 of N) ----
   function renderChooseWord(container, task) {
     var host = stageLayout(container);
-    window.injectStylesOnce('dg-side-styles', CSS);
     var wrap = document.createElement('div');
     wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;padding:30px 16px;max-width:560px;margin:0 auto;';
     host.appendChild(wrap);
@@ -470,13 +466,17 @@
   }
 
   function renderStage(container, task) {
+    // Keep what the guesser is typing: every stroke broadcast rebuilds this screen.
+    var oldInput = container.querySelector('#dg-stage-guess');
+    var typed = oldInput ? oldInput.value : '';
+    var hadFocus = oldInput && document.activeElement === oldInput;
     var host = stageLayout(container);
     var wrap = document.createElement('div');
     wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;padding:8px;';
     host.appendChild(wrap);
     var header = document.createElement('div');
     header.className = 'dg-hdr';
-    var drawer = (window._players && window._players[state.drawerIndex]) ? window._players[state.drawerIndex].name : (_t('dg_player_fallback') + (state.drawerIndex + 1));
+    var drawer = pname(state.drawerIndex);
     header.style.cssText = 'font-size:16px;font-weight:800;text-align:center;margin-bottom:6px;';
     header.textContent = task.canDraw ? (_t('dg_round_prefix') + state.round + _t('dg_round_draw') + task.word) : (_t('dg_round_prefix') + state.round + _t('dg_round_sep') + drawer + _t('dg_is_drawing') + (task.correct ? _t('dg_guessed_correct') : task.wordMask));
     wrap.appendChild(header);
@@ -484,21 +484,21 @@
     drawStrokes(task.strokes || []);
     wrap.appendChild(canvas);
     startTimer(wrap, state.stepRemainingMs, null);
-    if (task.canDraw) { localStrokes = task.strokes || []; buildToolbar(wrap); return; }
+    if (task.canDraw) { localStrokes = (task.strokes || []).slice(); buildToolbar(wrap); return; }
     if (task.correct) return;
     var row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;margin-top:10px;width:min(100%,500px);'; wrap.appendChild(row);
-    var input = document.createElement('input'); input.placeholder = _t('dg_stage_guess_placeholder'); input.maxLength = 20; input.style.cssText = 'flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;'; row.appendChild(input);
+    var input = document.createElement('input'); input.id = 'dg-stage-guess'; input.value = typed; input.placeholder = _t('dg_stage_guess_placeholder'); input.maxLength = 20; input.style.cssText = 'flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;'; row.appendChild(input);
     var btn = document.createElement('button'); btn.className = 'btn btn-primary'; btn.textContent = _t('dg_guess_btn'); row.appendChild(btn);
     function guess() { var text = input.value.trim(); if (!text) return; wsSend({ type: 'stage_guess', text: text }); input.select(); }
-    btn.onclick = guess; input.onkeydown = function(e) { if (e.key === 'Enter') guess(); }; setTimeout(function(){ input.focus(); }, 50);
+    btn.onclick = guess; input.onkeydown = function(e) { if (e.key === 'Enter') guess(); }; if (hadFocus || !oldInput) setTimeout(function(){ input.focus(); }, 50);
   }
 
   function renderStageResult(container, st) {
     clearInterval(timerInterval);
     var host = stageLayout(container);
     var box = document.createElement('div'); box.style.cssText = 'margin:32px auto;padding:24px;max-width:420px;text-align:center;background:#fff9ee;border-radius:16px;font-size:16px;';
-    var scores = (st.scores || []).map(function(s, i) { var n = window._players && window._players[i] ? window._players[i].name : (_t('dg_player_fallback') + (i + 1)); return n + ' ' + s + _t('dg_points_suffix'); }).join(' · ');
-    box.innerHTML = '<div style="font-size:22px;font-weight:800">' + _t('dg_answer_label') + (st.word || '') + '</div><div style="margin-top:12px;color:var(--text-muted)">' + scores + '</div><div style="margin-top:12px">' + _t('dg_next_round_soon') + '</div>';
+    var scores = (st.scores || []).map(function(s, i) { return esc(pname(i)) + ' ' + s + _t('dg_points_suffix'); }).join(' · ');
+    box.innerHTML = '<div style="font-size:22px;font-weight:800">' + _t('dg_answer_label') + esc(st.word || '') + '</div><div style="margin-top:12px;color:var(--text-muted)">' + scores + '</div><div style="margin-top:12px">' + _t('dg_next_round_soon') + '</div>';
     host.appendChild(box);
   }
 
@@ -547,6 +547,7 @@
     wrap.appendChild(stepArea);
 
     function showStep(idx) {
+      if (!chain.length) return;
       revealStep = Math.max(0, Math.min(idx, chain.length - 1));
       prevBtn.disabled = revealStep === 0;
       nextBtn.disabled = revealStep === chain.length - 1;
@@ -604,7 +605,7 @@
     }
     var resultEl = document.createElement('div');
     resultEl.style.cssText = 'margin-top:16px;padding:14px 20px;background:#f8f9fa;border-radius:12px;text-align:center;font-size:15px;font-weight:700;color:#5a4a32;';
-    resultEl.textContent = _t('dg_original_prefix') + st.word + _t('dg_to_final_guess') + (lastGuess || _t('dg_no_answer')) + _t('dg_close_quote');
+    resultEl.textContent = _t('dg_original_prefix') + (st.word || '') + _t('dg_to_final_guess') + (lastGuess || _t('dg_no_answer')) + _t('dg_close_quote');
     wrap.appendChild(resultEl);
 
     if (st.transmissionResult) {
@@ -653,19 +654,18 @@
     box.style.cssText = 'margin:28px auto;padding:24px;max-width:440px;text-align:center;background:#fff9ee;border-radius:16px;box-shadow:0 4px 18px rgba(115,82,31,.10);';
     var result = st.roundResults || {};
     var starter = result.drawerIndex === undefined ? 0 : result.drawerIndex;
-    var starterName = window._players && window._players[starter] ? window._players[starter].name : (_t('dg_player_fallback') + (starter + 1));
+    var starterName = esc(pname(starter));
     var rows = (st.scores || []).map(function(score, index) {
-      var name = window._players && window._players[index] ? window._players[index].name : (_t('dg_player_fallback') + (index + 1));
-      return '<div style="display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px solid rgba(200,164,92,.18);"><span>' + name + '</span><strong>' + score + ' ' + _t('dg_points_suffix') + '</strong></div>';
+      return '<div style="display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px solid rgba(200,164,92,.18);"><span>' + esc(pname(index)) + '</span><strong>' + score + ' ' + _t('dg_points_suffix') + '</strong></div>';
     }).join('');
     if (isFinal) {
-      var winnerName = window._players && window._players[st.winner] ? window._players[st.winner].name : (_t('dg_player_fallback') + ((st.winner || 0) + 1));
+      var winnerName = esc(pname(st.winner || 0));
       box.innerHTML = '<div style="font-size:24px;font-weight:800">🏆 ' + winnerName + _t('dg_wins') + '</div><div style="margin:8px 0 16px;color:var(--text-muted)">' + _t('dg_final_scores') + '</div>' + rows;
     } else {
       var gained = result.scoreAwarded || 0;
       var matched = st.transmissionResult === 'match';
       var nextIndex = (starter + 1) % (st.scores || [0]).length;
-      var nextName = window._players && window._players[nextIndex] ? window._players[nextIndex].name : (_t('dg_player_fallback') + (nextIndex + 1));
+      var nextName = esc(pname(nextIndex));
       box.innerHTML = '<div style="font-size:21px;font-weight:800">' + _t('dg_round_prefix') + st.round + _t('dg_round_result_suffix') + '</div>' +
         '<div style="margin:10px 0;padding:10px;border-radius:10px;background:' + (matched ? '#ecf9ef' : '#fff5f2') + ';color:' + (matched ? '#23864a' : '#c95f3c') + ';font-weight:700">' +
         (matched ? _t('dg_transmission_match') : _t('dg_transmission_drift')) + ' · ' + starterName + ' +' + gained + ' ' + _t('dg_points_suffix') + '</div>' +
@@ -675,6 +675,8 @@
     }
     container.appendChild(box);
   }
+
+  function taskKey() { return state ? state.round + ':' + state.currentStep : ''; }
 
   // ---- Main render ----
   window.gameRenderers.set('drawguess', {
@@ -695,7 +697,7 @@
         } else if (st.phase === 'round_result') {
           renderStageResult(container, st);
         } else if (st.phase === 'gameover') {
-          renderStageResult(container, st);
+          renderWhisperResult(container, st, true);
         }
         return;
       }
@@ -721,8 +723,7 @@
           renderChooseWord(container, st.myTask);
         } else {
           var chooser = st.chain && st.chain[0] ? st.chain[0].playerIndex : 0;
-          var cname = (window._players && window._players[chooser]) ? window._players[chooser].name : (_t('dg_player_fallback') + (chooser + 1));
-          renderWaiting(container, cname + _t('dg_is_choosing'));
+          renderWaiting(container, esc(pname(chooser)) + _t('dg_is_choosing'));
         }
         return;
       }
@@ -731,10 +732,11 @@
         var task = st.myTask;
         if (!task) {
           // Show progress while waiting
-          var step = st.chain[st.currentStep] || {};
           var stepNum = (st.currentStep || 0) + 1;
           var total = st.chain ? st.chain.length : '?';
           renderWaiting(container, _t('dg_round_prefix') + stepNum + ' / ' + total + _t('dg_step_in_progress'));
+        } else if (submittedFor === taskKey()) {
+          // already submitted this step; keep the waiting screen
         } else if (task.type === 'draw') {
           var alreadyDrawing = container.querySelector('#dg-toolbar');
           if (!alreadyDrawing) {

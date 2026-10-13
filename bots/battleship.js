@@ -106,6 +106,18 @@ function getRandomShootMove(state, playerIndex) {
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
+// Earlier hits on a ship stay 'hit' after it sinks; skip them
+function onSunkShip(state, playerIndex, shot) {
+  var ships = (state.ships && state.ships[1 - playerIndex]) || [];
+  for (var i = 0; i < ships.length; i++) {
+    var cells = ships[i].cells || [];
+    if (cells.some(function (cl) { return cl.r === shot.r && cl.c === shot.c; })) {
+      return cells.every(function (cl) { return cl.hit; });
+    }
+  }
+  return false;
+}
+
 function getSmartShootMove(state, playerIndex, parity) {
   var shot = getAlreadyShot(state, playerIndex);
 
@@ -113,7 +125,7 @@ function getSmartShootMove(state, playerIndex, parity) {
   var hits = [];
   var shots = state.shots[playerIndex];
   for (var i = 0; i < shots.length; i++) {
-    if (shots[i].result === 'hit') {
+    if (shots[i].result === 'hit' && !onSunkShip(state, playerIndex, shots[i])) {
       hits.push(shots[i]);
     }
   }

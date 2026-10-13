@@ -4,30 +4,34 @@ const { botName } = require('./lib/bot-name');
 exports.name = 'davinci';
 
 function deduceGuess(state, playerIndex, targetPlayer, tileIndex) {
-  // Build known number sets from revealed tiles + own tiles
+  // Each number exists once per color, so track known tiles as color+number.
   const known = new Set();
   for (let p = 0; p < state.playerCount; p++) {
     const tiles = state.tiles[p], rev = state.numRevealed[p];
     for (let t = 0; t < tiles.length; t++) {
       if ((p === playerIndex || rev[t]) && !tiles[t].wild) {
-        known.add(tiles[t].num);
+        known.add(tiles[t].color + tiles[t].num);
       }
     }
   }
-  // Determine range from revealed neighbors
+  // Sort key matches the game: by number, black before white on equal numbers.
+  const key = (num, color) => num * 2 + (color === 'white' ? 1 : 0);
   const tgtTiles = state.tiles[targetPlayer];
   const tgtRev = state.numRevealed[targetPlayer];
-  let lo = -1, hi = 12;
+  const color = tgtTiles[tileIndex].color;
+  let lo = -Infinity, hi = Infinity;
   for (let t = 0; t < tgtTiles.length; t++) {
     if (tgtRev[t] && !tgtTiles[t].wild) {
-      if (t < tileIndex) lo = Math.max(lo, tgtTiles[t].num);
-      if (t > tileIndex) hi = Math.min(hi, tgtTiles[t].num);
+      const k = key(tgtTiles[t].num, tgtTiles[t].color);
+      if (t < tileIndex) lo = Math.max(lo, k);
+      if (t > tileIndex) hi = Math.min(hi, k);
     }
   }
   // Build candidate numbers (color is public, so guess number only)
   const candidates = [];
-  for (let n = lo + 1; n < hi; n++) {
-    if (!known.has(n)) candidates.push(n);
+  for (let n = 0; n < 12; n++) {
+    const k = key(n, color);
+    if (k > lo && k < hi && !known.has(color + n)) candidates.push(n);
   }
   // 20% chance of random "mistake" to feel human
   if (Math.random() < 0.2 || candidates.length === 0) {
@@ -70,11 +74,8 @@ exports.createBot = (playerIndex) => ({
     }
 
     if (state.phase === 'guess') {
-      // After a correct guess: 40% chance to stop instead of continuing
-      if (state.lastGuessResult && state.lastGuessResult.correct &&
-          state.currentPlayer === playerIndex) {
-        if (Math.random() < 0.4) return { pass: true };
-      }
+      // After a correct guess this turn: 40% chance to stop instead of continuing
+      if (state.guessedThisTurn && Math.random() < 0.4) return { pass: true };
 
       const opponents = [];
       for (let i = 0; i < state.playerCount; i++) {
@@ -89,10 +90,10 @@ exports.createBot = (playerIndex) => ({
       // Color is public: if target tile is a joker, guess joker directly
       const tgtTile = state.tiles[target.player][target.tileIndex];
       if (tgtTile.wild) {
-        return { targetPlayer: target.player, tileIndex: target.tileIndex, guessJoker: true };
+        return { targetPlayer: target.player, tileIndex: target.tileIndex, guessJoker: true, continueGuess: true };
       }
       const guess = deduceGuess(state, playerIndex, target.player, target.tileIndex);
-      return { targetPlayer: target.player, tileIndex: target.tileIndex, ...guess };
+      return { targetPlayer: target.player, tileIndex: target.tileIndex, ...guess, continueGuess: true };
     }
 
     return {};

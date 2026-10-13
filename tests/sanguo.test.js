@@ -389,7 +389,8 @@ test('sanguo: hanbing discards from hand or equipment only, never the judge zone
   ok(s, 0, { type: 'confirm', yes: true });
   assert.equal(s.ask.type, 'pick');
   assert.equal(s.ask.noJudge, true);
-  ok(s, 0, { type: 'pick', zone: 'table', cardId: lebu.id });
+  assert.equal(core.handleMove({ type: 'pick', zone: 'table', cardId: lebu.id }, s, 0), 'sg_bad_card');
+  ok(s, 0, { type: 'pick', zone: 'hand' });
   assert.ok(s.players[1].judge.includes(lebu), 'the lebu stays in the judge zone');
   assert.ok(!s.players[1].hand.includes(h1), 'the hand card was discarded instead');
   assert.equal(s.players[1].hp, 4, 'hanbing prevented the damage');

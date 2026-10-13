@@ -137,9 +137,9 @@ exports.handleMove = function (data, state, playerIndex) {
 
   let cards = collectCards(state, kind);
   if (cards.length === 0) {
-    state.decks = buildDecks({});
-    state.enabledDecks = Object.keys(state.decks);
-    cards = collectCards(state, kind);
+    // Fall back to the built-in decks for this draw only; the room's own decks stay as chosen.
+    const builtIn = buildDecks({});
+    cards = collectCards({ decks: builtIn, enabledDecks: Object.keys(builtIn) }, kind);
   }
   if (cards.length === 0) return 'td_empty_deck';
 

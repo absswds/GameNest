@@ -183,7 +183,7 @@ function minimax(board, depth, alpha, beta, maximizing, side, ROWS, COLS, PST) {
       var flipped = applyMove(board, move, currentSide);
       var val = minimax(board, depth - 1, alpha, beta, true, side, ROWS, COLS, PST);
       undoMove(board, move, flipped);
-      if (val > best) best = val;
+      if (val < best) best = val;
       if (best < beta) beta = best;
       if (alpha >= beta) break;
     }

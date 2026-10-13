@@ -245,7 +245,7 @@ const TT = new Map();
 function minimax(board, depth, alpha, beta, maximizing, side) {
   if (depth === 0) return evaluateBoard(board, side);
 
-  const key = board.map(r => r.map(c => c ? `${c.type}${c.side}` : '0').join('')).join('|') + depth + maximizing;
+  const key = board.map(r => r.map(c => c ? `${c.type}${c.side}` : '0').join('')).join('|') + depth + maximizing + side;
   if (TT.has(key)) return TT.get(key);
 
   const currentSide = maximizing ? side : (side === 0 ? 1 : 0);
@@ -262,6 +262,8 @@ function minimax(board, depth, alpha, beta, maximizing, side) {
     return cb - ca;
   });
 
+  const alpha0 = alpha, beta0 = beta;
+
   if (maximizing) {
     let best = -Infinity;
     for (const move of moves) {
@@ -272,7 +274,7 @@ function minimax(board, depth, alpha, beta, maximizing, side) {
       alpha = Math.max(alpha, val);
       if (alpha >= beta) break;
     }
-    TT.set(key, best);
+    if (best > alpha0 && best < beta0) TT.set(key, best); // only exact values
     return best;
   } else {
     let best = Infinity;
@@ -284,7 +286,7 @@ function minimax(board, depth, alpha, beta, maximizing, side) {
       beta = Math.min(beta, val);
       if (alpha >= beta) break;
     }
-    TT.set(key, best);
+    if (best > alpha0 && best < beta0) TT.set(key, best); // only exact values
     return best;
   }
 }
@@ -319,7 +321,7 @@ exports.createBot = (playerIndex) => ({
       const cap = applyMove(board, move);
       let val = minimax(board, depth - 1, -Infinity, Infinity, false, side);
       // Don't shuffle back into positions that already happened (avoids endless repetition)
-      val -= 40 * (seen[board.map(r => r.map(c => (c ? c.type + c.side : '0')).join('')).join('|') + enemy] || 0);
+      val -= 40 * (seen[require('../games/chinesechess').positionKey(board, enemy)] || 0);
       undoMove(board, move, cap);
       if (val > bestVal) {
         bestVal = val;

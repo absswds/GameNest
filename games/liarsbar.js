@@ -189,11 +189,11 @@ exports.handleMove = (data, state, playerIndex) => {
     const hand = state.hands[playerIndex];
     if (!hand || hand.length === 0) return 'lb_no_hand';
 
+    if (new Set(cardIds).size !== cardIds.length) return 'lb_card_not_in_hand';
+    if (!cardIds.every(id => hand.some(c => c.id === id))) return 'lb_card_not_in_hand';
     const played = [];
     for (const id of cardIds) {
-      const idx = hand.findIndex(c => c.id === id);
-      if (idx === -1) return 'lb_card_not_in_hand';
-      played.push(hand.splice(idx, 1)[0]);
+      played.push(hand.splice(hand.findIndex(c => c.id === id), 1)[0]);
     }
 
     for (const card of played) state.pileCards.push(card);
@@ -272,5 +272,9 @@ exports.setCurrentActor = (state, index) => {
 // Hide other players' cards (and draw piles) from each client.
 const { maskView } = require('./lib/hidden');
 exports.playerView = function (state, playerIndex) {
-  return maskView(state, playerIndex, { piles: ['pileCards', 'lastPlayedCards'] });
+  const view = maskView(state, playerIndex, { piles: ['pileCards', 'lastPlayedCards'] });
+  if (view === state) return view;
+  delete view._bulletChamber;
+  view.pileClaims = (state.pileClaims || []).map(c => ({ playerIndex: c.playerIndex, count: c.cardIds.length, claimedRank: c.claimedRank }));
+  return view;
 };

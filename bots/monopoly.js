@@ -25,6 +25,13 @@ exports.createBot = (playerIndex) => ({
       return { type: 'skip_buy' };
     }
 
+    if (state.phase === 'landed' && state.pendingAction === 'can_build') {
+      const pos = state.positions[playerIndex];
+      const space = board[pos];
+      if (space && space.price && state.cash[playerIndex] - space.price / 2 >= 300) return { type: 'build', spaceIndex: pos };
+      return { type: 'skip_buy' };
+    }
+
     if (state.phase === 'end_turn') {
       // 找垄断色组中最便宜、还能建且现金安全的地产盖房
       const buildTarget = pickBuild(state, board, playerIndex);

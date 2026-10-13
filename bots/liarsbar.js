@@ -31,12 +31,10 @@ exports.createBot = function(playerIndex) {
         return { action: 'play', cardIds: exactThemeCards.slice(0, count).map(c => c.id) };
       }
 
+      // No exact theme cards left, so wilds are the only honest play.
       if (wildCards.length > 0) {
-        const shouldSpendWild = hand.length <= 2 || countLiveNonThemeMatches(state, playerIndex, themeRank) === 0;
-        if (shouldSpendWild) {
-          const count = Math.min(wildCards.length, 3);
-          return { action: 'play', cardIds: wildCards.slice(0, count).map(c => c.id) };
-        }
+        const count = Math.min(wildCards.length, 3);
+        return { action: 'play', cardIds: wildCards.slice(0, count).map(c => c.id) };
       }
 
       if (ghostCard) {
@@ -104,7 +102,3 @@ function futureValue(card, hand) {
   return value;
 }
 
-function countLiveNonThemeMatches(state, playerIndex, themeRank) {
-  const hand = (state.hands && state.hands[playerIndex]) || [];
-  return hand.filter((card) => card.suit !== 'wild' && card.suit !== 'ghost' && card.rank === themeRank).length;
-}

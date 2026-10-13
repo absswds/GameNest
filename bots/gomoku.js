@@ -11,7 +11,7 @@ exports.createBot = (playerIndex) => ({
   name: botName(playerIndex, 'zh'),
   playerIndex,
   getMove(state) {
-    const board = state.board;
+    const board = state.board.map(row => row.slice());
     const me = playerIndex;
     const opp = 1 - me;
 
@@ -25,7 +25,7 @@ exports.createBot = (playerIndex) => ({
 
         const atk = evaluate(board, r, c, me);
         const def = evaluate(board, r, c, opp);
-        var score = Math.max(atk, def * 1.1); // slightly prefer defense
+        var score = atk >= 100000 ? atk * 2 : Math.max(atk, def * 1.1); // win first, else slightly prefer defense
 
         // Apply difficulty modifier
         var diff = getDifficulty(state);

@@ -136,20 +136,12 @@ function pieceVal(piece) {
 var TT = new Map();
 
 function negamax(c, depth, alpha, beta) {
+  if (c.game_over()) return c.in_checkmate() ? -MATE + (3 - depth) : 0;
   if (depth === 0) return evaluate(c);
 
   var key = c.fen() + '|' + depth;
   if (TT.has(key)) return TT.get(key);
-
-  if (c.game_over()) {
-    if (c.in_checkmate()) {
-      var val = -MATE + (3 - depth);
-      TT.set(key, val);
-      return val;
-    }
-    TT.set(key, 0);
-    return 0;
-  }
+  var alpha0 = alpha;
 
   var moves = c.moves({ verbose: true });
   // Sort by capture value (MVV-LVA heuristic)
@@ -167,7 +159,7 @@ function negamax(c, depth, alpha, beta) {
     if (alpha >= beta) break;
   }
 
-  TT.set(key, best);
+  if (best > alpha0 && best < beta) TT.set(key, best); // only exact values
   return best;
 }
 

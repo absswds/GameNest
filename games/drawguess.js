@@ -139,6 +139,9 @@ function startWhisperRound(state) {
   state.stepDeadline = 0;
 }
 
+const MAX_STROKES = 2000;
+const MAX_STROKE_POINTS = 2000;
+
 function highestScoreIndex(scores) {
   let best = 0;
   for (let i = 1; i < scores.length; i++) {
@@ -194,6 +197,7 @@ function advanceStep(state) {
 }
 
 exports.handleMove = (data, state, playerIndex) => {
+  if (!data || typeof data !== 'object') return 'g_unknown_action';
   if (state.mode === 'stage') {
     if (state.phase === 'choosing') {
       if (playerIndex !== state.drawerIndex || data.type !== 'choose_word') return 'dg_cannot_pick_word_now';
@@ -208,6 +212,8 @@ exports.handleMove = (data, state, playerIndex) => {
     if (state.phase === 'playing') {
       if (data.type === 'stage_stroke') {
         if (playerIndex !== state.drawerIndex || !data.stroke || !Array.isArray(data.stroke.pts) || data.stroke.pts.length < 2) return 'dg_cannot_draw_now';
+        // Every stroke is rebroadcast to every player, so cap its size and the total count.
+        if (data.stroke.pts.length > MAX_STROKE_POINTS || state.strokes.length >= MAX_STROKES) return 'dg_cannot_draw_now';
         state.strokes.push(data.stroke);
         return null;
       }
@@ -276,22 +282,6 @@ exports.handleMove = (data, state, playerIndex) => {
       }
       return null;
     }
-    if (data.type === 'vote') {
-      const si = parseInt(data.stepIndex);
-      if (isNaN(si) || si < 0 || si >= state.chain.length) return 'dg_invalid_vote';
-      state.votes[playerIndex] = si;
-      const voteCount = Object.keys(state.votes).length;
-      if (voteCount >= state._playerCount) {
-        const counts = {};
-        Object.values(state.votes).forEach(v => { counts[v] = (counts[v] || 0) + 1; });
-        let best = -1, bestC = 0;
-        Object.entries(counts).forEach(([idx, c]) => {
-          if (c > bestC || (c === bestC && parseInt(idx) > best)) { bestC = c; best = parseInt(idx); }
-        });
-        state.winner = best >= 0 ? state.chain[best].playerIndex : 0;
-      }
-      return null;
-    }
     return null;
   }
 
@@ -314,9 +304,7 @@ exports.onTimeout = (state) => {
     }
     if (state.phase === 'round_result') {
       if (state.round >= state._playerCount) {
-        let best = 0;
-        for (let i = 1; i < state.scores.length; i++) if (state.scores[i] > state.scores[best]) best = i;
-        state.winner = best;
+        state.winner = highestScoreIndex(state.scores);
         state.phase = 'gameover';
         return true;
       }
@@ -380,6 +368,7 @@ exports.playerView = (state, playerIndex) => {
         strokes: state.strokes.slice(),
         correct: !!state.correct[playerIndex],
       };
+      delete view.strokes; // already sent once in myTask.strokes
       return view;
     }
     if (state.phase === 'round_result' || state.phase === 'gameover') {

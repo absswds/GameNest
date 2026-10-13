@@ -443,9 +443,12 @@
     if (!ch && lastChallengeState) {
       var prev = lastChallengeState;
       lastChallengeState = null;
-      var hadMatch = (prev.handSnapshot || []).some(function(c) { return c.color === prev.priorColor; });
+      var result = state.lastChallenge;
+      overlay.style.display = 'none';
+      // The server only reveals the +4 player's hand when the target challenged.
+      if (!result || !result.challenged) return;
       var byName = (window.gamePlayers && window.gamePlayers[prev.by]) ? window.gamePlayers[prev.by].name : tf('uno_player', prev.by + 1);
-      if (hadMatch) {
+      if (result.hadMatch) {
         showToast(tf('uno_challenge_result_cheat', byName)); // +4 player cheated, they draw 4
       } else {
         showToast(tf('uno_challenge_result_clean', byName)); // +4 was legal, challenger draws 6

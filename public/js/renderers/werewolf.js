@@ -74,8 +74,8 @@
         hint = t('ww_pick_check');
         btns = btn(t('ww_check'), 'window._wwAct(\'check\')', 'primary', sel < 0);
       } else if (r === 'seer') {
-        var c = S.checks[S.checks.length - 1];
-        hint = '<span class="ww-check ' + (c.wolf ? 'bad' : 'good') + '">' + tf('ww_check_result', seat(c.target), t(c.wolf ? 'ww_bad' : 'ww_good')) + '</span>';
+        var c = (S.checks || [])[(S.checks || []).length - 1];
+        hint = !c ? t('ww_close_eyes') : '<span class="ww-check ' + (c.wolf ? 'bad' : 'good') + '">' + tf('ww_check_result', seat(c.target), t(c.wolf ? 'ww_bad' : 'ww_good')) + '</span>';
       } else hint = t('ww_close_eyes');
     } else if (ph === 'night_witch') {
       if (r === 'witch' && !S.witchDone) {
@@ -189,12 +189,11 @@
     var r = S.myRole;
     if (!r) return '';
     var mates = r === 'wolf' ? S.roles.map(function(x, i) { return x === 'wolf' && i !== me ? seat(i) : null; }).filter(Boolean) : [];
-    var open = showRole || S.winner !== null;
     return '<div class="in"><div class="b"><span class="moon">☾</span>' + t('ww_tap_reveal_short') + '</div>' +
       '<div class="f' + (isWolf(r) ? ' wolf' : '') + '"><span class="big">' + esc(roleName(r).charAt(0)) + '</span><span class="rn">' + roleName(r) + '</span>' +
       (mates.length ? '<span class="rd">' + tf('ww_teammates', mates.join('、')) + '</span>' : '') +
       (r === 'witch' && S.potions ? '<span class="rd">' + tf('ww_potions_left', t(S.potions.save ? 'ww_yes' : 'ww_no'), t(S.potions.poison ? 'ww_yes' : 'ww_no')) + '</span>' : '') +
-      '</div></div>' + (open ? '' : '');
+      '</div></div>';
   }
 
   function logLine(e) {
@@ -240,10 +239,10 @@
       (m.ch === 'wolf' ? ' · ' + t('ww_ch_wolf') : '') + '</small>' + esc(m.text) + '</div></div>';
   }
 
-  function sysHtml(e, fresh) {
+  function sysHtml(e, fresh, dawnDays) {
     var big = e.t === 'night' || e.t === 'deaths' || e.t === 'dawn';
     // Day 1 with a sheriff election: dawn is announced first, the night's result only after the election
-    var revealed = e.t === 'deaths' && (S.log || []).some(function(x) { return x.t === 'dawn' && x.day === e.day; });
+    var revealed = e.t === 'deaths' && !!dawnDays[e.day];
     var result = e.t === 'deaths' ? (e.list.length ? tf('ww_dawn_deaths', e.list.map(seat).join('、')) : t('ww_dawn_peace')) : '';
     var txt = e.t === 'night' ? '🌙 ' + logLine(e)
       : e.t === 'dawn' ? '☀ ' + tf('ww_log_dawn', e.day) + ' · ' + t('ww_dawn_sheriff_first')
@@ -254,12 +253,13 @@
 
   function feedHtml() {
     var log = S.log || [], chat = S.chat || [], out = '', ci = 0;
-    var voteAt = -1;
+    var voteAt = -1, dawnDays = {};
+    log.forEach(function(x) { if (x.t === 'dawn') dawnDays[x.day] = true; });
     for (var k = log.length - 1; k >= 0; k--) if (/^(exile|no_exile|idiot|sheriff|no_sheriff)$/.test(log[k].t)) { voteAt = k; break; }
     for (k = 0; k <= log.length; k++) {
       while (ci < chat.length && chat[ci].at <= k) { out += msgHtml(chat[ci], ci >= seenChat); ci++; }
       if (k < log.length) {
-        if (logLine(log[k])) out += sysHtml(log[k], k >= seenLog);
+        if (logLine(log[k])) out += sysHtml(log[k], k >= seenLog, dawnDays);
         if (k === voteAt && S.lastVote) out += '<div class="m sys"><div class="b wide">' + voteHtml() + '</div></div>';
       }
     }
@@ -327,7 +327,8 @@
       $('L').innerHTML = L;
       $('R').innerHTML = R;
       var feed = $('feed'), atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 60;
-      feed.innerHTML = feedHtml();
+      var fh = feedHtml();
+      if (fh !== feed._html) { feed.innerHTML = fh; feed._html = fh; }
       if (atBottom || (S.chat || []).length > seenChat && (S.chat[S.chat.length - 1] || {}).p === me) feed.scrollTop = feed.scrollHeight;
       var ch = myChannel(), input = document.getElementById('wwChatIn');
       var chEl = $('ch');
@@ -597,7 +598,7 @@
       if (key !== lastPhaseKey) {
         sel = -1;
         lastPhaseKey = key;
-        phaseTotal = S.deadline ? Math.max(1, (S.deadline - Date.now()) / 1000) : 0;
+        phaseTotal = S.phaseSec || (S.deadline ? Math.max(1, (S.deadline - Date.now()) / 1000) : 0);
       }
       if (targets().indexOf(sel) < 0) sel = -1;
       if (!mode) {

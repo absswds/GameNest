@@ -5,6 +5,10 @@ exports.name = 'uno';
 exports.createBot = (playerIndex) => ({
   name: botName(playerIndex, 'zh'),
   getMove(state) {
+    // Answer a pending +4. The +4 player's hand is hidden, so challenge now and then without peeking.
+    if (state.pendingChallenge) {
+      return { challengeResponse: Math.random() < 0.25 ? 'challenge' : 'accept' };
+    }
     const hand = state.hands[playerIndex];
     if (!hand || hand.length === 0) return {};
 

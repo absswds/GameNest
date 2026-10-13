@@ -4,8 +4,7 @@
 
   var selected = {};
   var _lastHandLen = 0;
-  var SUIT_SYMBOL = { s: '♠', h: '♥', c: '♣', d: '♦' };
-  var SUIT_COLOR = { s: '#1a1a1a', h: '#e74c3c', c: '#1a1a1a', d: '#e74c3c' };
+  var _lastHandHtml = '';
   var TYPE_NAMES = {
     single: 'bt_single', pair: 'bt_pair', triple: 'bt_triple',
     straight: 'bt_straight', flush: 'bt_flush', full_house: 'bt_full_house',
@@ -49,7 +48,7 @@
           '<div class="' + (isActive ? 'is-active-turn' : '') + '" style="text-align:center;padding:8px 14px;background:var(--bg);border-radius:var(--radius-sm);' +
           (isActive ? '' : 'border:1px solid var(--border);') + '">' +
           '<div style="font-size:13px;font-weight:600;">' +
-          (window.getPlayerName ? window.getPlayerName(i) : (_t('bt_player_fallback') + (i + 1))) +
+          escHtml(window.getPlayerName ? window.getPlayerName(i) : (_t('bt_player_fallback') + (i + 1))) +
           '</div>' +
           '<div style="font-size:22px;font-weight:800;margin-top:2px;">' + count + '</div>' +
           '<div style="font-size:11px;color:var(--text-muted);">' +
@@ -66,7 +65,7 @@
       if (!el) return;
 
       if (s.winner != null) {
-        var winnerName = window.getPlayerName ? window.getPlayerName(s.winner) : (_t('bt_player_fallback') + (s.winner + 1));
+        var winnerName = escHtml(window.getPlayerName ? window.getPlayerName(s.winner) : (_t('bt_player_fallback') + (s.winner + 1)));
         el.innerHTML = '<div style="font-size:15px;font-weight:700;color:var(--success);">' + winnerName + _t('bt_wins') + '</div>';
         return;
       }
@@ -76,7 +75,7 @@
       // Last played cards
       if (s.lastPlay && s.lastPlay.cards) {
         var who = s.lastPlayPlayer === selfIdx ? _t('bt_you') :
-          (window.getPlayerName ? window.getPlayerName(s.lastPlayPlayer) : (_t('bt_player_fallback') + (s.lastPlayPlayer + 1)));
+          escHtml(window.getPlayerName ? window.getPlayerName(s.lastPlayPlayer) : (_t('bt_player_fallback') + (s.lastPlayPlayer + 1)));
         var lpType = s.lastPlay.play;
         var typeName = _t(TYPE_NAMES[lpType.type]) || lpType.type;
         parts.push('<div style="font-size:12px;color:var(--text-muted);">' + who + _t('bt_played') + typeName + '</div>');
@@ -97,12 +96,16 @@
       var el = document.getElementById('btHand');
       if (!el) return;
       var hand = s.hands[selfIdx] || [];
-      if (hand.length === 0) { el.innerHTML = ''; _lastHandLen = 0; return; }
+      // Drop selections for cards no longer in hand (e.g. after a restart)
+      var inHand = {};
+      hand.forEach(function(c) { inHand[c.id] = true; });
+      Object.keys(selected).forEach(function(id) { if (!inHand[id]) delete selected[id]; });
+      if (hand.length === 0) { el.innerHTML = ''; _lastHandLen = 0; _lastHandHtml = ''; return; }
 
       var myTurn = s.currentPlayer === selfIdx && winner == null;
       var deal = hand.length > _lastHandLen + 3;
       _lastHandLen = hand.length;
-      el.innerHTML = window.CardUI.group(hand, {
+      var handHtml = window.CardUI.group(hand, {
         layout: 'hand',
         deal: deal,
         cardOpts: function(c) {
@@ -113,6 +116,7 @@
           };
         }
       });
+      if (handHtml !== _lastHandHtml || !el.firstChild) { el.innerHTML = handHtml; _lastHandHtml = handHtml; }
     },
 
     renderActions: function(s, selfIdx, winner) {
@@ -238,9 +242,9 @@
     } else {
       var lastPlay = state.lastPlay;
       var isFree = !lastPlay || lastPlay.player === selfIdx;
-      var canBeat = isFree || (!lastPlay || _canBeat(playType, lastPlay.play));
+      var canBeat = isFree || _canBeat(playType, lastPlay.play);
       var html = '<span style="color:#5a9e6f;font-weight:600;">' + playType.name + '</span>';
-      if (!lastPlay || lastPlay.player === selfIdx) {
+      if (isFree) {
         html += ' <span style="color:#5a9e6f;">' + _t('bt_hint_free') + '</span>';
       } else if (canBeat) {
         html += ' <span style="color:#5a9e6f;">' + _t('bt_hint_can_beat') + '</span>';
@@ -265,17 +269,12 @@
     window.makeGameMove({ cards: [] });
   };
 
-  function showToast(msg) {
-    var t = document.getElementById('toast') || (function() {
-      var el = document.createElement('div');
-      el.id = 'toast';
-      el.className = 'toast';
-      document.body.appendChild(el);
-      return el;
-    })();
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(function() { t.classList.remove('show'); }, 2000);
+  function showToast(msg) { if (window.showToast) window.showToast(msg); }
+
+  function escHtml(str) {
+    return String(str == null ? '' : str).replace(/[&<>"']/g, function(ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+    });
   }
 
   // Hook render to cache state

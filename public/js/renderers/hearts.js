@@ -29,11 +29,12 @@
     '.ht-trick-slot.bottom{bottom:0;left:50%;transform:translateX(-50%);}' +
     '.ht-trick-card{width:60px;height:86px;border-radius:8px;display:flex;flex-direction:column;align-items:center;' +
       'justify-content:center;background:linear-gradient(160deg,#fff,#f0ede8);box-shadow:0 3px 10px rgba(0,0,0,.2);' +
-      'animation:htCardIn .3s ease;}' +
+      '}' +
+    '.ht-trick-card.ht-new{animation:htCardIn .3s ease;}' +
     '.ht-trick-card .rank{font-size:17px;font-weight:700;line-height:1;}' +
     '.ht-trick-card .suit{font-size:14px;line-height:1;}' +
-    '.ht-trick-empty{width:60px;height:86px;border-radius:8px;border:2px dashed rgba(255,255,255,.1);}' +
-    '.ht-trick-label{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;white-space:nowrap;}' +
+    '.ht-trick-empty{width:60px;height:86px;border-radius:8px;border:2px dashed var(--border);}' +
+    '.ht-trick-label{font-size:10px;color:var(--text-muted);margin-top:2px;white-space:nowrap;}' +
 
     // === Last trick ===
     '.ht-last-trick{font-size:11px;color:var(--text-muted);text-align:center;min-height:16px;}' +
@@ -45,15 +46,15 @@
 
     // === Cards ===
     '.ht-card{width:54px;height:78px;border-radius:8px;display:flex;flex-direction:column;align-items:center;' +
-      'justify-content:center;cursor:pointer;transition:transform .12s,box-shadow .15s,opacity .2s,margin-top .15s;' +
+      'justify-content:center;cursor:pointer;transition:transform .12s,box-shadow .15s,opacity .2s;' +
       'position:relative;flex-shrink:0;' +
       'background:linear-gradient(160deg,#fff,#f0ede8);color:#1a1a1a;' +
       'box-shadow:0 2px 8px rgba(0,0,0,.12),inset 0 0 0 1px rgba(0,0,0,.04);}' +
     '.ht-card::after{content:"";position:absolute;inset:3px;border:1px solid rgba(0,0,0,.06);border-radius:5px;pointer-events:none;}' +
-    '.ht-card:hover{transform:translateY(-4px);box-shadow:0 8px 16px rgba(0,0,0,.2);}' +
-    '.ht-card.selected{margin-top:-12px;box-shadow:0 0 0 2px var(--accent),0 8px 20px rgba(0,0,0,.25);}' +
+    '@media (hover: hover){.ht-card:hover{transform:translateY(-4px);box-shadow:0 8px 16px rgba(0,0,0,.2);}' +
+    '.ht-card.illegal:hover{transform:none;box-shadow:0 2px 8px rgba(0,0,0,.12);}}' +
+    '.ht-card.selected,.ht-card.selected:hover{transform:translateY(-12px);box-shadow:0 0 0 2px var(--accent),0 8px 20px rgba(0,0,0,.25);}' +
     '.ht-card.illegal{opacity:.35;cursor:not-allowed;}' +
-    '.ht-card.illegal:hover{transform:none;box-shadow:0 2px 8px rgba(0,0,0,.12);}' +
     '.ht-card .rank{font-size:16px;font-weight:700;line-height:1;}' +
     '.ht-card .suit{font-size:13px;line-height:1;}' +
     '.ht-card .corner{position:absolute;top:3px;left:4px;font-size:9px;display:flex;flex-direction:column;align-items:center;line-height:1;}' +
@@ -63,12 +64,6 @@
     '.ht-pass-btn{padding:8px 24px;border:none;border-radius:20px;font-size:14px;font-weight:700;cursor:pointer;' +
       'background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.15);transition:opacity .2s;}' +
     '.ht-pass-btn:disabled{opacity:.4;cursor:not-allowed;}' +
-
-    // === Game over ===
-    '.ht-over{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:flex;align-items:center;justify-content:center;}' +
-    '.ht-over-box{background:var(--surface);border-radius:16px;padding:28px 36px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.4);}' +
-    '.ht-over-title{font-size:28px;font-weight:900;margin-bottom:8px;}' +
-    '.ht-over-scores{font-size:15px;line-height:2;margin-bottom:16px;}' +
 
     // === Animations ===
     '@keyframes htCardIn{0%{transform:scale(.7) translateY(10px);opacity:0;}100%{transform:scale(1) translateY(0);opacity:1;}}' +
@@ -80,6 +75,17 @@
   var container = null;
   var selectedCards = [];
   var prevState = null;
+  var shownTrick = {};
+
+  function escHtml(str) {
+    return String(str == null ? '' : str).replace(/[&<>"']/g, function(ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+    });
+  }
+
+  function playerName(i) {
+    return escHtml(window.getPlayerName ? window.getPlayerName(i) : 'P' + (i + 1));
+  }
 
   function injectStyles() {
     if (document.getElementById('ht-styles')) return;
@@ -104,7 +110,9 @@
     if (!trickCard) return '<div class="ht-trick-empty"></div>';
     var suitSym = SUIT_SYMBOLS[trickCard.card.suit] || '';
     var color = SUIT_COLORS[trickCard.card.suit] || '#1a1a1a';
-    return '<div class="ht-trick-card">' +
+    // Animate only cards that were not on the table at the previous render
+    var isNew = !shownTrick[trickCard.card.id];
+    return '<div class="ht-trick-card' + (isNew ? ' ht-new' : '') + '">' +
       '<span class="rank" style="color:' + color + '">' + trickCard.card.rank + '</span>' +
       '<span class="suit" style="color:' + color + '">' + suitSym + '</span>' +
       '</div>';
@@ -118,7 +126,9 @@
   function render(state, containerEl, playerIndex, winner) {
     container = containerEl;
     var s = state || {};
-    var myIdx = playerIndex || 0;
+    // Spectators (no seat) see the table from seat 0 but are not "me"
+    var myIdx = (typeof playerIndex === 'number' && playerIndex >= 0) ? playerIndex : -1;
+    var baseIdx = myIdx >= 0 ? myIdx : 0;
 
     // Detect phase transition to reset selection
     if (prevState && prevState.phase !== s.phase) {
@@ -130,7 +140,7 @@
 
     // --- Scores ---
     html += '<div class="ht-scores">';
-    var players = ['P1', 'P2', 'P3', 'P4'];
+    var players = [0, 1, 2, 3].map(playerName);
     for (var i = 0; i < 4; i++) {
       var isMe = i === myIdx;
       var cls = 'ht-score-card' + (isMe ? ' me' : '');
@@ -161,17 +171,19 @@
     var positions = ['top', 'right', 'bottom', 'left']; // P2, P3, P4 relative to P1
     var slotMap = {};
     for (var i = 0; i < trick.length; i++) {
-      var rel = ((trick[i].player - myIdx + 4) % 4);
+      var rel = ((trick[i].player - baseIdx + 4) % 4);
       slotMap[rel] = trick[i];
     }
     for (var r = 0; r < 4; r++) {
       var tc = slotMap[r] || null;
       html += '<div class="ht-trick-slot ' + positions[r] + '">' +
         renderTrickCard(tc) +
-        '<div class="ht-trick-label">' + (r === 0 ? window._t('ht_you') : 'P' + (((r + myIdx) % 4) + 1)) + '</div>' +
+        '<div class="ht-trick-label">' + (r === 0 && myIdx >= 0 ? window._t('ht_you') : players[(r + baseIdx) % 4]) + '</div>' +
         '</div>';
     }
     html += '</div>';
+    shownTrick = {};
+    trick.forEach(function(t) { shownTrick[t.card.id] = true; });
 
     // --- Last trick ---
     if (s.lastTrick && s.lastTrick.length === 4) {
@@ -216,6 +228,9 @@
           else {
             var hasLead = hand.some(function(c) { return c.suit === leadSuit; });
             if (!hasLead) isLegal = true;
+            // First trick: no hearts or Q of spades while a zero-point card is held
+            var pts = function(c) { return c.suit === 'h' || (c.suit === 's' && c.rank === 'Q'); };
+            if (isLegal && s.trickCount === 0 && pts(card) && hand.some(function(c) { return !pts(c); })) isLegal = false;
           }
         } else {
           // Leading
@@ -236,22 +251,6 @@
       html += renderCardHtml(card, extraCls);
     }
     html += '</div></div>';
-
-    // --- Game over overlay ---
-    if (s.phase === 'over' && s.winner !== null && s.winner !== undefined) {
-      var isWinner = s.winner === myIdx;
-      html += '<div class="ht-over" id="ht-over">' +
-        '<div class="ht-over-box">' +
-        '<div class="ht-over-title">' + (isWinner ? window._t('ht_you_win') : window._t('ht_you_lose')) + '</div>' +
-        '<div class="ht-over-scores">';
-      for (var i = 0; i < 4; i++) {
-        html += '<div>' + players[i] + (i === myIdx ? ' ' + window._t('ht_you') : '') + ': ' + window._tf('ht_score', (s.scores || [0,0,0,0])[i]) +
-          (i === s.winner ? window._t('ht_crown') : '') + '</div>';
-      }
-      html += '</div>';
-      html += '<div style="font-size:13px;color:var(--text-muted);">' + window._t('ht_click_close') + '</div>';
-      html += '</div></div>';
-    }
 
     html += '</div>';
     container.innerHTML = html;
@@ -283,7 +282,7 @@
           return;
         }
 
-        if (state.phase === 'playing' && state.currentPlayer === myIdx) {
+        if (state.phase === 'playing' && state.currentPlayer === myIdx && !this.classList.contains('illegal')) {
           window.makeGameMove({ card: cardId });
         }
       });
@@ -297,14 +296,6 @@
           window.makeGameMove({ cards: selectedCards.slice() });
           selectedCards = [];
         }
-      });
-    }
-
-    // Game over overlay click
-    var overEl = container.querySelector('#ht-over');
-    if (overEl) {
-      overEl.addEventListener('click', function() {
-        overEl.style.display = 'none';
       });
     }
   }

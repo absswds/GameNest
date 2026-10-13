@@ -8,6 +8,8 @@
   var _hintIndex = -1;
   var _hints = [];
   var _lastHandLen = 0;
+  var _lastHandHtml = '';
+  var _deadlineKey = null, _localDeadline = 0;
 
   window.gameRenderers.set('doudizhu', {
     init: function(container) {
@@ -28,23 +30,19 @@
       var currentPlayer = state.currentPlayer != null ? state.currentPlayer : s.currentPlayer;
 
       // Detect pass: currentPlayer changed but lastPlay didn't change from previous state
+      // A pass either marks passed[] or (second pass in a row) clears lastPlay
       if (_prevDdzState && _prevDdzState.phase === 'playing' && s.phase === 'playing' &&
-          _prevDdzState.currentPlayer !== currentPlayer &&
-          JSON.stringify(_prevDdzState.lastPlay) === JSON.stringify(s.lastPlay) &&
-          _prevDdzState.currentPlayer !== s.landlord) {
-        // Someone passed — show toast
+          _prevDdzState.currentPlayer !== currentPlayer) {
         var passer = _prevDdzState.currentPlayer;
-        if (passer !== playerIndex) {
-          var toast = document.getElementById('toast');
-          if (!toast) { toast = document.createElement('div'); toast.id = 'toast'; toast.className = 'toast'; document.body.appendChild(toast); }
+        var lpKey = JSON.stringify(s.lastPlay);
+        var didPass = (lpKey === _prevDdzState.lastPlay && s.passed && s.passed[passer]) ||
+          (_prevDdzState.lastPlay !== 'null' && !s.lastPlay);
+        if (didPass && passer !== playerIndex) {
           var passerName = (window.gamePlayers && window.gamePlayers[passer]) ? window.gamePlayers[passer].name : (_t('ddz_player_fallback') + ' ' + (passer + 1));
-          toast.textContent = passerName + _t('ddz_player_passed');
-          toast.classList.add('show');
-          clearTimeout(toast._timer);
-          toast._timer = setTimeout(function() { toast.classList.remove('show'); }, 2000);
+          showToast(passerName + _t('ddz_player_passed'));
         }
       }
-      _prevDdzState = JSON.parse(JSON.stringify(s));
+      _prevDdzState = { phase: s.phase, currentPlayer: currentPlayer, lastPlay: JSON.stringify(s.lastPlay) };
 
       this.renderOpponents(s, playerIndex, currentPlayer);
       this.renderPlayArea(s, playerIndex);
@@ -70,7 +68,7 @@
           (isActive ? '' : 'border:1px solid var(--border,#eee);') + '">' +
           '<div style="font-size:13px;font-weight:600;">' +
           (isLandlord ? '<span style="color:#c0392b;">&#x1F451;</span> ' : '') +
-          ((window.gamePlayers && window.gamePlayers[i]) ? window.gamePlayers[i].name : (_t('ddz_player_fallback') + ' ' + (i + 1))) +
+          escHtml((window.gamePlayers && window.gamePlayers[i]) ? window.gamePlayers[i].name : (_t('ddz_player_fallback') + ' ' + (i + 1))) +
           '</div>' +
           '<div style="font-size:24px;font-weight:800;margin-top:4px;">' + count + '</div>' +
           '<div style="font-size:11px;color:var(--text-muted,#999);">' + _t('ddz_cards_label') + passBadge + '</div>' +
@@ -166,7 +164,12 @@
 
       // Countdown timer
       if (s.playTimeLimit > 0 && s.phase === 'playing' && s.currentTurnDeadline) {
-        var elapsed = Date.now() - (s.currentTurnDeadline - s.playTimeLimit * 1000);
+        // Measure from when this deadline first arrived, not the server clock
+        if (_deadlineKey !== s.currentTurnDeadline) {
+          _deadlineKey = s.currentTurnDeadline;
+          _localDeadline = Date.now() + s.playTimeLimit * 1000;
+        }
+        var elapsed = Date.now() - (_localDeadline - s.playTimeLimit * 1000);
         var pct = Math.max(0, Math.min(1, 1 - elapsed / (s.playTimeLimit * 1000)));
         var barColor = pct > 0.3 ? '#5a9e6f' : (pct > 0.15 ? '#e67e22' : '#e74c3c');
         var timeHtml = '<div style="width:100%;max-width:200px;">' +
@@ -226,13 +229,10 @@
         var goHtml = '<div style="font-size:15px;font-weight:700;color:var(--accent,#c8a45c);">' + _t('ddz_final_scores') + '</div>';
         if (s.cumulativeScore) {
           goHtml += '<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:6px;font-size:14px;">';
-          var bestIdx = 0;
+          var bestScore = Math.max.apply(null, s.cumulativeScore);
           for (var gi = 0; gi < s.cumulativeScore.length; gi++) {
-            if (s.cumulativeScore[gi] > s.cumulativeScore[bestIdx]) bestIdx = gi;
-          }
-          for (var gi = 0; gi < s.cumulativeScore.length; gi++) {
-            var giName = (window.gamePlayers && window.gamePlayers[gi]) ? window.gamePlayers[gi].name : (_t('ddz_player_fallback') + ' ' + (gi + 1));
-            var isWinner = gi === bestIdx;
+            var giName = escHtml((window.gamePlayers && window.gamePlayers[gi]) ? window.gamePlayers[gi].name : (_t('ddz_player_fallback') + ' ' + (gi + 1)));
+            var isWinner = s.cumulativeScore[gi] === bestScore;
             var crown = isWinner ? '&#x1F451; ' : '';
             goHtml += '<div style="font-weight:' + (isWinner ? '700' : '400') + ';color:' + (isWinner ? '#c0392b' : 'inherit') + ';text-align:center;">' +
               crown + giName + '<br><span style="font-size:18px;">' + s.cumulativeScore[gi] + '</span></div>';
@@ -247,7 +247,7 @@
       // 倒计时实时刷新：只更新文字和进度条，重渲染时替换旧定时器
       if (window._ddzTimer) { clearInterval(window._ddzTimer); window._ddzTimer = null; }
       if (s.playTimeLimit > 0 && s.phase === 'playing' && s.currentTurnDeadline) {
-        var total = s.playTimeLimit * 1000, deadline = s.currentTurnDeadline;
+        var total = s.playTimeLimit * 1000, deadline = _localDeadline;
         var tick = function() {
           var txt = document.getElementById('ddzTimeTxt'), bar = document.getElementById('ddzTimeBar');
           if (!txt || !bar) { clearInterval(window._ddzTimer); window._ddzTimer = null; return; }
@@ -265,13 +265,17 @@
       var el = document.getElementById('ddzHand');
       if (!el) return;
       var hand = s.hands[selfIdx];
-      if (!hand || hand.length === 0) { el.innerHTML = ''; _lastHandLen = 0; return; }
+      // Drop selections for cards no longer in hand (new round, timeout auto-play)
+      var inHand = {};
+      (hand || []).forEach(function(c) { if (c) inHand[c.id] = true; });
+      Object.keys(selected).forEach(function(id) { if (!inHand[id]) delete selected[id]; });
+      if (!hand || hand.length === 0) { el.innerHTML = ''; _lastHandLen = 0; _lastHandHtml = ''; return; }
 
       var myTurn = (cp === selfIdx && s.phase === 'playing');
       // Deal animation only when a fresh hand arrives (new round), not on every update
       var deal = hand.length > _lastHandLen + 3;
       _lastHandLen = hand.length;
-      el.innerHTML = window.CardUI.group(hand, {
+      var handHtml = window.CardUI.group(hand, {
         layout: 'hand',
         deal: deal,
         cardOpts: function(c) {
@@ -284,6 +288,9 @@
           };
         }
       });
+      if (handHtml === _lastHandHtml && el.firstChild) return;
+      el.innerHTML = handHtml;
+      _lastHandHtml = handHtml;
 
       cardEls = {};
       var cards = el.querySelectorAll('.ddz-card');
@@ -495,7 +502,7 @@
       } else if (canBeat) {
         html += ' <span style="color:#5a9e6f;">✓ ' + _t('ddz_can_beat') + '</span>';
       } else {
-        var lastName = lastPlay.play.name || lastPlay.play.type;
+        var lastName = lastPlay.play.name || _t('ddz_' + lastPlay.play.type);
         html += ' <span style="color:#e74c3c;">' + _tf('ddz_cannot_beat', lastName) + '</span>';
       }
       hintEl.innerHTML = html;
@@ -538,6 +545,15 @@
     }
     if (seq.length >= minLen) straights.push(seq.slice());
     return straights;
+  }
+
+  // Every len-long window of each maximal run, so longer runs still yield hints
+  function _windows(seqs, len) {
+    var out = [];
+    seqs.forEach(function(seq) {
+      for (var i = 0; i + len <= seq.length; i++) out.push(seq.slice(i, i + len));
+    });
+    return out;
   }
 
   function _hasRank(groups, rank, count) {
@@ -646,7 +662,7 @@
           }
         }
       } else if (lp.type === 'straight') {
-        var straights2 = _findStraights(groups, lp.length);
+        var straights2 = _windows(_findStraights(groups, lp.length), lp.length);
         for (var bs = 0; bs < straights2.length; bs++) {
           if (straights2[bs].length === lp.length && _rankVal(straights2[bs][0]) > lp.rank)
             addHint(straights2[bs].map(function(r) { return groups[r][0].id; }));
@@ -657,6 +673,7 @@
             if (groups[r].length >= 2) acc[r] = groups[r];
             return acc;
           }, {}), lp.length);
+        pairSeqs2 = _windows(pairSeqs2, lp.length);
         for (var bp = 0; bp < pairSeqs2.length; bp++) {
           if (pairSeqs2[bp].length === lp.length && _rankVal(pairSeqs2[bp][0]) > lp.rank) {
             var ids = [];
@@ -671,11 +688,23 @@
             if (groups[r].length >= 3) acc[r] = groups[r];
             return acc;
           }, {}), lp.length);
+        planeSeqs = _windows(planeSeqs, lp.length);
         for (var bpl = 0; bpl < planeSeqs.length; bpl++) {
           if (planeSeqs[bpl].length === lp.length && _rankVal(planeSeqs[bpl][0]) > lp.rank) {
             var pids = [];
             for (var plj = 0; plj < planeSeqs[bpl].length; plj++)
               pids = pids.concat(_ids(groups[planeSeqs[bpl][plj]].slice(0, 3)));
+            if (lp.type !== 'plane') {
+              // Wings: one single or pair per triple, from ranks outside the plane
+              var wingSize = lp.type === 'plane_wings_1' ? 1 : 2;
+              var wings = [];
+              for (var wr = 0; wr < ranks.length && wings.length < lp.length * wingSize; wr++) {
+                if (planeSeqs[bpl].indexOf(ranks[wr]) !== -1 || groups[ranks[wr]].length < wingSize) continue;
+                wings = wings.concat(_ids(groups[ranks[wr]].slice(0, wingSize)));
+              }
+              if (wings.length < lp.length * wingSize) continue;
+              pids = pids.concat(wings);
+            }
             addHint(pids);
           }
         }
@@ -710,9 +739,6 @@
     if (!hand || hand.length === 0) return;
     var lastPlay = s.lastPlay;
     var isFree = !lastPlay || lastPlay.player === pi;
-
-    // If not free play AND not our turn — skip (safety check)
-    if (!isFree && lastPlay && lastPlay.player !== pi) {} else if (!isFree) { return; }
 
     _hints = generateHints(hand, lastPlay, pi);
     if (_hints.length === 0) return;
@@ -769,37 +795,19 @@
     return null;
   }
 
-  function showToast(msg) {
-    var t = document.getElementById('toast') || (function() {
-      var el = document.createElement('div');
-      el.id = 'toast';
-      el.className = 'toast';
-      document.body.appendChild(el);
-      return el;
-    })();
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(function() { t.classList.remove('show'); }, 2000);
+  function showToast(msg) { if (window.showToast) window.showToast(msg); }
+
+  function escHtml(str) {
+    return String(str == null ? '' : str).replace(/[&<>"']/g, function(ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+    });
   }
 
-  // Hook into room-client's state updates
-  var origConnect = null;
-  var checkInterval = setInterval(function() {
-    if (typeof window.makeGameMove === 'function') {
-      clearInterval(checkInterval);
-      // Patch WebSocket message handler to expose state
-      var origSend = window.makeGameMove;
-      // Keep track — the renderer reads window._ddzState
-      var origOnBefore = null;
-
-      // We intercept after each game render to keep selected cards in sync
-      var origRendererRender = window.gameRenderers.get('doudizhu').render;
-      var patchedRender = function(state, container, playerIndex, winner) {
-        if (state !== window._ddzState) { _hintIndex = -1; _hints = []; }
-        window._ddzState = state;
-        origRendererRender.call(this, state, container, playerIndex, winner);
-      };
-      window.gameRenderers.get('doudizhu').render = patchedRender;
-    }
-  }, 100);
+  // Cache the latest state for the hint button
+  var origRendererRender = window.gameRenderers.get('doudizhu').render;
+  window.gameRenderers.get('doudizhu').render = function(state, container, playerIndex, winner) {
+    if (state !== window._ddzState) { _hintIndex = -1; _hints = []; }
+    window._ddzState = state;
+    origRendererRender.call(this, state, container, playerIndex, winner);
+  };
 })();

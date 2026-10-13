@@ -61,6 +61,7 @@ module.exports = {
   'dv_invalid_target': '无效的目标玩家',
   'dv_player_out': '该玩家已经出局',
   'dv_card_already_revealed': '这张牌已经揭示了',
+  'dv_must_guess_first': '本回合至少要猜一次才能结束',
   'dv_no_card_there': '该位置没有牌',
 
   // Doudizhu (ddz_)
@@ -134,6 +135,7 @@ module.exports = {
   'ek_card_not_in_hand': '手上没有这张牌',
   'ek_must_target_player': '必须指定目标玩家',
   'ek_target_out': '目标玩家已出局',
+  'ek_card_no_effect': '这张牌不能单独打出',
 
   // Liar's Bar (lb_)
   'lb_you_are_out': '你已出局',
@@ -260,6 +262,7 @@ module.exports = {
   'uno_card_not_in_hand': '手上没有这张牌',
   'uno_must_draw_or_play': '必须先摸牌或出+2/+4叠加',
   'uno_cannot_play_card': '不能出这张牌',
+  'uno_invalid_color': '颜色无效',
 
   // Tic Tac Toe (ttt_)
   'ttt_invalid_cell': '无效的落子位置',

@@ -291,6 +291,18 @@ test('davinci: full game — wrong guess triggers penalty, then turn advances', 
   assert.equal(state.currentPlayer, 1, 'P1\'s turn');
 });
 
+test('davinci: pass before any correct guess this turn is refused', () => {
+  const state = makeGuessState(2, () => []);
+  state.tiles[0] = [tile('white', 1, 'w1')];
+  state.tiles[1] = [tile('white', 3, 'w3')];
+  state.numRevealed[0] = [false];
+  state.numRevealed[1] = [false];
+  state.currentPlayer = 0;
+  state.phase = 'guess';
+  state.guessedThisTurn = false;
+  assert.equal(davinci.handleMove({ pass: true }, state, 0), 'dv_must_guess_first');
+});
+
 test('davinci: full game — pass places drawn tile hidden and advances turn', () => {
   const state = makeGuessState(2, () => []);
   state.tiles[0] = [tile('white', 1, 'w1')];
@@ -301,8 +313,9 @@ test('davinci: full game — pass places drawn tile hidden and advances turn', (
   state.currentPlayer = 0;
   state.phase = 'guess';
   state.drawnTile = { color: 'black', num: 7, id: 'b7' };
+  state.guessedThisTurn = true;
 
-  // P0 passes (doesn't guess)
+  // P0 passes after a correct guess earlier this turn
   let err = davinci.handleMove({ pass: true }, state, 0);
   assert.equal(err, null);
   assert.equal(state.tiles[0].length, 2, 'drawn tile added to hand');

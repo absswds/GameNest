@@ -20,7 +20,7 @@
 
   var S = null, me = -1, selCards = [], selTargets = [], timer = null, lastKey = '';
   var host = null, root = null, askTotal = 0, showLog = false, openSkill = '', openSeat = -1, openCard = null, cardIndex = {};
-  var prevHp = null, prevAlive = null, lastSig = null, prevHand = null, cramped = false, lastHandHtml = '';
+  var prevHp = null, prevAlive = null, lastSig = null, lastLen = 0, prevHand = null, cramped = false, lastHandHtml = '';
 
   function P(i) { return S.players[i]; }
   function gname(i) { return i === me ? t('sg_you') : t('sg_g_' + P(i).general); }
@@ -94,7 +94,11 @@
 
   function selectableSeat(i) {
     var a = myAsk();
-    return !!a && a.type === 'play' && i !== me && P(i).alive && selCards.length > 0;
+    if (!a || a.type !== 'play' || !P(i).alive || !selCards.length) return false;
+    var c = selCards.length === 1 && handCard(selCards[0]);
+    // Jiedao's second target (who gets attacked) may be myself.
+    if (i === me) return !!c && c.name === 'jiedao' && selTargets.length === 1;
+    return playOptions().some(function(o) { return o.need > 0 || o.selfDefault; });
   }
 
   // ---------- pieces ----------
@@ -256,13 +260,14 @@
     var hint = '', btns = '', n = selCards.length;
     if (a.type === 'play') {
       var opts = playOptions();
+      var c0 = n === 1 && handCard(selCards[0]);
       hint = t('sg_ask_play');
-      if (n === 1 && handCard(selCards[0]) && TARGETS_NEEDED[handCard(selCards[0]).name] === 1) hint = selTargets.length ? tf('sg_confirm_to', esc(gname(selTargets[0]))) : tf('sg_pick_target', esc(cname(handCard(selCards[0]))));
+      if (c0 && TARGETS_NEEDED[c0.name] === 1) hint = selTargets.length ? tf('sg_confirm_to', esc(gname(selTargets[0]))) : tf('sg_pick_target', esc(cname(c0)));
       opts.forEach(function(o, k) {
         var ok = !o.off && (o.selfDefault ? selTargets.length <= 1 : o.need === 0 || o.need === selTargets.length);
         btns += btn(esc(o.label) + (o.need > 1 ? ' ' + selTargets.length + '/' + o.need : ''), 'window._sgPlay(' + k + ')', 'ok', !ok);
       });
-      if (n === 1 && handCard(selCards[0]) && handCard(selCards[0]).name === 'jiedao') hint = t('sg_hint_jiedao');
+      if (c0 && c0.name === 'jiedao') hint = t('sg_hint_jiedao');
       if (opts.some(function(o) { return o.data.skill === 'lijian'; }) && n === 1) hint = t('sg_hint_lijian');
       if (n) btns += btn(t('sg_cancel'), 'window._sgClear()');
       btns += btn(t('sg_end_turn'), 'window._sgEnd()');
@@ -273,8 +278,9 @@
       else if (a.reason === 'juedou') hint = t('sg_ask_juedou');
       else if (a.reason === 'jiedao') hint = tf('sg_ask_jiedao', esc(gname(a.from)));
       else hint = a.from >= 0 && a.from !== me ? tf('sg_ask_need_from', esc(gname(a.from)), esc(t('sg_c_' + a.need))) : tf('sg_ask_need', esc(t('sg_c_' + a.need)));
-      var need2 = a.need === 'sha' && weaponName(me) === 'zhangba' && n === 2;
-      btns = btn(t('sg_respond'), 'window._sgRespond()', 'ok', !(n === 1 || need2)) + btn(t('sg_pass'), 'window._sgPass()');
+      var spear = a.need === 'sha' && weaponName(me) === 'zhangba', need2 = spear && n === 2;
+      var one = n === 1 && (!spear || (cardIndex[selCards[0]] && counts(cardIndex[selCards[0]], 'sha')));
+      btns = btn(t('sg_respond'), 'window._sgRespond()', 'ok', !(one || need2)) + btn(t('sg_pass'), 'window._sgPass()');
     } else if (a.type === 'discard') {
       hint = a.reason === 'guanshi' ? t('sg_ask_guanshi') : a.reason === 'ganglie' ? t('sg_ask_ganglie') : tf('sg_ask_limit', a.count);
       btns = btn(t('sg_confirm') + ' ' + n + '/' + a.count, 'window._sgDiscard()', 'ok', n !== a.count) + (a.optional ? btn(t('sg_pass'), 'window._sgPass()') : '');
@@ -351,15 +357,15 @@
     if (!host || !root) return;
     var f = window.boardFit ? window.boardFit(host) : { w: window.innerWidth - 32, h: window.innerHeight - 200 };
     root.style.width = Math.max(300, f.w) + 'px';
-    cramped = false;
     var short = f.h < 440;
-    root.style.height = (short ? window.innerHeight - 8 : Math.max(560, Math.min(f.h, 1000))) + 'px';
+    root.style.height = (short ? window.innerHeight - 8 : Math.min(f.h, 1000)) + 'px';
     if (short && root.getBoundingClientRect().top > 4) root.scrollIntoView({ block: 'end' });
     if (S) draw();
   }
 
-  function draw() {
+  function draw(retry) {
     if (!root || !S || !S.players || !S.players[me]) return;
+    if (!retry) cramped = false;
     if (!root.firstChild) build();
     var w = root.clientWidth, h = root.clientHeight, portrait = h > w, short = !portrait && h < 560;
     var others = [];
@@ -369,7 +375,7 @@
     // Two seats per side don't fit on a low table (e.g. tablet landscape): fall back to one per side.
     if (!portrait && !short && !cramped && others.length >= 6) {
       var lo = seatEl(others[0]).getBoundingClientRect(), hi = seatEl(others[1]).getBoundingClientRect();
-      if (lo.top < hi.bottom + 6) { cramped = true; return draw(); }
+      if (lo.top < hi.bottom + 6) { cramped = true; return draw(true); }
     }
     root.firstChild.classList.toggle('cramped', cramped);
     $('center').innerHTML = centerHtml();
@@ -385,8 +391,9 @@
     $('skills').innerHTML = skillsHtml();
     // Rebuild the hand only when it changed: a fresh hand re-runs the draw/select animations, so every
     // broadcast (e.g. the timer restarting) would make the cards jump.
-    var hh = handHtml();
-    if (hh !== lastHandHtml) { $('hand').innerHTML = hh; lastHandHtml = hh; }
+    // The 'drawn' marker drops off on the next draw; that alone is not a change.
+    var hh = handHtml(), hk = hh.replace(/ drawn/g, '');
+    if (hk !== lastHandHtml) { $('hand').innerHTML = hh; lastHandHtml = hk; }
     fitHand();
     tick();
     requestAnimationFrame(function() { drawLines(); effects(); });
@@ -481,7 +488,8 @@
       });
     }
     var log = S.log || [], fresh = -1;
-    if (lastSig) for (var k = log.length - 1; k >= 0; k--) if (JSON.stringify(log[k]) === lastSig) { fresh = k + 1; break; }
+    if (lastSig && log.length > lastLen && JSON.stringify(log[lastLen - 1]) === lastSig) fresh = lastLen;
+    else if (lastSig) for (var k = log.length - 1; k >= 0; k--) if (JSON.stringify(log[k]) === lastSig) { fresh = k + 1; break; }
     if (fresh >= 0 && window.Motion) {
       root.querySelectorAll('.pz-it').forEach(function(it) {
         if (+it.dataset.k < fresh) return;
@@ -492,6 +500,7 @@
     prevHp = S.players.map(function(p) { return p.hp; });
     prevAlive = S.players.map(function(p) { return p.alive; });
     lastSig = log.length ? JSON.stringify(log[log.length - 1]) : null;
+    lastLen = log.length;
     prevHand = P(me).hand.map(function(c) { return c.id; });
   }
 
@@ -721,7 +730,7 @@
       host = container;
       root = document.getElementById('sgRoot');
       S = null; selCards = []; selTargets = []; lastKey = ''; showLog = false; openSkill = ''; openSeat = -1; openCard = null; cardIndex = {};
-      prevHp = null; prevAlive = null; lastSig = null; prevHand = null; lastHandHtml = '';
+      prevHp = null; prevAlive = null; lastSig = null; lastLen = 0; prevHand = null; lastHandHtml = '';
       clearInterval(timer);
       timer = setInterval(tick, 250);
       injectStylesOnce('sg-styles-v2', CSS);

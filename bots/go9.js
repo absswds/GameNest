@@ -48,15 +48,17 @@ function scoreMove(board, side, r, c) {
     if (board[rr][cc]===myStone) minDist=Math.min(minDist, Math.abs(rr-r)+Math.abs(cc-c));
   if (minDist===1) s+=5; else if (minDist===2) s+=3;
   // neighbors
-  let friends=0, enemies=0;
+  let friends=0, enemies=0, nbrs=0;
   const eStone = side===0 ? WHITE : BLACK;
   for (const [nr,nc] of [[r-1,c],[r+1,c],[r,c-1],[r,c+1]]) {
     if (nr<0||nr>=SIZE||nc<0||nc>=SIZE) continue;
+    nbrs++;
     if (board[nr][nc]===myStone) friends++;
     if (board[nr][nc]===eStone) enemies++;
   }
   if (friends===0 && enemies>0) s-=20;
-  if (friends>=2) s+=8;
+  if (friends === nbrs) s-=50; // own eye: filling it kills the group
+  else if (friends>=2) s+=8;
   if (r===0||r===SIZE-1||c===0||c===SIZE-1) s-=5;
   return s;
 }
@@ -88,13 +90,14 @@ exports.createBot = pi => ({
             }
           }
         }
-        if (libs>0 || captures) cands.push({ row:r, col:c, score: scoreMove(copy, side, r, c) });
         copy[r][c] = EMPTY;
+        if (libs>0 || captures) cands.push({ row:r, col:c, score: scoreMove(copy, side, r, c) });
       }
     }
     if (cands.length===0) return { pass: true };
     // Opponent just passed: end the game if we are not behind on stones, instead of filling our own territory
-    const last = (state.moveHistory || [])[state.moveHistory.length - 1];
+    const hist = state.moveHistory || [];
+    const last = hist[hist.length - 1];
     if (last && last.pass) {
       let mine = 0, theirs = 0;
       for (const row of board) for (const v of row) { if (v === (side===0 ? BLACK : WHITE)) mine++; else if (v !== EMPTY) theirs++; }

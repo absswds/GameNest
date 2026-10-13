@@ -23,7 +23,7 @@ exports.createBot = (playerIndex) => ({
     const P = s.players[me];
     if (!ask) return { type: 'end' };
     const hand = P.hand;
-    const find = (name) => hand.find((c) => c.name === name) || hand.find((c) => core.asCard(s, me, c, name));
+    const find = (name) => hand.find((c) => c.name === name) || hand.find((c) => c.name !== 'tao' && core.asCard(s, me, c, name));
     const g = P.general;
     const alive = core.aliveFrom(s, me + 1).filter((i) => i !== me);
     const friends = alive.filter((i) => friendOf(s, me, i));
@@ -55,7 +55,7 @@ exports.createBot = (playerIndex) => ({
         if (n === 'tao') tries.push({ cardId: c.id });
         else if (core.cardType(n) === 'equip') tries.push({ cardId: c.id });
         else if (n === 'wuzhong' || n === 'wugu' || n === 'taoyuan') tries.push({ cardId: c.id });
-        else if (n === 'nanman' || n === 'wanjian') tries.push({ cardId: c.id });
+        else if (n === 'nanman' || n === 'wanjian') { if (P.role === 'rebel' || P.role === 'spy' && s.players[s.lord].hp > 1) tries.push({ cardId: c.id }); }
         else if (n === 'sha' || n === 'juedou' || n === 'guohe' || n === 'shunshou' || n === 'lebu') {
           for (const e of enemies) tries.push({ cardId: c.id, targets: [e] });
         } else if (n === 'shandian' && Math.random() < 0.3) tries.push({ cardId: c.id });
@@ -83,8 +83,8 @@ exports.createBot = (playerIndex) => ({
       return c ? { type: 'respond', cardId: c.id } : { type: 'pass' };
     }
     if (ask.type === 'discard') {
-      if (ask.optional) return ask.reason === 'ganglie' && hand.length >= 3 ? { type: 'discard', cardIds: hand.slice(0, 2).map((c) => c.id) } : { type: 'pass' };
       const order = hand.slice().sort((a, b) => (a.name === 'tao') - (b.name === 'tao') || (a.name === 'shan') - (b.name === 'shan'));
+      if (ask.optional) return ask.reason === 'ganglie' && hand.length >= 3 ? { type: 'discard', cardIds: order.slice(0, 2).map((c) => c.id) } : { type: 'pass' };
       return { type: 'discard', cardIds: order.slice(0, ask.count).map((c) => c.id) };
     }
     if (ask.type === 'pick') {
@@ -93,7 +93,8 @@ exports.createBot = (playerIndex) => ({
       if (friendOf(s, me, ask.target) && T.judge.length) return { type: 'pick', zone: 'table', cardId: T.judge[0].id };
       return T.hand.length || T.handCount ? { type: 'pick', zone: 'hand' } : { type: 'pick', zone: 'table', cardId: eq.id };
     }
-    if (ask.type === 'confirm') return { type: 'confirm', yes: true };
+    // hanbing: discard instead of damaging only a friend or a target the hit would not kill
+    if (ask.type === 'confirm') return { type: 'confirm', yes: friendOf(s, me, ask.target) || s.players[ask.target].hp > 1 };
     if (ask.type === 'wugu') return { type: 'wugu', cardId: ask.cards[0].id };
     return { type: 'end' };
   },

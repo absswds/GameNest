@@ -61,6 +61,7 @@ module.exports = {
   'dv_invalid_target': 'Invalid target player',
   'dv_player_out': 'Player is out',
   'dv_card_already_revealed': 'Card already revealed',
+  'dv_must_guess_first': 'Make at least one guess before ending your turn',
   'dv_no_card_there': 'No card there',
 
   // Doudizhu (ddz_)
@@ -134,6 +135,7 @@ module.exports = {
   'ek_card_not_in_hand': 'Card not in hand',
   'ek_must_target_player': 'Must target a player',
   'ek_target_out': 'Target is out',
+  'ek_card_no_effect': 'This card cannot be played on its own',
 
   // Liar's Bar (lb_)
   'lb_you_are_out': 'You are out',
@@ -260,6 +262,7 @@ module.exports = {
   'uno_card_not_in_hand': 'Card not in hand',
   'uno_must_draw_or_play': 'Must draw or play +2/+4 stack',
   'uno_cannot_play_card': 'Cannot play this card',
+  'uno_invalid_color': 'Invalid color',
 
   // Tic Tac Toe (ttt_)
   'ttt_invalid_cell': 'Invalid cell position',

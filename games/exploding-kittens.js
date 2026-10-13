@@ -118,13 +118,6 @@ exports.handleMove = (data, state, playerIndex) => {
   if (state.winner !== null) return 'g_game_over';
   if (!state.alive[playerIndex]) return 'ek_you_are_out';
 
-  // Lazy init
-  if (state.hands.length === 0) {
-    const count = state._playerCount || 2;
-    initGame(state, count);
-    return null;
-  }
-
   const { cardId, targetPlayer } = data || {};
   const hand = state.hands[playerIndex];
 
@@ -202,6 +195,8 @@ exports.handleMove = (data, state, playerIndex) => {
     if (cardId) {
       const idx = hand.findIndex(c => c.id === cardId);
       if (idx === -1) return 'ek_card_not_in_hand';
+      // Defuse has no effect when played; keep it for the next kitten.
+      if (hand[idx].type === 'defuse') return 'ek_card_no_effect';
       const card = hand.splice(idx, 1)[0];
       state.discard.push(card);
       // Public: reveal which card was played (so others can see defuse/skip/etc.)
@@ -215,6 +210,7 @@ exports.handleMove = (data, state, playerIndex) => {
             state.extraTurns[playerIndex]--;
           } else {
             state.currentPlayer = nextAlive(state, playerIndex);
+            state.peekedCards = null; // See-the-Future results stay with the player who looked
           }
           state.phase = 'play';
           return null;
@@ -223,11 +219,14 @@ exports.handleMove = (data, state, playerIndex) => {
           // 甩锅：指定目标玩家接 2 个回合（不指定则默认下家）
           {
             let target = nextAlive(state, playerIndex);
-            if (targetPlayer !== undefined &&
+            if (Number.isInteger(targetPlayer) &&
                 targetPlayer !== playerIndex &&
                 state.alive[targetPlayer]) {
               target = targetPlayer;
             }
+            // Attacking ends all of this player's turns, including any they still owed.
+            state.extraTurns[playerIndex] = 0;
+            state.peekedCards = null;
             state.currentPlayer = target;
             state.extraTurns[target] = (state.extraTurns[target] || 0) + 1;
             state.phase = 'play';
@@ -248,27 +247,9 @@ exports.handleMove = (data, state, playerIndex) => {
           return null;
 
         case 'favor':
-          // 偷牌 — directly steal a random card from the target player
-          if (targetPlayer === undefined || targetPlayer === playerIndex) {
-            hand.push(card); state.discard.pop(); return 'ek_must_target_player';
-          }
-          if (!state.alive[targetPlayer]) {
-            hand.push(card); state.discard.pop(); return 'ek_target_out';
-          }
-          {
-            const targetHand = state.hands[targetPlayer];
-            if (targetHand && targetHand.length > 0) {
-              const rIdx = Math.floor(Math.random() * targetHand.length);
-              const stolen = targetHand.splice(rIdx, 1)[0];
-              hand.push(stolen);
-              state.lastSteal = { stealer: playerIndex, victim: targetPlayer, cardType: stolen.type };
-            }
-          }
-          state.phase = 'draw';
-          return null;
-
         case 'steal':
-          if (targetPlayer === undefined || targetPlayer === playerIndex) {
+          // 偷牌 — directly steal a random card from the target player
+          if (!Number.isInteger(targetPlayer) || targetPlayer === playerIndex) {
             hand.push(card); state.discard.pop(); return 'ek_must_target_player';
           }
           if (!state.alive[targetPlayer]) {
@@ -283,12 +264,9 @@ exports.handleMove = (data, state, playerIndex) => {
               state.lastSteal = { stealer: playerIndex, victim: targetPlayer, cardType: stolen.type };
             }
           }
-          state.phase = 'draw';
+          // Player can still play more cards (including the stolen one) or proceed to draw
           return null;
 
-        default:
-          // Other cards: no special effect alone
-          break;
       }
     }
 
@@ -307,6 +285,10 @@ exports.playerView = function (state, playerIndex) {
   if (view !== state && state.currentPlayer !== playerIndex) {
     view.peekedCards = null;
     view.futureCards = null;
+  }
+  const ls = state.lastSteal;
+  if (view !== state && ls && ls.stealer !== playerIndex && ls.victim !== playerIndex) {
+    view.lastSteal = Object.assign({}, ls, { cardType: null });
   }
   return view;
 };

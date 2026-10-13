@@ -77,7 +77,7 @@ exports.initGame = (state, n) => {
 // ---------- helpers ----------
 const alive = (s) => s.alive.map((a, i) => (a ? i : -1)).filter((i) => i >= 0);
 const aliveWith = (s, role) => alive(s).filter((i) => s.roles[i] === role);
-const setDeadline = (s, sec) => { s.deadline = Date.now() + sec * 1000; };
+const setDeadline = (s, sec) => { s.deadline = Date.now() + sec * 1000; s.phaseSec = sec; };
 
 function kill(s, i, cause) {
   if (!s.alive[i]) return;
@@ -359,7 +359,7 @@ exports.handleMove = (data, s, p) => {
     if (save && poison >= 0) return 'ww_one_potion';
     if (save && (!s.potions.save || s.knife < 0)) return 'ww_no_potion';
     if (save && s.knife === p) return 'ww_no_self_save';
-    if (poison >= 0 && (!s.potions.poison || !isAlive(poison))) return 'ww_bad_target';
+    if (poison >= 0 && (!s.potions.poison || !isAlive(poison) || poison === p)) return 'ww_bad_target';
     if (save) { s.saved = true; s.potions.save = false; }
     if (poison >= 0) { s.poisoned = poison; s.potions.poison = false; }
     s.witchDone = true;
@@ -482,6 +482,7 @@ exports.playerView = (s, idx) => {
     v.saved = false;
     v.poisoned = -1;
     v.pendingDeaths = [];
+    v.queue = []; // upcoming hunter/badge steps would reveal the hunter and how they died
     v.seerDone = mine === 'seer' ? s.seerDone : false;
     v.witchDone = mine === 'witch' ? s.witchDone : false;
     // Who has answered is shown, not what they answered (until results are public).

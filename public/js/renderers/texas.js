@@ -1,13 +1,15 @@
 // public/js/renderers/texas.js
 (function() {
-  var _lastHoleCount = 0;
+  var _lastHoleKey = '';
   var _lastCommunityCount = 0;
   window.gameRenderers = window.gameRenderers || new Map();
 
-  var SUIT_SYMBOL = { s: '♠', h: '♥', c: '♣', d: '♦' };
-  var SUIT_COLOR = { s: '#1a1a1a', h: '#e74c3c', c: '#1a1a1a', d: '#e74c3c' };
-
-  var raiseAmount = 0;
+  // Smallest legal raise target; mirrors games/texas.js handleMove 'raise'
+  function minRaiseTo(s, idx) {
+    var myBet = (s.bets || [])[idx] || 0;
+    var cb = s.currentBet || 0;
+    return cb + ((s.lastRaise || 0) > 0 ? s.lastRaise : cb > 0 ? cb - myBet : 10);
+  }
 
   window.gameRenderers.set('texas', {
     init: function(container) {
@@ -33,14 +35,14 @@
 
     render: function(state, container, playerIndex, winner) {
       if (!state) return;
-      // Support per-player view or raw state
-      var s = state.communityCards ? state : state;
+      var s = state;
       this.renderOpponents(s, playerIndex);
       this.renderCommunity(s);
       this.renderHoleCards(s, playerIndex, winner);
       this.renderChips(s, playerIndex);
       this.renderActions(s, playerIndex, winner);
       if (s.showdownHands && s.showdownHands.length > 0) this.renderShowdown(s, playerIndex);
+      else { var sd = document.getElementById('txShowdown'); if (sd) sd.style.display = 'none'; }
     },
 
     renderOpponents: function(s, selfIdx) {
@@ -75,7 +77,7 @@
           '<div class="' + (isActive ? 'is-active-turn' : '') + '" style="text-align:center;padding:6px 10px;background:var(--bg);border-radius:12px;' +
           (isActive ? '' : 'border:1px solid var(--border);') +
           (isFolded ? 'opacity:0.5;' : '') + '">' +
-          '<div style="font-size:12px;font-weight:600;">' + name + blindTag + '</div>' +
+          '<div style="font-size:12px;font-weight:600;">' + escHtml(name) + blindTag + '</div>' +
           '<div style="font-size:11px;color:var(--text-muted);">$' + (chips[i] || 0) + '</div>' +
           (bets[i] > 0 ? '<div style="font-size:11px;color:var(--accent);font-weight:600;">' + _t('tx_bet') + bets[i] + '</div>' : '') +
           '<div>' + statusTag + '</div>' +
@@ -121,8 +123,9 @@
       var holeCards = s.holeCards || (s.hands && s.hands[selfIdx]) || [];
       if (holeCards.length === 0) { el.innerHTML = ''; return; }
 
-      var html = '<div style="font-size:12px;color:var(--text-muted);text-align:center;">' + _t('tx_your_hand') + '</div>' + window.CardUI.group(holeCards, { size: 'lg', deal: holeCards.length !== _lastHoleCount });
-      _lastHoleCount = holeCards.length;
+      var key = holeCards.map(function(c) { return c.id; }).join(',');
+      var html = '<div style="font-size:12px;color:var(--text-muted);text-align:center;">' + _t('tx_your_hand') + '</div>' + window.CardUI.group(holeCards, { size: 'lg', deal: key !== _lastHoleKey });
+      _lastHoleKey = key;
       el.innerHTML = html;
     },
 
@@ -158,17 +161,18 @@
       var myBet = (s.bets || [])[selfIdx] || 0;
       var toCall = (s.currentBet || 0) - myBet;
       var canCheck = toCall <= 0;
-      var minRaise = s.currentBet + ((s.lastRaise || 0) > 0 ? s.lastRaise : s.currentBet > 0 ? s.currentBet : 10);
+      var raiseCost = minRaiseTo(s, selfIdx) - myBet;
 
       var html = '';
       html += '<button class="btn btn-sm btn-outline" onclick="window._txFold()">' + _t('tx_fold') + '</button>';
       if (canCheck) {
         html += '<button class="btn btn-sm btn-primary" onclick="window._txCheck()">' + _t('tx_check') + '</button>';
-        if (chips > 10) html += '<button class="btn btn-sm btn-accent" onclick="window._txShowRaise()">' + _t('tx_raise') + '</button>';
+        if (chips >= raiseCost) html += '<button class="btn btn-sm btn-accent" onclick="window._txShowRaise()">' + _t('tx_raise') + '</button>';
+        if (chips > 0) html += '<button class="btn btn-sm" style="background:var(--danger);color:#fff;" onclick="window._txAllIn()">' + _t('tx_all_in') + '</button>';
       } else {
         if (chips > toCall) {
           html += '<button class="btn btn-sm btn-primary" onclick="window._txCall()">' + _t('tx_call') + toCall + '</button>';
-          if (chips > minRaise) html += '<button class="btn btn-sm btn-accent" onclick="window._txShowRaise()">' + _t('tx_raise') + '</button>';
+          if (chips >= raiseCost) html += '<button class="btn btn-sm btn-accent" onclick="window._txShowRaise()">' + _t('tx_raise') + '</button>';
         }
         html += '<button class="btn btn-sm" style="background:var(--danger);color:#fff;" onclick="window._txAllIn()">' + _t('tx_all_in') + '</button>';
       }
@@ -190,7 +194,7 @@
         var isWinner = s.showdownWinner === h.player;
 
         html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;' + (isWinner ? 'background:#fef9e7;border-radius:8px;padding:8px;' : '') + '">';
-        html += '<span style="font-size:13px;font-weight:600;">' + (isMe ? '⭐' : '') + name + '</span>';
+        html += '<span style="font-size:13px;font-weight:600;">' + (isMe ? '⭐' : '') + escHtml(name) + '</span>';
         html += '<span style="font-size:11px;color:var(--text-muted);">' + handType + '</span>';
         html += '<div style="display:flex;gap:3px;">';
         for (var j = 0; j < h.cards.length; j++) {
@@ -204,6 +208,12 @@
     }
   });
 
+  function escHtml(str) {
+    return String(str == null ? '' : str).replace(/[&<>"']/g, function(ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+    });
+  }
+
   function cardSpan(c) {
     return window.CardUI.render(c, { size: 'md' });
   }
@@ -212,18 +222,7 @@
     return window.CardUI.render(null, { size: 'md', faceDown: true, className: 'tx-slot' });
   }
 
-  function showToast(msg) {
-    var t = document.getElementById('toast') || (function() {
-      var el = document.createElement('div');
-      el.id = 'toast';
-      el.className = 'toast';
-      document.body.appendChild(el);
-      return el;
-    })();
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(function() { t.classList.remove('show'); }, 2000);
-  }
+  function showToast(msg) { if (window.showToast) window.showToast(msg); }
 
   window._txFold = function() { window.makeGameMove({ action: 'fold' }); };
   window._txCheck = function() { window.makeGameMove({ action: 'check' }); };
@@ -235,8 +234,7 @@
     if (el) el.style.display = 'flex';
     var input = document.getElementById('txRaiseAmount');
     if (input && window._txState) {
-      var s = window._txState;
-      var minRaise = s.currentBet + ((s.lastRaise || 0) > 0 ? s.lastRaise : 10);
+      var minRaise = minRaiseTo(window._txState, window._txSelf);
       input.min = minRaise;
       input.value = minRaise;
     }
@@ -255,6 +253,7 @@
   var origRender = window.gameRenderers.get('texas').render;
   window.gameRenderers.get('texas').render = function(state, container, playerIndex, winner) {
     window._txState = state;
+    window._txSelf = playerIndex;
     origRender.call(this, state, container, playerIndex, winner);
   };
 })();

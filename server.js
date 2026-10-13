@@ -1445,7 +1445,13 @@ wss.on('connection', (ws) => {
       const playerInfo = currentRoom.players.get(ws);
       if (!playerInfo) return;
 
-      const err = gameMod.handleMove(data, currentRoom.state, playerInfo.index);
+      let err;
+      try {
+        err = gameMod.handleMove(data, currentRoom.state, playerInfo.index);
+      } catch (e) {
+        console.error(`[${currentRoom.game}] handleMove threw:`, e);
+        err = 'g_invalid_action';
+      }
       if (err) {
         ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, err), code: err }));
         return;

@@ -154,7 +154,7 @@ function minimax(board, depth, alpha, beta, maximizing, side) {
         }
       }
     }
-    return evaluateBoard(board, side);
+    return isBoardFull(board) ? 0 : evaluateBoard(board, side);
   }
 
   var moves = getLegalMoves(board);

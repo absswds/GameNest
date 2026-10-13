@@ -47,6 +47,8 @@ exports.playerView = (state, idx) => {
     deck: [],
     deckCount: (state.deck || []).length,
     stack: [],
+    discard: [],
+    discardCount: (state.discard || []).length,
     players: state.players.map((P, i) => {
       const mine = i === idx;
       return Object.assign({}, P, {

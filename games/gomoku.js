@@ -13,8 +13,8 @@ exports.handleMove = (data, state, playerIndex) => {
   if (state.winner !== null) return 'g_game_over';
   if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
 
-  const { row, col } = data;
-  if (typeof row !== 'number' || typeof col !== 'number') return 'gk_invalid_position';
+  const { row, col } = data || {};
+  if (!Number.isInteger(row) || !Number.isInteger(col)) return 'gk_invalid_position';
   if (row < 0 || row >= 15 || col < 0 || col >= 15) return 'gk_out_of_bounds';
   if (state.board[row][col] !== null) return 'gk_position_occupied';
 
