@@ -992,7 +992,7 @@
     'go_lose': '😢 你输了',
     'go_score_black': '黑 ',
     'go_score_mid': ' 子 · 白 ',
-    'go_score_komi': ' 子 · 黑贴3.75子',
+    'go_score_komi': ' 子（黑方已扣贴目 7.5）',
     'go_your_turn': '轮到你了',
     'go_opponent_turn': '对手回合',
     'go_accept': '确认计分',

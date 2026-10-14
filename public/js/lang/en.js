@@ -992,7 +992,7 @@
     'go_lose': '😢 You Lose',
     'go_score_black': 'Black ',
     'go_score_mid': ' stones · White ',
-    'go_score_komi': ' stones · Komi 3.75',
+    'go_score_komi': ' (Black score already minus 7.5 komi)',
     'go_your_turn': 'Your Turn',
     'go_opponent_turn': 'Opponent\'s Turn',
     'go_accept': 'Accept',
