@@ -73,6 +73,24 @@ function normalizeWord(value) {
   return String(value || '').trim().replace(/\s+/g, '').toLowerCase();
 }
 
+// Seconds allowed for the current phase/step (0 = no limit). The module owns state.stepDeadline:
+// every phase or step change calls armStep so it is correct before the server broadcasts.
+function stepSeconds(state) {
+  if (state.phase === 'choosing') return 15;
+  if (state.phase === 'round_result') return 5;
+  if (state.phase !== 'playing') return 0;
+  if (state.mode === 'stage') return state.drawTime;
+  const step = state.chain[state.currentStep];
+  if (!step) return 0;
+  return step.type === 'draw' ? state.drawTime : state.guessTime;
+}
+
+function armStep(state) {
+  const seconds = stepSeconds(state);
+  // +2s network buffer: the client's own countdown reaches zero first
+  state.stepDeadline = seconds > 0 ? Date.now() + seconds * 1000 + 2000 : 0;
+}
+
 function scoreForGuess(state) {
   if (!state.stepDeadline) return 10;
   return Math.max(2, Math.ceil((state.stepDeadline - Date.now()) / 10000));
@@ -92,7 +110,7 @@ function finishStageRound(state) {
     drawerIndex: state.drawerIndex,
     correct: Object.assign({}, state.correct),
   };
-  state.stepDeadline = 0;
+  armStep(state);
 }
 
 function startStageRound(state) {
@@ -110,6 +128,7 @@ function startStageRound(state) {
     state.phase = 'choosing';
   }
   state.stepStartTime = Date.now();
+  armStep(state);
 }
 
 function startWhisperRound(state) {
@@ -136,7 +155,7 @@ function startWhisperRound(state) {
     state.phase = 'choosing';
   }
   state.stepStartTime = Date.now();
-  state.stepDeadline = 0;
+  armStep(state);
 }
 
 const MAX_STROKES = 2000;
@@ -191,9 +210,9 @@ function advanceStep(state) {
   state.currentStep++;
   if (state.currentStep >= state.chain.length) {
     state.phase = 'reveal';
-    state.stepDeadline = 0;
   }
   state.stepStartTime = Date.now();
+  armStep(state);
 }
 
 exports.handleMove = (data, state, playerIndex) => {
@@ -207,6 +226,7 @@ exports.handleMove = (data, state, playerIndex) => {
       state.wordOptions = [];
       state.phase = 'playing';
       state.stepStartTime = Date.now();
+      armStep(state);
       return null;
     }
     if (state.phase === 'playing') {
@@ -247,6 +267,7 @@ exports.handleMove = (data, state, playerIndex) => {
     state.wordOptions = [];
     state.phase = 'playing';
     state.stepStartTime = Date.now();
+    armStep(state);
     return null;
   }
 
@@ -278,7 +299,7 @@ exports.handleMove = (data, state, playerIndex) => {
           word: state.word,
         };
         state.phase = 'round_result';
-        state.stepDeadline = 0;
+        armStep(state);
       }
       return null;
     }
@@ -296,6 +317,7 @@ exports.onTimeout = (state) => {
       state.wordOptions = [];
       state.phase = 'playing';
       state.stepStartTime = Date.now();
+      armStep(state);
       return true;
     }
     if (state.phase === 'playing') {
@@ -306,6 +328,7 @@ exports.onTimeout = (state) => {
       if (state.round >= state._playerCount) {
         state.winner = highestScoreIndex(state.scores);
         state.phase = 'gameover';
+        state.stepDeadline = 0;
         return true;
       }
       state.drawerIndex = (state.drawerIndex + 1) % state._playerCount;
@@ -332,6 +355,7 @@ exports.onTimeout = (state) => {
     state.wordOptions = [];
     state.phase = 'playing';
     state.stepStartTime = Date.now();
+    armStep(state);
     return true;
   }
   if (state.phase === 'playing') {
@@ -344,6 +368,8 @@ exports.onTimeout = (state) => {
   }
   return false;
 };
+
+exports.getPhaseDeadline = (state) => state.stepDeadline || 0;
 
 // Per-player view: hide the word and pending contents from everyone who shouldn't see them
 exports.playerView = (state, playerIndex) => {

@@ -522,10 +522,7 @@ function applyRuntimeState(room, totalPlayers) {
 
 function clearAllRoomTimers(room) {
   clearTimeout(room._botTimer);
-  clearTimeout(room._tfTimer);
-  clearTimeout(room._dgTimer);
   clearTimeout(room._phaseTimer);
-  clearTimeout(room._ddzTurnTimer);
   room._bsPlacing = false;
   room._tfBotState = null;
   room._phaseDeadline = 0;
@@ -702,74 +699,6 @@ function scheduleTwentyFourBots(room) {
   }
 }
 
-function scheduleTwentyFourTimer(room) {
-  clearTimeout(room._tfTimer);
-  const state = room.state;
-  if (!state.roundTime || state.roundTime <= 0) return;
-  const ms = state.roundTime * 1000;
-  room._tfTimer = setTimeout(() => {
-    if (!rooms.has(room._roomId)) return;
-    if (state.phase !== 'playing') return;
-    // Time's up — fastest correct submission wins this round
-    const subs = state.playerSubmissions || {};
-    let best = null, bestTime = Infinity;
-    for (const key of Object.keys(subs)) {
-      const sub = subs[key];
-      if (sub && sub.correct && sub.submittedAt < bestTime) {
-        bestTime = sub.submittedAt;
-        best = parseInt(key, 10);
-      }
-    }
-    if (best !== null) {
-      state.roundWinner = best;
-      state.roundsWon[best] = (state.roundsWon[best] || 0) + 1;
-    } else {
-      state.roundWinner = -1; // nobody got it
-    }
-    state.phase = 'round_end';
-    broadcastGameView(room, 'game_state');
-  }, ms);
-}
-
-// drawguess: server-side step timer — auto-advances when a player stalls
-function scheduleDrawguessTimer(room) {
-  clearTimeout(room._dgTimer);
-  const state = room.state;
-  if (!state) return;
-  let seconds = 0;
-  if (state.phase === 'choosing') {
-    seconds = 15;
-  } else if (state.phase === 'playing') {
-    if (state.mode === 'stage') {
-      seconds = state.drawTime;
-    } else {
-      const step = state.chain[state.currentStep];
-      if (!step) return;
-      seconds = step.type === 'draw' ? state.drawTime : state.guessTime;
-    }
-  } else if (state.phase === 'round_result') {
-    seconds = 5;
-  } else {
-    state.stepDeadline = 0;
-    return;
-  }
-  if (!seconds || seconds <= 0) { state.stepDeadline = 0; return; } // 不限时
-  const ms = seconds * 1000 + 2000; // 2s 网络缓冲，前端先到先得
-  state.stepDeadline = Date.now() + ms;
-  room._dgTimer = setTimeout(() => {
-    if (!rooms.has(room._roomId)) return;
-    if (room.state !== state) return; // game_restart 已换 state，旧 timer 作废
-    const gameMod = gameRegistry['drawguess'];
-    if (!gameMod.onTimeout(state)) return;
-    if (state.phase === 'choosing' || state.phase === 'playing' || state.phase === 'round_result') {
-      scheduleDrawguessTimer(room); // 先更新 deadline 再广播
-    } else {
-      state.stepDeadline = 0;
-    }
-    broadcastGameView(room, 'game_state');
-  }, ms);
-}
-
 function stopRealtimeGame(room) {
   if (!room) return;
   if (room._realtimeTimer) clearInterval(room._realtimeTimer);
@@ -826,7 +755,9 @@ function scheduleRealtimeGame(room) {
 //     stores it in state so clients can render a countdown.
 //   onTimeout(state) -> apply defaults for everyone who hasn't acted.
 //   getPendingActors(state) -> player indexes that may act right now (can be several).
-function schedulePhaseGame(room, gameMod) {
+// The deadline timer half: re-arms only when the module's deadline value changes, so moves that
+// keep the deadline (e.g. 24-point submissions) do not push it back. Returns the deadline.
+function schedulePhaseTimer(room, gameMod) {
   const state = room.state;
   const deadline = typeof gameMod.getPhaseDeadline === 'function' ? (gameMod.getPhaseDeadline(state) || 0) : 0;
   if (room._phaseDeadline !== deadline) {
@@ -839,6 +770,16 @@ function schedulePhaseGame(room, gameMod) {
         if (state.winner !== null && state.winner !== undefined) return;
         try {
           gameMod.onTimeout(state);
+          if ((gameMod.getPhaseDeadline(state) || 0) === deadline) {
+            // The timeout did not advance anything: don't re-arm a 0ms timer on the same deadline,
+            // retry in 1s instead.
+            room._phaseDeadline = deadline;
+            clearTimeout(room._phaseTimer);
+            room._phaseTimer = setTimeout(() => {
+              room._phaseDeadline = 0;
+              try { scheduleBotMove(room); } catch (e) { console.error('[scheduleBotMove]', e.message); }
+            }, 1000);
+          }
         } catch (e) {
           console.error('[game=' + room.game + ' room=' + room._roomId + '] onTimeout exception:', e.message);
           // Remember the deadline we failed on so the scheduler does not re-arm a 0ms timer for
@@ -850,7 +791,12 @@ function schedulePhaseGame(room, gameMod) {
       }, Math.max(0, deadline - Date.now()));
     }
   }
+  return deadline;
+}
 
+function schedulePhaseGame(room, gameMod) {
+  const state = room.state;
+  const deadline = schedulePhaseTimer(room, gameMod);
   if (typeof gameMod.getPendingActors !== 'function') return;
   room._phaseBotPending = room._phaseBotPending || new Set();
   for (const idx of gameMod.getPendingActors(state) || []) {
@@ -901,8 +847,6 @@ function schedulePhaseGame(room, gameMod) {
 function scheduleBotMove(room) {
   if (!room || !room.state) return;
   const state = room.state;
-  // 斗地主出牌计时：每次落子/广播后都重新挂上（机器人出完轮到真人时也要计时）
-  if (room.game === 'doudizhu') scheduleTurnTimer(room);
   // Mahjong: settle when round is over. Must run BEFORE the winner check below —
   // Cantonese sets state.winner to an index on 胡, so `winner !== null` would
   // return early and skip endOfRound (bot wins would never add points).
@@ -917,10 +861,13 @@ function scheduleBotMove(room) {
   if (gameMod.realtime) return;
 
   // Phase-based games (night/vote/response windows) opt in via module hooks.
-  if (typeof gameMod.getPhaseDeadline === 'function' || typeof gameMod.getPendingActors === 'function') {
+  // Games with simultaneous actors (getPendingActors) are fully driven by the generic scheduler;
+  // games that only have a deadline (doudizhu, twentyfour, drawguess) keep their own bot paths below.
+  if (typeof gameMod.getPendingActors === 'function') {
     schedulePhaseGame(room, gameMod);
     return;
   }
+  if (typeof gameMod.getPhaseDeadline === 'function') schedulePhaseTimer(room, gameMod);
 
   // Battleship placing phase: all bots place simultaneously (not turn-based)
   if (room.game === 'battleship' && state.phase === 'placing') {
@@ -931,8 +878,7 @@ function scheduleBotMove(room) {
   // 24 game: all bots race simultaneously, no turn order
   if (room.game === 'twentyfour') {
     scheduleTwentyFourBots(room);
-    // Timer is started explicitly in start_game and next_round — NOT here,
-    // because resetting it on every move drifts the end time past roundEndsAt
+    // The round timer is armed above from getPhaseDeadline (roundEndsAt, fixed at round start)
     return;
   }
 
@@ -986,37 +932,6 @@ function scheduleBotMove(room) {
       console.error(tag + ' Bot fallback exception:', e.message);
     }
   }, delay);
-}
-
-function scheduleTurnTimer(room) {
-  if (!room) return;
-  clearTimeout(room._ddzTurnTimer);
-  if (room.game !== 'doudizhu' || !rooms.has(room._roomId) || room.phase !== 'playing') return;
-  var st = room.state;
-  if (!st || !st.playTimeLimit || st.playTimeLimit <= 0) return;
-  if (st.winner != null || !st.currentTurnDeadline) return;
-  var ms = st.currentTurnDeadline - Date.now();
-  if (ms <= 0) {
-    if (st.phase !== 'playing') return;
-    var cp = st.currentPlayer;
-    var ddz = gameRegistry['doudizhu'];
-    var before = st.currentTurnDeadline;
-    try {
-      ddz.handleMove(ddz.timeoutMove(st), st, cp);
-      broadcastGameView(room, 'game_state');
-    } catch (e) {
-      console.error('[doudizhu] turn timeout exception:', e.message);
-    }
-    if (st.currentTurnDeadline === before) {
-      // The timeout move did not advance the deadline: retry later instead of recursing
-      // scheduleBotMove -> scheduleTurnTimer on the same expired deadline.
-      room._ddzTurnTimer = setTimeout(function() { scheduleTurnTimer(room); }, 1000);
-      return;
-    }
-    scheduleBotMove(room);
-    return;
-  }
-  room._ddzTurnTimer = setTimeout(function() { scheduleTurnTimer(room); }, Math.min(ms, 1000));
 }
 
 function scheduleBattleshipPlacements(room) {
@@ -1462,11 +1377,9 @@ wss.on('connection', (ws) => {
       if (gameMod && gameMod.initGame) {
         gameMod.initGame(currentRoom.state, totalPlayers);
       }
-      if (currentRoom.game === 'drawguess') scheduleDrawguessTimer(currentRoom); // 在广播前写入 stepDeadline
 
       ensureMatch(currentRoom, true);
       broadcastGameView(currentRoom, 'game_started');
-      if (currentRoom.game === 'twentyfour') scheduleTwentyFourTimer(currentRoom);
       scheduleRealtimeGame(currentRoom);
       scheduleBotMove(currentRoom);
       return;
@@ -1627,15 +1540,6 @@ wss.on('connection', (ws) => {
 
       skipDisconnectedTurn(currentRoom);
 
-      // Clear 24-point round timer when a round ends via player submission
-      if (currentRoom.game === 'twentyfour' && currentRoom.state.phase === 'round_end') {
-        clearTimeout(currentRoom._tfTimer);
-      }
-
-      // drawguess: reset the step timer after every successful move (updates stepDeadline before broadcast)
-      const isStageLiveAction = currentRoom.game === 'drawguess' && data && (data.type === 'stage_stroke' || data.type === 'stage_guess' || data.type === 'stage_clear' || data.type === 'stage_undo') && currentRoom.state.phase === 'playing'; // 猜对结束本轮则必须重排（round_result 5 秒定时）
-      if (currentRoom.game === 'drawguess' && !isStageLiveAction) scheduleDrawguessTimer(currentRoom);
-
       // Mahjong: settle the round before broadcasting the 'over' game_state so the
       // settlement panel draws with the already-updated cumulativeScore (no stale flash).
       checkMahjongRoundEnd(currentRoom);
@@ -1732,12 +1636,10 @@ wss.on('connection', (ws) => {
         gameMod.initGame(currentRoom.state, totalPlayers);
       }
 
-      if (currentRoom.game === 'drawguess') scheduleDrawguessTimer(currentRoom);
       currentRoom.phase = 'playing';
       ensureMatch(currentRoom, false);
 
       broadcastGameView(currentRoom, 'game_state');
-      if (currentRoom.game === 'twentyfour') scheduleTwentyFourTimer(currentRoom);
       scheduleRealtimeGame(currentRoom);
       scheduleBotMove(currentRoom);
       return;
@@ -1810,7 +1712,6 @@ wss.on('connection', (ws) => {
       // Generate new numbers (use the game module's function)
       gameRegistry['twentyfour'].initGame(state, totalPlayers);
       broadcastGameView(currentRoom, 'game_state');
-      scheduleTwentyFourTimer(currentRoom);
       scheduleBotMove(currentRoom);
       return;
     }

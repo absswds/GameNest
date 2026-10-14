@@ -532,6 +532,17 @@ exports.timeoutMove = function(state) {
   return { cards: [] };
 };
 
+// Generic phase-timer hooks (server.js schedulePhaseTimer): the current player's play deadline.
+exports.getPhaseDeadline = function(state) {
+  if (!state || state.phase !== 'playing' || state.winner !== null) return 0;
+  if (!state.playTimeLimit || state.playTimeLimit <= 0) return 0;
+  return state.currentTurnDeadline || 0;
+};
+
+exports.onTimeout = function(state) {
+  return exports.handleMove(exports.timeoutMove(state), state, state.currentPlayer);
+};
+
 function setTurnTimer(state) {
   if (state.playTimeLimit > 0) {
     state.currentTurnDeadline = Date.now() + state.playTimeLimit * 1000;

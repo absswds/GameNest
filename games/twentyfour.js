@@ -142,7 +142,7 @@ exports.handleMove = function(data, state, playerIndex) {
 
   if (timed) {
     // Timed mode: record the correct submission and keep waiting. The fastest
-    // correct answer wins when the countdown ends (decided in server.js).
+    // correct answer wins when the countdown ends (exports.onTimeout below).
     state.playerSubmissions[playerIndex] = { expression, correct: true, submittedAt: Date.now() };
     state.solutions.push({ player: playerIndex, expression });
     return null;
@@ -154,6 +154,33 @@ exports.handleMove = function(data, state, playerIndex) {
   state.solutions.push({ player: playerIndex, expression });
   state.phase = 'round_end';
   return null;
+};
+
+// Generic phase-timer hooks: the round ends at roundEndsAt (fixed in initGame, so moves don't move it).
+exports.getPhaseDeadline = function(state) {
+  if (!state || state.phase !== 'playing' || !(state.roundTime > 0)) return 0;
+  return state.roundEndsAt || 0;
+};
+
+// Time's up: the fastest correct submission wins the round (-1 = nobody got it).
+exports.onTimeout = function(state) {
+  if (state.phase !== 'playing') return;
+  const subs = state.playerSubmissions || {};
+  let best = null, bestTime = Infinity;
+  for (const key of Object.keys(subs)) {
+    const sub = subs[key];
+    if (sub && sub.correct && sub.submittedAt < bestTime) {
+      bestTime = sub.submittedAt;
+      best = parseInt(key, 10);
+    }
+  }
+  if (best !== null) {
+    state.roundWinner = best;
+    state.roundsWon[best] = (state.roundsWon[best] || 0) + 1;
+  } else {
+    state.roundWinner = -1;
+  }
+  state.phase = 'round_end';
 };
 
 // Timed mode keeps answers secret until the round ends: others only see that someone solved it.
