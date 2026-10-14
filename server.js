@@ -951,36 +951,39 @@ function scheduleBotMove(room) {
     if (state.phase === 'shooting' && !shotsShown) delay += 3000;
     else if (state.phase === 'playing' && shotsShown && state.pileCards.length === 0) delay += 3000;
   }
+  // 上一次机器人连兜底都失败（状态没变）：别每秒空转重试，隔 15 秒再试，
+  // 期间真人操作或计时器可能已让局面前进。
+  const stuck = room._botStuck;
+  if (stuck && stuck.cp === cp && stuck.state === state) delay = 15000;
   clearTimeout(room._botTimer);
   room._botTimer = setTimeout(() => {
     if (!rooms.has(room._roomId) || room.state !== state) return;
+    const tag = '[game=' + room.game + ' actor=' + cp + ' room=' + room._roomId + ']';
+    let err;
     try {
-      const moveData = bot.getMove(room.state);
-      let err = gameMod.handleMove(moveData, room.state, cp);
+      err = gameMod.handleMove(bot.getMove(room.state), room.state, cp);
+    } catch (e) {
+      console.error(tag + ' Bot exception:', e.message);
+      err = 'bot_exception';
+    }
+    try {
       if (err) {
         // Never let a bad bot move stall the game: fall back to drawing / passing
-        console.error('[game=' + room.game + ' actor=' + cp + ' room=' + room._roomId + '] Bot error:', err, '— falling back to pass/draw');
-        const fb = gameMod.handleMove({ pass: true }, room.state, cp);
-        if (fb) gameMod.handleMove({}, room.state, cp); // last resort: empty move (most games draw + advance)
+        console.error(tag + ' Bot error:', err, '— falling back to pass/draw');
+        try { err = gameMod.handleMove({ pass: true }, room.state, cp); } catch (e) { err = 'pass_exception'; }
+        // last resort: empty move (most games draw + advance)
+        if (err) { try { err = gameMod.handleMove({}, room.state, cp); } catch (e) { err = 'empty_exception'; } }
+        if (err) console.error(tag + ' Bot fallback failed:', err, '— retrying in 15s');
       }
+      room._botStuck = err ? { cp, state } : null;
       skipDisconnectedTurn(room);
       // 麻将：bot 胡牌也先结算再广播，客户端才不会先看到 0 分再被 round_end 修正
       checkMahjongRoundEnd(room);
       broadcastGameView(room);
       scheduleBotMove(room);
-    } catch(e) {
-      console.error('[game=' + room.game + ' actor=' + cp + ' room=' + room._roomId + '] Bot exception:', e.message);
+    } catch (e) {
       // The fallback runs inside a timer: it must never throw out of the callback.
-      try {
-        if (room.state === state) {
-          gameMod.handleMove({ pass: true }, room.state, cp);
-          skipDisconnectedTurn(room);
-          broadcastGameView(room);
-          scheduleBotMove(room);
-        }
-      } catch (e2) {
-        console.error('[game=' + room.game + ' room=' + room._roomId + '] Bot fallback exception:', e2.message);
-      }
+      console.error(tag + ' Bot fallback exception:', e.message);
     }
   }, delay);
 }
