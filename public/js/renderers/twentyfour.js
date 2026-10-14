@@ -114,6 +114,7 @@
         errEl.style.display = '';
         clearTimeout(errEl._timer);
         errEl._timer = setTimeout(function() { errEl.style.display = 'none'; }, 4000);
+        return true; // shown in the board: no generic toast
       };
     },
 
@@ -165,6 +166,8 @@
         }
       }
 
+      // Drop the previous round's leftover expression once the round is over
+      if (state.phase === 'round_end' || state.phase === 'over') { _expr = ''; _usedNums = []; }
       updateDisplay();
       fitSides(container);
 
@@ -249,7 +252,8 @@
           infoEl.innerHTML = '<span style="font-size:16px;font-weight:700;color:#c8a45c;">' + tf('tf_champion', playerName(state.winner)) + '</span>';
         } else if (state.phase === 'round_end') {
           stopCountdown();
-          infoEl.textContent = t('tf_waiting_host');
+          var me = window.gamePlayers && window.gamePlayers[playerIndex];
+          infoEl.textContent = me && me.isHost ? t('tf_click_next') : t('tf_waiting_host');
         } else if (state.phase === 'playing') {
           // Timed mode: use client-local clock to avoid cross-machine clock skew
           var numKey = JSON.stringify(state.numbers);

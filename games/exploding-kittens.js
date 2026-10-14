@@ -197,6 +197,11 @@ exports.handleMove = (data, state, playerIndex) => {
       if (idx === -1) return 'ek_card_not_in_hand';
       // Defuse has no effect when played; keep it for the next kitten.
       if (hand[idx].type === 'defuse') return 'ek_card_no_effect';
+      if (hand[idx].type === 'attack' && targetPlayer !== undefined && targetPlayer !== null &&
+          (!Number.isInteger(targetPlayer) || targetPlayer === playerIndex ||
+           targetPlayer < 0 || targetPlayer >= state.alive.length || !state.alive[targetPlayer])) {
+        return 'ek_invalid_target';
+      }
       const card = hand.splice(idx, 1)[0];
       state.discard.push(card);
       // Public: reveal which card was played (so others can see defuse/skip/etc.)
@@ -219,11 +224,7 @@ exports.handleMove = (data, state, playerIndex) => {
           // 甩锅：指定目标玩家接 2 个回合（不指定则默认下家）
           {
             let target = nextAlive(state, playerIndex);
-            if (Number.isInteger(targetPlayer) &&
-                targetPlayer !== playerIndex &&
-                state.alive[targetPlayer]) {
-              target = targetPlayer;
-            }
+            if (targetPlayer !== undefined && targetPlayer !== null) target = targetPlayer; // validated above
             // Attacking ends all of this player's turns, including any they still owed.
             state.extraTurns[playerIndex] = 0;
             state.peekedCards = null;

@@ -347,7 +347,10 @@
             if (el.waitingStatus) el.waitingStatus.textContent = '';
           }, 3000);
         }
-        if (typeof window._gameErrorHandler === 'function') window._gameErrorHandler(msg.message);
+        // Renderers may handle the error in their own UI (return true); otherwise toast it so an
+        // illegal move never fails silently
+        var handled = typeof window._gameErrorHandler === 'function' && window._gameErrorHandler(msg.message) === true;
+        if (!handled && msg.message && state) showToast(msg.message);
       }
     };
 
@@ -738,6 +741,28 @@
               _t('ddz_total_rounds') + ': ' + roundsLabel +
             '</div>';
         }
+      } else if (game === 'monopoly') {
+        optionsEl.style.display = 'block';
+        var rl = roomOptions.roundLimit !== undefined ? roomOptions.roundLimit : 50;
+        var rlLabel = function(v) { return v === 0 ? _t('mono_round_limit_0') : v + _t('mono_round_limit_n'); };
+        if (isHost) {
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">' + _t('game_settings') + '</div>' +
+            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;font-size:13px;">' +
+              '<div style="font-weight:600;padding-top:4px;">' + _t('mono_round_limit') + '</div>' +
+              '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+                [30, 50, 80, 0].map(function(v) {
+                  return '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;">' +
+                    '<input type="radio" name="monoRoundLimit" value="' + v + '"' + (rl === v ? ' checked' : '') + ' onchange="window._setGameOption(\'roundLimit\',' + v + ')">' +
+                    rlLabel(v) + '</label>';
+                }).join('') +
+              '</div>' +
+            '</div>';
+        } else {
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+            '<div style="font-size:13px;color:var(--text-muted)">' + _t('mono_round_limit') + ': ' + rlLabel(rl) + '</div>';
+        }
       } else if (game === 'sheeptile') {
         optionsEl.style.display = 'block';
         var sameBoard = roomOptions.sameBoard !== false; // default same board
@@ -1057,6 +1082,9 @@
         const canStart = allReady && totalPlayers >= minPlayers;
         startBtn.disabled = !canStart;
         startBtn.classList.toggle('disabled', !canStart);
+        setInlineHint(startBtn, 'startHint', canStart ? '' : _t(allReady ? 'need_more_players' : 'need_all_ready'));
+      } else {
+        setInlineHint(startBtn, 'startHint', '');
       }
       startBtn.onclick = function() {
         send('start_game');
@@ -1067,6 +1095,7 @@
     if (addBotBtn) {
       const supportsAI = gameInfo.supportsAI !== false;
       addBotBtn.style.display = isHost && supportsAI ? '' : 'none';
+      setInlineHint(addBotBtn, 'noBotHint', isHost && !supportsAI ? _t('pvp_only_hint') : '');
       const totalOccupied = players ? players.length : 0;
       const roomFull = totalOccupied >= maxSlots;
       addBotBtn.disabled = roomFull;
@@ -1087,6 +1116,20 @@
         waitingStatus.textContent = _t('waiting_all_ready');
       }
     }
+  }
+
+  // Small grey note right beside a waiting-room button (created on demand); '' hides it
+  function setInlineHint(btn, id, text) {
+    if (!btn || !btn.parentNode) return;
+    var hint = document.getElementById(id);
+    if (!hint) {
+      hint = document.createElement('span');
+      hint.id = id;
+      hint.style.cssText = 'font-size:12px;color:var(--text-muted,#888);margin-left:8px;';
+      btn.parentNode.insertBefore(hint, btn.nextSibling);
+    }
+    hint.textContent = text;
+    hint.style.display = text ? '' : 'none';
   }
 
   // ---- Player Bar (during game) ----
@@ -1320,8 +1363,15 @@
     const overlay = el.overlay;
     const resultEl = el.resultText;
     let txt, sub, isWin = false;
-    if (winner === -1) {
+    if (game === 'oldmaid' && state && typeof state.loser === 'number' && state.loser >= 0) {
+      // oldmaid reports winner -1 plus the loser (the Joker holder); everyone else wins
+      isWin = state.loser !== playerIndex;
+      txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';
+    } else if (winner === -1) {
       txt = _t('draw'); sub = '';
+    } else if (game === 'minesweeper' && winner === -2) {
+      // solo run ended on a mine
+      txt = _t('you_lose'); sub = _t('ms_solo_lost');
     } else if (game === 'doudizhu' && state) {
       // Doudizhu uses team-based winner sentinels
       if (winner === -2) {
@@ -1352,6 +1402,7 @@
     } else {
       isWin = (winner === playerIndex);
       txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';
+      if (game === 'monopoly' && state && state.endReason === 'rounds') sub = _t('mono_rounds_end');
     }
     var inMatch = match && match.bestOf > 1 && SIDE_LAYOUT_GAMES.indexOf(game) !== -1;
     if (inMatch) {
@@ -1369,7 +1420,8 @@
     overlay.style.display = 'flex';
     var st = el.status;
     st.classList.remove('my-turn');
-    st.textContent = isWin ? _t('you_win') : winner === -1 ? _t('draw') : _t('opponent_wins');
+    // The overlay already says win / draw: keep the top line from repeating it
+    st.textContent = (isWin || winner === -1) ? _t('game_over') : (game === 'minesweeper' && winner === -2) ? _t('ms_solo_lost') : _t('opponent_wins');
 
     // Reset the overlay buttons to their defaults for this fresh result screen.
     // (A previous game's _updateOverlayForNewGame may have changed them.)
@@ -1415,7 +1467,9 @@
   window.doRestart = function() {
     // Host: confirm before restarting. Non-host: request host to restart.
     if (isHost) {
-      if (!confirm(_t('restart_confirm'))) return;
+      // Nothing to lose once the result is on screen: only confirm when restarting a game in progress
+      var finished = el.overlay.style.display === 'flex' || (state && state.winner !== null && state.winner !== undefined);
+      if (!finished && !confirm(_t('restart_confirm'))) return;
       el.overlay.style.display = 'none';
       if (typeof window._beforeGameRestart === 'function') window._beforeGameRestart();
       send('game_restart');

@@ -6,7 +6,8 @@ exports.name = 'rummikub';
 exports.createBot = (playerIndex) => ({
   name: botName(playerIndex, 'zh'),
   getMove(state) {
-    if (state.playedThisTurn[playerIndex]) return { endTurn: true };
+    // A pending initial meld (sets laid but total still < 30) must be finished, not ended.
+    if (state.playedThisTurn[playerIndex] && !state.meldPending) return { endTurn: true };
     const hand = state.hands[playerIndex];
     if (!hand || hand.length === 0) return { pass: true };
 
@@ -15,7 +16,15 @@ exports.createBot = (playerIndex) => ({
     const hasBroken = state.hasBroken[playerIndex];
 
     // Try to find valid sets in hand (including wild cards)
-    const candidates = findSets(hand, !hasBroken && requireBreak);
+    if (!hasBroken && requireBreak) {
+      // Initial meld: several disjoint sets may add up to 30; lay them one per call
+      // (the server keeps them pending until the total is reached).
+      const need = 30 - (state.meldPending ? state.meldPending.score : 0);
+      const combo = findBreakCombo(hand, need);
+      if (combo) return { tileIds: combo[0].map(t => t.id) };
+      return { pass: true };
+    }
+    const candidates = findSets(hand, false);
     if (candidates.length > 0) {
       const best = candidates[0];
       return { tileIds: best.map(t => t.id) };
@@ -68,6 +77,41 @@ function isValidForBot(tiles) {
 
 function tileScore(tiles) {
   return tiles.reduce((sum, t) => sum + (t.wild ? 0 : t.num), 0);
+}
+
+// Meld value of a set the bot builds: jokers count as the tile they stand for.
+function meldValue(tiles) {
+  const nonWild = tiles.filter(t => !t.wild);
+  if (nonWild.length === 0) return 0;
+  if (new Set(nonWild.map(t => t.num)).size === 1) return nonWild[0].num * tiles.length;
+  const nums = nonWild.map(t => t.num);
+  const min = Math.min(...nums), max = Math.max(...nums);
+  let sum = 0;
+  for (let n = min; n <= max; n++) sum += n;
+  return sum;
+}
+
+// Smallest list of disjoint sets from hand whose meld values total >= need, or null.
+function findBreakCombo(hand, need) {
+  const cands = findSets(hand, false).slice(0, 60)
+    .map(set => ({ set, ids: set.map(t => t.id), val: meldValue(set) }));
+  const dfs = (start, used, total, left, picked) => {
+    if (total >= need) return picked;
+    if (left === 0) return null;
+    for (let i = start; i < cands.length; i++) {
+      const c = cands[i];
+      if (c.ids.some(id => used.has(id))) continue;
+      const next = new Set(used); c.ids.forEach(id => next.add(id));
+      const r = dfs(i + 1, next, total + c.val, left - 1, [...picked, c.set]);
+      if (r) return r;
+    }
+    return null;
+  };
+  for (let depth = 1; depth <= 4; depth++) {
+    const r = dfs(0, new Set(), 0, depth, []);
+    if (r) return r;
+  }
+  return null;
 }
 
 function findSets(hand, needBreak) {

@@ -268,9 +268,10 @@
     var mx = (e.clientX - r.left) * (W / r.width);
     var my = (e.clientY - r.top) * (H / r.height);
     var tiles = curLevelTiles();
-    // 从最高 z 往下找命中的可点牌
+    // 与 drawBoard 的绘制顺序一致（z 升序、同 z 按布局顺序），从最上面画的那张往下命中：
+    // 同层相邻的牌绘制区域会重叠，必须点中肉眼看到的那一张
     var cand = tiles.filter(function (t) { return !me().removed[t.id]; })
-      .sort(function (a, b) { return rects[b.id].z - rects[a.id].z; });
+      .sort(function (a, b) { return rects[b.id].z - rects[a.id].z || tiles.indexOf(b) - tiles.indexOf(a); });
     for (var i = 0; i < cand.length; i++) {
       var rc = rects[cand[i].id];
       if (mx >= rc.x && mx <= rc.x + rc.s && my >= rc.y && my <= rc.y + rc.s) {
@@ -351,7 +352,8 @@
     var p = me(), total = levelCount(p.level);
     var remain = total - Object.keys(p.removed || {}).length;
     var size = state.slotSize || 7, fill = p.slot.length;
-    var pct = Math.round(progressOf(p) * 100);
+    // Same scope as the "x / total" figure above and the board title: the current level
+    var pct = total ? Math.round((total - remain) / total * 100) : 0;
     var cells = '';
     for (var i = 0; i < size; i++) {
       var c = p.slot[i];

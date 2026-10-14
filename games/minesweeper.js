@@ -181,7 +181,15 @@ exports.handleMove = function (data, state, playerIndex) {
       if (aliveCount === 1) {
         state.winner = state.alive.indexOf(true);
       } else if (aliveCount === 0) {
-        state.winner = -1;
+        if (state.alive.length === 1) {
+          state.winner = -2; // solo run ended on a mine: a loss, not a draw
+        } else {
+          // everyone blew up: most safe cells cleared wins, an exact tie is a draw
+          const best = Math.max(...state.cellsRevealed);
+          const top = [];
+          state.cellsRevealed.forEach((n, i) => { if (n === best) top.push(i); });
+          state.winner = top.length === 1 ? top[0] : -1;
+        }
       }
       return null;
     }

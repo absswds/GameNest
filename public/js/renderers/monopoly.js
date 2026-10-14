@@ -509,6 +509,9 @@
     cashEl.textContent = _tf('mp_cash', cash);
     panel.appendChild(cashEl);
 
+    var roundInfo = buildRoundInfo(st);
+    if (roundInfo) panel.appendChild(roundInfo);
+
     if (effectBanner) panel.appendChild(effectBanner);
 
     if (!isMyTurn) {
@@ -549,6 +552,23 @@
       });
       addBtn(panel, _t('mp_end_turn'), 'btn-primary', function () { wsSend({ type: 'end_turn' }); });
     }
+  }
+
+  // 限时赛：显示 第 x/y 轮；因轮数上限结束时列出各人资产
+  function buildRoundInfo(st) {
+    if (!st.round) return null;
+    var en = window.__ACTIVE_LANG === 'en';
+    var el = document.createElement('div');
+    el.style.cssText = 'font-size:12px;color:var(--text-muted);';
+    var txt = st.roundLimit
+      ? (en ? 'Round ' + st.round + '/' + st.roundLimit : '第 ' + st.round + '/' + st.roundLimit + ' 轮')
+      : (en ? 'Round ' + st.round : '第 ' + st.round + ' 轮');
+    if (st.phase === 'gameover' && st.endReason === 'rounds' && st.assets) {
+      txt += en ? ' · Round limit reached, ranked by assets: ' : ' · 轮数已满，按资产排名：';
+      txt += st.assets.map(function (a, i) { return nameOf(i) + ' $' + a; }).join(' / ');
+    }
+    el.textContent = txt;
+    return el;
   }
 
   function addBtn(panel, text, cls, onclick, fontSize) {

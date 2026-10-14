@@ -435,6 +435,8 @@ exports.handleMove = (data, state, playerIndex) => {
       state.chips[notFolded[0]] += state.pot;
       state.pot = 0;
       state.winner = notFolded[0];
+      state.currentPlayer = notFolded[0];
+      state.bets = state.bets.map(() => 0);
       return null;
     }
 

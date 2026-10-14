@@ -122,11 +122,29 @@
     var best = Math.max(1, state.highScore || 0), mine = state.score || 0;
     right.innerHTML =
       '<div class="g2k-card"><div class="g2k-label">' + t('g2048_side_race', 'Race') + '</div>' +
-        '<div class="g2k-row me"><span>' + t('g2048_side_you', 'You') + '</span><b>' + mine + '</b><i style="width:' + Math.round(mine / best * 100) + '%"></i></div>' +
-        '<div class="g2k-row"><span>' + t('g2048_side_top', 'Room best') + '</span><b>' + (state.highScore || 0) + '</b><i style="width:100%"></i></div></div>' +
+        raceRows(state, mine, best) + '</div>' +
       '<div class="g2k-card g2k-tips"><div class="g2k-label">' + t('g2048_side_tips', 'How to play') + '</div><ol>' +
         '<li>' + t('g2048_tip_1', 'Arrow keys or WASD to slide') + '</li><li>' + t('g2048_tip_2', 'Equal tiles merge into one') + '</li>' +
         '<li>' + t('g2048_tip_3', 'First to 2048 wins') + '</li><li>' + t('g2048_tip_4', 'Locked up means out; best score wins') + '</li></ol></div>';
+  }
+
+  function escHtml(v) { return String(v).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // One row per player (humans and bots) with their score; falls back to you + room best
+  function raceRows(state, mine, best) {
+    var scores = state.scores, rows = '';
+    if (!scores || scores.length < 2 || typeof window.getPlayerName !== 'function') {
+      return '<div class="g2k-row me"><span>' + t('g2048_side_you', 'You') + '</span><b>' + mine + '</b><i style="width:' + Math.round(mine / best * 100) + '%"></i></div>' +
+        '<div class="g2k-row"><span>' + t('g2048_side_top', 'Room best') + '</span><b>' + (state.highScore || 0) + '</b><i style="width:100%"></i></div>';
+    }
+    var order = scores.map(function (v, i) { return i; }).sort(function (a, b) { return scores[b] - scores[a] || a - b; });
+    order.forEach(function (i) {
+      var out = state.aliveAll && state.aliveAll[i] === false;
+      rows += '<div class="g2k-row' + (i === _playerIndex ? ' me' : '') + '"' + (out ? ' style="opacity:.55"' : '') + '><span>' +
+        escHtml(i === _playerIndex ? t('g2048_side_you', 'You') : window.getPlayerName(i)) + (out ? ' 💀' : '') + '</span><b>' + scores[i] +
+        '</b><i style="width:' + Math.round(scores[i] / best * 100) + '%"></i></div>';
+    });
+    return rows;
   }
 
   function computeLayout() {

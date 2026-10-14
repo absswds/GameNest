@@ -63,12 +63,11 @@ const CHANCE_CARDS = [
 ];
 
 const BOARD_SIZE = BOARD.length;
-const BASE_RENT_MULTIPLIER = 3;
-const BUILT_RENT_MULTIPLIER = 1.5;
+const RAILROAD_RENT = [25, 50, 100, 200];
 
+// Face rent from the card; an unimproved space of a full colour group pays double.
 function calculatePropertyRent(space, houses, monopoly) {
-  const multiplier = houses === 0 ? BASE_RENT_MULTIPLIER : BUILT_RENT_MULTIPLIER;
-  let rent = Math.round(space.rent[houses] * multiplier);
+  let rent = space.rent[houses];
   if (monopoly && houses === 0) rent *= 2;
   return rent;
 }
@@ -79,7 +78,7 @@ exports.createState = () => ({
   phase: 'waiting', positions: [], cash: [], properties: {}, inJail: [],
   jailTurns: [], eliminated: [], currentPlayer: 0, dice: [0, 0],
   lastCard: null, winner: null, _playerCount: 0, pendingAction: null,
-  freeRentCards: [], lastCardEffect: null,
+  freeRentCards: [], lastCardEffect: null, doublesCount: 0, rollAgain: false, round: 1, roundLimit: DEFAULT_ROUND_LIMIT, assets: [], endReason: null,
   board: BOARD, lastMove: null, lastRent: null,
 });
 
@@ -98,6 +97,12 @@ exports.initGame = (state, playerCount) => {
   state.pendingAction = null;
   state.freeRentCards = Array(playerCount).fill(false);
   state.lastCardEffect = null;
+  state.doublesCount = 0;
+  state.rollAgain = false;
+  state.round = 1;
+  state.roundLimit = roundLimitOf(state);
+  state.assets = [];
+  state.endReason = null;
   state.board = BOARD;
   state.lastMove = null;
   state.lastRent = null;
@@ -119,12 +124,62 @@ function checkBankruptcy(state) {
   else if (alive === 0) { state.winner = 0; state.phase = 'gameover'; }
 }
 
+const DEFAULT_ROUND_LIMIT = 50;
+
+// Room option roundLimit: 30 / 50 / 80 rounds, or 0 for unlimited (default 50).
+function roundLimitOf(state) {
+  const v = state._options && state._options.roundLimit;
+  return [0, 30, 50, 80].includes(v) ? v : DEFAULT_ROUND_LIMIT;
+}
+
+// Net worth for the time-limit ranking: cash + purchase prices + house cost (no mortgages).
+function computeAssets(state) {
+  const out = [];
+  for (let i = 0; i < state._playerCount; i++) out.push(state.eliminated[i] ? 0 : Math.max(0, state.cash[i]));
+  for (const [idx, prop] of Object.entries(state.properties)) {
+    const space = BOARD[idx];
+    if (!space || state.eliminated[prop.owner]) continue;
+    out[prop.owner] += space.price + (prop.houses || 0) * (space.price / 2);
+  }
+  return out;
+}
+
+// Round limit reached: richest player wins, ties broken by cash, then by seat order.
+function finishByAssets(state) {
+  const assets = computeAssets(state);
+  let best = -1;
+  for (let i = 0; i < state._playerCount; i++) {
+    if (state.eliminated[i]) continue;
+    if (best === -1 || assets[i] > assets[best] || (assets[i] === assets[best] && state.cash[i] > state.cash[best])) best = i;
+  }
+  state.assets = assets;
+  state.endReason = 'rounds';
+  state.winner = best === -1 ? 0 : best;
+  state.phase = 'gameover';
+}
+
 function nextPlayer(state) {
-  let next = (state.currentPlayer + 1) % state._playerCount;
+  const prev = state.currentPlayer;
+  let next = (prev + 1) % state._playerCount;
   let loops = 0;
   while (state.eliminated[next] && loops < state._playerCount) { next = (next + 1) % state._playerCount; loops++; }
+  state.roundLimit = roundLimitOf(state);
+  if (next <= prev) {
+    state.round++;
+    if (state.roundLimit > 0 && state.round > state.roundLimit) { state.round = state.roundLimit; finishByAssets(state); return; }
+  }
+  state.assets = computeAssets(state);
   state.currentPlayer = next; state.phase = 'waiting'; state.pendingAction = null;
+  state.doublesCount = 0; state.rollAgain = false;
   state.lastCard = null; state.lastCardEffect = null; state.lastMove = null; state.lastRent = null;
+}
+
+// Rolled doubles: once the landing is fully settled the same player rolls again.
+function settleRollAgain(state, playerIndex) {
+  if (state.phase !== 'end_turn' || !state.rollAgain) return;
+  state.rollAgain = false;
+  if (state.eliminated[playerIndex] || state.inJail[playerIndex]) return;
+  state.phase = 'waiting'; state.pendingAction = null;
 }
 
 function getGroupSpaces(group) { return BOARD.map((s, i) => ({ s, i })).filter(x => x.s && x.s.group === group); }
@@ -197,7 +252,7 @@ function applyLanding(state, playerIndex) {
     else if (prop.owner !== playerIndex) {
       let rrCount = 0;
       BOARD.forEach((s, i) => { if (s && s.type === 'railroad' && state.properties[i] && state.properties[i].owner === prop.owner) rrCount++; });
-      const rent = [60, 120, 240, 420][rrCount - 1] || 60;
+      const rent = RAILROAD_RENT[rrCount - 1] || RAILROAD_RENT[0];
       payRent(state, playerIndex, prop, rent, pos);
       checkBankruptcy(state);
       if (state.phase !== 'gameover') state.phase = 'end_turn';
@@ -274,6 +329,7 @@ function applyLanding(state, playerIndex) {
 
 exports.handleMove = (data, state, playerIndex) => {
   if (state.phase === 'gameover') return 'g_game_over';
+  state.roundLimit = roundLimitOf(state);
   if (state.eliminated[playerIndex]) {
     // A player who went bankrupt on their own turn is still the current player: any input from
     // them (a human end_turn, or the bot's pass) hands the turn on, otherwise the game stalls.
@@ -288,9 +344,15 @@ exports.handleMove = (data, state, playerIndex) => {
     const dice = rollDice();
     state.dice = dice;
     const steps = dice[0] + dice[1];
+    const isDouble = dice[0] === dice[1];
+    const jailedAtRollStart = !!state.inJail[playerIndex];
+    state.lastCard = null;
+    state.rollAgain = false;
 
     if (state.inJail[playerIndex]) {
-      if (dice[0] === dice[1]) { state.inJail[playerIndex] = false; }
+      // Doubles that free you from jail do not earn an extra roll.
+      state.doublesCount = 0;
+      if (isDouble) { state.inJail[playerIndex] = false; }
       else {
         state.jailTurns[playerIndex]++;
         if (state.jailTurns[playerIndex] >= 3) {
@@ -305,6 +367,22 @@ exports.handleMove = (data, state, playerIndex) => {
     }
 
     const oldPos = state.positions[playerIndex];
+    if (isDouble && !jailedAtRollStart) {
+      state.doublesCount++;
+      if (state.doublesCount >= 3) {
+        // Third double in a row: straight to jail without moving.
+        state.doublesCount = 0;
+        state.lastRent = null; state.lastCardEffect = null;
+        state.lastMove = { player: playerIndex, from: oldPos, to: JAIL_INDEX, steps: 0, passedGo: false, kind: 'teleport' };
+        state.positions[playerIndex] = JAIL_INDEX;
+        state.inJail[playerIndex] = true; state.jailTurns[playerIndex] = 0;
+        state.phase = 'end_turn';
+        return null;
+      }
+      state.rollAgain = true;
+    } else if (!isDouble) {
+      state.doublesCount = 0;
+    }
     const newPos = (oldPos + steps) % BOARD_SIZE;
     const passedGo = newPos < oldPos || newPos === 0;
     if (passedGo) state.cash[playerIndex] += 200;
@@ -312,6 +390,7 @@ exports.handleMove = (data, state, playerIndex) => {
     state.lastMove = { player: playerIndex, from: oldPos, to: newPos, steps: steps, passedGo: passedGo, kind: 'walk' };
     state.positions[playerIndex] = newPos;
     applyLanding(state, playerIndex);
+    settleRollAgain(state, playerIndex);
     return null;
   }
 
@@ -323,12 +402,14 @@ exports.handleMove = (data, state, playerIndex) => {
     state.cash[playerIndex] -= space.price;
     state.properties[pos] = { owner: playerIndex, houses: 0 };
     state.pendingAction = null; state.phase = 'end_turn';
+    settleRollAgain(state, playerIndex);
     return null;
   }
 
   if (data.type === 'skip_buy') {
     if (state.phase !== 'landed') return 'mp_nothing_to_skip';
     state.pendingAction = null; state.phase = 'end_turn';
+    settleRollAgain(state, playerIndex);
     return null;
   }
 
@@ -347,7 +428,7 @@ exports.handleMove = (data, state, playerIndex) => {
     if (state.cash[playerIndex] < houseCost) return 'mp_insufficient_funds';
     state.cash[playerIndex] -= houseCost;
     prop.houses++;
-    if (state.phase === 'landed' && state.pendingAction === 'can_build' && pos === state.positions[playerIndex]) { state.pendingAction = null; state.phase = 'end_turn'; }
+    if (state.phase === 'landed' && state.pendingAction === 'can_build' && pos === state.positions[playerIndex]) { state.pendingAction = null; state.phase = 'end_turn'; settleRollAgain(state, playerIndex); }
     return null;
   }
 

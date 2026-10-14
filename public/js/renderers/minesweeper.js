@@ -9,6 +9,7 @@
   var _touchMoved = false;
   var _preventNextClick = false;
   var _container = null;
+  var _flagMode = false; // tap flags instead of revealing (phones)
   var SIDE_W = 230; // side panel width on wide screens
 
   var STYLES = '' +
@@ -57,6 +58,8 @@
     '.ms-legend{font-size:11px;color:var(--text-muted);text-align:center;padding:2px 12px;line-height:1.6;' +
       'display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}' +
     '.ms-legend span{white-space:nowrap;}' +
+    '.ms-flagbtn{min-height:44px;padding:0 18px;border-radius:22px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:700;cursor:pointer;touch-action:manipulation;}' +
+    '.ms-flagbtn.on{background:var(--accent);border-color:var(--accent);color:#1a1a1a;}' +
 
     // === Wide screens: stats on the left, ranking + tips on the right ===
     '.ms{display:flex;justify-content:center;align-items:flex-start;gap:24px;width:100%;}' +
@@ -134,6 +137,7 @@
       e.preventDefault();
       if (_preventNextClick) { _preventNextClick = false; return; }
       if (alive[playerIndex] === false) return;
+      if (_flagMode) { window.makeGameMove({ action: 'flag', row: parseInt(this.dataset.r), col: parseInt(this.dataset.c) }); return; }
       window.makeGameMove({ action: 'reveal', row: parseInt(this.dataset.r), col: parseInt(this.dataset.c) });
     });
 
@@ -236,11 +240,19 @@
           '<div class="ms-players" id="msPlayers"></div>' +
           '<div class="ms-status" id="msStatus"></div>' +
           '<div class="ms-grid-wrap" id="msGridWrap"></div>' +
+          '<button class="ms-flagbtn" id="msFlagBtn" type="button">🚩 ' + _t('ms_flag_mode') + '</button>' +
           '<div class="ms-legend" id="msLegend">' +
             '<span>' + _t('ms_click_reveal') + '</span><span>' + _t('ms_right_click_flag') + '</span>' +
             '<span>' + _t('ms_tap_reveal') + '</span><span>' + _t('ms_longpress_flag') + '</span>' +
           '</div>' +
         '</div></div><aside class="ms-side" id="msRight"></aside></div>';
+      _flagMode = false;
+      var flagBtn = document.getElementById('msFlagBtn');
+      flagBtn.addEventListener('click', function() {
+        _flagMode = !_flagMode;
+        flagBtn.classList.toggle('on', _flagMode);
+        flagBtn.setAttribute('aria-pressed', _flagMode ? 'true' : 'false');
+      });
     },
     render: function(state, container, playerIndex, winner) {
       _playerIndex = playerIndex;
@@ -271,6 +283,9 @@
         if (winner !== null && winner !== undefined && winner >= 0) {
           statusEl.innerHTML = _tf('ms_player_wins', winner + 1);
           statusEl.style.color = '#58d68d';
+        } else if (winner === -2) {
+          statusEl.textContent = _t('ms_solo_lost');
+          statusEl.style.color = '#e74c3c';
         } else if (winner === -1) {
           statusEl.textContent = _t('ms_draw');
           statusEl.style.color = '#e74c3c';

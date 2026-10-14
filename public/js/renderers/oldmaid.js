@@ -99,6 +99,19 @@
       '</div>';
   }
 
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // One naming scheme for the whole screen (same as the side bar): "You" or the seat's player name
+  function pn(i, me) { return i === me ? _t('you') : window.getPlayerName(i); }
+
+  function logText(msg, me) {
+    if (!msg.kind) return msg.text;
+    var who = pn(msg.player, me);
+    if (msg.kind === 'draw') return _tf('om_log_draw', who, pn(msg.from, me));
+    if (msg.kind === 'empty') return _tf('om_log_empty', who);
+    return _tf(msg.kind === 'open_pair' ? 'om_log_open_pair' : 'om_log_pair', who, msg.rank, msg.rank);
+  }
+
   window.gameRenderers.set('oldmaid', {
     init: function(container) {
       injectStylesOnce('omStyles', STYLES);
@@ -135,7 +148,7 @@
         var clickable = isMyTurn && hasCards;
         othersHtml += '<div class="' + cls + '"' +
           (clickable ? ' onclick="window._omPickPlayer(' + i + ')"' : '') +
-          '><div class="name">' + _t('om_player') + (i + 1) + '</div>' +
+          '><div class="name">' + esc(pn(i, playerIndex)) + '</div>' +
           '<div class="count">🃏×' + (hands[i] ? hands[i].length : 0) + '</div></div>';
       }
       var othersEl = document.getElementById('omOthers');
@@ -154,14 +167,14 @@
           statusEl.style.color = 'var(--text-muted)';
         } else if (currentPlayer === playerIndex) {
           if (pickingFrom >= 0) {
-            statusEl.textContent = _tf('om_pick_card', _t('om_player') + (pickingFrom + 1));
+            statusEl.textContent = _tf('om_pick_card', pn(pickingFrom, playerIndex));
             statusEl.style.color = 'var(--accent)';
           } else {
             statusEl.textContent = _t('om_your_turn');
             statusEl.style.color = 'var(--accent)';
           }
         } else {
-          statusEl.textContent = _tf('om_opponent_drawing', _t('om_player') + (currentPlayer + 1));
+          statusEl.textContent = _tf('om_opponent_drawing', pn(currentPlayer, playerIndex));
           statusEl.style.color = 'var(--text-muted)';
         }
       }
@@ -172,12 +185,12 @@
         if (lastDraw && lastDraw.to === playerIndex) {
           var drawnSym = lastDraw.card.suit ? SUIT_SYMBOLS[lastDraw.card.suit] : '';
           var drawnName = lastDraw.card.rank + drawnSym;
-          actionEl.innerHTML = _tf('om_you_drew', _t('om_player') + (lastDraw.from + 1), drawnName);
+          actionEl.innerHTML = _tf('om_you_drew', pn(lastDraw.from, playerIndex), drawnName);
         } else if (lastDraw && lastDraw.from === playerIndex) {
-          actionEl.innerHTML = _tf('om_opponent_drew_from_you', _t('om_player') + (lastDraw.to + 1)) +
+          actionEl.innerHTML = _tf('om_opponent_drew_from_you', pn(lastDraw.to, playerIndex)) +
             (lastDraw.cardDrawn ? ' <span style="opacity:.7;">(' + lastDraw.cardDrawn + ')</span>' : '');
         } else if (lastDraw && lastDraw.from >= 0) {
-          actionEl.textContent = _t('om_player') + (lastDraw.to + 1) + ' ← ' + _t('om_player') + (lastDraw.from + 1);
+          actionEl.textContent = pn(lastDraw.to, playerIndex) + ' ← ' + pn(lastDraw.from, playerIndex);
         } else {
           actionEl.textContent = '';
         }
@@ -192,7 +205,7 @@
           var itemCls = 'om-log-item';
           if (msg.highlight) itemCls += ' hl';
           if (msg.cardDrawn) itemCls += ' drawn';
-          logHtml += '<div class="' + itemCls + '">' + msg.text + '</div>';
+          logHtml += '<div class="' + itemCls + '">' + esc(logText(msg, playerIndex)) + '</div>';
         }
         logEl.innerHTML = logHtml;
         logEl.scrollTop = 0;

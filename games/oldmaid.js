@@ -79,7 +79,7 @@ exports.initGame = function (state, playerCount) {
   for (let i = 0; i < playerCount; i++) {
     const discards = discardAllPairsWithLog(state.hands[i]);
     for (const d of discards) {
-      state.messages.push({ text: pick(state, 'P' + (i + 1) + ' 开局弃掉对子: ' + d.rank + ' ' + d.rank, 'P' + (i + 1) + ' discarded pair: ' + d.rank + ' ' + d.rank), time: Date.now() });
+      state.messages.push({ text: pick(state, 'P' + (i + 1) + ' 开局弃掉对子: ' + d.rank + ' ' + d.rank, 'P' + (i + 1) + ' discarded pair: ' + d.rank + ' ' + d.rank), time: Date.now(), kind: 'open_pair', player: i, rank: d.rank });
     }
   }
 
@@ -135,6 +135,8 @@ exports.handleMove = function (data, state, playerIndex) {
     from: drawFrom,
     to: playerIndex,
     cardDrawn: dispCard,
+    kind: 'draw',
+    player: playerIndex,
   });
 
   // Discard any newly formed pairs + log them
@@ -145,6 +147,9 @@ exports.handleMove = function (data, state, playerIndex) {
         text: pick(state, 'P' + (playerIndex + 1) + ' 弃掉对子: ' + d.rank + ' ' + d.rank + ' ✅', 'P' + (playerIndex + 1) + ' discarded pair: ' + d.rank + ' ' + d.rank + ' ✅'),
         time: Date.now(),
         highlight: true,
+        kind: 'pair',
+        player: playerIndex,
+        rank: d.rank,
       });
     }
     state.lastDiscards = { player: playerIndex, pairs: discards };
@@ -155,7 +160,7 @@ exports.handleMove = function (data, state, playerIndex) {
 
   // Check if current player cleared all cards
   if (state.hands[playerIndex].length === 0) {
-    state.messages.push({ text: pick(state, 'P' + (playerIndex + 1) + ' 手牌清空！', 'P' + (playerIndex + 1) + ' hand is empty!'), time: Date.now(), highlight: true });
+    state.messages.push({ text: pick(state, 'P' + (playerIndex + 1) + ' 手牌清空！', 'P' + (playerIndex + 1) + ' hand is empty!'), time: Date.now(), highlight: true, kind: 'empty', player: playerIndex });
   }
   // The game is over as soon as at most one player still holds cards: that player has the joker.
   const withCards = [];

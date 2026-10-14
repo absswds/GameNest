@@ -595,7 +595,10 @@
           var cell2 = getCellFromEvent(e, lay.enemyOx, lay.oy);
           if (!cell2) return;
           if (state.enemyBoard[cell2.r] && state.enemyBoard[cell2.r][cell2.c] &&
-              state.enemyBoard[cell2.r][cell2.c].shot) return;
+              state.enemyBoard[cell2.r][cell2.c].shot) {
+            if (window.showToast) window.showToast(_t('toast_already_shot'));
+            return;
+          }
 
           stopAnimLoop();
           animState.type = 'shot';
@@ -606,6 +609,8 @@
           animState.shotBoard = 'enemy';
           startAnimLoop();
           window.makeGameMove({ r: cell2.r, c: cell2.c });
+        } else if (state.phase === 'shooting') {
+          if (window.showToast) window.showToast(_t('uno_opponent_turn'));
         }
       });
 

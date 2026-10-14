@@ -9,7 +9,12 @@ exports.createBot = (playerIndex) => ({
     if (state.eliminated && state.eliminated[playerIndex]) return { pass: true };
     const board = state.board || [];
 
-    if (state.phase === 'waiting') return { type: 'roll' };
+    if (state.phase === 'waiting') {
+      // Build before rolling too, so a double (extra roll) does not delay building.
+      const early = pickBuild(state, board, playerIndex);
+      if (early !== -1) return { type: 'build', spaceIndex: early };
+      return { type: 'roll' };
+    }
 
     if (state.phase === 'landed' && state.pendingAction === 'can_buy') {
       const pos = state.positions[playerIndex];
@@ -17,18 +22,20 @@ exports.createBot = (playerIndex) => ({
       const cash = state.cash[playerIndex];
       const price = space && space.price ? space.price : 0;
       if (!price) return { type: 'skip_buy' };
-      // 能凑成垄断的地买得起就买；否则留 200 安全垫
-      if (space.type === 'property' && wouldComplete(state, board, pos, space.group, playerIndex)) {
-        if (cash >= price) return { type: 'buy' };
+      // 凑成垄断、或堵住对手的色组：只要买得起就买；其余留 RESERVE 现金底线
+      if (space.type === 'property') {
+        if (wouldComplete(state, board, pos, space.group, playerIndex) && cash >= price) return { type: 'buy' };
+        if (blocksOpponent(state, board, pos, space.group, playerIndex) && cash - price >= 30) return { type: 'buy' };
+        if (ownsInGroup(state, board, space.group, playerIndex) > 0 && cash - price >= 50) return { type: 'buy' };
       }
-      if (cash - price > 200) return { type: 'buy' };
+      if (cash - price >= RESERVE) return { type: 'buy' };
       return { type: 'skip_buy' };
     }
 
     if (state.phase === 'landed' && state.pendingAction === 'can_build') {
       const pos = state.positions[playerIndex];
       const space = board[pos];
-      if (space && space.price && state.cash[playerIndex] - space.price / 2 >= 300) return { type: 'build', spaceIndex: pos };
+      if (space && space.price && state.cash[playerIndex] - space.price / 2 >= BUILD_RESERVE) return { type: 'build', spaceIndex: pos };
       return { type: 'skip_buy' };
     }
 
@@ -41,6 +48,21 @@ exports.createBot = (playerIndex) => ({
     return { pass: true };
   },
 });
+
+const RESERVE = 100;       // 普通购买后保留的现金
+const BUILD_RESERVE = 150;  // 建房后保留的现金
+
+function ownsInGroup(state, board, group, pi) {
+  return groupSpaces(board, group).filter(i => state.properties[i] && state.properties[i].owner === pi).length;
+}
+
+// 该色组里已有对手的地、且我还没有（买下可阻止对方垄断）
+function blocksOpponent(state, board, pos, group, pi) {
+  if (group === undefined) return false;
+  const spaces = groupSpaces(board, group);
+  return spaces.some(i => state.properties[i] && state.properties[i].owner !== pi)
+    && !spaces.some(i => i !== pos && state.properties[i] && state.properties[i].owner === pi);
+}
 
 function groupSpaces(board, group) {
   const out = [];
@@ -66,8 +88,11 @@ function pickBuild(state, board, pi) {
     const spaces = groupSpaces(board, s.group);
     if (!spaces.every(j => state.properties[j] && state.properties[j].owner === pi)) continue;
     const cost = s.price / 2;
-    // 现金安全垫：建完后仍留 300
-    if (state.cash[pi] - cost < 300) continue;
+    // 现金安全垫：建完后仍留 BUILD_RESERVE
+    if (state.cash[pi] - cost < BUILD_RESERVE) continue;
+    // 均匀建房：同色组里房子最少的先盖，其次最便宜的
+    const minInGroup = Math.min(...spaces.map(j => state.properties[j].houses || 0));
+    if ((prop.houses || 0) > minInGroup) continue;
     if (s.price < bestPrice) { bestPrice = s.price; best = i; }
   }
   return best;

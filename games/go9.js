@@ -155,12 +155,12 @@ exports.handleMove = (data, state, playerIndex) => {
 
   if (pass === true) {
     state.consecutivePasses++;
+    state.moveHistory.push({ pass: true, side: playerIndex });
     if (state.consecutivePasses >= 2) {
       finishByScore(state);
     } else {
       state.currentPlayer = playerIndex === P_BLACK ? P_WHITE : P_BLACK;
       state.koPoint = null;
-      state.moveHistory.push({ pass: true, side: playerIndex });
     }
     return null;
   }

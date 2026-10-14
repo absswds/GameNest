@@ -52,7 +52,7 @@ const S = {
 };
 const listeners = new Set();
 const notify = () => { for (const f of Array.from(listeners)) f(); };
-const resetRoom = () => { S.roomId = null; S.resumeToken = null; S.state = null; S.phase = null; S.mySeat = null; S.game = null; };
+const resetRoom = () => { S.match = null; S.roomId = null; S.resumeToken = null; S.state = null; S.phase = null; S.mySeat = null; S.game = null; };
 
 function connect() {
   if (S.ws && S.ws.readyState === WebSocket.OPEN) return Promise.resolve();
@@ -99,6 +99,7 @@ function applyRoomInfo(m) {
 
 function onMessage(m) {
   switch (m.type) {
+    case 'room_created': S.match = null; applyRoomInfo(m); break; // fresh room: drop the previous room's match
     case 'game_started': applyRoomInfo(m); S.phase = 'playing'; break;
     case 'game_state': applyRoomInfo(m); if (m.state) S.phase = 'playing'; break;
     case 'player_index_updated': S.mySeat = m.playerIndex; break;

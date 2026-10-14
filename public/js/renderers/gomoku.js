@@ -27,6 +27,7 @@
           var same = _hover && _hover.row === cell.row && _hover.col === cell.col;
           if (!same) {
             _hover = _lastState && _lastState.board[cell.row][cell.col] === null ? cell : null;
+            if (!_hover && window.showToast) window.showToast(_t('toast_cell_taken'));
             if (_lastState) draw(_lastState);
             return;
           }

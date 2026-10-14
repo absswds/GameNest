@@ -285,6 +285,9 @@ exports.handleMove = (data, state, playerIndex) => {
     if (!tile) return 'dv_no_card_there';
 
     // Check guess: for jokers, guessJoker must be true; for numbers, match num only (color is public)
+    // Input must be well-formed whatever the tile is (a number guess against a joker, or a joker
+    // guess against a number tile, is just a wrong guess: rejecting it would reveal the tile).
+    if (!guessJoker && (!Number.isInteger(guessNum) || guessNum < 0 || guessNum > 11)) return 'dv_invalid_guess';
     let correct;
     if (tile.wild) {
       correct = !!guessJoker;

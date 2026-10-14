@@ -229,6 +229,8 @@
       nums[i].classList.toggle('selected', hasSel && _pending && _pending.val === n);
       nums[i].disabled = !hasSel;
     }
+    var ph = document.getElementById('suPadHint');
+    if (ph) ph.style.display = (!hasSel && state && state.winner === null && !state.eliminated) ? '' : 'none';
   }
 
   function formatTime(ms) {
@@ -299,7 +301,10 @@
       el.textContent = winner === -1 ? t('draw', 'Draw') : (winner === _playerIndex ? t('you_win', 'You Win!') : t('opponent_wins', 'Opponent Wins'));
       el.style.color = winner === _playerIndex ? ACCENT : 'var(--text-muted)';
     } else if (state) {
-      el.textContent = t('sudoku_progress', 'Progress') + ' ' + state.doneCount + ' / ' + state.blanks;
+      // Same figures as the side card: filled / total and the percentage
+      var bl = state.blanks || 1;
+      el.textContent = t('sudoku_progress', 'Progress') + ' ' + state.doneCount + ' / ' + state.blanks
+        + ' (' + Math.min(100, Math.round(state.doneCount / bl * 100)) + '%)';
       el.style.color = 'var(--text-muted)';
     }
   }
@@ -357,6 +362,7 @@
               + t('sudoku_hint', 'Hint') + ' <span class="su-hint-badge" id="suHintBadge">×3</span>'
             + '</button>'
           + '</div>'
+          + '<div id="suPadHint" style="display:none;text-align:center;font-size:12px;color:var(--text-muted);">' + t('sudoku_pick_cell', 'Select a cell first') + '</div>'
           + '<div class="su-pad" id="suPad">'
             + '<button class="su-num" data-v="1" onclick="window._sudokuFill(1)">1</button>'
             + '<button class="su-num" data-v="2" onclick="window._sudokuFill(2)">2</button>'

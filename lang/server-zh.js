@@ -138,6 +138,8 @@ module.exports = {
   'ek_card_not_in_hand': '手上没有这张牌',
   'ek_must_target_player': '必须指定目标玩家',
   'ek_target_out': '目标玩家已出局',
+  'ek_invalid_target': '无效的目标玩家',
+  'dv_invalid_guess': '无效的猜测',
   'ek_card_no_effect': '这张牌不能单独打出',
 
   // Liar's Bar (lb_)

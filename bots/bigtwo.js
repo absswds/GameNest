@@ -3,6 +3,7 @@ exports.name = 'bigtwo';
 
 const { RANKS, rankVal, rankGroups } = require('./lib/cards');
 const { botName } = require('./lib/bot-name');
+const { detectType, canBeat, fiveClass } = require('../games/bigtwo');
 
 function suitVal(suit) {
   const order = { s: 3, h: 2, c: 1, d: 0 };
@@ -53,6 +54,24 @@ function findBeat(hand, lastPlay) {
       if (cards.length >= 3 && rankVal(rank) > tp.rank) return cards.slice(0, 3);
     }
     return null;
+  }
+
+  // Five-card hands (straight/flush/full house/four+one/straight flush): any 5-card combination of a
+  // higher class, or the same class with a higher rank, beats it. Pick the weakest beating hand.
+  if (fiveClass(tp)) {
+    const n = hand.length;
+    let best = null, bestKey = null;
+    for (let a = 0; a < n - 4; a++) for (let b = a + 1; b < n - 3; b++) for (let c = b + 1; c < n - 2; c++)
+      for (let d = c + 1; d < n - 1; d++) for (let e = d + 1; e < n; e++) {
+        const combo = [hand[a], hand[b], hand[c], hand[d], hand[e]];
+        const pt = detectType(combo);
+        if (!pt || !fiveClass(pt) || !canBeat(pt, tp)) continue;
+        const key = [fiveClass(pt), pt.rank, pt.suit || 0];
+        if (!bestKey || key[0] < bestKey[0] || (key[0] === bestKey[0] && (key[1] < bestKey[1] || (key[1] === bestKey[1] && key[2] < bestKey[2])))) {
+          best = combo; bestKey = key;
+        }
+      }
+    return best;
   }
 
   if (tp.type === 'straight') {

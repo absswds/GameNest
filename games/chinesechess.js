@@ -307,7 +307,12 @@ exports.handleMove = (data, state, playerIndex) => {
   if (state.winner !== null) return 'g_game_over';
   if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
 
-  const { from, to } = data || {};
+  let { from, to } = data || {};
+  // Also accept the flat shape used by legalMoves: {fromRow,fromCol,toRow,toCol}
+  if (!from && !to && data && Number.isInteger(data.fromRow) && Number.isInteger(data.toRow)) {
+    from = { row: data.fromRow, col: data.fromCol };
+    to = { row: data.toRow, col: data.toCol };
+  }
   if (!from || !to) return 'g_invalid_action';
   const { row: fr, col: fc } = from;
   const { row: tr, col: tc } = to;

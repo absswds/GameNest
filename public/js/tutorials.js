@@ -159,7 +159,7 @@
         { h: '发牌与先手', p: '使用 52 张牌（无王）。按人数平分，每人 floor(52/人数) 张，3 人时每人 17 张余 1 张，余牌依次发给前面的座位。持有方块 3 的玩家先出牌，并且第一手必须包含方块 3，否则提示「首出必须含方块3」。' },
         { h: '大小顺序', p: '点数从小到大：3 4 5 6 7 8 9 10 J Q K A 2，2 最大，3 最小。花色从大到小：黑桃 > 红桃 > 梅花 > 方块。点数相同的牌比花色。' },
         { h: '可出的牌型', p: '单张；对子（两张同点数，比较两张中较大的花色）；三条（三张同点数）；顺子（5 张及以上连续点数，最多 13 张，2 可以放在最高位，3 最小，没有 A-2-3 回环，比较最小的一张，起点相同的顺子不能互压）；同花（5 张同花色但不连续，比最大一张，再比花色）；葫芦（三条加一对，比三条的点数）；四条带一（四张同点数加任意一张，比四条的点数）；同花顺（5 张连续同花色，比最小一张，再比花色）。' },
-        { h: '出牌与压牌', p: '下家必须出与上一手相同牌型、相同张数的牌，并且更大。注意：五张牌型之间不分高低，同花顺只能压同花顺，葫芦只能压葫芦，四条带一只能压四条带一，以此类推。' },
+        { h: '出牌与压牌', p: '下家必须出与上一手相同牌型、相同张数的牌，并且更大。五张牌型之间有高低：顺子 < 同花 < 葫芦 < 四条带一 < 同花顺，高的牌型可以压低的牌型，同牌型再比点数和花色。超过 5 张的长顺子只能被同样张数的顺子压，五张牌型压不了它。' },
         { h: '过牌与新一轮', p: '有人领出牌时不能过牌，只有跟牌时才能「过」。你自己打出的牌没有人跟时也不能过。当其余所有人都连续过牌后，最后出牌的人重新自由领出，可以出任何合法牌型。' },
         { h: '胜负与计分', p: '第一个出完手牌的玩家获胜，游戏立刻结束。其他玩家的得分等于手中剩余牌数，数字越小越好，赢家为 0。' },
         { h: '提示', p: '先把小牌和零散牌走掉，留着 2 和 A 控制出牌权。顺子可以一次走掉很多牌。对手手牌快打完时，要优先打出对方难以压住的大牌型。' },
@@ -295,7 +295,7 @@
         { h: '落子与提子', p: '棋子落在交叉点上，不能移动。棋子的「气」是相邻的空点，一块棋子没有气时被提走。落子可以提掉对方无气的棋子。' },
         { h: '禁着', p: '自杀（落子后自己没有气）是不允许的，除非这一手同时提掉了对方的棋子。打劫：单子被提后，对方不能立刻在原位回提，需要隔一手才可以。' },
         { h: '终局', p: '连续两次虚着（pass）后对局结束。为防止无限对局，总手数达到 200 手也会强制结束。' },
-        { h: '数子法计分', p: '使用中国规则数子：每方得分等于棋盘上自己的棋子数加上只与自己颜色相邻的空点区域。因为黑棋先手，黑棋要贴 3.75 子，即黑棋得分 = 实地 - 3.75。得分高者获胜，若得分完全相同则判和。' },
+        { h: '数子法计分', p: '使用中国规则数子：每方得分等于棋盘上自己的棋子数加上只与自己颜色相邻的空点区域。因为黑棋先手，黑棋要贴 3¾ 子，按点数计即黑棋得分 = 实地 - 7.5。得分高者获胜，若得分完全相同则判和。' },
         { h: '多局制', p: '房间设置里可以选择一局、三局两胜或五局三胜。每局结束后双方座位对调，因此先手方轮换。机器人难度也可以在房间中选择。' },
         { h: '提示', p: '开局优先占角、再占边。注意保持棋子的气，别被分割成零散的小块。收官阶段别忘了黑棋要贴子。' },
       ]
@@ -314,13 +314,14 @@
     monopoly: {
       sections: [
         { h: '游戏目标', p: '通过买地、收租让对手破产，成为最后存活的玩家。每人起始 1500 元。' },
-        { h: '掷骰移动', p: '轮到你点「掷骰子」，棋子按两枚骰子点数之和前进。经过或停在起点可领 200 元。' },
-        { h: '买地与收租', p: '停在无主的地产/车站/电力公司可花钱购买（不买就保持无主，没有拍卖）。停在别人的地产要付租金：地产租金随房子数增加；车站按对方拥有的车站数收 60/120/240/420 元；电力公司按本次骰子点数之和 ×10 收租。' },
+        { h: '掷骰移动', p: '轮到你点「掷骰子」，棋子按两枚骰子点数之和前进。经过或停在起点可领 200 元。掷出双骰（两枚点数相同）时，本次落地结算完后可以再掷一次；连续三次双骰则不移动，直接入狱。' },
+        { h: '买地与收租', p: '停在无主的地产/车站/电力公司可花钱购买（不买就保持无主，没有拍卖）。停在别人的地产要付租金：地产租金按卡面，随房子数增加；车站按对方拥有的车站数收 25/50/100/200 元；电力公司按本次骰子点数之和 ×10 收租。' },
         { h: '垄断与建房', p: '集齐同色组的全部地产即垄断：空地租金翻倍，并且在自己的回合里可以花钱盖房（每级造价为地价的一半，最多 5 级 = 旅馆），租金大涨。' },
         { h: '机会卡', p: '停在「❓机会」格抽一张卡：可能得钱、罚款、向每位玩家收 50 元、前进/后退、回到起点、直接入狱，或获得免租卡（免一次租金，用掉即失效，地产、车站和电力公司都适用）。抽到前进/后退卡后，会在新位置继续结算（购买、付租金、交税）。' },
         { h: '税与其他格子', p: '「所得税」格要交 200 元；「探监」和「免费停车」格没有任何效果。' },
-        { h: '监狱', p: '踩到「入狱」角格或抽到入狱卡会被关进监狱。在监狱里每回合掷骰：掷出双数立即出狱并按点数前进；连续 3 次没掷出双数，则交 50 元出狱并按第 3 次的点数前进。' },
+        { h: '监狱', p: '踩到「入狱」角格或抽到入狱卡会被关进监狱。在监狱里每回合掷骰：掷出双数立即出狱并按点数前进（这次不再额外掷骰）；连续 3 次没掷出双数，则交 50 元出狱并按第 3 次的点数前进。' },
         { h: '破产', p: '现金一旦为负立即破产出局（没有抵押、出售或交易），名下地产变回无主。最后剩下的玩家获胜。' },
+        { h: '限时赛', p: '房主可设置轮数上限：30 / 50 / 80 轮或不限，默认 50 轮。所有存活玩家各走一回合算一轮（双骰再掷不算新的一轮）。到上限后按总资产（现金 + 地产买价 + 房屋造价）排名，最高者获胜，资产相同则现金多者获胜。' },
       ]
     },
     suikabattle: {
@@ -563,7 +564,7 @@
         { h: 'Deal and first lead', p: 'A 52-card deck without jokers is divided evenly, floor(52 / players) cards each, with any leftover cards going to the first seats. The holder of the 3 of diamonds leads, and the first play must include that card.' },
         { h: 'Ranking', p: 'Ranks from low to high: 3 4 5 6 7 8 9 10 J Q K A 2. The 2 is the highest and the 3 is the lowest. Suits from high to low: spades, hearts, clubs, diamonds. Equal ranks are compared by suit.' },
         { h: 'Combinations', p: 'Single. Pair (compared by the higher suit of the two). Triple. Straight (5 or more consecutive ranks, up to 13 cards, the 2 may be used at the top, the 3 is lowest, no A-2-3 wrap, compared by the lowest card, so equal straights cannot beat each other). Flush (5 cards of one suit, not consecutive, compared by highest card then suit). Full house (triple plus pair, compared by the triple). Four plus one (compared by the four). Straight flush (5 consecutive cards of one suit, compared by lowest card then suit).' },
-        { h: 'Beating a play', p: 'You must answer with the same combination type and the same number of cards, and it must be higher. Five-card hands do not outrank each other across types: a straight flush only beats another straight flush, a full house only beats a full house, and so on.' },
+        { h: 'Beating a play', p: 'You must answer with the same combination type and the same number of cards, and it must be higher. Five-card hands rank across types: straight < flush < full house < four plus one < straight flush, so a higher type beats a lower one, and equal types are compared by rank then suit. A straight longer than 5 cards can only be beaten by a straight of the same length.' },
         { h: 'Passing and new rounds', p: 'You cannot pass when leading, only when following. You also cannot pass on your own play. When every other player has passed in a row, the last player to play leads again and may play any valid combination.' },
         { h: 'Winning and scoring', p: 'The first player to play all cards wins and the game ends at once. Every other player scores the number of cards remaining in hand. Lower is better and the winner has 0.' },
         { h: 'Tips', p: 'Get rid of low and awkward cards first and keep 2s and aces to take control of the lead. Straights shed many cards at once. When an opponent is nearly out, play the big combinations that are hard to beat.' },
@@ -699,7 +700,7 @@
         { h: 'Placing and capturing', p: 'Stones are placed on intersections and never move. A liberty is an empty adjacent point. A group with no liberties is captured and removed. A move may capture enemy stones that have no liberties left.' },
         { h: 'Forbidden moves', p: 'Suicide (a move leaving your own group with no liberties) is illegal unless it captures enemy stones. Ko: after a single stone is captured, the opponent cannot immediately recapture on the same point and must wait a turn.' },
         { h: 'End of game', p: 'The game ends after two consecutive passes. To avoid endless games it also ends when the move count reaches 200.' },
-        { h: 'Area scoring', p: 'Chinese area scoring is used: each side scores its stones on the board plus the empty regions touched only by its own colour. Because Black moves first, Black gives 3.75 points of komi, so Black score = area minus 3.75. The higher score wins and an exact tie is a draw.' },
+        { h: 'Area scoring', p: 'Chinese area scoring is used: each side scores its stones on the board plus the empty regions touched only by its own colour. Because Black moves first, Black gives 3.75 stones of komi, which is 7.5 points, so Black score = area minus 7.5. The higher score wins and an exact tie is a draw.' },
         { h: 'Match mode', p: 'In the room settings you can choose a single game, best of 3 or best of 5. Seats swap after each game so the first move alternates. Bot difficulty can also be chosen in the room.' },
         { h: 'Tips', p: 'Take corners first, then sides. Keep your stones connected and with liberties instead of scattered. Remember the komi when counting the endgame.' },
       ]
@@ -718,13 +719,14 @@
     monopoly: {
       sections: [
         { h: 'Objective', p: 'Bankrupt your opponents by buying properties and collecting rent. Be the last player standing. Everyone starts with $1500.' },
-        { h: 'Movement', p: 'On your turn, click "Roll Dice" to advance by the total of both dice. Passing or landing on GO collects $200.' },
-        { h: 'Buying & Rent', p: 'Land on an unowned property/railroad/utility to buy it (decline and it stays unowned - no auctions). Landing on someone else’s property costs rent: property rent grows with houses; railroads charge $60/$120/$240/$420 for 1/2/3/4 owned; utilities charge 10x the dice total.' },
+        { h: 'Movement', p: 'On your turn, click "Roll Dice" to advance by the total of both dice. Passing or landing on GO collects $200. Rolling doubles lets you roll again once your landing is settled; a third double in a row sends you straight to Jail without moving.' },
+        { h: 'Buying & Rent', p: 'Land on an unowned property/railroad/utility to buy it (decline and it stays unowned - no auctions). Landing on someone else’s property costs rent: property rent follows the printed card and grows with houses; railroads charge $25/$50/$100/$200 for 1/2/3/4 owned; utilities charge 10x the dice total.' },
         { h: 'Monopoly & Building', p: 'Owning every property of a color group is a monopoly: unimproved rent doubles, and on your own turn you can buy houses (each costs half the property price, up to 5 = Hotel) to drastically raise rent.' },
         { h: 'Chance Cards', p: 'Landing on "❓ Chance" draws a card: gain or lose money, collect $50 from every player, advance or go back, return to GO, go directly to Jail, or keep a Free Rent card that waives one rent payment (properties, railroads and utilities) and is then used up. A card that moves you resolves the new space (buy, rent, tax).' },
         { h: 'Tax & Other Spaces', p: 'The "Income Tax" space costs $200. "Just Visiting" jail and "Free Parking" do nothing.' },
-        { h: 'Jail', p: 'Landing on "Go to Jail" or drawing the Jail card sends you to Jail. Each turn there, roll: doubles frees you and you move by that roll; after 3 failed rolls you pay $50 and move by the third roll.' },
+        { h: 'Jail', p: 'Landing on "Go to Jail" or drawing the Jail card sends you to Jail. Each turn there, roll: doubles frees you and you move by that roll (no extra roll for it); after 3 failed rolls you pay $50 and move by the third roll.' },
         { h: 'Bankruptcy', p: 'The moment your cash goes negative you are bankrupt and eliminated (there is no mortgaging, selling or trading) and your properties become unowned. Last player standing wins.' },
+        { h: 'Time Limit', p: 'The host can set a round limit: 30 / 50 / 80 rounds or unlimited (default 50). A round is one turn for every surviving player (a doubles re-roll does not start a new round). At the limit, players are ranked by total assets (cash + property prices + house costs) and the richest wins; equal assets go to the player with more cash.' },
       ]
     },
     suikabattle: {

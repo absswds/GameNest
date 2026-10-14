@@ -103,9 +103,20 @@ function isConsecutive(arr, len) {
   return true;
 }
 
+// Five-card hand classes: straight < flush < full house < four-one < straight flush.
+// A straight longer than 5 is a house extension and is only comparable with straights of its own length.
+const FIVE_CLASS = { straight: 1, flush: 2, full_house: 3, four_one: 4, straight_flush: 5 };
+function fiveClass(p) {
+  if (!p || !FIVE_CLASS[p.type]) return 0;
+  if (p.type === 'straight' && p.length !== 5) return 0;
+  return FIVE_CLASS[p.type];
+}
+
 function canBeat(newPlay, lastPlay) {
   if (!lastPlay) return true;
-  // Must be same type and length
+  const nc = fiveClass(newPlay), lc = fiveClass(lastPlay);
+  if (nc && lc && nc !== lc) return nc > lc; // different five-card types: the higher class wins
+  // Otherwise same type and length
   if (newPlay.type !== lastPlay.type) return false;
   if (newPlay.length !== lastPlay.length) return false;
   // Same type: compare rank, then suit for flush/straight_flush
@@ -265,3 +276,4 @@ exports.playerView = function (state, playerIndex) {
 
 exports.detectType = detectType;
 exports.canBeat = canBeat;
+exports.fiveClass = fiveClass;

@@ -30,7 +30,8 @@ exports.createBot = (playerIndex) => ({
 
       if (pos === -1) {
         // In base — can only move with 6
-        if (dice === 6) score = 100; // launch has high priority
+        if (dice !== 6) continue; // illegal: the game rejects launching without a 6
+        score = 100; // launch has high priority
       } else if (pos >= 52) {
         // Home stretch — exact finishes; otherwise advance (overshoot bounces back)
         let target = pos + dice;

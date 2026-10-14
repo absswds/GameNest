@@ -446,7 +446,7 @@
         var state = window._chState;
         var pi = parseInt(sessionStorage.getItem('playerIndex'));
         if (!state || state.winner != null) return;
-        if (state.currentPlayer !== pi) { selRow = -1; return; }
+        if (state.currentPlayer !== pi) { selRow = -1; if (window.showToast) window.showToast(_t('uno_opponent_turn')); return; }
 
         if (selRow >= 0 && selCol >= 0) {
           var clickedPiece = state.board[row][col];
@@ -474,6 +474,7 @@
           }
           if (!matched) {
             selRow = -1; selCol = -1;
+            if (window.showToast) window.showToast(_t('toast_illegal_move'));
             return;
           }
 

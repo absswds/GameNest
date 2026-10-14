@@ -138,6 +138,8 @@ module.exports = {
   'ek_card_not_in_hand': 'Card not in hand',
   'ek_must_target_player': 'Must target a player',
   'ek_target_out': 'Target is out',
+  'ek_invalid_target': 'Invalid target player',
+  'dv_invalid_guess': 'Invalid guess',
   'ek_card_no_effect': 'This card cannot be played on its own',
 
   // Liar's Bar (lb_)

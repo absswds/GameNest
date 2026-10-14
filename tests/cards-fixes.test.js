@@ -70,9 +70,9 @@ test('bigtwo: a same-suit straight is a straight flush and is detected as such',
   const st = bt.detectType([card('6', 'h'), card('7', 's'), card('8', 'h'), card('9', 'd'), card('10', 'c')]);
   assert.equal(sf.type, 'straight_flush');
   assert.equal(st.type, 'straight');
-  // a straight flush only competes with other straight flushes (tutorial rule)
+  // five-card types rank across types: a straight flush beats a plain straight, never the reverse
   assert.equal(bt.canBeat(st, sf), false);
-  assert.equal(bt.canBeat(sf, st), false);
+  assert.equal(bt.canBeat(sf, st), true);
   const high = bt.detectType(['6', '7', '8', '9', '10'].map((r) => card(r, 'h')));
   assert.equal(bt.canBeat(high, sf), true);
 });

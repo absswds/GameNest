@@ -8,8 +8,16 @@
   function esc(v) { return String(v).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function pname(i, me) {
     if (i === me) return _t('nb_side_you');
-    var pl = window._players && window._players[i];
-    return pl && pl.name ? pl.name : 'P' + (i + 1);
+    return window.getPlayerName ? window.getPlayerName(i) : 'P' + (i + 1);
+  }
+  // Log lines are composed here so players are named the same way as everywhere else
+  function logText(msg, me) {
+    if (!msg.kind) return msg.text;
+    var who = pname(msg.player, me);
+    if (msg.kind === 'hit') return _tf('nb_log_hit', who, msg.guess, msg.lives);
+    var dir = _t(msg.dir === 'high' ? 'nb_dir_high' : 'nb_dir_low');
+    if (msg.kind === 'forced') return _tf('nb_log_forced', who, msg.guess, dir, msg.low);
+    return _tf('nb_log_range', who, msg.guess, dir, msg.low, msg.high);
   }
 
   // Wide screens only: range + turn on the left, history, players and rules on the right
@@ -32,7 +40,7 @@
     var hist = '';
     var msgs = state.messages || [];
     for (var m = msgs.length - 1; m >= 0; m--) {
-      var t = esc(msgs[m].text).replace(/↓/g, '<span class="dir down">↓</span>').replace(/↑/g, '<span class="dir up">↑</span>');
+      var t = esc(logText(msgs[m], playerIndex)).replace(/↓/g, '<span class="dir down">↓</span>').replace(/↑/g, '<span class="dir up">↑</span>');
       hist += '<div class="nb-hrow' + (msgs[m].bombHit ? ' hit' : '') + '">' + t + '</div>';
     }
     var plist = '';
@@ -199,6 +207,7 @@
       input.focus();
     },
     render: function(state, container, playerIndex, winner) {
+      window._nbState = state;
       // Lives
       var livesEl = document.getElementById('nbLives');
       if (livesEl && state.lives) {
@@ -211,7 +220,7 @@
           var selfCls = i === playerIndex ? ' self' : '';
           var hitCls = (state.lastGuess && state.lastGuess.hit && state.lastGuess.player === i) ? ' hit' : '';
           html += '<div class="nb-life-pill' + deadCls + selfCls + hitCls + '">' +
-            '<span>P' + (i + 1) + '</span>' +
+            '<span>' + esc(pname(i, playerIndex)) + '</span>' +
             '<span class="nb-life-hearts">' + (isDead ? '💀' : hearts) + '</span>' +
             '</div>';
         }
@@ -238,7 +247,7 @@
           var msg = state.messages[m];
           var rowCls = msg.bombHit ? ' hit' : '';
           // Parse direction arrows for styling
-          var txt = msg.text;
+          var txt = esc(logText(msg, playerIndex));
           txt = txt.replace(/↓/g, '<span class="dir down">↓</span>');
           txt = txt.replace(/↑/g, '<span class="dir up">↑</span>');
           logHtml += '<div class="nb-log-row' + rowCls + '">' + txt + '</div>';
@@ -253,7 +262,7 @@
         statusEl.className = 'nb-status';
         if (winner !== null && winner !== undefined) {
           if (winner >= 0) {
-            statusEl.textContent = '🏆 ' + (winner === playerIndex ? _t('nb_you_win') : _tf('nb_player_wins', winner + 1));
+            statusEl.textContent = '🏆 ' + (winner === playerIndex ? _t('nb_you_win') : _tf('nb_player_wins', pname(winner, playerIndex)));
             statusEl.classList.add('win');
           } else if (winner === -1) {
             statusEl.textContent = _t('nb_draw');
@@ -270,7 +279,7 @@
             statusEl.textContent = _t('nb_your_turn');
           }
         } else {
-          statusEl.textContent = _tf('nb_waiting_player', state.currentPlayer + 1);
+          statusEl.textContent = _tf('nb_waiting_player', pname(state.currentPlayer, playerIndex));
           statusEl.classList.add('muted');
         }
       }
@@ -309,9 +318,19 @@
     var input = document.getElementById('nbInput');
     if (!input) return;
     var v = parseInt(input.value);
-    if (isNaN(v)) {
+    var st = window._nbState;
+    var msgKey = null;
+    if (isNaN(v)) msgKey = 'nb_enter_number';
+    else if (st && (v < st.low || v > st.high)) msgKey = 'nb_out_of_range';
+    if (msgKey) {
       var el = document.getElementById('nbStatus');
-      if (el) { el.textContent = _t('nb_enter_number'); el.className = 'nb-status danger'; setTimeout(function() { el.className = 'nb-status'; }, 1500); }
+      var txt = msgKey === 'nb_out_of_range' ? _tf(msgKey, st.low, st.high) : _t(msgKey);
+      if (el) {
+        var prevTxt = el.textContent, prevCls = el.className;
+        el.textContent = txt; el.className = 'nb-status danger';
+        clearTimeout(el._errTimer);
+        el._errTimer = setTimeout(function() { el.textContent = prevTxt; el.className = prevCls; }, 1500);
+      }
       return;
     }
     window.makeGameMove({ guess: v });

@@ -53,6 +53,9 @@ exports.playerView = (state, playerIndex) => {
     winner: state.winner,
     currentPlayer: state.currentPlayer,
     maxTile: board ? maxTile(board) : 0,
+    // Everyone's score is public (it is the race leaderboard); boards stay private
+    scores: state.scores.slice(),
+    aliveAll: state.alive.slice(),
     highScore: state.scores.reduce((m, v) => (v > m ? v : m), 0),
     startTime: state.startTime,
   };

@@ -183,6 +183,7 @@
           '</div>' +
           '<div class="uno-hand-wrap" id="unoHandWrap"><div class="uno-hand" id="unoHand"></div></div>' +
           '<div id="unoScrollHint" style="display:none;text-align:center;font-size:11px;color:var(--text-muted);padding:2px 0;">' + t('uno_scroll_hint') + '</div>' +
+          '<div id="unoStackHint" style="display:none;text-align:center;font-size:12px;color:var(--text-muted);padding:2px 0;"></div>' +
           '<div class="uno-actions">' +
             '<button class="btn btn-outline btn-sm" id="drawBtn">' + t('uno_draw') + '</button>' +
             '<button class="btn btn-outline btn-sm" id="unoBtn" style="display:none">UNO!</button>' +
@@ -266,7 +267,7 @@
       renderColorBadge(currentColor);
       renderDiscard(discard, discardChanged);
       renderDrawPile(deck, drawStack);
-      renderHand(hands[playerIndex] || [], discard, currentColor, isMyTurn, drewCard);
+      renderHand(hands[playerIndex] || [], discard, currentColor, isMyTurn, drewCard, drawStack);
       renderButtons(hands[playerIndex] || [], drawStack, isMyTurn, unoCalled[playerIndex]);
       renderChallenge(state, playerIndex);
       lastDiscardKey = discardKey;
@@ -357,7 +358,7 @@
       (drawStack > 0 ? '<div class="uno-draw-stack">+' + drawStack + '</div>' : '');
   }
 
-  function renderHand(hand, discard, currentColor, isMyTurn, drewCard) {
+  function renderHand(hand, discard, currentColor, isMyTurn, drewCard, drawStack) {
     var el = document.getElementById('unoHand');
     if (!el) return;
     if (!hand || hand.length === 0) {
@@ -368,7 +369,7 @@
     var html = '';
     for (var i = 0; i < hand.length; i++) {
       var c = hand[i];
-      var playable = isMyTurn && canPlayCard(c, top, currentColor);
+      var playable = isMyTurn && canPlayCard(c, top, currentColor, drawStack);
       // Off-turn the whole hand is dimmed; on your turn only the unplayable cards are
       var stateCls = isMyTurn ? (playable ? ' playable' : ' not-playable') : ' not-playable';
       var newCardCls = drewCard && i === hand.length - 1 ? ' new-card' : '';
@@ -385,8 +386,8 @@
             showToast(t('uno_opponent_turn'));
             return;
           }
-          if (!canPlayCard(cardData, top, currentColor)) {
-            showToast(t('uno_cannot_play'));
+          if (!canPlayCard(cardData, top, currentColor, drawStack)) {
+            showToast(drawStack > 0 ? tf('uno_stack_hint', drawStack) : t('uno_cannot_play'));
             return;
           }
           if (cardData.color === 'wild') {
@@ -409,6 +410,11 @@
       drawBtn.style.display = '';
       drawBtn.textContent = drawStack > 0 ? tf('uno_draw_stack', drawStack) : t('uno_draw');
       drawBtn.disabled = false;
+      var stackHint = document.getElementById('unoStackHint');
+      if (stackHint) {
+        stackHint.textContent = drawStack > 0 ? tf('uno_stack_hint', drawStack) : '';
+        stackHint.style.display = drawStack > 0 ? '' : 'none';
+      }
 
       if (hand && hand.length === 1) {
         unoBtn.style.display = '';
@@ -426,6 +432,8 @@
         unoBtn.style.display = 'none';
       }
     } else {
+      var sh = document.getElementById('unoStackHint');
+      if (sh) sh.style.display = 'none';
       drawBtn.style.display = 'none';
       unoBtn.style.display = 'none';
     }
@@ -482,8 +490,10 @@
     overlay.style.display = 'flex';
   }
 
-  function canPlayCard(card, topCard, currentColor) {
+  function canPlayCard(card, topCard, currentColor, drawStack) {
     if (!card) return false;
+    // With a +2/+4 pending, only another +2/+4 may be played (same as games/uno.js)
+    if (drawStack > 0) return card.value === '+2' || card.value === '+4';
     if (card.color === 'wild') return true;
     if (!topCard) return true;
     if (card.value === topCard.value) return true;

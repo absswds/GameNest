@@ -46,7 +46,7 @@ exports.handleMove = function (data, state, playerIndex) {
     state.lives[playerIndex]--;
     // Log hit with context
     var hitMsg = pick(state, 'P' + (playerIndex + 1) + ' 猜了 ' + guess + ' 💥 踩雷！扣 1 条命（剩余 ' + state.lives[playerIndex] + ' ❤️）', 'P' + (playerIndex + 1) + ' guessed ' + guess + ' 💥 Bomb! -1 life (' + state.lives[playerIndex] + ' ❤️ left)');
-    state.messages.push({ text: hitMsg, time: Date.now(), bombHit: true, player: playerIndex });
+    state.messages.push({ text: hitMsg, time: Date.now(), bombHit: true, player: playerIndex, kind: 'hit', guess: guess, lives: state.lives[playerIndex] });
     if (state.messages.length > 10) state.messages.shift();
     state.lastGuess = { player: playerIndex, guess: guess, hit: true };
 
@@ -87,9 +87,9 @@ exports.handleMove = function (data, state, playerIndex) {
 
   // Final forced guess — only 1 number left in range
   if (state.low === state.high) {
-    state.messages.push({ text: pick(state, 'P' + (playerIndex + 1) + ' 猜了 ' + guess + ' ' + narrowed + ' → 只剩 ' + state.low + ' 一个数字，下家必中弹！', 'P' + (playerIndex + 1) + ' guessed ' + guess + ' ' + narrowed + ' → only ' + state.low + ' left, next player will hit!'), time: Date.now(), bombHit: false, player: playerIndex });
+    state.messages.push({ text: pick(state, 'P' + (playerIndex + 1) + ' 猜了 ' + guess + ' ' + narrowed + ' → 只剩 ' + state.low + ' 一个数字，下家必中弹！', 'P' + (playerIndex + 1) + ' guessed ' + guess + ' ' + narrowed + ' → only ' + state.low + ' left, next player will hit!'), time: Date.now(), bombHit: false, player: playerIndex, kind: 'forced', dir: guess > state.bomb ? 'high' : 'low', guess: guess, low: state.low, high: state.high });
   } else {
-    state.messages.push({ text: pick(state, 'P' + (playerIndex + 1) + ' 猜了 ' + guess + ' ' + narrowed + ' → 范围 ' + state.low + '~' + state.high, 'P' + (playerIndex + 1) + ' guessed ' + guess + ' ' + narrowed + ' → range ' + state.low + '~' + state.high), time: Date.now(), bombHit: false, player: playerIndex });
+    state.messages.push({ text: pick(state, 'P' + (playerIndex + 1) + ' 猜了 ' + guess + ' ' + narrowed + ' → 范围 ' + state.low + '~' + state.high, 'P' + (playerIndex + 1) + ' guessed ' + guess + ' ' + narrowed + ' → range ' + state.low + '~' + state.high), time: Date.now(), bombHit: false, player: playerIndex, kind: 'range', dir: guess > state.bomb ? 'high' : 'low', guess: guess, low: state.low, high: state.high });
   }
   if (state.messages.length > 10) state.messages.shift();
   state.lastGuess = { player: playerIndex, guess: guess, hit: false };
