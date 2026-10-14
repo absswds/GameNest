@@ -137,6 +137,28 @@ test('cantonese: after a claim the holder cannot declare self-draw win or kong',
   assert.equal(cantonese.handleMove({ type: 'selfkong', suit: 'wan', num: 1 }, s, 1), 'mj_cannot_kong');
 });
 
+// ---- Cantonese: a disconnected seat makes a minimal automatic move (server skipDisconnectedTurn) ----
+
+test('cantonese: setCurrentActor discards the drawn tile for a gone player and passes a claim', () => {
+  for (const mod of [cantonese, sichuan]) {
+    const s = mod.createState();
+    if (mod === sichuan) s._options = { mahjongMode: 'cantonese' };
+    mod.initGame(s, 4);
+    const p = s.currentPlayer;
+    assert.equal(s.phase, 'play');
+    const drawn = s.drawn;
+    mod.setCurrentActor(s, (p + 1) % 4);
+    assert.ok(!s.hands[p].some(x => x.id === drawn), 'drawn tile was discarded');
+    assert.notEqual(mod.getCurrentActor(s), p, 'turn moved on');
+    if (s.phase === 'claim') {
+      const responder = mod.getCurrentActor(s);
+      const idx = s.claim.idx;
+      mod.setCurrentActor(s, 0);
+      assert.ok(s.phase !== 'claim' || s.claim.idx !== idx || mod.getCurrentActor(s) !== responder, 'claim passed');
+    }
+  }
+});
+
 // ---- whole games: 4 bots, driven by getCurrentActor, no deadlock ----
 
 function runGame(bots, s, limit) {

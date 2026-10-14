@@ -497,6 +497,21 @@ exports.getCurrentActor = function (state) {
   return state.currentPlayer;
 };
 
+// server.js skipDisconnectedTurn calls this when the current actor has been gone past the
+// reconnect grace: the missing seat makes a minimal automatic move (pass a claim, or discard
+// the tile just drawn) so the table never waits on them.
+exports.setCurrentActor = function (state) {
+  const p = exports.getCurrentActor(state);
+  if (!Number.isInteger(p) || p < 0) return;
+  if (state.phase === 'claim') {
+    exports.handleMove({ type: 'pass' }, state, p);
+  } else if (state.phase === 'play' && state.hasDrawn) {
+    const hand = state.hands[p] || [];
+    const pick = hand.find(t => t.id === state.drawn) || hand[hand.length - 1];
+    if (pick) exports.handleMove({ type: 'discard', tileId: pick.id }, state, p);
+  }
+};
+
 exports.playerView = function (state, playerIndex) {
   return {
     phase: state.phase,

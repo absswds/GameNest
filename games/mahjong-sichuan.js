@@ -669,9 +669,8 @@ exports.getCurrentActor = function (state) {
 // reconnect grace. Re-pointing currentPlayer at someone else is wrong for every phase
 // (they would act without drawing / the claim window would be skewed), so instead the
 // missing seat makes a minimal automatic move: swap / void choice, discard, or pass.
-// Cantonese has no setCurrentActor (matches standalone Cantonese, which also skips on disconnect).
 exports.setCurrentActor = function (state) {
-  if (state._variants === 'cantonese') return;
+  if (state._variants === 'cantonese') return cantonese.setCurrentActor(state);
   const p = exports.getCurrentActor(state);
   if (!Number.isInteger(p) || p < 0) return;
   const hand = state.hands[p] || [];

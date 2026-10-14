@@ -161,11 +161,13 @@ test('setCurrentActor: sichuan makes the absent seat play a minimal move (void -
   }
 });
 
-test('setCurrentActor: cantonese is a no-op (matches standalone Cantonese)', () => {
+test('setCurrentActor: cantonese makes the absent seat discard its drawn tile', () => {
   const s = game.createState();
   s._options = { mahjongMode: 'cantonese' };
   game.initGame(s, 4);
   const before = s.currentPlayer;
+  const drawn = s.drawn;
   game.setCurrentActor(s, 3);
-  assert.equal(s.currentPlayer, before);
+  assert.ok(!s.hands[before].some(t => t.id === drawn), 'drawn tile discarded');
+  assert.notEqual(game.getCurrentActor(s), before);
 });
