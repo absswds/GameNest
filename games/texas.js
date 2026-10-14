@@ -242,6 +242,17 @@ function showdown(state) {
   return state.showdownWinners[0];
 }
 
+// A hand is over. state.winner is set (the host's restart starts the next hand, see carryOver).
+// When only one seat still holds chips the whole session is over and that seat is the champion.
+function endHand(state, winner) {
+  state.winner = winner;
+  const alive = state.chips.map((c, i) => (c > 0 ? i : -1)).filter(i => i >= 0);
+  if (alive.length === 1) {
+    state.sessionOver = true;
+    state.winner = alive[0];
+  }
+}
+
 function advancePhase(state) {
   for (;;) {
     const able = state.chips.map((c, i) => i).filter(i => canAct(state, i));
@@ -263,7 +274,7 @@ function advancePhase(state) {
       const winner = showdown(state);
       state.phase = 'showdown';
       state.showdownWinner = winner;
-      state.winner = winner; // one hand per game, like a fold-out: otherwise nothing ever starts the next hand
+      endHand(state, winner);
       return;
     }
     // Reset bets for new round (the chips are already in state.pot)
@@ -329,7 +340,30 @@ exports.createState = () => {
     showdownWinner: null,
     showdownWinners: [],
     showdownHands: [],
+    out: [], // out[i]: seat i is busted (no chips at the start of the hand) and sits out the rest of the session
+    handNumber: 1,
+    sessionOver: false,
   };
+};
+
+// Continuous session: the next hand keeps the stacks and moves the button on. Call it on the fresh
+// state (createState) BEFORE initGame, with the previous state and the new seat count. It does
+// nothing (fresh session: 1000 each, random dealer, hand 1) unless the previous hand finished,
+// the session is not over, the seat count is unchanged (seats can be compacted, so chips are
+// mapped by seat index only then) and at least two seats still have chips.
+// Dealer = the next seat clockwise (higher index, wrapping) that still has chips.
+exports.carryOver = function(prev, next, playerCount) {
+  if (!prev || !next || prev.sessionOver || prev.winner == null) return false;
+  if (!Array.isArray(prev.chips) || prev.chips.length !== playerCount) return false;
+  if (prev.chips.filter(c => c > 0).length < 2) return false;
+  next.chips = prev.chips.slice();
+  const d = Number.isInteger(prev.dealer) ? prev.dealer : 0;
+  for (let i = 1; i <= playerCount; i++) {
+    const idx = (d + i) % playerCount;
+    if (next.chips[idx] > 0) { next.dealer = idx; break; }
+  }
+  next.handNumber = (prev.handNumber || 1) + 1;
+  return true;
 };
 
 exports.initGame = function(state, playerCount) {
@@ -337,17 +371,26 @@ exports.initGame = function(state, playerCount) {
   const deck = createDeck();
   shuffle(deck);
 
+  // carryOver() presets chips (and the dealer) for a continuing session; otherwise a fresh session
+  const carried = Array.isArray(state.chips) && state.chips.length === playerCount && state.chips.some(c => c > 0);
+  if (!carried) {
+    state.chips = new Array(playerCount).fill(startingChips);
+    state.handNumber = 1;
+  }
+  state.sessionOver = false;
+  state.out = state.chips.map(c => !(c > 0));
+
   state.deck = deck;
   state.communityCards = [];
   state.pot = 0;
   state.sidePots = [];
   state.bets = new Array(playerCount).fill(0);
   state.totalBet = new Array(playerCount).fill(0);
-  state.folded = new Array(playerCount).fill(false);
+  // Busted seats count as folded from the start: dealt nothing, skipped by blinds, action and showdown
+  state.folded = state.out.slice();
   state.allIn = new Array(playerCount).fill(false);
   state.acted = new Array(playerCount).fill(false);
   state.raiseClosed = new Array(playerCount).fill(false);
-  state.chips = new Array(playerCount).fill(startingChips);
   state.currentBet = 0;
   state.lastRaise = BIG_BLIND;
   state.winner = null;
@@ -355,20 +398,32 @@ exports.initGame = function(state, playerCount) {
   state.showdownWinners = [];
   state.showdownHands = [];
 
-  // Every game is a fresh hand with fresh stacks, so the button is random unless the caller preset it
-  state.dealer = Number.isInteger(state.dealer) ? state.dealer % playerCount : Math.floor(Math.random() * playerCount);
+  const seated = [];
+  for (let i = 0; i < playerCount; i++) if (!state.out[i]) seated.push(i);
 
-  // Deal 2 hole cards each
+  // Fresh session: random button among the seats; a preset dealer must hold chips (else next one that does)
+  let dealer = Number.isInteger(state.dealer) ? state.dealer % playerCount : seated[Math.floor(Math.random() * seated.length)];
+  while (state.out[dealer]) dealer = (dealer + 1) % playerCount;
+  state.dealer = dealer;
+  const after = (from) => {
+    for (let i = 1; i <= playerCount; i++) {
+      const idx = (from + i) % playerCount;
+      if (!state.out[idx]) return idx;
+    }
+    return from;
+  };
+
+  // Deal 2 hole cards to every seat that still has chips
   state.hands = [];
   for (let i = 0; i < playerCount; i++) {
-    state.hands.push([state.deck.pop(), state.deck.pop()]);
+    state.hands.push(state.out[i] ? [] : [state.deck.pop(), state.deck.pop()]);
   }
 
   state.phase = 'preflop';
 
   // Heads-up the dealer posts the small blind and the other player the big blind
-  const sbIndex = playerCount === 2 ? state.dealer : (state.dealer + 1) % playerCount;
-  const bbIndex = (sbIndex + 1) % playerCount;
+  const sbIndex = seated.length === 2 ? state.dealer : after(state.dealer);
+  const bbIndex = after(sbIndex);
   state.smallBlind = sbIndex;
   state.bigBlind = bbIndex;
   commit(state, sbIndex, SMALL_BLIND);
@@ -377,8 +432,13 @@ exports.initGame = function(state, playerCount) {
 
   // First to act preflop: left of the big blind (heads-up that is the dealer / small blind)
   const n = playerCount;
-  state.currentPlayer = (bbIndex + 1) % n;
-  while (!canAct(state, state.currentPlayer)) state.currentPlayer = (state.currentPlayer + 1) % n;
+  state.currentPlayer = bbIndex;
+  for (let k = 0; k < n; k++) {
+    state.currentPlayer = (state.currentPlayer + 1) % n;
+    if (canAct(state, state.currentPlayer)) break;
+  }
+  // Short stacks may have gone all-in on the blinds: nobody (or nobody who still has to decide) can act
+  advancePhase(state);
 };
 
 // null if `amount` (the total bet for this street) is a legal raise for the player, else an error key.
@@ -434,7 +494,7 @@ exports.handleMove = (data, state, playerIndex) => {
     if (notFolded.length === 1) {
       state.chips[notFolded[0]] += state.pot;
       state.pot = 0;
-      state.winner = notFolded[0];
+      endHand(state, notFolded[0]);
       state.currentPlayer = notFolded[0];
       state.bets = state.bets.map(() => 0);
       return null;
@@ -513,6 +573,9 @@ exports.playerView = function(state, playerIndex) {
     allIn: state.allIn ? state.allIn.slice() : [],
     smallBlind: state.smallBlind,
     bigBlind: state.bigBlind,
+    out: state.out ? state.out.slice() : [],
+    handNumber: state.handNumber || 1,
+    sessionOver: !!state.sessionOver,
     winner: state.winner,
     showdownWinner: state.showdownWinner,
     showdownWinners: state.showdownWinners ? state.showdownWinners.slice() : [],

@@ -1700,9 +1700,13 @@ wss.on('connection', (ws) => {
       if (currentRoom.match && !currentRoom.match.over && currentRoom.state && currentRoom.state.winner != null) {
         swapMatchSeats(currentRoom);
       }
+      // Texas: chips and dealer carry over between hands (games/texas.js carryOver decides; it starts a
+      // fresh session when the session is over or the seat count changed)
+      var prevTexas = currentRoom.game === 'texas' ? currentRoom.state : null;
       compactSeats(currentRoom);
       currentRoom.state = gameMod.createState();
       applyRuntimeState(currentRoom, totalPlayers);
+      if (prevTexas) gameMod.carryOver(prevTexas, currentRoom.state, totalPlayers);
 
       // 麻将多局：庄家/累计分必须在 initGame 之前写回，
       // 因为 initGame 要按 dealerIndex 发牌决定谁先摸（写在后面就永远是 0 号先手）。

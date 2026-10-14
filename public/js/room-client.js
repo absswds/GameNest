@@ -1388,6 +1388,15 @@
         isWin = (winner === playerIndex);
         txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';
       }
+    } else if (game === 'texas' && state && state.chips) {
+      // Continuous session: winner is the hand winner, or the champion when sessionOver
+      isWin = winner === playerIndex;
+      txt = isWin ? _t('you_win') : _t('you_lose');
+      var standings = state.chips.map(function(c, i) {
+        return (i === playerIndex ? _t('you') : window.getPlayerName(i)) + ' $' + c + (c > 0 ? '' : ' (' + _t('tx_out') + ')');
+      }).join(' · ');
+      sub = _t('tx_hand_no').replace('%s', state.handNumber || 1) + ' · ' + _t('tx_standings') + ': ' + standings;
+      if (state.sessionOver) sub = _t('tx_session_over') + ' · ' + _t('tx_champion') + (winner === playerIndex ? _t('you') : window.getPlayerName(winner)) + ' · ' + standings;
     } else if (game === 'sanguo' && state && state.winners) {
       // -2 lord side, -3 rebels, -4 spy; winners lists the winning seats
       isWin = state.winners.indexOf(playerIndex) >= 0;
@@ -1435,6 +1444,7 @@
         accentBtn.onclick = function() { window.doNextRound(); };
       }
     }
+    if (game === 'texas' && state && state.chips && accentBtn) accentBtn.textContent = _t(state.sessionOver ? 'tx_new_session' : 'tx_next_hand');
     pendingRestart = false;
 
     // Stays open until the player dismisses it, so the final board and score can be read.

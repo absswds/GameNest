@@ -51,19 +51,22 @@
       var folded = s.folded || [];
       var allIn = s.allIn || [];
       var bets = s.bets || [];
+      var out = s.out || [];
 
       for (var i = 0; i < chips.length; i++) {
         if (i === selfIdx) continue;
         var name = window.getPlayerName ? window.getPlayerName(i) : (_t('tx_player') + (i + 1));
         var isActive = s.currentPlayer === i;
-        var isFolded = folded[i];
+        var isOut = out[i];
+        var isFolded = folded[i] && !isOut;
         var isAllIn = allIn[i];
         var isDealer = s.dealer === i;
         var isBB = s.bigBlind === i;
         var isSB = s.smallBlind === i;
 
         var statusTag = '';
-        if (isFolded) statusTag = '<span style="font-size:10px;color:var(--danger);">' + _t('tx_folded') + '</span>';
+        if (isOut) statusTag = '<span style="font-size:10px;color:var(--danger);">' + _t('tx_out') + '</span>';
+        else if (isFolded) statusTag = '<span style="font-size:10px;color:var(--danger);">' + _t('tx_folded') + '</span>';
         else if (isAllIn) statusTag = '<span style="font-size:10px;color:var(--accent);">ALL IN!</span>';
         else if (isDealer) statusTag = '<span style="font-size:10px;color:var(--text-muted);">' + _t('tx_dealer') + '</span>';
 
@@ -74,7 +77,7 @@
         html +=
           '<div class="' + (isActive ? 'is-active-turn' : '') + '" style="text-align:center;padding:6px 10px;background:var(--bg);border-radius:12px;' +
           (isActive ? '' : 'border:1px solid var(--border);') +
-          (isFolded ? 'opacity:0.5;' : '') + '">' +
+          (isFolded || isOut ? 'opacity:0.5;' : '') + (isOut ? 'filter:grayscale(1);' : '') + '">' +
           '<div style="font-size:12px;font-weight:600;">' + escHtml(name) + blindTag + '</div>' +
           '<div style="font-size:11px;color:var(--text-muted);">$' + (chips[i] || 0) + '</div>' +
           (bets[i] > 0 ? '<div style="font-size:11px;color:var(--accent);font-weight:600;">' + _t('tx_bet') + bets[i] + '</div>' : '') +
@@ -134,10 +137,13 @@
       var myBet = (s.bets || [])[selfIdx] || 0;
       var isAllIn = (s.allIn || [])[selfIdx];
       var isFolded = (s.folded || [])[selfIdx];
+      var isOut = (s.out || [])[selfIdx];
       var text = _t('tx_your_chips') + myChips;
       if (myBet > 0) text += _t('tx_bet_appendix') + myBet + ')';
       if (isAllIn) text = 'ALL IN! 💎 ' + _t('tx_all_in_text');
       if (isFolded) text = _t('tx_folded');
+      if (isOut) text = _t('tx_you_out');
+      if (s.handNumber) text = _t('tx_hand_no').replace('%s', s.handNumber) + ' · ' + text;
       el.textContent = text;
     },
 

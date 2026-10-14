@@ -204,13 +204,14 @@
     },
     texas: {
       sections: [
-        { h: '目标', p: '德州扑克最多 8 人。每人手握 2 张底牌，与桌面 5 张公共牌组成最大的 5 张牌，赢得底池。本版本每场只打一手牌，打完即结束。' },
-        { h: '筹码与盲注', p: '每位玩家开局有 1000 筹码。庄家位随机，小盲位于庄家下家，下注 10；大盲再下一位，下注 20。两人单挑时庄家下小盲。' },
+        { h: '目标', p: '德州扑克最多 8 人。每人手握 2 张底牌，与桌面 5 张公共牌组成最大的 5 张牌，赢得底池。本版本是连续牌局：每打完一手，筹码和庄家位都会带到下一手，直到只剩一位玩家有筹码。' },
+        { h: '筹码与盲注', p: '每位玩家开局有 1000 筹码，之后筹码一直带到下一手。第一手庄家位随机，之后每手庄家位顺时针移到下一位还有筹码的玩家。小盲位于庄家下家，下注 10；大盲再下一位，下注 20。两人单挑时庄家下小盲。' },
         { h: '流程', p: '翻牌前（每人 2 张底牌）→ 翻牌（3 张公共牌）→ 转牌（1 张）→ 河牌（1 张）→ 摊牌。每一轮下注结束后进入下一阶段。翻牌前由大盲下家先行动，两人单挑时由庄家先行动。' },
         { h: '可用操作', p: '弃牌：放弃本手牌。过牌：当前无需补注时可以不下注。跟注：补到当前最高注。加注：填写本轮的总下注额，至少要比当前最高注多出上一次加注的幅度，本轮还没人下注时至少下 20（一个大盲）。短码全下不足最小加注时，之前已行动的人只能跟注或弃牌，不能再加注。全下：把剩下的筹码全部推出。' },
         { h: '牌型大小', p: '从小到大：高牌、一对、两对、三条、顺子、同花、葫芦、四条、同花顺。取 7 张牌（2 张底牌加 5 张公共牌）中最好的 5 张。A-2-3-4-5 是最小的顺子（轮子）。牌型相同时比较踢脚牌。' },
+        { h: '连续牌局', p: '每手结束后，房主点“下一手”继续。筹码为 0 的玩家出局，之后不发牌、不下盲注，但仍留在房间观战。最后只剩一位有筹码的玩家时牌局结束，他就是最终赢家，再开始就是新的一场，每人重新 1000 筹码。中途有人加入或离开也会重新开一场。' },
         { h: '胜负', p: '除一人以外全部弃牌时，剩下的那位直接赢下底池。否则摊牌时牌型最大者赢下底池。牌型完全相同则平分，多出的筹码给庄家左手边最近的人。有人全下时按投入分成主池和边池，每个池只由投入过它的未弃牌玩家争夺。' },
-        { h: '提示', p: '起手强牌（大对子、AK）可以主动加注，弱牌在后位不必勉强跟注。观察对手的下注力度来判断牌力。全下前请确认胜率，因为一局只有一手牌，输光就没有下一手了。' },
+        { h: '提示', p: '起手强牌（大对子、AK）可以主动加注，弱牌在后位不必勉强跟注。观察对手的下注力度来判断牌力。全下前请确认胜率，输光筹码就出局，不再发牌，只能旁观。' },
       ]
     },
     flightchess: {
@@ -609,13 +610,14 @@
     },
     texas: {
       sections: [
-        { h: 'Goal', p: 'Texas Hold em supports up to 8 players. Each player has 2 hole cards and makes the best 5-card hand using the 5 community cards to win the pot. This version plays a single hand per game.' },
-        { h: 'Chips and blinds', p: 'Every player starts with 1000 chips. The dealer button is random. The small blind is the next seat and posts 10, and the big blind is the seat after that and posts 20. Heads-up, the dealer posts the small blind.' },
+        { h: 'Goal', p: 'Texas Hold em supports up to 8 players. Each player has 2 hole cards and makes the best 5-card hand using the 5 community cards to win the pot. This version is a continuous session: chips and the dealer button carry over from hand to hand until only one player has chips.' },
+        { h: 'Chips and blinds', p: 'Every player starts with 1000 chips and keeps them from hand to hand. The first dealer is random, and after that the button moves clockwise to the next player who still has chips. The small blind is the next seat and posts 10, and the big blind is the seat after that and posts 20. Heads-up, the dealer posts the small blind.' },
         { h: 'Flow', p: 'Preflop (2 hole cards each), flop (3 community cards), turn (1), river (1), then showdown. Each betting round ends before the next stage. Preflop, the seat after the big blind acts first, and when heads-up the dealer acts first.' },
         { h: 'Actions', p: 'Fold gives up the hand. Check passes when there is nothing to call. Call matches the current bet. Raise sets your total bet for the round, which must exceed the current bet by at least the size of the last raise, or be at least 20 (one big blind) when nobody has bet this round. A short all-in that is below the minimum raise does not reopen raising for players who already acted: they can only call or fold. All-in pushes all remaining chips.' },
         { h: 'Hand ranking', p: 'From low to high: high card, pair, two pair, three of a kind, straight, flush, full house, four of a kind, straight flush. The best 5 of the 7 available cards counts. A-2-3-4-5 is the lowest straight (the wheel). Equal hands are decided by kickers.' },
+        { h: 'Session', p: 'After each hand the host starts the next one. A player with 0 chips is out: no cards, no blinds, but still in the room watching. When only one player has chips the session ends and that player is the champion; starting again begins a new session with 1000 chips each. A new session also starts if a player joins or leaves.' },
         { h: 'Result', p: 'If everyone else folds, the last player wins the pot. Otherwise the best hand at showdown wins the pot. Exactly equal hands split the pot, with any odd chip going to the player closest left of the dealer. When someone is all-in the chips are split into a main pot and side pots, and each pot is contested only by the non-folded players who put chips into it.' },
-        { h: 'Tips', p: 'Raise with strong starting hands such as big pairs or ace-king, and do not chase weak hands from late position. Watch bet sizing to read opponents. Think before going all-in, because there is only one hand per game.' },
+        { h: 'Tips', p: 'Raise with strong starting hands such as big pairs or ace-king, and do not chase weak hands from late position. Watch bet sizing to read opponents. Think before going all-in, because a player with no chips is out and is no longer dealt in.' },
       ]
     },
     flightchess: {
