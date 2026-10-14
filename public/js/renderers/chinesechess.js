@@ -317,9 +317,7 @@
     var sy = margin + boardH + cs * 0.5 + 20;
     ctx.fillStyle = '#3a3028'; ctx.font = 'bold 16px system-ui,-apple-system,sans-serif'; ctx.textAlign = 'center';
     var pi = parseInt(sessionStorage.getItem('playerIndex'));
-    if (state.winner != null) {
-        ctx.fillText(state.winner === pi ? _t('xq_status_win') : _t('xq_status_lose'), W / 2, sy);
-    } else {
+    if (state.winner == null) {
       if (state.currentPlayer === pi) {
         ctx.fillStyle = '#c8a45c'; ctx.fillText(_t('xq_status_your_turn'), W / 2, sy);
       } else {

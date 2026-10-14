@@ -378,13 +378,7 @@
     var sy = margin + boardH + cs * 0.5 + 24;
     ctx.fillStyle = '#3a3028'; ctx.font = 'bold 16px system-ui,-apple-system,sans-serif'; ctx.textAlign = 'center';
     var pi = parseInt(sessionStorage.getItem('playerIndex'));
-    if (state.winner != null) {
-      if (state.winner === -1) {
-        ctx.fillText(window._t('ch_draw'), W / 2, sy);
-      } else {
-        ctx.fillText(state.winner === pi ? window._t('ch_you_win') : window._t('ch_you_lose'), W / 2, sy);
-      }
-    } else {
+    if (state.winner == null) {
       if (state.currentPlayer === pi) {
         ctx.fillStyle = '#c8a45c'; ctx.fillText(window._t('ch_your_turn'), W / 2, sy);
       } else {

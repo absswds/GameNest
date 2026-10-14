@@ -253,11 +253,6 @@
     ctx.textAlign = 'center';
     var pi3 = parseInt(sessionStorage.getItem('playerIndex'));
     if (state.winner != null) {
-      if (state.winner === -1) {
-        ctx.fillText(window._t('rv_draw'), W / 2, statusY);
-      } else {
-        ctx.fillText(state.winner === pi3 ? window._t('rv_you_win') : window._t('rv_you_lose'), W / 2, statusY);
-      }
       ctx.font = '13px system-ui,-apple-system,sans-serif';
       ctx.fillStyle = '#666';
       ctx.fillText((state.scores ? state.scores[0] : 0) + ' : ' + (state.scores ? state.scores[1] : 0), W / 2, statusY + 20);

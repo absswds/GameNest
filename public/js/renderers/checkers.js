@@ -281,9 +281,7 @@
     ctx.fillStyle = '#3a3028'; ctx.font = 'bold 16px "Segoe UI",system-ui,-apple-system,sans-serif';
     ctx.textAlign = 'center';
     var pi = parseInt(sessionStorage.getItem('playerIndex'));
-    if (state.winner != null) {
-      ctx.fillText(state.winner === pi ? _t('ck_status_win') : _t('ck_status_lose'), W / 2, sy2);
-    } else {
+    if (state.winner == null) {
       if (state.currentPlayer === pi) {
       ctx.fillStyle = '#c8a45c';
       ctx.fillText(_t('ck_status_your_turn'), W / 2, sy2);

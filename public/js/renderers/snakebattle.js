@@ -49,11 +49,6 @@
       });
       ctx.globalAlpha = 1;
     });
-    if (state.winner != null) {
-      ctx.fillStyle = 'rgba(0,0,0,.52)'; ctx.fillRect(0, 0, width, height);
-      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '800 ' + Math.max(21, width * .075) + 'px system-ui';
-      ctx.fillText(state.winner === -1 ? _t('sb_draw_canvas') : state.winner === playerIndex ? _t('sb_you_survived_canvas') : _tf('sb_player_wins_canvas', state.winner + 1), width / 2, height / 2);
-    }
   }
 
   function snapshot(state) {

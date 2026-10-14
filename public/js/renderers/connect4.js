@@ -270,17 +270,7 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    if (state.winner != null) {
-      if (state.winner === -1) {
-        ctx.fillStyle = '#555';
-        ctx.font = 'bold 16px system-ui,-apple-system,sans-serif';
-        ctx.fillText(_t('c4_status_draw'), W / 2, sy);
-      } else {
-        ctx.fillStyle = state.winner === pi ? '#c8a45c' : '#e63946';
-        ctx.font = 'bold 16px system-ui,-apple-system,sans-serif';
-        ctx.fillText(state.winner === pi ? _t('c4_status_win') : _t('c4_status_lose'), W / 2, sy);
-      }
-    } else {
+    if (state.winner == null) {
       if (state.currentPlayer === pi) {
         ctx.fillStyle = '#c8a45c';
         ctx.font = 'bold 16px system-ui,-apple-system,sans-serif';
