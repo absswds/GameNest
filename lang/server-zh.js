@@ -224,6 +224,9 @@ module.exports = {
   'go_out_of_bounds': '超出棋盘',
   'go_position_occupied': '该位置已有棋子',
   'go_ko_rule': '打劫规则：不能立刻提回',
+  'go_mark_empty': '这里没有棋子',
+  'go_scoring_phase': '正在计分：请标记死子、确认或继续对局',
+  'go_not_scoring': '现在不是计分阶段',
   'go_suicide_point': '禁着点：此处落子会自杀',
 
   // Hearts (ht_)

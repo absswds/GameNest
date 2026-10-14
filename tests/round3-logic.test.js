@@ -78,7 +78,7 @@ test('go9: both passes are recorded in moveHistory', () => {
   go9.initGame(state, 2);
   assert.equal(go9.handleMove({ pass: true }, state, state.currentPlayer), null);
   assert.equal(go9.handleMove({ pass: true }, state, state.currentPlayer), null);
-  assert.notEqual(state.winner, null);
+  assert.equal(state.phase, 'scoring');
   assert.equal(state.moveHistory.filter(m => m.pass).length, 2);
 });
 

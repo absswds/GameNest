@@ -24,6 +24,9 @@ exports.createState = () => ({
   captures: [0, 0],            // captures[P_BLACK], captures[P_WHITE]
   koPoint: null,
   consecutivePasses: 0,
+  phase: 'playing',            // 'playing' | 'scoring' (dead-stone marking after two passes)
+  deadMarks: [],               // [{row,col}] stones marked dead during scoring
+  accepted: [false, false],    // who has confirmed the current marks
   moveHistory: [],
   _playerCount: 2,
 });
@@ -141,14 +144,70 @@ function scoreGame(board) {
 
 const MOVE_CAP = 200; // plies; keeps a game between two stubborn players from running forever
 function finishByScore(state) {
+  state.phase = 'playing';
+  state.accepted = [false, false];
   const scores = scoreGame(state.board);
   if (Math.abs(scores.black - scores.white) < 0.01) state.winner = -1;
   else state.winner = scores.black > scores.white ? P_BLACK : P_WHITE;
   state.finalScores = scores;
 }
 
+const other = (p) => (p === P_BLACK ? P_WHITE : P_BLACK);
+
+// Scoring phase: both players may toggle dead groups, accept the result, or resume play.
+// state.currentPlayer always points at a seat that has NOT accepted yet, so the server's plain
+// currentPlayer bot scheduling works: a bot is only asked while it still has to accept.
+function handleScoring(data, state, playerIndex) {
+  const type = data && data.type;
+  if (type === 'mark') {
+    const { row, col } = data;
+    if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || row >= SIZE || col < 0 || col >= SIZE)
+      return 'g_invalid_action';
+    if (state.board[row][col] === EMPTY) return 'go_mark_empty';
+    const grp = getGroup(state.board, row, col);
+    const dead = new Set(state.deadMarks.map(p => `${p.row},${p.col}`));
+    if (dead.has(`${row},${col}`)) {
+      const gs = new Set(grp.map(p => `${p.row},${p.col}`));
+      state.deadMarks = state.deadMarks.filter(p => !gs.has(`${p.row},${p.col}`));
+    } else {
+      state.deadMarks = state.deadMarks.concat(grp);
+    }
+    state.accepted = [false, false];
+    state.currentPlayer = other(playerIndex);
+    return null;
+  }
+  if (type === 'accept') {
+    state.accepted[playerIndex] = true;
+    if (state.accepted[P_BLACK] && state.accepted[P_WHITE]) {
+      for (const p of state.deadMarks) {
+        // a dead stone counts as captured by the opponent
+        state.captures[sideForStone(state.board[p.row][p.col]) === P_BLACK ? P_WHITE : P_BLACK]++;
+        state.board[p.row][p.col] = EMPTY;
+      }
+      state.deadMarks = [];
+      finishByScore(state);
+    } else {
+      state.currentPlayer = other(playerIndex);
+    }
+    return null;
+  }
+  if (type === 'resume') {
+    state.phase = 'playing';
+    state.deadMarks = [];
+    state.accepted = [false, false];
+    state.consecutivePasses = 0;
+    state.koPoint = null;
+    state.moveHistory.push({ resume: true, side: playerIndex });
+    state.currentPlayer = other(playerIndex); // the opponent of whoever rejected the count moves next
+    return null;
+  }
+  return 'go_scoring_phase';
+}
+
 exports.handleMove = (data, state, playerIndex) => {
   if (state.winner !== null) return 'g_game_over';
+  if (state.phase === 'scoring') return handleScoring(data, state, playerIndex);
+  if (data && (data.type === 'mark' || data.type === 'accept' || data.type === 'resume')) return 'go_not_scoring';
   if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
 
   const { row, col, pass } = data || {};
@@ -157,7 +216,11 @@ exports.handleMove = (data, state, playerIndex) => {
     state.consecutivePasses++;
     state.moveHistory.push({ pass: true, side: playerIndex });
     if (state.consecutivePasses >= 2) {
-      finishByScore(state);
+      state.phase = 'scoring';
+      state.deadMarks = [];
+      state.accepted = [false, false];
+      state.koPoint = null;
+      state.currentPlayer = other(playerIndex);
     } else {
       state.currentPlayer = playerIndex === P_BLACK ? P_WHITE : P_BLACK;
       state.koPoint = null;

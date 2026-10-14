@@ -6,7 +6,7 @@ module.exports = {
   gomoku: 'Move {row,col} 0-14. Ex: {"row":7,"col":7}.',
   connect4: 'Move {col} column 0-6. Ex: {"col":3}.',
   reversi: 'Move {row,col}, or {pass:true} when no legal move. Ex: {"row":2,"col":3}.',
-  go9: 'Move {row,col} 0-8, or {pass:true}. Ex: {"row":4,"col":4}.',
+  go9: 'Move {row,col} 0-8, or {pass:true}. Ex: {"row":4,"col":4}. After two passes the game enters a scoring phase (state.phase="scoring"): either seat sends {type:"mark",row,col} to toggle a whole group dead/alive (clears both accepts), {type:"accept"} to confirm (both accepted = score), or {type:"resume"} to go back to play.',
   checkers: 'Move {from:{row,col},to:{row,col}} (0-based, row 0 = top). Captures are forced. A multi-jump is submitted one hop at a time: each make_move is a single jump and the turn stays with you (state.mustCapture true) until the chain ends, so never send the final landing square directly. state.legalMoves lists {from,to,captures}.',
   chess: 'Move {from:{row,col},to:{row,col},promote?} (0-based, row 0 = rank 8, col 0 = file a; NOT "e2" strings). promote is one of "q","r","b","n" (default "q"). Ex: {"from":{"row":6,"col":4},"to":{"row":4,"col":4}}. legalMoves entries carry the same from/to plus promotion (null unless a promotion).',
   chinesechess: 'Move {from:{row,col},to:{row,col}} (row 0 = black back rank at top, row 9 = red; col 0-8). state.legalMoves is flat {fromRow,fromCol,toRow,toCol}; that flat shape is also accepted. Ex: {"from":{"row":9,"col":1},"to":{"row":7,"col":2}}.',

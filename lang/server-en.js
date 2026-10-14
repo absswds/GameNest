@@ -224,6 +224,9 @@ module.exports = {
   'go_out_of_bounds': 'Out of bounds',
   'go_position_occupied': 'Position occupied',
   'go_ko_rule': 'Ko rule: cannot recapture immediately',
+  'go_mark_empty': 'No stone here',
+  'go_scoring_phase': 'Scoring: mark dead stones, accept, or resume play',
+  'go_not_scoring': 'Not in the scoring phase',
   'go_suicide_point': 'Suicide point: would be self-capture',
 
   // Hearts (ht_)

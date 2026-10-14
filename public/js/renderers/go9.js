@@ -13,6 +13,8 @@
           <canvas id="goCanvas" style="width:100%;display:block;border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,.08);touch-action:manipulation;"></canvas>
           <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center;">
             <button id="goPassBtn" class="btn btn-outline btn-sm" style="padding:12px 32px;font-size:16px;border-radius:28px;">` + _t('go_pass') + `</button>
+            <button id="goAcceptBtn" class="btn btn-primary btn-sm" style="display:none;padding:12px 24px;font-size:16px;border-radius:28px;">` + _t('go_accept') + `</button>
+            <button id="goResumeBtn" class="btn btn-outline btn-sm" style="display:none;padding:12px 24px;font-size:16px;border-radius:28px;">` + _t('go_resume') + `</button>
             <div id="goInfo" style="font-size:15px;color:var(--text);text-align:center;font-weight:600;min-width:160px;line-height:1.5;"></div>
           </div>
         </div>`;
@@ -43,6 +45,13 @@
         window.makeGameMove({ pass: true });
       });
 
+      document.getElementById('goAcceptBtn').addEventListener('click', function() {
+        window.makeGameMove({ type: 'accept' });
+      });
+      document.getElementById('goResumeBtn').addEventListener('click', function() {
+        window.makeGameMove({ type: 'resume' });
+      });
+
       canvas.addEventListener('click', function(e) {
         var r = canvas.getBoundingClientRect();
         var x = (e.clientX - r.left) * (W / r.width);
@@ -53,6 +62,10 @@
         var state = window._goState;
         var pi = parseInt(sessionStorage.getItem('playerIndex'));
         if (!state || state.winner != null) return;
+        if (state.phase === 'scoring') {
+          if (state.board[row][col] !== 0) window.makeGameMove({ type: 'mark', row: row, col: col });
+          return;
+        }
         if (state.currentPlayer !== pi) return;
         window.makeGameMove({ row: row, col: col });
       });
@@ -93,6 +106,10 @@
       }
 
       // === Stones ===
+      var dead = {};
+      if (state.phase === 'scoring' && state.deadMarks) {
+        for (var di = 0; di < state.deadMarks.length; di++) dead[state.deadMarks[di].row + ',' + state.deadMarks[di].col] = true;
+      }
       for (var r = 0; r < SIZE; r++) {
         for (var c = 0; c < SIZE; c++) {
           var s = state.board[r][c];
@@ -117,6 +134,18 @@
           // Border
           ctx.strokeStyle = s === 1 ? '#000' : '#bbb'; ctx.lineWidth = 0.5;
           ctx.beginPath(); ctx.arc(sx, sy, rad, 0, Math.PI*2); ctx.stroke();
+
+          // Dead-stone mark (scoring phase): fade the stone and draw an X
+          if (dead[r + ',' + c]) {
+            ctx.fillStyle = s === 1 ? 'rgba(236,215,170,0.62)' : 'rgba(207,173,112,0.62)';
+            ctx.beginPath(); ctx.arc(sx, sy, rad, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2.2;
+            var xr = rad * 0.5;
+            ctx.beginPath();
+            ctx.moveTo(sx - xr, sy - xr); ctx.lineTo(sx + xr, sy + xr);
+            ctx.moveTo(sx + xr, sy - xr); ctx.lineTo(sx - xr, sy + xr);
+            ctx.stroke();
+          }
 
           // Ko marker (red dot)
           if (state.koPoint && state.koPoint.row === r && state.koPoint.col === c) {
@@ -143,16 +172,29 @@
       // === Info ===
       var info = document.getElementById('goInfo');
       var passBtn = document.getElementById('goPassBtn');
+      var scoring = state.phase === 'scoring' && state.winner == null;
       if (info) {
         if (state.winner != null) {
           var w = state.winner;
           info.innerHTML = w === -1 ? _t('go_draw') : (w === playerIndex ? _t('go_win') : _t('go_lose'));
           if (state.finalScores) info.innerHTML += '<br><span style="font-size:12px;color:var(--text-muted);">' + _t('go_score_black') + state.finalScores.black.toFixed(1) + _t('go_score_mid') + state.finalScores.white.toFixed(1) + _t('go_score_komi') + '</span>';
+        } else if (scoring) {
+          var acc = state.accepted || [false, false];
+          info.innerHTML = _t('go_scoring_hint') + '<br><span style="font-size:12px;color:var(--text-muted);">' +
+            (acc[playerIndex] ? _t('go_you_accepted') : _t('go_you_not_accepted')) + ' · ' +
+            (acc[1 - playerIndex] ? _t('go_opp_accepted') : _t('go_opp_not_accepted')) + '</span>';
         } else {
           info.textContent = state.currentPlayer === playerIndex ? _t('go_your_turn') : _t('go_opponent_turn');
         }
       }
-      if (passBtn) passBtn.style.display = (state.currentPlayer === playerIndex && state.winner == null) ? '' : 'none';
+      if (passBtn) passBtn.style.display = (!scoring && state.currentPlayer === playerIndex && state.winner == null) ? '' : 'none';
+      var acceptBtn = document.getElementById('goAcceptBtn');
+      var resumeBtn = document.getElementById('goResumeBtn');
+      if (acceptBtn) {
+        acceptBtn.style.display = scoring ? '' : 'none';
+        acceptBtn.disabled = !!(state.accepted && state.accepted[playerIndex]);
+      }
+      if (resumeBtn) resumeBtn.style.display = scoring ? '' : 'none';
     }
   });
 

@@ -67,6 +67,7 @@ exports.createBot = pi => ({
   name: botName(pi, 'zh'),
   playerIndex: pi,
   getMove(state) {
+    if (state.phase === 'scoring') return { type: 'accept' };
     const board = state.board;
     const side = pi;
     const copy = board.map(r => [...r]);
