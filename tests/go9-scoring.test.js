@@ -109,3 +109,28 @@ test('go9: bot-vs-bot games finish through currentPlayer scheduling', () => {
     assert.notEqual(s.winner, null);
   }
 });
+
+test('go9 bot: unmarks its own living group instead of accepting', () => {
+  const s = fresh();
+  territoryBoard(s);
+  toScoring(s);
+  // Black marks the white wall (which owns cols 6-8) dead and accepts
+  assert.equal(go9.handleMove({ type: 'mark', row: 0, col: 5 }, s, 0), null);
+  assert.equal(go9.handleMove({ type: 'accept' }, s, 0), null);
+  assert.equal(s.currentPlayer, 1);
+  const move = bot.createBot(1).getMove(s);
+  assert.equal(move.type, 'mark');
+  assert.equal(s.board[move.row][move.col], 2);
+  assert.equal(go9.handleMove(move, s, 1), null);
+  assert.equal(s.deadMarks.length, 0);
+  assert.equal(s.winner, null);
+});
+
+test('go9 bot: accepts when only its truly dead stone is marked', () => {
+  const s = fresh();
+  territoryBoard(s);
+  toScoring(s);
+  go9.handleMove({ type: 'mark', row: 4, col: 1 }, s, 0);
+  go9.handleMove({ type: 'accept' }, s, 0);
+  assert.deepEqual(bot.createBot(1).getMove(s), { type: 'accept' });
+});

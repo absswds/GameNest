@@ -35,6 +35,46 @@ function countLiberties(board, group) {
   return libs.size;
 }
 
+// Scoring phase: a group counts as alive when it borders an empty region surrounded only by its
+// own colour (an eye or its own territory). Seki and other fine points are not judged.
+function ownsRegion(board, group) {
+  const color = board[group[0].row][group[0].col];
+  const seen = new Set();
+  for (const p of group) {
+    for (const [sr, sc] of [[p.row-1,p.col],[p.row+1,p.col],[p.row,p.col-1],[p.row,p.col+1]]) {
+      if (sr<0 || sr>=SIZE || sc<0 || sc>=SIZE || board[sr][sc]!==EMPTY || seen.has(`${sr},${sc}`)) continue;
+      let onlyOwn = true;
+      const queue = [[sr, sc]]; seen.add(`${sr},${sc}`);
+      while (queue.length) {
+        const [r, c] = queue.shift();
+        for (const [nr, nc] of [[r-1,c],[r+1,c],[r,c-1],[r,c+1]]) {
+          if (nr<0 || nr>=SIZE || nc<0 || nc>=SIZE) continue;
+          const v = board[nr][nc];
+          if (v === EMPTY) {
+            if (!seen.has(`${nr},${nc}`)) { seen.add(`${nr},${nc}`); queue.push([nr, nc]); }
+          } else if (v !== color) onlyOwn = false;
+        }
+      }
+      if (onlyOwn) return true;
+    }
+  }
+  return false;
+}
+
+// Scoring phase: unmark one of our own living groups the opponent marked dead, else accept.
+function scoringMove(state, side) {
+  const myStone = side===0 ? BLACK : WHITE;
+  const checked = new Set();
+  for (const m of state.deadMarks || []) {
+    const k = `${m.row},${m.col}`;
+    if (checked.has(k) || state.board[m.row][m.col] !== myStone) continue;
+    const grp = getGroup(state.board, m.row, m.col);
+    for (const p of grp) checked.add(`${p.row},${p.col}`);
+    if (ownsRegion(state.board, grp)) return { type: 'mark', row: m.row, col: m.col };
+  }
+  return { type: 'accept' };
+}
+
 function scoreMove(board, side, r, c) {
   let s = 0;
   const distToCorner = Math.min(r+c, r+(SIZE-1-c), (SIZE-1-r)+c, (SIZE-1-r)+(SIZE-1-c));
@@ -67,7 +107,7 @@ exports.createBot = pi => ({
   name: botName(pi, 'zh'),
   playerIndex: pi,
   getMove(state) {
-    if (state.phase === 'scoring') return { type: 'accept' };
+    if (state.phase === 'scoring') return scoringMove(state, pi);
     const board = state.board;
     const side = pi;
     const copy = board.map(r => [...r]);
