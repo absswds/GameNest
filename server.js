@@ -1605,12 +1605,16 @@ wss.on('connection', (ws) => {
         swapMatchSeats(currentRoom);
       }
       // Texas: chips and dealer carry over between hands (games/texas.js carryOver decides; it starts a
-      // fresh session when the session is over or the seat count changed)
+      // fresh session when the session is over). compactSeats renumbers the remaining seats in
+      // ascending order, so the sorted old indexes map each new seat back to its previous stack.
       var prevTexas = currentRoom.game === 'texas' ? currentRoom.state : null;
+      var texasSeats = prevTexas
+        ? Array.from(currentRoom.players.values(), info => info.index).concat(Array.from(currentRoom.bots.keys())).sort((a, b) => a - b)
+        : null;
       compactSeats(currentRoom);
       currentRoom.state = gameMod.createState();
       applyRuntimeState(currentRoom, totalPlayers);
-      if (prevTexas) gameMod.carryOver(prevTexas, currentRoom.state, totalPlayers);
+      if (prevTexas) gameMod.carryOver(prevTexas, currentRoom.state, totalPlayers, texasSeats);
 
       // 麻将多局：庄家/累计分必须在 initGame 之前写回，
       // 因为 initGame 要按 dealerIndex 发牌决定谁先摸（写在后面就永远是 0 号先手）。

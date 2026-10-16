@@ -349,18 +349,23 @@ exports.createState = () => {
 // Continuous session: the next hand keeps the stacks and moves the button on. Call it on the fresh
 // state (createState) BEFORE initGame, with the previous state and the new seat count. It does
 // nothing (fresh session: 1000 each, random dealer, hand 1) unless the previous hand finished,
-// the session is not over, the seat count is unchanged (seats can be compacted, so chips are
-// mapped by seat index only then) and at least two seats still have chips.
-// Dealer = the next seat clockwise (higher index, wrapping) that still has chips.
-exports.carryOver = function(prev, next, playerCount) {
+// the session is not over and at least two remaining seats still have chips.
+// seats (optional): seats[newIndex] = the player's seat index in prev, for when seats were compacted
+// after someone left; without it the seat count must be unchanged and chips map by index.
+// Dealer = the next remaining seat clockwise (in prev's numbering) after prev's dealer that has chips.
+exports.carryOver = function(prev, next, playerCount, seats) {
   if (!prev || !next || prev.sessionOver || prev.winner == null) return false;
-  if (!Array.isArray(prev.chips) || prev.chips.length !== playerCount) return false;
-  if (prev.chips.filter(c => c > 0).length < 2) return false;
-  next.chips = prev.chips.slice();
+  if (!Array.isArray(prev.chips)) return false;
+  const oldN = prev.chips.length;
+  if (!seats) seats = prev.chips.map((c, i) => i);
+  if (seats.length !== playerCount || seats.some(o => !Number.isInteger(o) || o < 0 || o >= oldN)) return false;
+  const chips = seats.map(o => prev.chips[o]);
+  if (chips.filter(c => c > 0).length < 2) return false;
+  next.chips = chips;
   const d = Number.isInteger(prev.dealer) ? prev.dealer : 0;
-  for (let i = 1; i <= playerCount; i++) {
-    const idx = (d + i) % playerCount;
-    if (next.chips[idx] > 0) { next.dealer = idx; break; }
+  for (let i = 1; i <= oldN; i++) {
+    const idx = seats.indexOf((d + i) % oldN);
+    if (idx >= 0 && chips[idx] > 0) { next.dealer = idx; break; }
   }
   next.handNumber = (prev.handNumber || 1) + 1;
   return true;

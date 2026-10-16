@@ -134,3 +134,22 @@ test('bot-only multi-hand session runs to the end without errors and conserves c
   assert.strictEqual(state.chips.filter(c => c > 0).length, 1);
   assert.strictEqual(state.chips[state.winner], 60 * n);
 });
+
+test('a player leaving between hands: the others keep their chips (seat map from compaction)', () => {
+  // Seat 1 left; the server compacts old seats [0, 2, 3] into new seats [0, 1, 2]
+  const prev = finished([300, 500, 900, 300], 1);
+  const s = texas.createState();
+  assert.strictEqual(texas.carryOver(prev, s, 3, [0, 2, 3]), true);
+  texas.initGame(s, 3);
+  assert.strictEqual(s.handNumber, 2);
+  assert.strictEqual(total(s), 1500);
+  assert.strictEqual(s.chips[1] + s.bets[1], 900);
+  assert.strictEqual(s.dealer, 1); // next seat after the old dealer (1) is old seat 2 = new seat 1
+});
+
+test('a leaver who was the only other stack: the next restart starts fresh', () => {
+  const prev = finished([0, 1500, 500], 1);
+  const s = texas.createState();
+  assert.strictEqual(texas.carryOver(prev, s, 2, [0, 1]), false);
+  assert.strictEqual(texas.carryOver(prev, texas.createState(), 2, [0, 5]), false);
+});
