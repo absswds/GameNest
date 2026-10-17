@@ -3,6 +3,8 @@ const { botName } = require('./lib/bot-name');
 
 exports.name = 'rummikub';
 
+const { getDifficulty } = require('./lib/difficulty');
+
 exports.createBot = (playerIndex) => ({
   name: botName(playerIndex, 'zh'),
   getMove(state) {
@@ -10,6 +12,11 @@ exports.createBot = (playerIndex) => ({
     if (state.playedThisTurn[playerIndex] && !state.meldPending) return { endTurn: true };
     const hand = state.hands[playerIndex];
     if (!hand || hand.length === 0) return { pass: true };
+
+    const diff = getDifficulty(state);
+    if (diff === 'easy' && Math.random() < 0.35 && !state.meldPending) {
+      return { pass: true };
+    }
 
     const requireBreak = (state._options && state._options.requireBreak !== undefined)
       ? state._options.requireBreak : true;
@@ -26,6 +33,8 @@ exports.createBot = (playerIndex) => ({
     }
     const candidates = findSets(hand, false);
     if (candidates.length > 0) {
+      // In hard mode: prefer playing longer sets first to dump more tiles
+      if (diff === 'hard') candidates.sort((a, b) => b.length - a.length);
       const best = candidates[0];
       return { tileIds: best.map(t => t.id) };
     }

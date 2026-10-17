@@ -60,7 +60,7 @@ exports.createBot = (playerIndex) => {
           return { type: 'selfkong', suit: selfKong.k, num: selfKong.n };
         }
       }
-      return { type: 'discard', tileId: chooseDiscard(hand, voidSuit) };
+      return { type: 'discard', tileId: chooseDiscard(hand, voidSuit, state) };
     }
 
     return {};
@@ -103,15 +103,28 @@ function tileConnectivity(hand, tile) {
   return score;
 }
 
-function chooseDiscard(hand, voidSuit) {
+const { getDifficulty } = require('./lib/difficulty');
+
+function chooseDiscard(hand, voidSuit, state) {
   // Must discard void-suit tiles first.
   const voidTiles = voidSuit ? hand.filter(t => t.k === voidSuit) : [];
   const pool = voidTiles.length > 0 ? voidTiles : hand;
 
+  const diff = getDifficulty(state);
+  if (diff === 'easy' && Math.random() < 0.3) {
+    return pool[Math.floor(Math.random() * pool.length)].id;
+  }
+
   // Among candidates, discard the least-connected tile (isolated).
   let best = pool[0], bestScore = Infinity;
+  const discards = (state && state.discards) || [];
   for (const tile of pool) {
-    const score = tileConnectivity(hand, tile);
+    let score = tileConnectivity(hand, tile);
+    // In hard mode: safe discard preference (favor discarding already seen tiles to avoid dealing in)
+    if (diff === 'hard' && voidTiles.length === 0) {
+      const seenCount = discards.filter(d => d && d.k === tile.k && d.n === tile.n).length;
+      if (seenCount >= 2) score -= 1.5; // safer to discard
+    }
     if (score < bestScore) { bestScore = score; best = tile; }
   }
   return best.id;

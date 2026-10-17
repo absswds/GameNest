@@ -58,9 +58,12 @@ exports.createBot = function(playerIndex) {
   };
 };
 
+const { getDifficulty } = require('./lib/difficulty');
+
 function shouldSuspect(state, playerIndex, exactThemeCount, wildCount) {
   if (state.lastClaimant < 0 || state.lastClaimant === playerIndex || state.phase !== 'playing') return false;
 
+  const diff = getDifficulty(state);
   const totalAlive = (state.alive || []).filter(Boolean).length;
   const pileSize = (state.pileCards || []).length;
   const claimantHand = ((state.hands || [])[state.lastClaimant] || []).length;
@@ -73,7 +76,11 @@ function shouldSuspect(state, playerIndex, exactThemeCount, wildCount) {
   if (totalAlive <= 2) suspicion += 1;
   if (claimantHand <= 1) suspicion += 1;
 
-  return suspicion >= 4;
+  // In hard mode: detect impossible card claims (e.g. if bot holds 3 of the theme card and pile has many)
+  if (diff === 'hard' && exactThemeCount >= 3) return true;
+
+  const threshold = diff === 'easy' ? 6 : diff === 'hard' ? 3 : 4;
+  return suspicion >= threshold;
 }
 
 function chooseLeastCriticalCard(candidates, fullHand) {

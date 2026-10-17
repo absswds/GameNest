@@ -15,6 +15,7 @@ exports.createBot = (playerIndex) => ({
     const me = playerIndex;
     const opp = 1 - me;
 
+    const diff = getDifficulty(state);
     let bestScore = -1, bestMoves = [];
 
     for (let r = 0; r < SIZE; r++) {
@@ -23,16 +24,21 @@ exports.createBot = (playerIndex) => ({
         // Only consider positions near existing stones
         if (!hasNeighbor(board, r, c)) continue;
 
-        const atk = evaluate(board, r, c, me);
-        const def = evaluate(board, r, c, opp);
-        var score = atk >= 100000 ? atk * 2 : Math.max(atk, def * 1.1); // win first, else slightly prefer defense
-
-        // Apply difficulty modifier
-        var diff = getDifficulty(state);
-        if (diff === 'easy') {
-          score = score * 0.7 + Math.random() * score * 0.2;
+        const atk = evaluate(board, r, c, me, diff === 'hard');
+        const def = evaluate(board, r, c, opp, diff === 'hard');
+        
+        let score;
+        if (atk >= 100000) {
+          score = atk * 3; // Immediate win takes absolute priority
+        } else if (def >= 100000) {
+          score = def * 2.5; // Must block immediate opponent win
         } else if (diff === 'hard') {
-          score = score * 1.3;
+          // Hard mode: strategic balancing of attack combos vs blocking opponent open-3/rush-4
+          score = Math.max(atk * 1.15, def * 1.35);
+        } else if (diff === 'easy') {
+          score = Math.max(atk, def * 0.9) * (0.8 + Math.random() * 0.4);
+        } else {
+          score = Math.max(atk, def * 1.1); // Win first, else slightly prefer defense
         }
 
         if (score > bestScore) {
@@ -41,6 +47,21 @@ exports.createBot = (playerIndex) => ({
         } else if (score === bestScore) {
           bestMoves.push({ row: r, col: c });
         }
+      }
+    }
+
+    // Easy mode: 35% chance to blunder and pick any neighbor cell
+    if (diff === 'easy' && Math.random() < 0.35) {
+      const neighborMoves = [];
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          if (board[r][c] === null && hasNeighbor(board, r, c)) {
+            neighborMoves.push({ row: r, col: c });
+          }
+        }
+      }
+      if (neighborMoves.length > 0) {
+        return neighborMoves[Math.floor(Math.random() * neighborMoves.length)];
       }
     }
 
@@ -62,6 +83,7 @@ exports.createBot = (playerIndex) => ({
   },
 });
 
+
 function hasNeighbor(board, r, c) {
   for (let dr = -1; dr <= 1; dr++) {
     for (let dc = -1; dc <= 1; dc++) {
@@ -73,9 +95,10 @@ function hasNeighbor(board, r, c) {
   return false;
 }
 
-function evaluate(board, r, c, player) {
+function evaluate(board, r, c, player, isHard) {
   board[r][c] = player;
   let score = 0;
+  let threats = 0;
 
   for (const [dr, dc] of DIRS) {
     let count = 1, open = 0;
@@ -89,15 +112,34 @@ function evaluate(board, r, c, player) {
       if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && board[nr][nc] === player) count++;
       else { if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && board[nr][nc] === null) open++; break; }
     }
-    if (count >= 5) score += 100000;
-    else if (count === 4 && open >= 1) score += 10000;
-    else if (count === 3 && open >= 2) score += 1000;
-    else if (count === 3 && open >= 1) score += 100;
-    else if (count === 2 && open >= 2) score += 10;
-    else if (count === 2 && open >= 1) score += 3;
-    else score += 1;
+    if (count >= 5) {
+      score += 100000;
+    } else if (count === 4 && open >= 2) {
+      score += 20000;
+      threats++;
+    } else if (count === 4 && open >= 1) {
+      score += 10000;
+      threats++;
+    } else if (count === 3 && open >= 2) {
+      score += 2000;
+      threats++;
+    } else if (count === 3 && open >= 1) {
+      score += 200;
+    } else if (count === 2 && open >= 2) {
+      score += 15;
+    } else if (count === 2 && open >= 1) {
+      score += 4;
+    } else {
+      score += 1;
+    }
+  }
+
+  // Double threat combo (e.g. 4-3, 3-3, 4-4) is virtually unstoppable
+  if (isHard && threats >= 2) {
+    score += 35000;
   }
 
   board[r][c] = null;
   return score;
 }
+

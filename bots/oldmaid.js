@@ -1,4 +1,6 @@
+// bots/oldmaid.js — Old Maid AI with difficulty levels
 const { botName } = require('./lib/bot-name');
+const { getDifficulty } = require('./lib/difficulty');
 
 exports.name = 'oldmaid';
 
@@ -7,7 +9,6 @@ exports.createBot = (playerIndex) => ({
   playerIndex,
   getMove(state) {
     const hands = state.hands || [];
-    // The game only lets you draw from the next player (clockwise) who still has cards.
     let targetIndex = -1;
     for (let i = 1; i < hands.length; i++) {
       const t = (playerIndex + i) % hands.length;
@@ -15,8 +16,19 @@ exports.createBot = (playerIndex) => ({
     }
     if (targetIndex < 0) return {};
     const targetHand = hands[targetIndex];
-    // The target's cards are face down, so any pick is a blind one.
-    const bestIndex = Math.floor(Math.random() * targetHand.length);
-    return { drawFrom: targetIndex, cardIndex: bestIndex };
+    const diff = getDifficulty(state);
+
+    let pickIndex = 0;
+    if (diff === 'easy') {
+      // Easy: always draws the edge card (predictable)
+      pickIndex = 0;
+    } else if (diff === 'hard' && targetHand.length > 2) {
+      // Hard: avoids the very last card (often the recently drawn card)
+      pickIndex = Math.floor(Math.random() * (targetHand.length - 1));
+    } else {
+      pickIndex = Math.floor(Math.random() * targetHand.length);
+    }
+
+    return { drawFrom: targetIndex, cardIndex: pickIndex };
   },
 });

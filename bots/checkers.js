@@ -212,6 +212,12 @@ exports.createBot = function(playerIndex) {
         return (b.captures ? b.captures.length : 0) - (a.captures ? a.captures.length : 0);
       });
 
+      var diff = (state && state._options && state._options.difficulty) || 'normal';
+      if (diff === 'easy' && !state.mustCapture && Math.random() < 0.30) {
+        var randMove = moves[Math.floor(Math.random() * moves.length)];
+        return { from: randMove.from, to: randMove.to };
+      }
+
       var depth = getDepth(state, { easy: 2, normal: 5, hard: 7 });
       var bestMove = moves[0];
       var bestVal = -Infinity;
@@ -225,6 +231,7 @@ exports.createBot = function(playerIndex) {
         }
       }
       return { from: bestMove.from, to: bestMove.to };
+
     }
   };
 };

@@ -14,6 +14,8 @@ function enemiesOf(s, me) {
 }
 const friendOf = (s, me, who) => who === me || (who === s.lord && s.players[me].role !== 'rebel');
 
+const { getDifficulty } = require('./lib/difficulty');
+
 exports.createBot = (playerIndex) => ({
   name: botName(playerIndex, 'zh'),
   playerIndex,
@@ -22,6 +24,7 @@ exports.createBot = (playerIndex) => ({
     const ask = s.ask;
     const P = s.players[me];
     if (!ask) return { type: 'end' };
+    const diff = getDifficulty(s);
     const hand = P.hand;
     const find = (name) => hand.find((c) => c.name === name) || hand.find((c) => c.name !== 'tao' && core.asCard(s, me, c, name));
     const g = P.general;
@@ -29,7 +32,14 @@ exports.createBot = (playerIndex) => ({
     const friends = alive.filter((i) => friendOf(s, me, i));
 
     if (ask.type === 'play') {
-      const enemies = enemiesOf(s, me);
+      let enemies = enemiesOf(s, me);
+      if (diff === 'hard' && P.role === 'rebel') {
+        // Hard rebel: laser-focused on the lord
+        enemies = [s.lord].concat(enemies.filter(i => i !== s.lord));
+      } else if (diff === 'easy' && Math.random() < 0.35) {
+        // Easy mode: confusing friend and foe
+        enemies = alive;
+      }
       // skills first: heal, then draw/give, then convert cards
       const skill = (name, cardIds, targets) => ({ type: 'skill', skill: name, cardIds, targets });
       const wounded = [me].concat(friends).filter((i) => s.players[i].hp < s.players[i].maxHp);

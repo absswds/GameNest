@@ -48,6 +48,8 @@ function bestChowPair(hand, tile) {
   return pairs.length ? pairs[0] : null;
 }
 
+const { getDifficulty } = require('./lib/difficulty');
+
 exports.createBot = function (playerIndex) {
   return {
     name: botName(playerIndex, 'zh'),
@@ -55,6 +57,7 @@ exports.createBot = function (playerIndex) {
     getMove: function (state) {
       const hand = state.hands[playerIndex];
       const cfg = getCfg(state);
+      const diff = getDifficulty(state);
 
       // ---- claim phase: only act if this bot is the current responder ----
       if (state.phase === 'claim' && state.claim) {
@@ -67,12 +70,15 @@ exports.createBot = function (playerIndex) {
         // win if possible
         const test = hand.slice();
         test.push(tile);
-        // 起胡番数不够时 handleMove 会拒绝 win（还会被兜底的 pass 拒绝），所以不能发
         if (winAllowed(state, test, state.melds[playerIndex], false)) {
           return { type: 'win' };
         }
+
+        // Easy mode: 35% chance to ignore claim opportunities
+        if (diff === 'easy' && Math.random() < 0.35) return { type: 'pass' };
+
         const m = matchCount(hand, tile.k, tile.n);
-        // kong: only for number tiles with 3 copies (avoid konging honours — less useful)
+        // kong: only for number tiles with 3 copies
         if (m >= 3 && tile.k !== 'feng' && tile.k !== 'jian') {
           return { type: 'kong' };
         }
@@ -90,14 +96,11 @@ exports.createBot = function (playerIndex) {
 
       // ---- play phase ----
       if (state.phase === 'play' && state.currentPlayer === playerIndex) {
-        // self-draw win?
-        // 吃/碰之后没有摸牌：不能自摸，也不能杠，只能出牌
         const afterClaim = state._afterClaim === true;
         if (!afterClaim && winAllowed(state, hand, state.melds[playerIndex], true)) {
           return { type: 'win' };
         }
         if (!afterClaim) {
-          // 暗杠/补杠：数字牌，且不会破坏听牌结构时才杠（每回合最多算一次听牌）
           const quadT = findQuad(hand);
           const addK = findAddKongTile(hand, state.melds[playerIndex]);
           const kongT = (quadT && quadT.k !== 'feng' && quadT.k !== 'jian') ? { t: quadT, type: 'selfkong' }
@@ -110,9 +113,19 @@ exports.createBot = function (playerIndex) {
         const wc = cfg.wildcard;
         const isWild = (t) => !!wc && t.k === wc.k && t.n === wc.n;
         const pool = hand.some(t => !isWild(t)) ? hand.filter(t => !isWild(t)) : hand;
+
+        if (diff === 'easy' && Math.random() < 0.3) {
+          return { type: 'discard', tileId: pool[Math.floor(Math.random() * pool.length)].id };
+        }
+
         let worst = pool[0], worstScore = Infinity;
+        const discards = (state && state.discards) || [];
         for (const t of pool) {
-          const sc = connectivity(hand, t);
+          let sc = connectivity(hand, t);
+          if (diff === 'hard') {
+            const seen = discards.filter(d => d && d.k === t.k && d.n === t.n).length;
+            if (seen >= 2) sc -= 1.5; // safer to discard
+          }
           if (sc < worstScore) { worstScore = sc; worst = t; }
         }
         return { type: 'discard', tileId: worst.id };

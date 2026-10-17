@@ -27,7 +27,12 @@
   el.roomBadge.textContent = roomId;
 
   // Games whose bots read state._options.difficulty (via difficulty.js)
-  window._gamesWithDifficulty = ['reversi','gomoku','chess','connect4','checkers','chinesechess','go9','hearts','battleship'];
+  window._gamesWithDifficulty = [
+    'reversi', 'gomoku', 'chess', 'connect4', 'checkers', 'chinesechess', 'go9', 'hearts', 'battleship',
+    'tictactoe', 'numberbomb', 'twentyfour', 'uno', 'doudizhu', 'bigtwo', 'texas', 'liarsbar',
+    'exploding-kittens', 'oldmaid', 'flightchess', 'mahjong-sichuan', 'mahjong-cantonese',
+    'monopoly', 'werewolf', 'sanguo', 'rummikub', 'davinci', '2048', 'snakebattle', 'sudoku', 'sheeptile'
+  ];
 
   // ---- Game name lookup ----
   function _gt(id) {

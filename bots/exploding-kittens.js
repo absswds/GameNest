@@ -1,5 +1,6 @@
 // bots/exploding-kittens.js — Exploding Kittens AI with varied strategy
 const { botName } = require('./lib/bot-name');
+const { getDifficulty } = require('./lib/difficulty');
 
 exports.name = 'exploding-kittens';
 
@@ -28,8 +29,22 @@ exports.createBot = (playerIndex) => ({
         }
       }
 
-      // 30% chance: just draw (human-like "pass" behavior)
-      if (Math.random() < 0.3) return {};
+      const diff = getDifficulty(state);
+
+      // In easy mode: 50% chance to just draw; in hard: 10% (plays aggressively)
+      const passProb = diff === 'easy' ? 0.5 : diff === 'hard' ? 0.1 : 0.3;
+      if (Math.random() < passProb) return {};
+
+      // In hard mode: if deck is dangerously small (<= 5 cards), play skip/attack to pass the turn
+      if (diff === 'hard' && state.deck && state.deck.length <= 5) {
+        const skip = hand.find(c => c.type === 'skip');
+        if (skip) return { cardId: skip.id };
+        const attack = hand.find(c => c.type === 'attack');
+        if (attack) {
+          const targets = state.hands.map((h, i) => i).filter(i => i !== playerIndex && state.alive[i]);
+          if (targets.length > 0) return { cardId: attack.id, targetPlayer: targets[0] };
+        }
+      }
 
       // Use future if deck is large and we haven't recently peeked
       const future = hand.find(c => c.type === 'future');

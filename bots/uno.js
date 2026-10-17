@@ -2,18 +2,26 @@ const { botName } = require('./lib/bot-name');
 
 exports.name = 'uno';
 
+const { getDifficulty } = require('./lib/difficulty');
+
 exports.createBot = (playerIndex) => ({
   name: botName(playerIndex, 'zh'),
   getMove(state) {
+    const diff = getDifficulty(state);
+
     // Answer a pending +4. The +4 player's hand is hidden, so challenge now and then without peeking.
     if (state.pendingChallenge) {
-      return { challengeResponse: Math.random() < 0.25 ? 'challenge' : 'accept' };
+      const chalProb = diff === 'hard' ? 0.35 : diff === 'easy' ? 0.15 : 0.25;
+      return { challengeResponse: Math.random() < chalProb ? 'challenge' : 'accept' };
     }
     const hand = state.hands[playerIndex];
     if (!hand || hand.length === 0) return {};
 
     if (hand.length === 1 && (!state.unoCalled || !state.unoCalled[playerIndex])) {
-      return { uno: true };
+      // In easy mode: 40% chance of forgetting to call UNO
+      if (diff !== 'easy' || Math.random() >= 0.4) {
+        return { uno: true };
+      }
     }
 
     if (state.drawStack > 0) {
@@ -28,6 +36,15 @@ exports.createBot = (playerIndex) => ({
     const playable = hand.filter((card) => canPlay(card, state));
     if (playable.length === 0) return {};
 
+    // In easy mode: 60% chance of picking a random playable card
+    if (diff === 'easy' && Math.random() < 0.6) {
+      const randomCard = playable[Math.floor(Math.random() * playable.length)];
+      return {
+        cardId: randomCard.id,
+        chosenColor: randomCard.color === 'wild' ? chooseColorAfterPlay(hand, randomCard) : undefined,
+      };
+    }
+
     const nextIndex = getNextPlayerIndex(state);
     const nextHand = (state.hands && state.hands[nextIndex]) || [];
     const nextHandSize = nextHand.length;
@@ -37,7 +54,12 @@ exports.createBot = (playerIndex) => ({
     let bestScore = -Infinity;
 
     for (const card of playable) {
-      const score = scoreCard(card, hand, top, nextHandSize, state);
+      let score = scoreCard(card, hand, top, nextHandSize, state);
+      if (diff === 'hard' && nextHandSize <= 2) {
+        // High urgency to stop next player
+        if (card.value === 'skip' || card.value === 'reverse') score += 50;
+        if (card.value === 'draw2' || card.color === 'wild') score += 80;
+      }
       if (score > bestScore) {
         bestScore = score;
         bestCard = card;

@@ -2,6 +2,7 @@
 // Simple greedy strategy: prioritize launching > capturing > advancing furthest plane
 
 const { botName } = require('./lib/bot-name');
+const { getDifficulty } = require('./lib/difficulty');
 
 exports.name = 'flightchess';
 
@@ -12,40 +13,44 @@ exports.createBot = (playerIndex) => ({
     const pData = state.players[playerIndex];
     const dice = state.dice;
 
-    // If we haven't rolled yet, just roll
     if (!state.hasRolled) {
       return { action: 'roll' };
     }
 
-    // Find the best plane to move
-    // Priority: plane that can launch > plane that captures an opponent > furthest plane
-    let bestIdx = -1;
-    let bestScore = -Infinity;
-
+    const diff = getDifficulty(state);
+    const movable = [];
     for (let i = 0; i < 4; i++) {
       const pos = pData.planes[i];
-      if (pos === 58) continue; // already home (HOME=58)
+      if (pos === 58) continue;
+      if (pos === -1 && dice !== 6) continue;
+      movable.push(i);
+    }
+    if (movable.length === 0) return { pass: true };
 
+    if (diff === 'easy' && Math.random() < 0.45) {
+      return { action: 'move', planeIndex: movable[Math.floor(Math.random() * movable.length)] };
+    }
+
+    let bestIdx = movable[0];
+    let bestScore = -Infinity;
+
+    for (const i of movable) {
+      const pos = pData.planes[i];
       let score = -1;
 
       if (pos === -1) {
-        // In base — can only move with 6
-        if (dice !== 6) continue; // illegal: the game rejects launching without a 6
-        score = 100; // launch has high priority
+        score = 100;
       } else if (pos >= 52) {
-        // Home stretch — exact finishes; otherwise advance (overshoot bounces back)
         let target = pos + dice;
-        if (target > 58) target = 58 - (target - 58); // bounce back off the end
-        if (target === 58) score = 200;               // reaching home!
+        if (target > 58) target = 58 - (target - 58);
+        if (target === 58) score = 250;
         else if (target > pos) score = 50 + (target - pos);
-        else score = target - pos; // bounce back: last resort
+        else score = target - pos;
       } else {
-        // On main path
         const newPos = pos + dice;
         if (newPos >= 52) {
-          score = 150; // entering home stretch
-        } else if (newPos < 52) {
-          // Check if landing on an opponent
+          score = 160;
+        } else {
           const absPos = (playerIndex * 13 + newPos) % 52;
           let capturesOpponent = false;
           for (let pi = 0; pi < state.players.length; pi++) {
@@ -57,7 +62,7 @@ exports.createBot = (playerIndex) => ({
               }
             }
           }
-          score = capturesOpponent ? 120 : newPos; // capture or just advance
+          score = capturesOpponent ? (diff === 'hard' ? 220 : 120) : newPos;
         }
       }
 

@@ -1,13 +1,28 @@
 // bots/lib/difficulty.js
-// Read difficulty option from state and map to depth
+// Read difficulty option from state and map to depth or heuristic behavior.
+
+function getDifficulty(state) {
+  return (state && state._options && state._options.difficulty) || 'normal';
+}
+
 function getDepth(state, depthMap) {
-  var diff = (state._options && state._options.difficulty) || 'normal';
+  const diff = getDifficulty(state);
   return depthMap[diff] || depthMap.normal || 3;
 }
 
-// For heuristic bots: get difficulty level string
-function getDifficulty(state) {
-  return (state._options && state._options.difficulty) || 'normal';
+function isEasy(state) {
+  return getDifficulty(state) === 'easy';
 }
 
-module.exports = { getDepth, getDifficulty };
+function isHard(state) {
+  return getDifficulty(state) === 'hard';
+}
+
+function maybeBlunder(diff, blunderProb, bestAction, fallbackAction) {
+  if (diff === 'easy' && Math.random() < blunderProb) {
+    return typeof fallbackAction === 'function' ? fallbackAction() : fallbackAction;
+  }
+  return typeof bestAction === 'function' ? bestAction() : bestAction;
+}
+
+module.exports = { getDepth, getDifficulty, isEasy, isHard, maybeBlunder };

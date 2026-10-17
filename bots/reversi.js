@@ -211,6 +211,12 @@ exports.createBot = (playerIndex) => ({
       return vb - va;
     });
 
+    var diff = (state && state._options && state._options.difficulty) || 'normal';
+    if (diff === 'easy' && Math.random() < 0.30) {
+      var randMove = moves[Math.floor(Math.random() * moves.length)];
+      return { row: randMove.row, col: randMove.col };
+    }
+
     var depth = getDepth(state, { easy: 2, normal: 4, hard: 6 });
     var bestMove = moves[0];
     var bestVal = -Infinity;
@@ -227,5 +233,6 @@ exports.createBot = (playerIndex) => ({
     }
 
     return { row: bestMove.row, col: bestMove.col };
+
   },
 });

@@ -91,12 +91,43 @@ exports.createBot = function(playerIndex) {
         return { action: 'next_round' };
       }
 
+const { getDifficulty } = require('./lib/difficulty');
+
+function findFreePlay(hand, diff) {
+  if (diff === 'hard') {
+    const groups = [...rankGroups(hand)].sort((a, b) => rankVal(a[0]) - rankVal(b[0]));
+    // Look for a pair or triple of non-high cards to lead with
+    for (const [, cs] of groups) {
+      if (cs.length === 3) return cs.slice(0, 3);
+      if (cs.length === 2 && rankVal(cs[0].rank) < 11) return cs.slice(0, 2);
+    }
+  }
+  const sorted = [...hand].sort((a,b) => rankVal(a.rank) - rankVal(b.rank));
+  return [sorted[0]];
+}
+
+exports.createBot = function(playerIndex) {
+  return {
+    name: botName(playerIndex, 'zh'),
+    playerIndex: playerIndex,
+    getMove: function(state) {
+      if (state.phase === 'roundEnd') {
+        return { action: 'next_round' };
+      }
+
+      const diff = getDifficulty(state);
+
       // ---- bidding phase ----
       if (state.phase === 'bidding') {
         const hand = state.hands[playerIndex];
         const bombs = countBombs(hand);
         const highCards = hand.filter(c => rankVal(c.rank) >= 12).length;
-        var strong = (bombs >= 1 && highCards >= 3) || bombs >= 2;
+        let strong = (bombs >= 1 && highCards >= 3) || bombs >= 2;
+
+        if (diff === 'easy') {
+          // Easy: erratic bidding
+          if (Math.random() < 0.3) strong = !strong;
+        }
 
         // 叫抢 mode (state.bidMode === 'score' uses the 0-3 bids below)
         if (state.bidMode !== 'score' && state.callPhase === 'call') {
@@ -105,16 +136,16 @@ exports.createBot = function(playerIndex) {
         if (state.bidMode !== 'score' && state.callPhase === 'rob') {
           if (!state.eligibleForRob || !state.eligibleForRob[playerIndex]) return { passRob: true };
           if (state.robAttempts && state.robAttempts.indexOf(playerIndex) >= 0) return { passRob: true };
-          // Rob if hand is very strong; caller also gets a rob chance
           if (strong) return { rob: true };
           return { passRob: true };
         }
 
-        // 叫分 mode (original)
+        // 叫分 mode
         let score = 0;
         if (bombs >= 2 || (bombs >= 1 && highCards >= 4)) score = 3;
         else if (bombs >= 1 || highCards >= 3) score = 2;
         else if (highCards >= 2) score = 1;
+        if (diff === 'easy' && Math.random() < 0.3) score = Math.floor(Math.random() * 4);
         if (score <= state.currentBid) score = 0;
         return { score };
       }
@@ -125,8 +156,21 @@ exports.createBot = function(playerIndex) {
       const isFreePlay = !lastPlay || lastPlay.player === playerIndex;
 
       if (isFreePlay) {
-        const sorted = [...hand].sort((a,b) => rankVal(a.rank) - rankVal(b.rank));
-        return { cards: [sorted[0].id] };
+        const toPlay = findFreePlay(hand, diff);
+        return { cards: toPlay.map(c => c.id) };
+      }
+
+      // In hard mode: farmer cooperation (don't beat your partner if partner is leading or low on cards)
+      if (diff === 'hard' && state.landlord !== undefined && playerIndex !== state.landlord) {
+        const lastPlayer = lastPlay.player;
+        if (lastPlayer !== state.landlord) {
+          const partnerHand = state.hands[lastPlayer] || [];
+          const partnerPlayed = lastPlay.play;
+          // Partner has few cards or played high card (10+) -> pass to let partner keep control
+          if (partnerHand.length <= 4 || (partnerPlayed && partnerPlayed.rank >= 9)) {
+            return { cards: [] };
+          }
+        }
       }
 
       const beat = findBeat(hand, lastPlay);

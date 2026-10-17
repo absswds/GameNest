@@ -122,6 +122,8 @@ function findBeat(hand, lastPlay) {
   return null;
 }
 
+const { getDifficulty } = require('./lib/difficulty');
+
 exports.createBot = function(playerIndex) {
   return {
     name: botName(playerIndex, 'zh'),
@@ -130,17 +132,39 @@ exports.createBot = function(playerIndex) {
       const hand = state.hands[playerIndex];
       if (!hand || hand.length === 0) return { cards: [] };
 
+      const diff = getDifficulty(state);
       const isFreePlay = !state.lastPlay || state.lastPlayPlayer === playerIndex;
 
       if (isFreePlay) {
-        // Lead with lowest single
+        if (diff === 'hard') {
+          // If we have a pair of low cards, lead with pair to shed cards faster
+          const groups = rankGroups(hand);
+          for (const [r, cs] of groups) {
+            if (cs.length >= 2 && rankVal(r) < 8) {
+              return { cards: cs.slice(0, 2).map(c => c.id) };
+            }
+          }
+        }
         const lowest = findLowestSingle(hand);
         return { cards: [lowest.id] };
+      }
+
+      if (diff === 'easy' && Math.random() < 0.3) {
+        return { cards: [] };
       }
 
       // Try to beat
       const beat = findBeat(hand, state.lastPlay);
       if (beat) {
+        if (diff === 'hard') {
+          // If beating requires spending a '2' and opponents have plenty of cards and current play is small, hold the '2'
+          const hasTwo = beat.some(c => c.rank === '2');
+          const lastRank = state.lastPlay && state.lastPlay.play && state.lastPlay.play.rank;
+          const otherMaxCards = Math.max(...(state.hands || []).map((h, i) => i === playerIndex ? 0 : h.length));
+          if (hasTwo && otherMaxCards > 5 && lastRank !== undefined && lastRank < 9) {
+            return { cards: [] }; // hold the '2'
+          }
+        }
         return { cards: beat.map(c => c.id) };
       }
 

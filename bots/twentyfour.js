@@ -1,5 +1,6 @@
-// bots/twentyfour.js
+// bots/twentyfour.js — 24 Points AI with easy, normal, hard difficulties
 const { botName } = require('./lib/bot-name');
+const { getDifficulty } = require('./lib/difficulty');
 
 exports.name = 'twentyfour';
 
@@ -39,7 +40,17 @@ exports.createBot = function(playerIndex) {
     name: botName(playerIndex, 'zh'),
     getMove: function(state) {
       if (state.phase !== 'playing') return {};
+      const diff = getDifficulty(state);
       const numbers = state.numbers;
+
+      if (diff === 'easy') {
+        // 50% chance of failing to solve
+        if (Math.random() < 0.5) return {};
+      } else if (diff === 'normal') {
+        // 15% chance of failing to solve
+        if (Math.random() < 0.15) return {};
+      }
+
       const solution = findSolution(numbers);
       return solution ? { expression: solution } : {};
     }

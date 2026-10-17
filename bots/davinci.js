@@ -3,6 +3,8 @@ const { botName } = require('./lib/bot-name');
 
 exports.name = 'davinci';
 
+const { getDifficulty } = require('./lib/difficulty');
+
 function deduceGuess(state, playerIndex, targetPlayer, tileIndex) {
   // Each number exists once per color, so track known tiles as color+number.
   const known = new Set();
@@ -33,8 +35,9 @@ function deduceGuess(state, playerIndex, targetPlayer, tileIndex) {
     const k = key(n, color);
     if (k > lo && k < hi && !known.has(color + n)) candidates.push(n);
   }
-  // 20% chance of random "mistake" to feel human
-  if (Math.random() < 0.2 || candidates.length === 0) {
+  const diff = getDifficulty(state);
+  const mistakeProb = diff === 'easy' ? 0.45 : diff === 'hard' ? 0 : 0.2;
+  if (Math.random() < mistakeProb || candidates.length === 0) {
     return { guessNum: Math.floor(Math.random() * 12) };
   }
   return { guessNum: candidates[Math.floor(Math.random() * candidates.length)] };

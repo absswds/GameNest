@@ -46,6 +46,8 @@ function legalRaise(state, playerIndex, move) {
   return chips <= toCall ? { action: 'all_in' } : { action: 'call' };
 }
 
+const { getDifficulty } = require('./lib/difficulty');
+
 exports.createBot = function(playerIndex) {
   return {
     name: botName(playerIndex, 'zh'),
@@ -54,6 +56,7 @@ exports.createBot = function(playerIndex) {
       return legalRaise(state, playerIndex, this._decide(state));
     },
     _decide: function(state) {
+      const diff = getDifficulty(state);
       const chips = state.chips[playerIndex];
       const currentBet = state.currentBet || 0;
       const invested = (state.bets[playerIndex] || 0);
@@ -62,9 +65,18 @@ exports.createBot = function(playerIndex) {
       const strength = handStrength(state.hands[playerIndex] || [], state.communityCards || []);
       const potOdds = toCall > 0 ? toCall / (pot + toCall) : 0;
 
+      // Easy mode: loose passive calling station (rarely folds, rarely raises)
+      if (diff === 'easy') {
+        if (toCall <= 0) return { action: 'check' };
+        if (toCall >= chips) return strength >= 120 ? { action: 'all_in' } : { action: 'fold' };
+        if (toCall > chips * 0.6 && strength < 90) return { action: 'fold' };
+        return { action: 'call' };
+      }
+
       if (toCall <= 0) {
-        if (strength >= 220 && chips > 120) {
-          const raiseTo = currentBet + Math.max(20, Math.floor(Math.max(pot, 40) * 0.6));
+        const raiseThresh = diff === 'hard' ? 180 : 220;
+        if (strength >= raiseThresh && chips > 100) {
+          const raiseTo = currentBet + Math.max(20, Math.floor(Math.max(pot, 40) * (diff === 'hard' ? 0.75 : 0.6)));
           return { action: 'raise', amount: Math.min(invested + chips, raiseTo) };
         }
         if (strength >= 170 && chips > 90) {
@@ -75,14 +87,19 @@ exports.createBot = function(playerIndex) {
       }
 
       if (toCall >= chips) {
-        // Facing an all-in: call with a decent pair, sometimes with big high cards —
-        // otherwise shoving every hand would win uncontested
-        const callShove = strength >= 160 || (strength >= 120 && Math.random() < 0.4);
+        const callShove = strength >= (diff === 'hard' ? 190 : 160) || (strength >= 130 && Math.random() < 0.4);
         return callShove ? { action: 'all_in' } : { action: 'fold' };
       }
 
-      // 10% bluff chance on weak hands — keeps the bot unpredictable
-      if (strength < 50 && Math.random() < 0.1 && chips > toCall + 40) {
+      // Hard mode: tight folds on weak hands facing high bets
+      if (diff === 'hard') {
+        if (strength < 80 && toCall > 20) return { action: 'fold' };
+        if (strength < 140 && potOdds > 0.35) return { action: 'fold' };
+      }
+
+      // Bluff chance
+      const bluffProb = diff === 'hard' ? 0.15 : 0.1;
+      if (strength < 50 && Math.random() < bluffProb && chips > toCall + 40) {
         const raiseTo = currentBet + Math.max(20, Math.floor(Math.max(pot, 35) * 0.55));
         return { action: 'raise', amount: Math.min(invested + chips, raiseTo) };
       }
@@ -99,7 +116,7 @@ exports.createBot = function(playerIndex) {
         return { action: 'fold' };
       }
 
-      if (strength >= 260 && chips > toCall + 40) {
+      if (strength >= 240 && chips > toCall + 40) {
         const raiseTo = currentBet + Math.max(24, Math.floor(Math.max(pot, 50) * 0.7));
         return { action: 'raise', amount: Math.min(invested + chips, raiseTo) };
       }

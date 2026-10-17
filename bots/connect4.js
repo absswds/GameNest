@@ -196,6 +196,11 @@ exports.createBot = (playerIndex) => ({
 
     if (moves.length === 0) return null;
 
+    var diff = (state && state._options && state._options.difficulty) || 'normal';
+    if (diff === 'easy' && Math.random() < 0.30) {
+      return { col: moves[Math.floor(Math.random() * moves.length)] };
+    }
+
     var bestMove = moves[0];
     var bestVal = -Infinity;
     var depth = getDepth(state, { easy: 2, normal: 6, hard: 8 });
@@ -212,5 +217,6 @@ exports.createBot = (playerIndex) => ({
     }
 
     return { col: bestMove };
+
   },
 });
