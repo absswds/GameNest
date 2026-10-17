@@ -1,10 +1,13 @@
 // bots/monopoly.js — 大富翁 AI (难度分级 + 建房 + 交易估值与提议)
 const { botName } = require('./lib/bot-name');
 const { getDifficulty } = require('./lib/difficulty');
+const { groupHasHouses } = require('../games/monopoly');
 
 exports.name = 'monopoly';
 exports.createBot = (playerIndex) => {
   let lastProposedTurn = -1;
+  let lastProposedKey = null;
+  const declined = {}; // `${to}:${targetPos}` -> round it was declined
 
   return {
     name: botName(playerIndex, 'zh'),
@@ -27,12 +30,20 @@ exports.createBot = (playerIndex) => {
       const reserve = diff === 'hard' ? 60 : (diff === 'easy' ? 180 : 100);
       const buildReserve = diff === 'hard' ? 80 : (diff === 'easy' ? 220 : 150);
 
+      // 记住被拒绝的提议，至少 5 回合内不再提同一笔
+      const lt = state.lastTrade;
+      if (lt && lt.accepted === false && lt.from === playerIndex && lastProposedKey) {
+        declined[lastProposedKey] = state.round;
+        lastProposedKey = null;
+      }
+
       // 2. 主动发起交易提议（有真人对战或明确开启交易选项时，差 1 张凑齐垄断时主动找对手交易）
-      const canPropose = state._hasRealPlayers || (state._options && state._options.trading === true);
+      const canPropose = state._realPlayerCount > 0 || (state._options && state._options.trading === true);
       if (canPropose && (state.phase === 'waiting' || state.phase === 'end_turn') && !state.tradeOffer && lastProposedTurn !== state.round) {
-        const tradeMove = considerProactiveTrade(state, board, playerIndex, diff);
+        const tradeMove = considerProactiveTrade(state, board, playerIndex, diff, declined);
         if (tradeMove) {
           lastProposedTurn = state.round;
+          lastProposedKey = `${tradeMove.to}:${tradeMove.requestProps[0]}`;
           return tradeMove;
         }
       }
@@ -106,9 +117,10 @@ function wouldComplete(state, board, pos, group, pi) {
   return spaces.every(i => i === pos || (state.properties[i] && state.properties[i].owner === pi));
 }
 
-function groupHasHouses(state, board, group) {
+// Exported helper takes a position; any space of the group will do.
+function groupHasHousesIn(state, board, group) {
   const spaces = groupSpaces(board, group);
-  return spaces.some(i => state.properties[i] && (state.properties[i].houses || 0) > 0);
+  return spaces.length > 0 && groupHasHouses(state, spaces[0]);
 }
 
 function pickBuild(state, board, pi, buildReserve, diff) {
@@ -174,7 +186,7 @@ function evaluateIncomingTrade(state, botIndex, offer) {
 }
 
 // 主动寻找有利交易（如差 1 张凑齐垄断）
-function considerProactiveTrade(state, board, botIndex, diff) {
+function considerProactiveTrade(state, board, botIndex, diff, declined) {
   if (diff === 'easy') return null; // 简单机器人不主动算计交易
   const botCash = state.cash[botIndex];
   if (botCash < 200) return null;
@@ -190,7 +202,7 @@ function considerProactiveTrade(state, board, botIndex, diff) {
 
   for (const group of Object.keys(groupMap)) {
     const spaces = groupMap[group];
-    if (groupHasHouses(state, board, Number(group))) continue;
+    if (groupHasHousesIn(state, board, Number(group))) continue;
 
     const myProps = spaces.filter(i => state.properties[i] && state.properties[i].owner === botIndex);
     const unownedOrOther = spaces.filter(i => !state.properties[i] || state.properties[i].owner !== botIndex);
@@ -202,6 +214,8 @@ function considerProactiveTrade(state, board, botIndex, diff) {
       if (!targetProp || targetProp.owner === undefined || targetProp.owner === null) continue;
       const targetPlayer = targetProp.owner;
       if (state.eliminated[targetPlayer]) continue;
+      const dr = declined && declined[`${targetPlayer}:${targetPos}`];
+      if (dr !== undefined && state.round - dr < 5) continue;
 
       const targetSpace = board[targetPos];
       const price = targetSpace.price || 150;
@@ -216,7 +230,7 @@ function considerProactiveTrade(state, board, botIndex, diff) {
         const s = board[p];
         if (!s || s.type !== 'property' || s.group === undefined) continue;
         if (s.group === Number(group)) continue; // 不拿正在凑的同组
-        if (groupHasHouses(state, board, s.group)) continue;
+        if (groupHasHousesIn(state, board, s.group)) continue;
 
         if (ownsInGroup(state, board, s.group, botIndex) === 1) {
           const oppOwns = ownsInGroup(state, board, s.group, targetPlayer);

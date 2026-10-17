@@ -164,12 +164,27 @@ function finishByAssets(state) {
   state.phase = 'gameover';
 }
 
+const TRADE_TIMEOUT_MS = 30000;
+
+function declineTrade(state, timeout) {
+  const t = state.tradeOffer;
+  if (!t) return;
+  state.lastTrade = { from: t.from, to: t.to, accepted: false };
+  if (timeout) state.lastTrade.timeout = true;
+  state.tradeOffer = null;
+}
+
 function nextPlayer(state) {
   state.tradeOffer = null;
   const prev = state.currentPlayer;
   let next = (prev + 1) % state._playerCount;
   let loops = 0;
   while (state.eliminated[next] && loops < state._playerCount) { next = (next + 1) % state._playerCount; loops++; }
+  startTurnOf(state, prev, next);
+}
+
+// Hand the turn to `next` (wrapping past seat 0 counts a new round) and reset per-turn fields.
+function startTurnOf(state, prev, next) {
   state.roundLimit = roundLimitOf(state);
   if (next <= prev) {
     state.round++;
@@ -353,10 +368,13 @@ exports.handleMove = (data, state, playerIndex) => {
   }
   if (!data) return 'g_invalid_action';
   if (data.pass || data.type === 'pass') {
-    if (state.tradeOffer) {
-      state.tradeOffer = null;
+    // Only the trade recipient's pass means anything (a decline); anything else is a no-op error
+    // so the bot scheduler's stuck backoff still works.
+    if (state.tradeOffer && state.tradeOffer.to === playerIndex) {
+      declineTrade(state, false);
+      return null;
     }
-    return null;
+    return 'g_invalid_action';
   }
   if (typeof data.type !== 'string') return 'g_invalid_action';
 
@@ -393,8 +411,7 @@ exports.handleMove = (data, state, playerIndex) => {
       state.tradeOffer = null;
       return null;
     } else {
-      state.lastTrade = { from: state.tradeOffer.from, to: state.tradeOffer.to, accepted: false };
-      state.tradeOffer = null;
+      declineTrade(state, false);
       return null;
     }
   }
@@ -434,7 +451,7 @@ exports.handleMove = (data, state, playerIndex) => {
       if (groupHasHouses(state, p)) return 'mp_group_has_houses';
     }
 
-    state.tradeOffer = { from: playerIndex, to, offerCash, offerProps, requestCash, requestProps };
+    state.tradeOffer = { from: playerIndex, to, offerCash, offerProps, requestCash, requestProps, deadline: Date.now() + TRADE_TIMEOUT_MS };
     return null;
   }
 
@@ -548,6 +565,18 @@ exports.getCurrentActor = (state) => {
   if (state.tradeOffer) return state.tradeOffer.to;
   return state.currentPlayer;
 };
+
+// Server skips a disconnected seat. A pending offer means the recipient is the absent one:
+// decline it and leave the turn with the proposer.
+exports.setCurrentActor = (state, idx) => {
+  if (state.tradeOffer) { declineTrade(state, true); return; }
+  if (state.phase === 'gameover') return;
+  const prev = state.currentPlayer;
+  startTurnOf(state, prev, idx);
+};
+
+exports.getPhaseDeadline = (state) => (state.tradeOffer && state.tradeOffer.deadline) || 0;
+exports.onTimeout = (state) => { declineTrade(state, true); };
 
 exports.groupHasHouses = groupHasHouses;
 

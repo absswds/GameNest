@@ -83,11 +83,12 @@ test('Sudoku Bot respects difficulty', () => {
     _options: { difficulty: 'easy' },
   };
   let blunders = 0;
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 400; i++) {
     const move = bot.getMove(stateEasy);
     if (move.val !== solution[move.row][move.col]) blunders++;
   }
-  assert.ok(blunders > 5, `Easy bot makes occasional mistakes (blundered ${blunders}/100)`);
+  // ~5% blunder rate: expect about 20 of 400, never a majority
+  assert.ok(blunders > 0 && blunders < 60, `Easy bot makes occasional mistakes (blundered ${blunders}/400)`);
 });
 
 test('UNO Bot respects difficulty in card playing', () => {

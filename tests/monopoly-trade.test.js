@@ -155,3 +155,97 @@ test('Monopoly Bot: Evaluates incoming trade intelligently based on monopoly com
   const moveDecline = bot1.getMove(state);
   assert.equal(moveDecline.type, 'trade_decline', 'Bot rejects trade that hands opponent a monopoly for cheap');
 });
+
+// ---- timeout / skip / pass semantics ----
+function withOffer() {
+  const state = createTestState();
+  state.properties[1] = { owner: 0, houses: 0 };
+  state.properties[6] = { owner: 1, houses: 0 };
+  const err = game.handleMove({ type: 'trade_offer', to: 1, offerCash: 10, offerProps: [1], requestCash: 0, requestProps: [6] }, state, 0);
+  assert.equal(err, null);
+  return state;
+}
+
+test('Monopoly Trade: getPhaseDeadline reflects the pending offer only', () => {
+  const state = withOffer();
+  assert.ok(game.getPhaseDeadline(state) > Date.now());
+  game.handleMove({ type: 'trade_decline' }, state, 1);
+  assert.equal(game.getPhaseDeadline(state), 0);
+});
+
+test('Monopoly Trade: onTimeout declines the pending offer', () => {
+  const state = withOffer();
+  game.onTimeout(state);
+  assert.equal(state.tradeOffer, null);
+  assert.equal(state.lastTrade.accepted, false);
+  assert.equal(state.lastTrade.from, 0);
+  assert.equal(state.lastTrade.to, 1);
+});
+
+test('Monopoly Trade: setCurrentActor with pending offer declines it and keeps the turn', () => {
+  const state = withOffer();
+  game.setCurrentActor(state, 2);
+  assert.equal(state.tradeOffer, null);
+  assert.equal(state.lastTrade.accepted, false);
+  assert.equal(state.currentPlayer, 0);
+});
+
+test('Monopoly Trade: setCurrentActor without offer moves the turn and resets turn fields', () => {
+  const state = createTestState();
+  state.phase = 'end_turn'; state.doublesCount = 2; state.rollAgain = true; state.lastRent = { x: 1 };
+  game.setCurrentActor(state, 1);
+  assert.equal(state.currentPlayer, 1);
+  assert.equal(state.phase, 'waiting');
+  assert.equal(state.doublesCount, 0);
+  assert.equal(state.rollAgain, false);
+  assert.equal(state.lastRent, null);
+  assert.equal(state.round, 1);
+  game.setCurrentActor(state, 0); // wrapped past seat 0
+  assert.equal(state.round, 2);
+});
+
+test('Monopoly Trade: third-party pass neither clears the offer nor succeeds', () => {
+  const state = withOffer();
+  const err = game.handleMove({ pass: true }, state, 2);
+  assert.equal(err, 'g_invalid_action');
+  assert.ok(state.tradeOffer);
+});
+
+test('Monopoly Trade: recipient pass declines and records lastTrade', () => {
+  const state = withOffer();
+  assert.equal(game.handleMove({ pass: true }, state, 1), null);
+  assert.equal(state.tradeOffer, null);
+  assert.equal(state.lastTrade.accepted, false);
+});
+
+test('Monopoly Trade: no-op pass returns an error key', () => {
+  const state = createTestState();
+  assert.equal(game.handleMove({ pass: true }, state, 0), 'g_invalid_action');
+});
+
+test('Monopoly bot: proposes a monopoly-completing trade, then does not repeat a declined deal', () => {
+  const state = createTestState();
+  state._realPlayerCount = 1;
+  state._options = { difficulty: 'normal' };
+  state.phase = 'waiting';
+  state.cash[0] = 1500;
+  // Bot (seat 0) owns two of the three-space group containing space 1; seat 1 owns the third.
+  const grp = state.board[1].group;
+  const spaces = state.board.map((s, i) => (s && s.type === 'property' && s.group === grp ? i : -1)).filter(i => i >= 0);
+  spaces.slice(0, -1).forEach(i => { state.properties[i] = { owner: 0, houses: 0 }; });
+  const target = spaces[spaces.length - 1];
+  state.properties[target] = { owner: 1, houses: 0 };
+
+  const bot = botMod.createBot(0);
+  const m1 = bot.getMove(state);
+  assert.equal(m1.type, 'trade_offer');
+  assert.equal(m1.to, 1);
+  assert.deepEqual(m1.requestProps, [target]);
+
+  state.lastTrade = { from: 0, to: 1, accepted: false };
+  state.round = 2;
+  const m2 = bot.getMove(state);
+  assert.notEqual(m2.type, 'trade_offer');
+  state.round = 3;
+  assert.notEqual(bot.getMove(state).type, 'trade_offer');
+});
