@@ -26,11 +26,10 @@ exports.createBot = (playerIndex) => ({
           const mate = Object.keys(s.wolfVotes).map((k) => s.wolfVotes[k]).find((t) => t >= 0);
           return { type: 'kill', target: mate !== undefined ? mate : pick(nonWolf) };
         }
-        return { type: 'kill', target: pick(nonWolf) };
-      case 'night_seer': {
-        const unchecked = others.filter((i) => !s.checks.some((c) => c.target === i));
-        return { type: 'check', target: pick(unchecked.length ? unchecked : others) };
-      }
+        { // the seer acts in the same phase
+          const unchecked = others.filter((i) => !s.checks.some((c) => c.target === i));
+          return { type: 'check', target: pick(unchecked.length ? unchecked : others) };
+        }
       case 'night_witch':
         if (s.knife >= 0 && s.knife !== me && s.potions.save) return { type: 'witch', save: true };
         if (s.potions.poison) {

@@ -141,7 +141,14 @@ exports.createBot = function(playerIndex) {
           const groups = rankGroups(hand);
           for (const [r, cs] of groups) {
             if (cs.length >= 2 && rankVal(r) < 8) {
-              return { cards: cs.slice(0, 2).map(c => c.id) };
+              // The opening play of the game must contain the 3 of diamonds
+              let two = cs.slice(0, 2);
+              if (!state._opened) {
+                const d3 = cs.find(c => c.rank === '3' && c.suit === 'd');
+                if (!d3) continue;
+                two = [d3, cs.find(c => c !== d3)];
+              }
+              return { cards: two.map(c => c.id) };
             }
           }
         }

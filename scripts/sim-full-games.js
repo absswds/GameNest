@@ -117,7 +117,12 @@ const OPT = {
   seed: Number(flag('seed', 1000)),
   out: flag('out', null),
   verbose: argv.includes('--verbose'),
+  difficulty: flag('difficulty', null), // easy|normal|hard: sets room option `difficulty` for every game
 };
+if (OPT.difficulty !== null && !['easy', 'normal', 'hard'].includes(OPT.difficulty)) {
+  console.error('--difficulty must be easy, normal or hard');
+  process.exit(2);
+}
 const wanted = argv.filter((a) => !a.startsWith('--'));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -341,7 +346,7 @@ async function runOnce(game, runIdx, seed) {
   const cfg = CONFIG[game] || { sizes: [2] };
   const gm = gameMods[game], bm = botMods[game];
   const n = cfg.sizes[runIdx % cfg.sizes.length];
-  const roomOptions = (cfg.options && cfg.options[runIdx % cfg.options.length]) || {};
+  const roomOptions = Object.assign({}, (cfg.options && cfg.options[runIdx % cfg.options.length]) || {}, OPT.difficulty ? { difficulty: OPT.difficulty } : {});
   const hasBot = !!bm;
   const humans = hasBot && cfg.humans !== 'all' ? 1 : n;
   const rng = mulberry32(seed ^ 0x9e3779b9);
@@ -379,7 +384,9 @@ async function runOnce(game, runIdx, seed) {
       let b = botFor.get(c);
       if (!b || b.seat !== c.seat) { b = { seat: c.seat, bot: bm.createBot(c.seat) }; botFor.set(c, b); }
       if (game === 'sudoku') return sudokuHint(c.view);
-      return b.bot.getMove(toBotState(game, JSON.parse(JSON.stringify(c.view)), c.seat), c.seat);
+      const st = toBotState(game, JSON.parse(JSON.stringify(c.view)), c.seat);
+      if (OPT.difficulty) st._options = Object.assign({}, st._options, roomOptions, { difficulty: OPT.difficulty });
+      return b.bot.getMove(st, c.seat);
     };
     const myTurn = (c) => {
       const v = c.view;

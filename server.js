@@ -743,11 +743,11 @@ function scheduleTwentyFourBots(room) {
     const delay = realCount < 3
       ? 20000 + Math.random() * 10000   // 1-2 real players: 20~30s
       : 30000 + Math.random() * 10000;  // 3+ real players: 30~40s
-    const attempt = (retries) => {
+    const attempt = (retries, wait) => {
       // Tracked so clearAllRoomTimers can cancel them (round change, restart, return to lobby).
       const handle = setTimeout(() => {
         if (room._tfBotTimers) room._tfBotTimers = room._tfBotTimers.filter(h => h !== handle);
-        if (!rooms.has(room._roomId) || room.state !== state) return;
+        if (!rooms.has(room._roomId) || room.state !== state || (state.currentRound || 0) !== round) return;
         if (room.state.phase !== 'playing') {
           // round hasn't started yet — retry once after a short wait
           if (retries > 0) attempt(retries - 1);
@@ -755,17 +755,17 @@ function scheduleTwentyFourBots(room) {
         }
         try {
           const moveData = bot.getMove(room.state);
-          if (!moveData.expression) return;
+          if (!moveData.expression) { attempt(3, 10000 + Math.random() * 5000); return; } // gave up this time: retry later
           const gameMod = gameRegistry[room.game];
           const err = gameMod.handleMove(moveData, room.state, idx);
           if (err) { console.error('24 Bot error:', err); return; }
           broadcastGameView(room, 'game_state');
         } catch(e) { console.error('24 Bot exception:', e.message); }
-      }, retries === 3 ? delay : 300);
+      }, retries === 3 ? wait : 300);
       room._tfBotTimers = room._tfBotTimers || [];
       room._tfBotTimers.push(handle);
     };
-    attempt(3);
+    attempt(3, delay);
   }
 }
 

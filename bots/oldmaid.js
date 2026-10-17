@@ -19,10 +19,7 @@ exports.createBot = (playerIndex) => ({
     const diff = getDifficulty(state);
 
     let pickIndex = 0;
-    if (diff === 'easy') {
-      // Easy: always draws the edge card (predictable)
-      pickIndex = 0;
-    } else if (diff === 'hard' && targetHand.length > 2) {
+    if (diff === 'hard' && targetHand.length > 2) {
       // Hard: avoids the very last card (often the recently drawn card)
       pickIndex = Math.floor(Math.random() * (targetHand.length - 1));
     } else {

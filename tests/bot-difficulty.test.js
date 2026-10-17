@@ -169,3 +169,62 @@ test('2048 Bot selects optimal moves with lookahead in hard mode', () => {
   assert.ok(['left', 'right', 'up', 'down'].includes(move.dir), 'Returns valid direction');
 });
 
+
+test('OldMaid: easy bots do not loop forever', () => {
+  const om = require('../games/oldmaid');
+  const bots = [0, 1, 2].map((i) => require('../bots/oldmaid').createBot(i));
+  for (let g = 0; g < 20; g++) {
+    const s = om.createState();
+    s._options = { difficulty: 'easy' };
+    om.initGame(s, 3);
+    let steps = 0;
+    while (s.winner === null && s.loser === null && steps++ < 2000) {
+      const err = om.handleMove(bots[s.currentPlayer].getMove(s), s, s.currentPlayer);
+      assert.equal(err, null);
+    }
+    assert.ok(s.loser !== null, 'game finished within 2000 moves');
+  }
+});
+
+test('BigTwo: hard bot opens with a pair only if it holds the diamond 3', () => {
+  const bt = require('../games/bigtwo');
+  const mk = (rank, suit) => ({ id: rank + suit, rank, suit });
+  const bot = bigtwoBot.createBot(0);
+  const hands = [
+    [mk('3', 'd'), mk('3', 'h'), mk('5', 'c'), mk('9', 's')],
+    [mk('3', 'd'), mk('4', 'h'), mk('4', 'c'), mk('9', 's')],
+  ];
+  for (const h of hands) {
+    const s = bt.createState();
+    s._options = { difficulty: 'hard' };
+    bt.initGame(s, 2);
+    s.hands = [h.slice(), [mk('6', 's')]];
+    s.currentPlayer = 0;
+    s._opened = false;
+    const m = bot.getMove(s);
+    assert.equal(bt.handleMove(m, s, 0), null, 'opening move is legal: ' + JSON.stringify(m));
+  }
+});
+
+test('Werewolf: all-bot tables at every difficulty never make an illegal move', () => {
+  const ww = require('../games/werewolf');
+  const wwBot = require('../bots/werewolf');
+  for (const diff of ['easy', 'normal', 'hard']) {
+    for (let g = 0; g < 8; g++) {
+      const n = 6 + (g % 7);
+      const s = ww.createState();
+      s._options = { difficulty: diff, sheriff: g % 2 === 0, discussTime: 0 };
+      ww.initGame(s, n);
+      let steps = 0;
+      while (s.winner === null && steps++ < 3000) {
+        const pending = ww.getPendingActors(s);
+        if (!pending.length) { ww.onTimeout(s); continue; }
+        const p = pending[0];
+        const mv = wwBot.createBot(p).getMove(s, p);
+        const err = ww.handleMove(mv, s, p);
+        assert.equal(err, null, `${diff} ${s.phase} P${p} ${JSON.stringify(mv)}: ${err}`);
+      }
+      assert.ok(s.winner !== null, 'werewolf game finished');
+    }
+  }
+});
