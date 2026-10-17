@@ -15,10 +15,16 @@ function checkWinner(board) {
   return null;
 }
 
+function countEmpty(board) {
+  let n = 0;
+  for (let i = 0; i < 9; i++) if (board[i] === null) n++;
+  return n;
+}
+
 function minimax(board, isMax, me, opp) {
   const winner = checkWinner(board);
-  if (winner === me) return 10;
-  if (winner === opp) return -10;
+  if (winner === me) return 10 + countEmpty(board);
+  if (winner === opp) return -10 - countEmpty(board);
 
   const empty = [];
   for (let i = 0; i < 9; i++) if (board[i] === null) empty.push(i);
@@ -43,48 +49,32 @@ function minimax(board, isMax, me, opp) {
   }
 }
 
-function getHardMove(board, me, opp, empty) {
-  let bestVal = -Infinity;
-  let bestCell = empty[0];
-  for (const cell of empty) {
+// Minimax value of every empty cell for `me` (win sooner / lose later is better).
+function scoreMoves(board, me, opp, empty) {
+  return empty.map(cell => {
     board[cell] = me;
-    const moveVal = minimax(board, false, me, opp);
+    const v = minimax(board, false, me, opp);
     board[cell] = null;
-    if (moveVal > bestVal) {
-      bestVal = moveVal;
-      bestCell = cell;
-    }
-  }
-  return { cell: bestCell };
+    return { cell, v };
+  });
 }
 
-function getNormalMove(board, me, opp, empty) {
-  // 1. Try to win
-  for (const cell of empty) {
-    board[cell] = me;
-    const won = LINES.some(([a,b,c]) => board[a] === me && board[b] === me && board[c] === me);
-    board[cell] = null;
-    if (won) return { cell };
+// Human-like slip: with probability `mistakeP` take a move that is worse than the best one,
+// chosen by softmax over the minimax values (near-misses are likelier than blunders).
+function pickByQuality(scored, mistakeP, temp) {
+  const best = Math.max(...scored.map(s => s.v));
+  const optimal = scored.filter(s => s.v === best);
+  const worse = scored.filter(s => s.v < best);
+  if (worse.length && Math.random() < mistakeP) {
+    const w = worse.map(s => Math.exp((s.v - best) / temp));
+    let r = Math.random() * w.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < worse.length; i++) { r -= w[i]; if (r <= 0) return { cell: worse[i].cell }; }
+    return { cell: worse[worse.length - 1].cell };
   }
-
-  // 2. Block opponent
-  for (const cell of empty) {
-    board[cell] = opp;
-    const lost = LINES.some(([a,b,c]) => board[a] === opp && board[b] === opp && board[c] === opp);
-    board[cell] = null;
-    if (lost) return { cell };
-  }
-
-  // 3. Take center
-  if (board[4] === null) return { cell: 4 };
-
-  // 4. Take corners
-  const corners = [0,2,6,8].filter(i => board[i] === null);
-  if (corners.length) return { cell: corners[Math.floor(Math.random() * corners.length)] };
-
-  // 5. Random
-  return { cell: empty[Math.floor(Math.random() * empty.length)] };
+  return { cell: (mistakeP > 0 ? optimal[Math.floor(Math.random() * optimal.length)] : optimal[0]).cell };
 }
+
+const MISTAKE_P = { easy: 0.7, normal: 0.3, hard: 0 };
 
 exports.createBot = (playerIndex) => ({
   name: botName(playerIndex, 'zh'),
@@ -97,19 +87,7 @@ exports.createBot = (playerIndex) => ({
     if (empty.length === 0) return { pass: true };
 
     const diff = getDifficulty(state);
-
-    if (diff === 'easy') {
-      // 50% chance to blunder / pick random cell
-      if (Math.random() < 0.5) {
-        return { cell: empty[Math.floor(Math.random() * empty.length)] };
-      }
-      return getNormalMove(board, me, opp, empty);
-    }
-
-    if (diff === 'hard') {
-      return getHardMove(board, me, opp, empty);
-    }
-
-    return getNormalMove(board, me, opp, empty);
+    const scored = scoreMoves(board, me, opp, empty);
+    return pickByQuality(scored, MISTAKE_P[diff] ?? MISTAKE_P.normal, diff === 'easy' ? 8 : 4);
   },
 });

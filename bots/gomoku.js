@@ -16,7 +16,8 @@ exports.createBot = (playerIndex) => ({
     const opp = 1 - me;
 
     const diff = getDifficulty(state);
-    let bestScore = -1, bestMoves = [];
+    const hard = diff === 'hard';
+    const cands = [];
 
     for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) {
@@ -24,50 +25,32 @@ exports.createBot = (playerIndex) => ({
         // Only consider positions near existing stones
         if (!hasNeighbor(board, r, c)) continue;
 
-        const atk = evaluate(board, r, c, me, diff === 'hard');
-        const def = evaluate(board, r, c, opp, diff === 'hard');
-        
+        const atk = evaluate(board, r, c, me, hard);
+        const def = evaluate(board, r, c, opp, hard);
+
         let score;
         if (atk >= 100000) {
           score = atk * 3; // Immediate win takes absolute priority
         } else if (def >= 100000) {
           score = def * 2.5; // Must block immediate opponent win
-        } else if (diff === 'hard') {
-          // Hard mode: strategic balancing of attack combos vs blocking opponent open-3/rush-4
+        } else if (hard) {
           score = Math.max(atk * 1.15, def * 1.35);
-        } else if (diff === 'easy') {
-          score = Math.max(atk, def * 0.9) * (0.8 + Math.random() * 0.4);
         } else {
           score = Math.max(atk, def * 1.1); // Win first, else slightly prefer defense
         }
-
-        if (score > bestScore) {
-          bestScore = score;
-          bestMoves = [{ row: r, col: c }];
-        } else if (score === bestScore) {
-          bestMoves.push({ row: r, col: c });
-        }
+        cands.push({ row: r, col: c, score, atk, def });
       }
     }
 
-    // Easy mode: 35% chance to blunder and pick any neighbor cell
-    if (diff === 'easy' && Math.random() < 0.35) {
-      const neighborMoves = [];
-      for (let r = 0; r < SIZE; r++) {
-        for (let c = 0; c < SIZE; c++) {
-          if (board[r][c] === null && hasNeighbor(board, r, c)) {
-            neighborMoves.push({ row: r, col: c });
-          }
-        }
-      }
-      if (neighborMoves.length > 0) {
-        return neighborMoves[Math.floor(Math.random() * neighborMoves.length)];
-      }
+    if (cands.length > 0) {
+      cands.sort((x, y) => y.score - x.score);
+      if (hard) return pick(refine(board, cands, me, opp));
+      return pick(softPick(cands, diff));
     }
 
     // Fallback when no neighboured cell exists (e.g. empty board, or stones only at edges):
     // take the center if free, otherwise the first empty cell anywhere on the board.
-    if (bestMoves.length === 0) {
+    {
       const mid = (SIZE - 1) / 2 | 0;
       if (board[mid][mid] === null) return { row: mid, col: mid };
       for (let r = 0; r < SIZE; r++) {
@@ -78,11 +61,51 @@ exports.createBot = (playerIndex) => ({
       return { pass: true }; // board full — game should already be a draw
     }
 
-    const pick = bestMoves[Math.floor(Math.random() * bestMoves.length)];
-    return { row: pick.row, col: pick.col };
   },
 });
 
+
+function pick(m) { return { row: m.row, col: m.col }; }
+
+// Quality-based slips for normal/easy: softmax over log-score among candidates within `cap` of the best.
+// Forced wins/blocks score orders of magnitude higher, so they are normally still taken; easy sometimes
+// overlooks a forced block, like a distracted human.
+const TIER = { normal: { T: 0.55, cap: 0.08, oversee: 0.1 }, easy: { T: 0.9, cap: 0.01, oversee: 0.3 } };
+function softPick(cands, diff) {
+  const { T, cap, oversee } = TIER[diff] || TIER.normal;
+  let list = cands;
+  if (oversee && list[0].atk < 100000 && list[0].def >= 100000 && list.length > 1 && Math.random() < oversee) {
+    list = list.slice(1);
+  }
+  const best = list[0].score;
+  const pool = list.filter(x => x.score >= best * cap).slice(0, 12);
+  const w = pool.map(x => Math.pow(x.score / best, 1 / T));
+  let r = Math.random() * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) return pool[i]; }
+  return pool[0];
+}
+
+// Hard: 2-ply refinement. For the top candidates, place the stone and subtract the opponent's best reply.
+function refine(board, cands, me, opp) {
+  if (cands[0].atk >= 100000) return cands[0];
+  if (cands[0].def >= 100000) return cands[0];
+  let best = null, bestVal = -Infinity;
+  for (const cd of cands.slice(0, 10)) {
+    board[cd.row][cd.col] = me;
+    let reply = 0;
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (board[r][c] !== null || !hasNeighbor(board, r, c)) continue;
+        const v = evaluate(board, r, c, opp, true);
+        if (v > reply) reply = v;
+      }
+    }
+    board[cd.row][cd.col] = null;
+    const val = cd.score - 0.5 * reply;
+    if (val > bestVal) { bestVal = val; best = cd; }
+  }
+  return best;
+}
 
 function hasNeighbor(board, r, c) {
   for (let dr = -1; dr <= 1; dr++) {
