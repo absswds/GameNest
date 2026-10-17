@@ -157,6 +157,36 @@ app.get('/api/room-exists/:roomId', (req, res) => {
   res.json({ exists: !!room });
 });
 
+// LAN room list: public waiting rooms with available slots
+app.get('/api/rooms', (req, res) => {
+  const list = [];
+  const now = Date.now();
+  for (const [roomId, room] of rooms) {
+    if (room.isPrivate) continue;
+    if (room.phase === 'playing') continue;
+    const botCount = room.bots ? room.bots.size : 0;
+    const humanCount = room.players ? room.players.size : 0;
+    const totalOccupied = humanCount + botCount;
+    if (totalOccupied >= room.maxPlayers) continue;
+    if (humanCount === 0) continue; // no human players (abandoned)
+    const hostInfo = room.hostWS && room.players.get(room.hostWS);
+    const gameMod = gameRegistry[room.game];
+    list.push({
+      roomId,
+      game: room.game,
+      gameName: gameMod ? gameMod.name : room.game,
+      playerCount: totalOccupied,
+      humanCount,
+      maxPlayers: room.maxPlayers,
+      hostName: hostInfo ? hostInfo.name : 'Host',
+      phase: room.phase,
+      createdAt: room.createdAt || now,
+    });
+  }
+  list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  res.json({ rooms: list });
+});
+
 app.get('/network-info', (req, res) => {
   const lanURLs = getShareableLanIPs().map(({ name, ip }) => ({
     name,
@@ -352,6 +382,8 @@ function createRoom(ws, gameType, lang) {
     phase: 'lobby',            // 'lobby' | 'ready' | 'playing'
     readyPlayers: new Set(),   // Set of player indices that are ready
     options: {},               // Game-specific options (e.g. requireBreak)
+    isPrivate: false,
+    createdAt: Date.now(),
   };
   room.players.set(ws, { name: 'Player 1', index: 0, avatar: '😊', resumeToken: crypto.randomUUID(), disconnectedAt: null });
   rooms.set(roomId, room);
@@ -1131,6 +1163,7 @@ wss.on('connection', (ws) => {
         players: roomPlayersList(currentRoom),
         phase: currentRoom.phase,
         options: currentRoom.options,
+        isPrivate: !!currentRoom.isPrivate,
         resumeToken: currentRoom.players.get(ws).resumeToken,
       }));
       return;
@@ -1265,12 +1298,13 @@ wss.on('connection', (ws) => {
         currentRoom = room;
         ws.send(JSON.stringify({ type: 'room_joined', roomId, game: room.game, maxPlayers: room.maxPlayers,
           playerIndex: info.index, players: roomPlayersList(room), state: viewFor(room, info.index), match: room.match || null, phase: room.phase,
-          options: room.options, resumeToken: info.resumeToken }));
+          options: room.options, isPrivate: !!room.isPrivate, resumeToken: info.resumeToken }));
         sendToRoom(room, {
           type: 'room_update',
           phase: room.phase,
           players: roomPlayersList(room),
           options: room.options,
+          isPrivate: !!room.isPrivate,
         }, ws);
         return;
       }
@@ -1289,6 +1323,7 @@ wss.on('connection', (ws) => {
           state: viewFor(room, existing[1].index), match: room.match || null,
           phase: room.phase,
           options: room.options,
+          isPrivate: !!room.isPrivate,
         }));
         return;
       }
@@ -1343,6 +1378,7 @@ wss.on('connection', (ws) => {
         state: viewFor(room, idx), match: room.match || null,
         phase: room.phase,
         options: room.options,
+        isPrivate: !!room.isPrivate,
         resumeToken: room.players.get(ws).resumeToken,
       }));
       sendToRoom(room, {
@@ -1516,11 +1552,37 @@ wss.on('connection', (ws) => {
       const { key, value } = data || {};
       if (typeof key !== 'string' || !key || key === '__proto__' || key === 'constructor' || key === 'prototype') return;
       currentRoom.options[key] = value;
+      if (key === 'isPrivate') currentRoom.isPrivate = !!value;
       broadcastRoom(currentRoom, {
         type: 'room_update',
         phase: currentRoom.phase,
         players: roomPlayersList(currentRoom),
         options: currentRoom.options,
+        isPrivate: !!currentRoom.isPrivate,
+      });
+      return;
+    }
+
+    // --- set_private ---
+    if (type === 'set_private') {
+      if (!currentRoom) return;
+      if (ws !== currentRoom.hostWS) {
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'host_only_settings') }));
+        return;
+      }
+      if (currentRoom.phase === 'playing') {
+        ws.send(JSON.stringify({ type: 'error', message: serverT(currentRoom, 'game_started_no_settings') }));
+        return;
+      }
+      const priv = !!(data && data.isPrivate);
+      currentRoom.isPrivate = priv;
+      currentRoom.options.isPrivate = priv;
+      broadcastRoom(currentRoom, {
+        type: 'room_update',
+        phase: currentRoom.phase,
+        players: roomPlayersList(currentRoom),
+        options: currentRoom.options,
+        isPrivate: !!currentRoom.isPrivate,
       });
       return;
     }

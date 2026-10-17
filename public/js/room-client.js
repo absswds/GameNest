@@ -315,6 +315,7 @@
         players = msg.players || players;
         roomPhase = msg.phase || roomPhase;
         if (msg.options) roomOptions = msg.options;
+        if (msg.isPrivate !== undefined) roomOptions.isPrivate = !!msg.isPrivate;
         updateWaitingRoom();
       },
       player_index_updated(msg) {
@@ -368,6 +369,7 @@
       window._players = players;
       roomPhase = msg.phase || 'lobby';
       if (msg.options) roomOptions = msg.options;
+      if (msg.isPrivate !== undefined) roomOptions.isPrivate = !!msg.isPrivate;
       if (msg.match !== undefined) match = msg.match;
       if (msg.resumeToken) GNSession.set({ resumeToken: msg.resumeToken });
       updateWaitingRoom();
@@ -1198,6 +1200,34 @@
         }
         optionsEl.insertAdjacentHTML('beforeend', '<div style="margin-top:8px;font-size:14px;">' + boHtml + '</div>');
       }
+
+      // 房间隐私设置（所有游戏通用，仅在等候室阶段显示）
+      if (roomPhase !== 'playing') {
+        if (optionsEl.style.display === 'none') {
+          optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+          optionsEl.style.display = 'block';
+        }
+        var isPriv = !!roomOptions.isPrivate;
+        var privHtml = '';
+        if (isHost) {
+          privHtml =
+            '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);">' +
+              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">' +
+                '<input type="checkbox" id="optIsPrivate" ' + (isPriv ? 'checked' : '') + ' onchange="window._setPrivate(this.checked)">' +
+                '<span>' + _t('private_room_checkbox') + '</span>' +
+              '</label>' +
+              '<div style="font-size:12px;color:var(--text-muted);margin-left:22px;margin-top:2px;">' + _t('private_room_hint') + '</div>' +
+            '</div>';
+        } else if (isPriv) {
+          privHtml =
+            '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);font-size:12px;color:var(--text-muted);">' +
+              '🔒 ' + _t('private_room_notice') +
+            '</div>';
+        }
+        if (privHtml) {
+          optionsEl.insertAdjacentHTML('beforeend', privHtml);
+        }
+      }
     }
 
     // Toggle action buttons
@@ -1705,6 +1735,11 @@
   window._setGameOption = function(key, value) {
     roomOptions[key] = value;
     send('set_option', { key, value });
+  };
+
+  window._setPrivate = function(checked) {
+    roomOptions.isPrivate = !!checked;
+    send('set_private', { isPrivate: !!checked });
   };
 
   window._tdCollectDecks = function() {

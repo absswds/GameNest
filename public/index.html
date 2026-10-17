@@ -48,6 +48,17 @@
             <button class="btn btn-outline" id="joinBtn">加入</button>
           </div>
         </section>
+        <section class="hero-panel" id="lanRoomsPanel">
+          <div class="lan-rooms-panel">
+            <div class="lan-rooms-header">
+              <span class="lan-rooms-title" id="lanRoomsTitle">局域网房间</span>
+              <button class="lan-refresh-btn" id="refreshRoomsBtn">↻ 刷新</button>
+            </div>
+            <div class="lan-rooms-list" id="lanRoomsList">
+              <div class="lan-rooms-empty" id="lanRoomsEmpty">暂无可加入的房间</div>
+            </div>
+          </div>
+        </section>
       </div>
     </section>
 
@@ -325,8 +336,8 @@ document.getElementById('quickCreate').addEventListener('click', function() {
   createRoom();
 });
 
-document.getElementById('joinBtn').addEventListener('click', function() {
-  const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+function joinRoom(code) {
+  code = (code || '').trim().toUpperCase();
   if (!code) {
     toast(typeof _t === 'function' ? _t('room_code_empty') : '\u8bf7\u8f93\u5165\u623f\u95f4\u53f7');
     return;
@@ -346,18 +357,77 @@ document.getElementById('joinBtn').addEventListener('click', function() {
     } else if (msg.type === 'error') {
       toast((typeof _t === 'function' ? _t('error_prefix') : '\u9519\u8bef\uff1a') + msg.message);
       if (msg.code === 'ROOM_NOT_FOUND') GNSession.clear();
+      var jb = document.getElementById('joinBtn');
+      if (jb) jb.textContent = typeof _t === 'function' ? _t('join') : '加入';
     }
   };
   ws.onerror = function() {
     toast(typeof _t === 'function' ? _t('connection_failed') : '\u8fde\u63a5\u5931\u8d25\uff0c\u670d\u52a1\u5668\u662f\u5426\u5df2\u542f\u52a8\uff1f');
+    var jb = document.getElementById('joinBtn');
+    if (jb) jb.textContent = typeof _t === 'function' ? _t('join') : '加入';
   };
+}
+
+document.getElementById('joinBtn').addEventListener('click', function() {
+  joinRoom(document.getElementById('roomCodeInput').value);
 });
 
 document.getElementById('roomCodeInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
-    document.getElementById('joinBtn').click();
+    joinRoom(this.value);
   }
 });
+
+function fetchLanRooms() {
+  fetch('/api/rooms').then(function(r) { return r.json(); }).then(function(data) {
+    renderLanRooms(data && data.rooms ? data.rooms : []);
+  }).catch(function() {
+    renderLanRooms([]);
+  });
+}
+
+function renderLanRooms(rooms) {
+  var list = document.getElementById('lanRoomsList');
+  if (!list) return;
+  if (!rooms || rooms.length === 0) {
+    list.innerHTML = '<div class="lan-rooms-empty" id="lanRoomsEmpty">' +
+      (typeof _t === 'function' ? _t('lan_rooms_empty') : '暂无可加入的房间') + '</div>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < rooms.length; i++) {
+    var r = rooms[i];
+    var g = window.gameCatalog ? window.gameCatalog.byId(r.game) : null;
+    var icon = (g && g.icon) || '🎮';
+    var name = (g && g.name) || r.gameName || r.game;
+    var hostTemplate = typeof _t === 'function' ? _t('lan_room_host') : '房主：%s';
+    var hostText = hostTemplate.replace('%s', r.hostName || 'Host');
+    html += '<div class="lan-room-card" data-room-id="' + r.roomId + '">' +
+      '<div class="lan-room-card-main">' +
+        '<span class="lan-room-icon">' + icon + '</span>' +
+        '<div class="lan-room-info">' +
+          '<span class="lan-room-name">' + name + '</span>' +
+          '<span class="lan-room-host">' + hostText + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="lan-room-card-right">' +
+        '<span class="lan-room-badge">' + r.roomId + '</span>' +
+        '<span class="lan-room-count">' + r.playerCount + '/' + r.maxPlayers + '</span>' +
+      '</div>' +
+    '</div>';
+  }
+  list.innerHTML = html;
+  var cards = list.querySelectorAll('.lan-room-card');
+  for (var j = 0; j < cards.length; j++) {
+    cards[j].addEventListener('click', function() {
+      var rid = this.getAttribute('data-room-id');
+      if (rid) joinRoom(rid);
+    });
+  }
+}
+
+var refreshBtn = document.getElementById('refreshRoomsBtn');
+if (refreshBtn) refreshBtn.addEventListener('click', fetchLanRooms);
 
 document.getElementById('gameSearch').addEventListener('input', function() {
   searchText = this.value.trim().toLowerCase();
@@ -447,6 +517,10 @@ if (__saved && __saved.roomId && __saved.resumeToken) {
 renderCatalog();
 updateQuickCreate();
 renderLastGame();
+fetchLanRooms();
+setInterval(function() {
+  if (!document.hidden) fetchLanRooms();
+}, 5000);
 
 // Entrance animation when returning from a game
 if (sessionStorage.getItem('_returnFromGame')) {
@@ -473,6 +547,12 @@ if (sessionStorage.getItem('_returnFromGame')) {
   if (el) el.placeholder = _t('room_code_placeholder');
   el = document.getElementById('joinBtn');
   if (el) el.textContent = _t('join');
+  el = document.getElementById('lanRoomsTitle');
+  if (el) el.textContent = _t('lan_rooms_title');
+  el = document.getElementById('refreshRoomsBtn');
+  if (el) el.textContent = '↻ ' + _t('lan_rooms_refresh');
+  el = document.getElementById('lanRoomsEmpty');
+  if (el) el.textContent = _t('lan_rooms_empty');
   el = document.getElementById('gameSearch');
   if (el) el.placeholder = _t('search_placeholder');
   el = document.getElementById('emptyState');
