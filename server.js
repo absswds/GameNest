@@ -38,7 +38,10 @@ const { getNextPort, isRecoverablePortError } = require('./startup-port');
 
 const PORT = parseInt(process.env.PORT) || 3000;
 const MAX_PORT_RETRIES = 5;
-const DISCONNECT_GRACE_MS = 30000;
+// Reconnect grace: 2 minutes mid-game, 5 minutes in the waiting room / after the game.
+function disconnectGraceMs(room) {
+  return room && room.phase === 'playing' ? 120000 : 300000;
+}
 let activePort = PORT;
 
 // Load game registry
@@ -111,6 +114,24 @@ app.use(express.static(path.join(__dirname, 'public'), {
   },
 }));
 
+function roomShareUrl(req, room) {
+  let host = req.get('Host') || 'localhost:3000';
+  // Only a plain host[:port] is trusted; a crafted Host header falls back to localhost handling.
+  if (!/^[A-Za-z0-9.-]+(:\d{1,5})?$/.test(host)) host = 'localhost:' + activePort;
+  if (/^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host)) {
+    const lan = getShareableLanIPs()[0];
+    if (lan) host = `${lan.ip}:${activePort}`;
+  }
+  const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+  return `${proto}://${host}/?room=${encodeURIComponent(room)}`;
+}
+
+app.get('/api/share-url', (req, res) => {
+  const room = req.query.room;
+  if (typeof room !== 'string' || !/^[A-Za-z0-9]{1,8}$/.test(room)) { res.status(400).json({ error: 'missing room' }); return; }
+  res.json({ url: roomShareUrl(req, room) });
+});
+
 // QR code endpoint — generates QR with the host from the request
 // Works on LAN (192.168.x.x:3000) and cloud (project.up.railway.app)
 app.get('/qr', async (req, res) => {
@@ -121,15 +142,7 @@ app.get('/qr', async (req, res) => {
     // When the requester came via localhost/127.0.0.1, using that Host makes the
     // QR point at the phone's own loopback — useless. Fall back to the first
     // shareable 192.168.x.x / 10.x.x.x address.
-    let host = req.get('Host') || 'localhost:3000';
-    // Only a plain host[:port] is trusted; a crafted Host header falls back to localhost handling.
-    if (!/^[A-Za-z0-9.-]+(:\d{1,5})?$/.test(host)) host = 'localhost:' + activePort;
-    if (/^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host)) {
-      const lan = getShareableLanIPs()[0];
-      if (lan) host = `${lan.ip}:${activePort}`;
-    }
-    const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
-    const url = `${proto}://${host}/?room=${encodeURIComponent(room)}`;
+    const url = roomShareUrl(req, room);
     const png = await QRCode.toBuffer(url, { width: 256, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
     res.set('Content-Type', 'image/png');
     res.send(png);
@@ -358,6 +371,24 @@ function broadcastRoom(room, data) {
   sendToRoom(room, data, null);
 }
 
+function broadcastHostChanged(room) {
+  const info = room.hostWS && room.players.get(room.hostWS);
+  if (info) broadcastRoom(room, { type: 'host_changed', hostIndex: info.index, name: info.name });
+}
+
+// Make `name` unique among the room's other humans and bots by appending 2, 3, ...
+function uniqueRoomName(room, ws, name) {
+  const taken = new Set();
+  for (const [client, info] of room.players) if (client !== ws) taken.add(info.name);
+  if (room.bots) for (const [, bot] of room.bots) taken.add(bot.name);
+  if (!taken.has(name)) return name;
+  for (let n = 2; ; n++) {
+    const suffix = String(n);
+    const cand = name.slice(0, 8 - suffix.length) + suffix;
+    if (!taken.has(cand)) return cand;
+  }
+}
+
 function roomPlayersList(room) {
   const list = [];
   for (const [client, info] of room.players) {
@@ -406,7 +437,7 @@ function skipDisconnectedTurn(room) {
   const now = Date.now();
   const active = new Set();
   for (const [, info] of room.players) {
-    if (!info.disconnectedAt || now - info.disconnectedAt < DISCONNECT_GRACE_MS) active.add(info.index);
+    if (!info.disconnectedAt || now - info.disconnectedAt < disconnectGraceMs(room)) active.add(info.index);
   }
   for (const index of room.bots.keys()) active.add(index);
   if (active.has(cp) || active.size === 0) return false;
@@ -494,15 +525,22 @@ function broadcastGameView(room, msgType) {
   tallyMatch(room);
   const match = room.match || null;
   if (!gameMod) return;
-  if (gameMod.playerView) {
-    for (const [client, info] of room.players) {
-      if (client.readyState === 1) {
-        client.send(JSON.stringify({ type: t, state: viewFor(room, info.index), players, match }));
-      }
+  for (const [client, info] of room.players) {
+    if (client.readyState === 1) {
+      client.send(JSON.stringify({ type: t, state: viewFor(room, info.index), players, match, yourTurn: isYourTurn(room, gameMod, info.index) }));
     }
-  } else {
-    broadcastRoom(room, { type: t, state: room.state, players, match });
   }
+}
+
+// True when this seat can act right now (turn owner or one of the pending simultaneous actors).
+function isYourTurn(room, gameMod, index) {
+  try {
+    const state = room.state;
+    if (!state || room.phase !== 'playing' || (state.winner !== null && state.winner !== undefined)) return false;
+    if (getCurrentActor(state, gameMod) === index) return true;
+    if (typeof gameMod.getPendingActors === 'function') return (gameMod.getPendingActors(state) || []).includes(index);
+  } catch (e) { /* hidden or half-built state: no cue */ }
+  return false;
 }
 
 function applyRuntimeState(room, totalPlayers) {
@@ -1016,6 +1054,7 @@ function removeSeat(room, roomId, ws, info) {
   room.readyPlayers.delete(info.index);
   if (room.hostWS === ws) {
     room.hostWS = Array.from(room.players.keys()).find(client => client.readyState === 1) || null;
+    broadcastHostChanged(room);
   }
   if (room.players.size === 0) {
     clearAllRoomTimers(room);
@@ -1261,7 +1300,9 @@ wss.on('connection', (ws) => {
         }
       }
       // Transfer host if host WS is stale
+      let hostMoved = false;
       if (!room.hostWS || room.hostWS.readyState !== 1) {
+        hostMoved = true;
         if (room.players.size > 0) {
           room.hostWS = room.players.keys().next().value;
         } else {
@@ -1309,6 +1350,7 @@ wss.on('connection', (ws) => {
         players: roomPlayersList(room),
         phase: room.phase,
       }, ws);
+      if (hostMoved) broadcastHostChanged(room);
       return;
     }
 
@@ -1491,7 +1533,7 @@ wss.on('connection', (ws) => {
       const { name } = data || {};
       const clean = sanitizeText(name);
       if (clean.length > 0 && clean.length <= 8) {
-        info.name = clean;
+        info.name = uniqueRoomName(currentRoom, ws, clean);
         broadcastRoom(currentRoom, { type: 'room_update', phase: currentRoom.phase, players: roomPlayersList(currentRoom) });
       }
       return;
@@ -1742,7 +1784,7 @@ wss.on('connection', (ws) => {
       if (!info._left) { // leave_room already armed the longer 5-minute window
         info.disconnectedAt = Date.now();
         if (info._disconnectTimer) clearTimeout(info._disconnectTimer);
-        info._disconnectTimer = setTimeout(() => expireSeat(room, roomId, ws, info), DISCONNECT_GRACE_MS);
+        info._disconnectTimer = setTimeout(() => expireSeat(room, roomId, ws, info), disconnectGraceMs(room));
       }
       broadcastRoom(room, { type: 'player_left', players: roomPlayersList(room), phase: room.phase });
     }

@@ -64,6 +64,7 @@
         </div>
         <p class="discovery-hint">先选中，再点底部创建。再次点中同一张卡也会直接开房。</p>
       </div>
+      <div class="last-game-row" id="lastGameRow" style="display:none"><button class="category-chip" id="lastGameChip"></button></div>
       <div class="featured-strip" id="featuredStrip"></div>
     </section>
 
@@ -87,6 +88,7 @@
   <div class="toast" id="toast"></div>
   <button id="quickCreate" class="quick-create-btn">创建房间</button>
 
+<script src="/js/session-store.js"></script>
 <script src="/js/lang/zh.js"></script>
 <script src="/js/lang/en.js"></script>
 <script src="/js/lang/catalog-zh.js"></script>
@@ -269,6 +271,33 @@ function toast(msg) {
   setTimeout(function() { t.classList.remove('show'); }, 2500);
 }
 
+function rememberLastGame(id) {
+  try { if (id) localStorage.setItem('gn_last_game', id); } catch (e) {}
+}
+
+// "Play again" shortcut: selects the last game's card; hidden while the resume banner shows
+function renderLastGame() {
+  var row = document.getElementById('lastGameRow');
+  var chip = document.getElementById('lastGameChip');
+  var id = null;
+  try { id = localStorage.getItem('gn_last_game'); } catch (e) {}
+  var resume = document.getElementById('resumeSection');
+  var game = id && window.gameCatalog.byId(id);
+  if (!game || (resume && resume.style.display !== 'none')) { row.style.display = 'none'; return; }
+  chip.textContent = (typeof _t === 'function' ? _t('last_game_chip') : '继续玩：%s').replace('%s', game.name);
+  chip.onclick = function() {
+    selectedGame = id;
+    activeCategory = (typeof _t === 'function' ? _t('all_categories') : '全部');
+    searchText = '';
+    document.getElementById('gameSearch').value = '';
+    renderCatalog();
+    updateQuickCreate();
+    var card = document.querySelector('.browse-card[data-game="' + id + '"]');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+  row.style.display = '';
+}
+
 function createRoom() {
   // Allowed on mobile data too: the room lives on this device's own server, so solo/AI play works.
   const ws = new WebSocket(getSocketURL());
@@ -278,10 +307,9 @@ function createRoom() {
   ws.onmessage = function(e) {
     const msg = JSON.parse(e.data);
     if (msg.type === 'room_created') {
-      sessionStorage.setItem('roomId', msg.roomId);
-      sessionStorage.setItem('playerIndex', msg.playerIndex);
-      sessionStorage.setItem('game', msg.game);
-      if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
+      GNSession.set({ roomId: msg.roomId, playerIndex: msg.playerIndex, game: msg.game, resumeToken: msg.resumeToken });
+      rememberLastGame(msg.game);
+      GNSession.sendProfile(ws); // new seat: apply the remembered name / avatar
       ws.close();
       location.replace('/game.html');
     } else if (msg.type === 'error') {
@@ -310,20 +338,14 @@ document.getElementById('joinBtn').addEventListener('click', function() {
   ws.onmessage = function(e) {
     const msg = JSON.parse(e.data);
     if (msg.type === 'room_joined') {
-      sessionStorage.setItem('roomId', msg.roomId);
-      sessionStorage.setItem('playerIndex', msg.playerIndex);
-      sessionStorage.setItem('game', msg.game);
-      if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
+      GNSession.set({ roomId: msg.roomId, playerIndex: msg.playerIndex, game: msg.game, resumeToken: msg.resumeToken });
+      rememberLastGame(msg.game);
+      GNSession.sendProfile(ws); // new seat: apply the remembered name / avatar
       ws.close();
       location.replace('/game.html');
     } else if (msg.type === 'error') {
       toast((typeof _t === 'function' ? _t('error_prefix') : '\u9519\u8bef\uff1a') + msg.message);
-      if (msg.code === 'ROOM_NOT_FOUND') {
-        sessionStorage.removeItem('roomId');
-        sessionStorage.removeItem('playerIndex');
-        sessionStorage.removeItem('game');
-        sessionStorage.removeItem('resumeToken');
-      }
+      if (msg.code === 'ROOM_NOT_FOUND') GNSession.clear();
     }
   };
   ws.onerror = function() {
@@ -343,10 +365,10 @@ document.getElementById('gameSearch').addEventListener('input', function() {
 });
 
 function renderResumeBanner() {
-  if (!sessionStorage.getItem('roomId') || !sessionStorage.getItem('resumeToken')) return;
-  const savedGame = sessionStorage.getItem('game');
-  const game = getGameInfo(savedGame);
-  var roomId = sessionStorage.getItem('roomId');
+  var saved = GNSession.get();
+  if (!saved || !saved.roomId || !saved.resumeToken) return;
+  const game = getGameInfo(saved.game);
+  var roomId = saved.roomId;
   var title = document.getElementById('resumeRoomName');
   var sub = document.getElementById('resumeRoomSub');
   var section = document.getElementById('resumeSection');
@@ -359,17 +381,16 @@ function renderResumeBanner() {
   };
 }
 
-if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
-  var roomId = sessionStorage.getItem('roomId');
+var __saved = GNSession.get();
+if (__saved && __saved.roomId && __saved.resumeToken) {
+  var roomId = __saved.roomId;
   renderResumeBanner();
   // Verify the room still exists with the server
   fetch('/api/room-exists/' + encodeURIComponent(roomId)).then(function(r) { return r.json(); }).then(function(data) {
     if (!data.exists) {
-      sessionStorage.removeItem('roomId');
-      sessionStorage.removeItem('playerIndex');
-      sessionStorage.removeItem('game');
-      sessionStorage.removeItem('resumeToken');
+      GNSession.clear();
       document.getElementById('resumeSection').style.display = 'none';
+      renderLastGame();
     }
   }).catch(function() { /* offline; keep banner so user can retry */ });
 }
@@ -396,18 +417,12 @@ if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
   }
   if (params.get('roomExpired') === '1') {
     toast(typeof _t === 'function' ? _t('room_expired') : '\u623f\u95f4\u5df2\u5931\u6548\uff0c\u8bf7\u91cd\u65b0\u521b\u5efa\u6216\u8f93\u5165\u623f\u95f4\u53f7\u52a0\u5165\u3002');
-    sessionStorage.removeItem('roomId');
-    sessionStorage.removeItem('playerIndex');
-    sessionStorage.removeItem('game');
-    sessionStorage.removeItem('resumeToken');
+    GNSession.clear();
     history.replaceState(null, '', location.pathname);
   }
   if (params.get('kicked') === '1') {
     toast(typeof _t === 'function' ? _t('kicked_by_host') : '你已被房主移出房间');
-    sessionStorage.removeItem('roomId');
-    sessionStorage.removeItem('playerIndex');
-    sessionStorage.removeItem('game');
-    sessionStorage.removeItem('resumeToken');
+    GNSession.clear();
     history.replaceState(null, '', location.pathname);
   }
   const roomCode = params.get('room');
@@ -431,6 +446,7 @@ if (sessionStorage.getItem('roomId') && sessionStorage.getItem('resumeToken')) {
 
 renderCatalog();
 updateQuickCreate();
+renderLastGame();
 
 // Entrance animation when returning from a game
 if (sessionStorage.getItem('_returnFromGame')) {
@@ -463,6 +479,7 @@ if (sessionStorage.getItem('_returnFromGame')) {
   if (el) el.textContent = _t('no_results');
   updateQuickCreate();
   renderResumeBanner();
+  renderLastGame();
   el = document.getElementById('resumeBtn');
   if (el) el.textContent = _t('resume_btn');
   // Title tag
@@ -480,7 +497,7 @@ if (sessionStorage.getItem('_returnFromGame')) {
   if (sectionHeadings.length > 0) sectionHeadings[0].textContent = _t('featured_title');
   sectionHeadings = document.querySelectorAll('.browser-toolbar h2');
   if (sectionHeadings.length > 0) sectionHeadings[0].textContent = _t('browse_title');
-  var catChips = document.querySelectorAll('.category-chip');
+  var catChips = document.querySelectorAll('#categoryChips .category-chip');
   if (catChips.length > 0) catChips[0].textContent = _t('all_categories');
   el = document.querySelector('.panel-heading');
   if (el) el.textContent = _t('join_room');

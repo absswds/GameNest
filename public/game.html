@@ -38,7 +38,10 @@
           <span id="activeGameSubtitle">等待玩家加入</span>
         </div>
       </div>
-      <div class="room-id-badge" id="roomBadge">----</div>
+      <div class="topbar-right">
+        <button type="button" class="mute-btn" id="muteBtn">🔊</button>
+        <div class="room-id-badge" id="roomBadge">----</div>
+      </div>
     </header>
 
     <section class="room-stage">
@@ -86,6 +89,7 @@
               <img id="qrImage" src="" alt="QR">
               <div class="qr-room-code" id="qrRoomCode"></div>
               <div class="qr-hint">扫码或输入房间号加入</div>
+              <button class="btn btn-outline btn-sm" id="shareLinkBtn" type="button">分享链接</button>
             </div>
           </aside>
         </div>
@@ -132,6 +136,7 @@
     </div>
   </div>
 
+  <script src="/js/session-store.js"></script>
   <script src="/js/style-utils.js"></script>
   <script src="/js/lang/zh.js"></script>
   <script src="/js/lang/en.js"></script>

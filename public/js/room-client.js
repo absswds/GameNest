@@ -2,16 +2,17 @@
 (function() {
   const el = {};
   function cacheElements() {
-    ['notifyBar','status','overlay','boardArea','waitingRoom','waitingSlots','waitingStatus','playerBar','resultOverlay','resultText','resultSub','gameStage','gameActions','profileEdit','emojiRow','avatarDrawer','readyBtn','startGameBtn','addBotBtn','gameOptions','seatSwapModal','seatSwapGrid','seatSwapHint','nameInput','avatarEmoji','qrImage','qrRoomCode','roomBadge'].forEach(function(id) {
+    ['notifyBar','status','overlay','boardArea','waitingRoom','waitingSlots','waitingStatus','playerBar','resultOverlay','resultText','resultSub','gameStage','gameActions','profileEdit','emojiRow','avatarDrawer','readyBtn','startGameBtn','addBotBtn','gameOptions','seatSwapModal','seatSwapGrid','seatSwapHint','nameInput','avatarEmoji','qrImage','qrRoomCode','roomBadge','muteBtn','shareLinkBtn'].forEach(function(id) {
       el[id] = document.getElementById(id);
     });
   }
   cacheElements();
 
-  let game = sessionStorage.getItem('game');
-  const roomId = sessionStorage.getItem('roomId');
-  let playerIndex = parseInt(sessionStorage.getItem('playerIndex'));
-  const resumeToken = sessionStorage.getItem('resumeToken');
+  const saved = GNSession.get() || {};
+  let game = saved.game || null;
+  const roomId = saved.roomId || null;
+  let playerIndex = parseInt(saved.playerIndex);
+  const resumeToken = saved.resumeToken || null;
 
 
   let ws, state, players, currentRenderer;
@@ -20,6 +21,7 @@
   let isHost = false;
   let myReady = false;
   let terminalRoomError = false;
+  let leavingOnPurpose = false; // the app itself is navigating away: no beforeunload prompt
   let seatSwapFromIndex = null;
 
   el.roomBadge.textContent = roomId;
@@ -68,7 +70,7 @@
 
   function clearExpiredRoomAndReturn() {
     terminalRoomError = true;
-    ['roomId', 'playerIndex', 'game', 'resumeToken'].forEach(function(key) { sessionStorage.removeItem(key); });
+    GNSession.clear();
     if (ws) { try { ws.close(); } catch (e) {} }
     window.location.replace('/?roomExpired=1');
   }
@@ -221,6 +223,7 @@
   function connect() {
     if (ws) { try { ws.close(); } catch(e) {} }
     ws = new WebSocket(getSocketURL());
+    const sock = ws;
     ws.onopen = () => send('join_room', { roomId, resumeToken, lang: window.__ACTIVE_LANG || 'zh' });
 
     const handlers = {
@@ -256,6 +259,7 @@
         window._players = players;
         if (msg.match !== undefined) match = msg.match;
         roomPhase = 'playing';
+        turnCue(msg.yourTurn);
         showGame();
         updatePlayerBar();
         renderGame();
@@ -266,6 +270,7 @@
         players = msg.players;
         window._players = players;
         roomPhase = 'playing';
+        turnCue(msg.yourTurn);
         showGame();
         updatePlayerBar();
         renderGame();
@@ -299,9 +304,12 @@
       // Host removed this player from the room: clear local state and go back to lobby.
       kicked(msg) {
         terminalRoomError = true;
-        ['roomId', 'playerIndex', 'game', 'resumeToken'].forEach(function(key) { sessionStorage.removeItem(key); });
+        GNSession.clear();
         if (ws) { try { ws.close(); } catch (e) {} }
         window.location.replace('/?kicked=1');
+      },
+      host_changed(msg) {
+        showToast(msg.hostIndex === playerIndex ? _t('host_you') : tf('host_changed', msg.name || 'Player'));
       },
       room_update(msg) {
         players = msg.players || players;
@@ -311,7 +319,7 @@
       },
       player_index_updated(msg) {
         playerIndex = msg.playerIndex;
-        sessionStorage.setItem('playerIndex', msg.playerIndex);
+        GNSession.set({ playerIndex: msg.playerIndex });
         // 多局比赛换边：提示这一局的先后手
         if (roomPhase === 'playing' && match) showToast(_t(msg.playerIndex === 0 ? 'match_swap_first' : 'match_swap_second'));
         updateWaitingRoom();
@@ -361,7 +369,7 @@
       roomPhase = msg.phase || 'lobby';
       if (msg.options) roomOptions = msg.options;
       if (msg.match !== undefined) match = msg.match;
-      if (msg.resumeToken) sessionStorage.setItem('resumeToken', msg.resumeToken);
+      if (msg.resumeToken) GNSession.set({ resumeToken: msg.resumeToken });
       updateWaitingRoom();
       if (roomPhase === 'playing') {
         showGame();
@@ -398,6 +406,7 @@
 
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
+      GNSession.touch();
 
       if (msg.type !== 'error') {
         var bar = el.notifyBar;
@@ -411,6 +420,7 @@
       if (handler) handler(msg);
     };
     ws.onclose = () => {
+      if (sock !== ws) return; // superseded by a newer socket
       if (!terminalRoomError) {
         var bar = el.notifyBar;
         if (bar) {
@@ -419,10 +429,151 @@
           clearTimeout(bar._timer);
           bar._timer = 0;
         }
-        setTimeout(connect, 1500);
+        setTimeout(reconnectIfClosed, 1500);
       }
     };
     ws.onerror = () => {};
+  }
+
+  // Connect only when no socket is open or opening (retry timer and visibilitychange both use this).
+  function reconnectIfClosed() {
+    if (terminalRoomError) return;
+    if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return;
+    connect();
+  }
+
+  // Returning to the page (phone unlocked / tab switched back): reconnect now instead of waiting.
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible' && ws) reconnectIfClosed();
+    syncWakeLock();
+  });
+
+  // ---- Mobile play helpers: wake lock, your-turn cue, leave warning ----
+  // wakeLock / share / clipboard exist only in secure contexts (not http://192.168.x.x): always feature-detect.
+  let wakeLock = null;
+  let wakeLockPending = false;
+  function syncWakeLock() {
+    try {
+      if (roomPhase !== 'playing' || document.visibilityState !== 'visible') {
+        if (wakeLock) { wakeLock.release().catch(function() {}); wakeLock = null; }
+        return;
+      }
+      if (wakeLock || wakeLockPending || !navigator.wakeLock) return;
+      wakeLockPending = true;
+      navigator.wakeLock.request('screen').then(function(s) {
+        wakeLockPending = false;
+        wakeLock = s;
+        s.addEventListener('release', function() { if (wakeLock === s) wakeLock = null; });
+        if (roomPhase !== 'playing') syncWakeLock(); // phase ended while the request was in flight
+      }).catch(function() { wakeLockPending = false; });
+    } catch (e) { wakeLockPending = false; }
+  }
+
+  let muted = false;
+  try { muted = localStorage.getItem('gn_muted') === '1'; } catch (e) {}
+  function renderMuteBtn() {
+    if (!el.muteBtn) return;
+    var label = _t('mute_toggle_title');
+    el.muteBtn.textContent = muted ? '🔇' : '🔊';
+    el.muteBtn.title = label;
+    el.muteBtn.setAttribute('aria-label', label);
+    el.muteBtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+  }
+  if (el.muteBtn) {
+    renderMuteBtn();
+    el.muteBtn.addEventListener('click', function() {
+      muted = !muted;
+      try { localStorage.setItem('gn_muted', muted ? '1' : '0'); } catch (e) {}
+      renderMuteBtn();
+    });
+  }
+
+  // AudioContext starts suspended: create/resume it inside a user gesture.
+  let audioCtx = null;
+  document.addEventListener('pointerdown', function() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!audioCtx) audioCtx = new AC();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (e) {}
+  }, { passive: true });
+
+  function playTurnCue() {
+    if (muted) return;
+    try {
+      if (audioCtx && audioCtx.state === 'running') {
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        var t = audioCtx.currentTime;
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, t);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.15, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(t); osc.stop(t + 0.2);
+      }
+    } catch (e) {}
+    try { if (navigator.vibrate) navigator.vibrate(150); } catch (e) {}
+  }
+
+  // Cue only on the not-my-turn -> my-turn transition, never on every broadcast.
+  let wasMyTurn = false;
+  function turnCue(mine) {
+    mine = !!mine;
+    if (mine && !wasMyTurn) playTurnCue();
+    wasMyTurn = mine;
+  }
+
+  window.addEventListener('beforeunload', function(e) {
+    if (roomPhase !== 'playing' || leavingOnPurpose || terminalRoomError) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
+  // Share link: URL is prefetched so navigator.share runs inside the click's user gesture.
+  let shareUrl = null;
+  function prefetchShareUrl() {
+    if (shareUrl || !roomId) return;
+    fetch('/api/share-url?room=' + encodeURIComponent(roomId))
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(j) { if (j && j.url) shareUrl = j.url; })
+      .catch(function() {});
+  }
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(function() { return true; }, function() { return legacyCopy(text); });
+    }
+    return Promise.resolve(legacyCopy(text));
+  }
+  function legacyCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    return ok;
+  }
+  if (el.shareLinkBtn) {
+    el.shareLinkBtn.textContent = _t('share_room_link');
+    el.shareLinkBtn.addEventListener('click', function() {
+      if (!shareUrl) { prefetchShareUrl(); return; }
+      var url = shareUrl;
+      var done = function(ok) { if (ok) showToast(_t('link_copied')); };
+      if (navigator.share) {
+        navigator.share({ url: url }).catch(function(err) {
+          if (err && err.name === 'AbortError') return; // user cancelled
+          copyText(url).then(done);
+        });
+      } else {
+        copyText(url).then(done);
+      }
+    });
   }
 
   // ---- UI Toggle ----
@@ -455,6 +606,7 @@
     el.gameActions.style.display = '';
     setImmersiveLandscape(IMMERSIVE_GAMES.indexOf(game) !== -1);
     el.gameStage.classList.toggle('stage-side', SIDE_STAGE_GAMES.indexOf(game) !== -1);
+    syncWakeLock();
     // 棋盘在等待房间还显示时就量过尺寸，舞台出现后让各渲染器按真实位置重新量一次
     requestAnimationFrame(function() { window.dispatchEvent(new Event('resize')); });
   }
@@ -466,6 +618,8 @@
     el.emojiRow.style.display = '';
     el.gameStage.style.display = 'none';
     if (el.qrImage && roomId) el.qrImage.src = '/qr?room=' + roomId;
+    prefetchShareUrl();
+    syncWakeLock();
     if (el.qrRoomCode && roomId) el.qrRoomCode.textContent = roomId;
     el.playerBar.style.display = 'none';
     el.status.style.display = 'none';
@@ -515,6 +669,7 @@
             emojiRow.querySelectorAll('.emoji-btn').forEach(function(b) { b.classList.remove('selected'); });
             btn.classList.add('selected');
             send('set_avatar', { avatar: emoji });
+            GNSession.saveAvatar(emoji);
             if (window.closeAvatarDrawer) window.closeAvatarDrawer();
           });
           emojiRow.appendChild(btn);
@@ -536,6 +691,7 @@
         var val = nameInput.value.trim();
         if (val && val.length > 0) {
           send('set_name', { name: val });
+          GNSession.saveName(val);
         }
       };
     }
@@ -1522,8 +1678,9 @@
     if (typeof window._beforeLeaveRoom === 'function') window._beforeLeaveRoom();
     // 页面马上要 location.replace 跳走，showLobby() 不会执行，必须在这里主动解锁横屏
     setImmersiveLandscape(false);
+    leavingOnPurpose = true;
     send('leave_room');
-    // Keep roomId + resumeToken in sessionStorage so lobby shows the resume banner
+    // Keep roomId + resumeToken in localStorage so lobby shows the resume banner
     sessionStorage.setItem('_returnFromGame', '1');
     var shell = document.querySelector('.game-page-shell');
     if (shell) shell.classList.add('exit-anim');

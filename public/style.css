@@ -384,6 +384,12 @@ button, input { font-family: inherit; font-size: inherit; }
   border-radius: 20px; font-weight: 600; letter-spacing: 1px;
 }
 
+.topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.mute-btn {
+  background: var(--bg); border: 0; border-radius: 20px;
+  min-width: 36px; min-height: 32px; font-size: 15px; line-height: 1; cursor: pointer;
+}
+
 .player-bar {
   width: 100%;
   display: flex; justify-content: space-between;
@@ -3216,3 +3222,5 @@ body.lobby-page {
   #gameStage .player-tag { padding: 4px 6px; }
   #gameStage .game-status { margin-bottom: 0; min-height: 0; font-size: 14px; line-height: 20px; }
 }
+
+.last-game-row { margin: 0 0 10px; }
