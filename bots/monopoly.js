@@ -4,6 +4,10 @@ const { getDifficulty } = require('./lib/difficulty');
 const { groupHasHouses } = require('../games/monopoly');
 
 exports.name = 'monopoly';
+
+// Chance of passing up a purchase / a house even when affordable (the "mistake rate" of each tier).
+const MISS_BUY = { easy: 0.55, normal: 0.3, hard: 0 };
+const MISS_BUILD = { easy: 0.5, normal: 0.15, hard: 0 };
 exports.createBot = (playerIndex) => {
   let lastProposedTurn = -1;
   let lastProposedKey = null;
@@ -63,7 +67,7 @@ exports.createBot = (playerIndex) => {
         if (!price) return { type: 'skip_buy' };
 
         // 简单模式：有 25% 概率错过买地
-        if (diff === 'easy' && Math.random() < 0.25) return { type: 'skip_buy' };
+        if (Math.random() < MISS_BUY[diff]) return { type: 'skip_buy' };
 
         if (space.type === 'property') {
           if (wouldComplete(state, board, pos, space.group, playerIndex) && cash >= price) return { type: 'buy' };
@@ -78,7 +82,7 @@ exports.createBot = (playerIndex) => {
         const pos = state.positions[playerIndex];
         const space = board[pos];
         if (space && space.price && state.cash[playerIndex] - space.price / 2 >= buildReserve) {
-          if (diff === 'easy' && Math.random() < 0.35) return { type: 'skip_buy' };
+          if (Math.random() < MISS_BUILD[diff]) return { type: 'skip_buy' };
           return { type: 'build', spaceIndex: pos };
         }
         return { type: 'skip_buy' };
@@ -124,7 +128,7 @@ function groupHasHousesIn(state, board, group) {
 }
 
 function pickBuild(state, board, pi, buildReserve, diff) {
-  if (diff === 'easy' && Math.random() < 0.35) return -1;
+  if (Math.random() < MISS_BUILD[diff]) return -1;
   let best = -1, bestPrice = Infinity;
   for (let i = 0; i < board.length; i++) {
     const s = board[i];
@@ -137,7 +141,9 @@ function pickBuild(state, board, pi, buildReserve, diff) {
     if (state.cash[pi] - cost < buildReserve) continue;
     const minInGroup = Math.min(...spaces.map(j => state.properties[j].houses || 0));
     if ((prop.houses || 0) > minInGroup) continue;
-    if (s.price < bestPrice) { bestPrice = s.price; best = i; }
+    // hard builds where the extra rent per dollar is highest; the others just take the cheapest
+    const sc = diff === 'hard' ? -((s.rent[(prop.houses || 0) + 1] - s.rent[prop.houses || 0]) / cost) : s.price;
+    if (sc < bestPrice) { bestPrice = sc; best = i; }
   }
   return best;
 }

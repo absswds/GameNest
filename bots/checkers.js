@@ -1,10 +1,10 @@
 // bots/checkers.js — AI for 西洋跳棋 (English Draughts)
-// Minimax with alpha-beta pruning, depth 5
+// Negamax with alpha-beta; searches whole turns (multi-jump continuation, promotion)
 
 const ROWS = 8, COLS = 8;
 
 const { botName } = require('./lib/bot-name');
-const { getDepth } = require('./lib/difficulty');
+const { getDepth, getDifficulty, pickByDifficulty } = require('./lib/difficulty');
 
 exports.name = 'checkers';
 
@@ -78,102 +78,97 @@ function getAllMovesForSide(board, side) {
 }
 
 // ---- Apply / Undo Move ----
+// Returns undo info. A man reaching the far row is promoted (and ends its jump), matching games/checkers.js.
 
 function applyMove(board, move) {
   var piece = board[move.from.row][move.from.col];
-  var captured = null;
-  board[move.to.row][move.to.col] = piece;
+  var info = { piece: piece, captured: null, promoted: false };
+  var placed = piece;
+  if (piece.type === 'm' && ((piece.side === 0 && move.to.row === 0) || (piece.side === 1 && move.to.row === 7))) {
+    placed = { type: 'k', side: piece.side };
+    info.promoted = true;
+  }
+  board[move.to.row][move.to.col] = placed;
   board[move.from.row][move.from.col] = null;
   if (move.captures && move.captures.length > 0) {
     var cap = move.captures[0];
-    captured = board[cap.row][cap.col];
+    info.captured = board[cap.row][cap.col];
     board[cap.row][cap.col] = null;
   }
-  return captured;
+  return info;
 }
 
-function undoMove(board, move, captured) {
-  var piece = board[move.to.row][move.to.col];
-  // applyMove never promotes, so the piece is restored unchanged
-  board[move.from.row][move.from.col] = piece;
+function undoMove(board, move, info) {
+  board[move.from.row][move.from.col] = info.piece;
   board[move.to.row][move.to.col] = null;
   if (move.captures && move.captures.length > 0) {
     var cap = move.captures[0];
-    board[cap.row][cap.col] = captured;
+    board[cap.row][cap.col] = info.captured;
   }
 }
 
-// ---- Evaluation ----
+// ---- Evaluation (from `side` point of view) ----
 
 function evaluateBoard(board, side) {
   var score = 0;
-  var MAN_VAL = 100;
-  var KING_VAL = 175;
   for (var r = 0; r < ROWS; r++) {
     for (var c = 0; c < COLS; c++) {
       var piece = board[r][c];
       if (!piece) continue;
-      var val = piece.type === 'k' ? KING_VAL : MAN_VAL;
-      // Advance bonus for men: closer to king row = more valuable
-      if (piece.type === 'm') {
-        var advance = piece.side === 0 ? (7 - r) : r; // 0 for starting row, 7 for king row
-        val += advance * 5;
-      }
-      // Center control bonus
-      var centerDist = Math.abs(c - 3.5) + Math.abs(r - 3.5);
-      var centerBonus = Math.max(0, (7 - centerDist) * 2);
-      val += centerBonus;
-      if (piece.side === side) {
-        score += val;
+      var val;
+      if (piece.type === 'k') {
+        val = 200;
       } else {
-        score -= val;
+        val = 100 + (piece.side === 0 ? (7 - r) : r) * 6;
+        // back-rank men guard the promotion squares
+        if ((piece.side === 0 && r === 7) || (piece.side === 1 && r === 0)) val += 8;
       }
+      var centerDist = Math.abs(c - 3.5) + Math.abs(r - 3.5);
+      val += Math.max(0, (7 - centerDist)) * 2;
+      score += piece.side === side ? val : -val;
     }
   }
   return score;
 }
 
-// ---- Minimax with Alpha-Beta ----
+// ---- Negamax with Alpha-Beta ----
+// cont = {row,col} when `side` must keep jumping with that piece, else null.
 
-function minimax(board, depth, alpha, beta, maximizing, side) {
-  if (depth === 0) return evaluateBoard(board, side);
-
-  var currentSide = maximizing ? side : (1 - side);
-  var moves = getAllMovesForSide(board, currentSide);
-
-  if (moves.length === 0) {
-    return maximizing ? -10000 + (5 - depth) : 10000 - (5 - depth);
-  }
-
-  // Sort captures first
-  moves.sort(function(a, b) {
-    return (b.captures ? b.captures.length : 0) - (a.captures ? a.captures.length : 0);
-  });
-
-  var i, val, cap;
-  if (maximizing) {
-    var best = -Infinity;
-    for (i = 0; i < moves.length; i++) {
-      cap = applyMove(board, moves[i]);
-      val = minimax(board, depth - 1, alpha, beta, false, side);
-      undoMove(board, moves[i], cap);
-      if (val > best) best = val;
-      if (best > alpha) alpha = best;
-      if (alpha >= beta) break;
-    }
-    return best;
+function turnMoves(board, side, cont) {
+  var moves;
+  if (cont) {
+    moves = [];
+    var p = board[cont.row][cont.col];
+    if (p && p.side === side) getCaptures(board, cont.row, cont.col, p, side, moves);
   } else {
-    var best2 = Infinity;
-    for (i = 0; i < moves.length; i++) {
-      cap = applyMove(board, moves[i]);
-      val = minimax(board, depth - 1, alpha, beta, true, side);
-      undoMove(board, moves[i], cap);
-      if (val < best2) best2 = val;
-      if (best2 < beta) beta = best2;
-      if (alpha >= beta) break;
-    }
-    return best2;
+    moves = getAllMovesForSide(board, side);
   }
+  return moves;
+}
+
+function search(board, side, cont, depth, alpha, beta) {
+  var moves = turnMoves(board, side, cont);
+  if (moves.length === 0) return -10000 - depth;
+  if (depth <= 0 && !cont) return evaluateBoard(board, side);
+  var best = -Infinity;
+  for (var i = 0; i < moves.length; i++) {
+    var m = moves[i];
+    var info = applyMove(board, m);
+    var val;
+    var next = null;
+    if (m.captures.length > 0 && !info.promoted) {
+      var more = [];
+      getCaptures(board, m.to.row, m.to.col, board[m.to.row][m.to.col], side, more);
+      if (more.length > 0) next = { row: m.to.row, col: m.to.col };
+    }
+    if (next) val = search(board, side, next, depth, alpha, beta);
+    else val = -search(board, 1 - side, null, depth - 1, -beta, -alpha);
+    undoMove(board, m, info);
+    if (val > best) best = val;
+    if (best > alpha) alpha = best;
+    if (alpha >= beta) break;
+  }
+  return best;
 }
 
 // ---- Bot Exports ----
@@ -183,55 +178,38 @@ exports.createBot = function(playerIndex) {
     name: botName(playerIndex, 'zh'),
     playerIndex: playerIndex,
     getMove: function(state) {
-      // Deep copy board
       var board = state.board.map(function(row) {
         return row.map(function(cell) { return cell ? { type: cell.type, side: cell.side } : null; });
       });
       var side = playerIndex;
-      var moves = getAllMovesForSide(board, side);
+      var cont = state.mustCapture ? { row: state._lastCaptureRow, col: state._lastCaptureCol } : null;
+      var moves = turnMoves(board, side, cont);
+      if (moves.length === 0 && cont && Array.isArray(state.legalMoves)) moves = state.legalMoves;
       if (moves.length === 0) return null;
+      if (moves.length === 1) return { from: moves[0].from, to: moves[0].to };
 
-      // If forced capture continuation, filter to only the capturing piece
-      if (state.mustCapture) {
-        var origin = { row: state._lastCaptureRow, col: state._lastCaptureCol };
-        var contCaptures = [];
-        for (var r = 0; r < ROWS; r++) {
-          for (var c = 0; c < COLS; c++) {
-            var piece = board[r][c];
-            if (!piece || piece.side !== side) continue;
-            if (r !== origin.row || c !== origin.col) continue;
-            getCaptures(board, r, c, piece, side, contCaptures);
-          }
-        }
-        if (contCaptures.length > 0) moves = contCaptures;
-        else if (Array.isArray(state.legalMoves) && state.legalMoves.length > 0) moves = state.legalMoves;
-      }
-
-      // Sort captures first
-      moves.sort(function(a, b) {
-        return (b.captures ? b.captures.length : 0) - (a.captures ? a.captures.length : 0);
-      });
-
-      var diff = (state && state._options && state._options.difficulty) || 'normal';
-      if (diff === 'easy' && !state.mustCapture && Math.random() < 0.30) {
-        var randMove = moves[Math.floor(Math.random() * moves.length)];
-        return { from: randMove.from, to: randMove.to };
-      }
-
-      var depth = getDepth(state, { easy: 2, normal: 5, hard: 7 });
-      var bestMove = moves[0];
-      var bestVal = -Infinity;
+      var diff = getDifficulty(state);
+      var depth = getDepth(state, DEPTHS);
+      var cands = [];
       for (var i = 0; i < moves.length; i++) {
-        var cap = applyMove(board, moves[i]);
-        var val = minimax(board, depth - 1, -Infinity, Infinity, false, side);
-        undoMove(board, moves[i], cap);
-        if (val > bestVal) {
-          bestVal = val;
-          bestMove = moves[i];
+        var m = moves[i];
+        var info = applyMove(board, m);
+        var next = null;
+        if (m.captures.length > 0 && !info.promoted) {
+          var more = [];
+          getCaptures(board, m.to.row, m.to.col, board[m.to.row][m.to.col], side, more);
+          if (more.length > 0) next = { row: m.to.row, col: m.to.col };
         }
+        var val = next ? search(board, side, next, depth - 1, -Infinity, Infinity)
+                       : -search(board, 1 - side, null, depth - 1, -Infinity, Infinity);
+        undoMove(board, m, info);
+        cands.push({ move: m, score: val });
       }
-      return { from: bestMove.from, to: bestMove.to };
-
+      var pick = pickByDifficulty(cands, diff, PICK);
+      return { from: pick.from, to: pick.to };
     }
   };
 };
+
+var DEPTHS = { easy: 2, normal: 4, hard: 8 };
+var PICK = { temp: { easy: 80, normal: 20 }, maxLoss: { easy: 300, normal: 60 } };

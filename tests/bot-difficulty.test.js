@@ -228,3 +228,17 @@ test('Werewolf: all-bot tables at every difficulty never make an illegal move', 
     }
   }
 });
+
+test('pickByDifficulty: hard takes the best, easy/normal stay within maxLoss', () => {
+  const { pickByDifficulty } = require('../bots/lib/difficulty');
+  const cands = [{ move: 'a', score: 100 }, { move: 'b', score: 90 }, { move: 'c', score: 0 }];
+  for (let i = 0; i < 200; i++) {
+    assert.equal(pickByDifficulty(cands, 'hard'), 'a');
+    assert.notEqual(pickByDifficulty(cands, 'normal'), 'c', 'normal never loses more than maxLoss (40)');
+    assert.ok(['a', 'b', 'c'].includes(pickByDifficulty(cands, 'easy')));
+  }
+  const seen = new Set();
+  for (let i = 0; i < 200; i++) seen.add(pickByDifficulty(cands, 'normal'));
+  assert.ok(seen.has('b'), 'normal sometimes plays a slightly worse move');
+  assert.equal(pickByDifficulty([], 'easy'), null);
+});

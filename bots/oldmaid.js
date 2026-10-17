@@ -1,6 +1,5 @@
-// bots/oldmaid.js — Old Maid AI with difficulty levels
+// bots/oldmaid.js — Old Maid AI (pure luck: random draw at every difficulty)
 const { botName } = require('./lib/bot-name');
-const { getDifficulty } = require('./lib/difficulty');
 
 exports.name = 'oldmaid';
 
@@ -16,15 +15,7 @@ exports.createBot = (playerIndex) => ({
     }
     if (targetIndex < 0) return {};
     const targetHand = hands[targetIndex];
-    const diff = getDifficulty(state);
-
-    let pickIndex = 0;
-    if (diff === 'hard' && targetHand.length > 2) {
-      // Hard: avoids the very last card (often the recently drawn card)
-      pickIndex = Math.floor(Math.random() * (targetHand.length - 1));
-    } else {
-      pickIndex = Math.floor(Math.random() * targetHand.length);
-    }
+    const pickIndex = Math.floor(Math.random() * targetHand.length);
 
     return { drawFrom: targetIndex, cardIndex: pickIndex };
   },
