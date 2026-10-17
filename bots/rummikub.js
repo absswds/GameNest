@@ -5,15 +5,25 @@ exports.name = 'rummikub';
 
 const { getDifficulty } = require('./lib/difficulty');
 
-exports.createBot = (playerIndex) => ({
+exports.createBot = (playerIndex) => {
+  let plan = null; // hard: table rearrangement prepared before entering manipulate mode
+  return {
   name: botName(playerIndex, 'zh'),
   getMove(state) {
-    // A pending initial meld (sets laid but total still < 30) must be finished, not ended.
-    if (state.playedThisTurn[playerIndex] && !state.meldPending) return { endTurn: true };
+    const diff = getDifficulty(state);
+    if (state.phase === 'manipulate') {
+      const groups = plan;
+      plan = null;
+      return groups ? { action: 'submit', groups } : { action: 'cancel' };
+    }
+    plan = null;
+    const acted = state.playedThisTurn[playerIndex] && !state.meldPending;
+    // easy plays a single action per turn; normal/hard keep laying tiles until nothing is left to play
+    if (acted && diff === 'easy') return { endTurn: true };
     const hand = state.hands[playerIndex];
     if (!hand || hand.length === 0) return { pass: true };
+    const stop = () => (acted ? { endTurn: true } : { pass: true });
 
-    const diff = getDifficulty(state);
     if (diff === 'easy' && Math.random() < 0.35 && !state.meldPending) {
       return { pass: true };
     }
@@ -27,14 +37,19 @@ exports.createBot = (playerIndex) => ({
       // Initial meld: several disjoint sets may add up to 30; lay them one per call
       // (the server keeps them pending until the total is reached).
       const need = 30 - (state.meldPending ? state.meldPending.score : 0);
-      const combo = findBreakCombo(hand, need);
+      const combo = findBreakCombo(hand, need, diff === 'hard');
       if (combo) return { tileIds: combo[0].map(t => t.id) };
       return { pass: true };
     }
+
+    if (diff === 'hard') {
+      const move = hardMove(state, hand);
+      if (move && move.groups) { plan = move.groups; return { action: 'start_manipulate' }; }
+      return move || stop();
+    }
+
     const candidates = findSets(hand, false);
     if (candidates.length > 0) {
-      // In hard mode: prefer playing longer sets first to dump more tiles
-      if (diff === 'hard') candidates.sort((a, b) => b.length - a.length);
       const best = candidates[0];
       return { tileIds: best.map(t => t.id) };
     }
@@ -55,10 +70,82 @@ exports.createBot = (playerIndex) => ({
     // a partial reform would drop existing table tiles (now rejected by the server).
     // The bot sticks to safe moves: play a hand set, append one tile, or draw.
 
-    // Can't play, draw
-    return { pass: true };
+    // Can't play, draw (or just end the turn if something was already played)
+    return stop();
   },
-});
+  };
+};
+
+// hard: how many tiles a greedy dump (longest set first) can still get rid of
+function dumpCount(hand) {
+  let h = hand, total = 0;
+  for (let guard = 0; guard < 8; guard++) {
+    const sets = findSets(h, false);
+    if (!sets.length) break;
+    let pick = sets[0];
+    for (const x of sets) if (x.length > pick.length) pick = x;
+    const ids = new Set(pick.map(t => t.id));
+    h = h.filter(t => !ids.has(t.id));
+    total += pick.length;
+  }
+  return total;
+}
+
+// hard: choose the play (hand set or table append) that leaves the best follow-up dump.
+function hardMove(state, hand) {
+  const options = [];
+  for (const set of findSets(hand, false).slice(0, 40)) {
+    const ids = new Set(set.map(t => t.id));
+    const rest = hand.filter(t => !ids.has(t.id));
+    const jokers = set.filter(t => t.wild).length;
+    options.push({
+      move: { tileIds: set.map(t => t.id) },
+      value: set.length + dumpCount(rest) - jokers * 0.75,
+      pts: tileScore(set),
+    });
+  }
+  for (const t of hand) {
+    for (let j = 0; j < state.table.length; j++) {
+      if (!isValidForBot([...state.table[j], t])) continue;
+      const rest = hand.filter(x => x.id !== t.id);
+      options.push({
+        move: { tileIds: [t.id], targetSet: j },
+        value: 1 + dumpCount(rest) - (t.wild ? 0.75 : 0),
+        pts: t.wild ? 0 : t.num,
+      });
+      break;
+    }
+  }
+  // borrow a spare tile from the table (end of a 4+ run, or one tile of a 4-group) to build a new set
+  if (state.hasBroken[state.currentPlayer]) {
+    for (let j = 0; j < state.table.length; j++) {
+      const S = state.table[j];
+      if (S.length < 4 || S.some(t => t.wild)) continue;
+      const cand = [];
+      if (new Set(S.map(t => t.num)).size === 1) S.forEach((t, k) => cand.push([t, S.filter((_, m) => m !== k)]));
+      else {
+        const sorted = S.slice().sort((a, b) => a.num - b.num);
+        cand.push([sorted[0], sorted.slice(1)], [sorted[sorted.length - 1], sorted.slice(0, -1)]);
+      }
+      for (const [t, restSet] of cand) {
+        if (!isValidForBot(restSet)) continue;
+        for (const set of findSets(hand.concat([t]), false).slice(0, 30)) {
+          if (!set.includes(t)) continue;
+          const ids = new Set(set.map(x => x.id));
+          const rest = hand.filter(x => !ids.has(x.id));
+          const used = set.length - 1;
+          if (used < 1) continue;
+          const groups = state.table.map((x, k) => (k === j ? restSet : x).map(y => y.id));
+          groups.push(set.map(y => y.id));
+          options.push({ move: { groups }, value: used + dumpCount(rest) - 0.25, pts: tileScore(set) });
+        }
+      }
+    }
+  }
+  if (!options.length) return null;
+  options.sort((x, y) => (y.value - x.value) || (y.pts - x.pts));
+  return options[0].move;
+}
 
 function isValidForBot(tiles) {
   if (tiles.length < 3) return false;
@@ -101,7 +188,7 @@ function meldValue(tiles) {
 }
 
 // Smallest list of disjoint sets from hand whose meld values total >= need, or null.
-function findBreakCombo(hand, need) {
+function findBreakCombo(hand, need, preferMany) {
   const cands = findSets(hand, false).slice(0, 60)
     .map(set => ({ set, ids: set.map(t => t.id), val: meldValue(set) }));
   const dfs = (start, used, total, left, picked) => {
@@ -116,6 +203,26 @@ function findBreakCombo(hand, need) {
     }
     return null;
   };
+  if (preferMany) {
+    // hard: among combos that reach the target, lay the one that gets rid of the most tiles
+    let bestCombo = null, bestTiles = -1;
+    const all = (start, used, total, left, picked) => {
+      if (total >= need) {
+        const n = picked.reduce((a, x) => a + x.length, 0);
+        if (n > bestTiles) { bestTiles = n; bestCombo = picked; }
+        return;
+      }
+      if (left === 0) return;
+      for (let i = start; i < Math.min(cands.length, 30); i++) {
+        const c = cands[i];
+        if (c.ids.some(id => used.has(id))) continue;
+        const next = new Set(used); c.ids.forEach(id => next.add(id));
+        all(i + 1, next, total + c.val, left - 1, [...picked, c.set]);
+      }
+    };
+    all(0, new Set(), 0, 3, []);
+    if (bestCombo) return bestCombo;
+  }
   for (let depth = 1; depth <= 4; depth++) {
     const r = dfs(0, new Set(), 0, depth, []);
     if (r) return r;

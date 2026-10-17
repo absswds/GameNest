@@ -122,6 +122,66 @@ function findBeat(hand, lastPlay) {
   return null;
 }
 
+
+// Greedy decomposition of a hand into plays (lowest first): straights from mostly-single ranks, full houses,
+// triples, pairs, singles. Used to lead with the lowest whole group instead of always a lone low card.
+function buildPlan(hand) {
+  const byRank = new Map();
+  for (const c of [...hand].sort((a, b) => suitVal(a.suit) - suitVal(b.suit))) {
+    if (!byRank.has(rankVal(c.rank))) byRank.set(rankVal(c.rank), []);
+    byRank.get(rankVal(c.rank)).push(c);
+  }
+  const plan = [];
+  const cnt = (r) => (byRank.has(r) ? byRank.get(r).length : 0);
+  const take = (r, n) => byRank.get(r).splice(0, n);
+  const clean = () => { for (const [r, cs] of byRank) if (!cs.length) byRank.delete(r); };
+  for (let guard = 0; guard < 20 && byRank.size; guard++) {
+    const r = Math.min(...byRank.keys());
+    // straight starting here (rank 2 never takes part: it sits above the ace)
+    if (r <= 7) {
+      let have = 0, singles = 0;
+      for (let k = 0; k < 5; k++) { if (cnt(r + k)) have++; if (cnt(r + k) === 1) singles++; }
+      if (have === 5 && singles >= 4) {
+        const cards = [];
+        for (let k = 0; k < 5; k++) cards.push(take(r + k, 1)[0]);
+        const t = detectType(cards);
+        if (t && t.type === 'straight') { plan.push({ cards, rank: r + 4, size: 5 }); clean(); continue; }
+        // not a plain straight (e.g. all one suit): put the cards back
+        cards.forEach((c, k) => byRank.get(r + k).unshift(c));
+      }
+    }
+    const n = cnt(r);
+    if (n >= 3) {
+      let pairRank = -1;
+      for (const [q, cs] of byRank) if (q !== r && cs.length === 2 && (pairRank < 0 || q < pairRank)) pairRank = q;
+      const cards = take(r, 3);
+      if (pairRank >= 0) cards.push(...take(pairRank, 2));
+      plan.push({ cards, rank: r, size: cards.length });
+    } else if (n === 2) {
+      plan.push({ cards: take(r, 2), rank: r, size: 2 });
+    } else {
+      plan.push({ cards: take(r, 1), rank: r, size: 1 });
+    }
+    clean();
+  }
+  return plan;
+}
+
+// hard: answer a single with a card that is not part of a pair/triple; block with the top card when the leader is nearly out
+function findSmartSingle(hand, state, playerIndex) {
+  const tp = state.lastPlay && state.lastPlay.play;
+  if (!tp || tp.type !== 'single') return null;
+  const beats = hand.filter((c) => rankVal(c.rank) > tp.rank || (rankVal(c.rank) === tp.rank && suitVal(c.suit) > (tp.suit || 0)));
+  if (!beats.length) return null;
+  const leader = state.lastPlayPlayer;
+  if (leader >= 0 && leader !== playerIndex && state.hands[leader] && state.hands[leader].length <= 2) {
+    return [beats[beats.length - 1]];
+  }
+  const groups = rankGroups(hand);
+  const lone = beats.find((c) => groups.get(c.rank).length === 1);
+  return [lone || beats[0]];
+}
+
 const { getDifficulty } = require('./lib/difficulty');
 
 exports.createBot = function(playerIndex) {
@@ -136,24 +196,38 @@ exports.createBot = function(playerIndex) {
       const isFreePlay = !state.lastPlay || state.lastPlayPlayer === playerIndex;
 
       if (isFreePlay) {
+        if (diff === 'easy') {
+          const lowest = findLowestSingle(hand);
+          return { cards: [lowest.id] };
+        }
+        const plan = buildPlan(hand);
+        const d3 = hand.find((c) => c.rank === '3' && c.suit === 'd');
+        if (!state._opened && d3) {
+          const open = plan.find((pl) => pl.cards.includes(d3));
+          if (open && detectType(open.cards)) return { cards: open.cards.map((c) => c.id) };
+          return { cards: [d3.id] };
+        }
+        let pick = plan[0];
         if (diff === 'hard') {
-          // If we have a pair of low cards, lead with pair to shed cards faster
-          const groups = rankGroups(hand);
-          for (const [r, cs] of groups) {
-            if (cs.length >= 2 && rankVal(r) < 8) {
-              // The opening play of the game must contain the 3 of diamonds
-              let two = cs.slice(0, 2);
-              if (!state._opened) {
-                const d3 = cs.find(c => c.rank === '3' && c.suit === 'd');
-                if (!d3) continue;
-                two = [d3, cs.find(c => c !== d3)];
-              }
-              return { cards: two.map(c => c.id) };
-            }
+          const minOpp = Math.min(...(state.hands || []).map((h, i) => (i === playerIndex ? 99 : h.length)));
+          if (plan.length <= 2) {
+            // two groups left: lead the strongest first, the weaker one goes out uncontested when the lead holds
+            pick = plan.slice().sort((a, b) => b.size - a.size || b.rank - a.rank)[0];
+          } else if (minOpp > 1 && plan.some((pl) => pl.size === 5)) {
+            // five-card hands shed the most cards per turn and are rarely answered: lead them early
+            pick = plan.filter((pl) => pl.size === 5)[0];
+          } else if (minOpp <= 1) {
+            // an opponent is on its last card: singles are dangerous, lead groups; lone cards only as high as possible
+            const groups = plan.filter((pl) => pl.size > 1);
+            if (groups.length) pick = groups[0];
+            else pick = plan[plan.length - 1];
           }
         }
-        const lowest = findLowestSingle(hand);
-        return { cards: [lowest.id] };
+        if (!detectType(pick.cards)) {
+          const lowest = findLowestSingle(hand);
+          return { cards: [lowest.id] };
+        }
+        return { cards: pick.cards.map((c) => c.id) };
       }
 
       if (diff === 'easy' && Math.random() < 0.3) {
@@ -161,13 +235,14 @@ exports.createBot = function(playerIndex) {
       }
 
       // Try to beat
-      const beat = findBeat(hand, state.lastPlay);
+      let beat = diff === 'hard' ? findSmartSingle(hand, state, playerIndex) : null;
+      if (!beat) beat = findBeat(hand, state.lastPlay);
       if (beat) {
         if (diff === 'hard') {
           // If beating requires spending a '2' and opponents have plenty of cards and current play is small, hold the '2'
           const hasTwo = beat.some(c => c.rank === '2');
           const lastRank = state.lastPlay && state.lastPlay.play && state.lastPlay.play.rank;
-          const otherMaxCards = Math.max(...(state.hands || []).map((h, i) => i === playerIndex ? 0 : h.length));
+          const otherMaxCards = Math.min(...(state.hands || []).map((h, i) => i === playerIndex ? 0 : h.length));
           if (hasTwo && otherMaxCards > 5 && lastRank !== undefined && lastRank < 9) {
             return { cards: [] }; // hold the '2'
           }
