@@ -76,21 +76,6 @@ function findBeat(hand, lastPlay) {
   return null;
 }
 
-exports.createBot = function(playerIndex) {
-  return {
-    name: botName(playerIndex, 'zh'),
-    playerIndex: playerIndex,
-    getMove: function(state) {
-      // ---- continue_vote phase ----
-      if (state.phase === 'continue_vote') {
-        return { action: 'continue_vote', vote: 'yes' };
-      }
-
-      // ---- roundEnd phase ----
-      if (state.phase === 'roundEnd') {
-        return { action: 'next_round' };
-      }
-
 const { getDifficulty } = require('./lib/difficulty');
 
 function findFreePlay(hand, diff) {
@@ -111,11 +96,18 @@ exports.createBot = function(playerIndex) {
     name: botName(playerIndex, 'zh'),
     playerIndex: playerIndex,
     getMove: function(state) {
+      // ---- continue_vote phase ----
+      if (state.phase === 'continue_vote') {
+        return { action: 'continue_vote', vote: 'yes' };
+      }
+
+      // ---- roundEnd phase ----
       if (state.phase === 'roundEnd') {
         return { action: 'next_round' };
       }
 
       const diff = getDifficulty(state);
+
 
       // ---- bidding phase ----
       if (state.phase === 'bidding') {

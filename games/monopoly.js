@@ -79,7 +79,7 @@ exports.createState = () => ({
   jailTurns: [], eliminated: [], currentPlayer: 0, dice: [0, 0],
   lastCard: null, winner: null, _playerCount: 0, pendingAction: null,
   freeRentCards: [], lastCardEffect: null, doublesCount: 0, rollAgain: false, round: 1, roundLimit: DEFAULT_ROUND_LIMIT, assets: [], endReason: null,
-  board: BOARD, lastMove: null, lastRent: null,
+  board: BOARD, lastMove: null, lastRent: null, tradeOffer: null, lastTrade: null,
 });
 
 exports.initGame = (state, playerCount) => {
@@ -106,6 +106,8 @@ exports.initGame = (state, playerCount) => {
   state.board = BOARD;
   state.lastMove = null;
   state.lastRent = null;
+  state.tradeOffer = null;
+  state.lastTrade = null;
 };
 
 function rollDice() { return [Math.ceil(Math.random() * 6), Math.ceil(Math.random() * 6)]; }
@@ -119,10 +121,14 @@ function checkBankruptcy(state) {
       }
     }
   }
+  if (state.tradeOffer && (state.eliminated[state.tradeOffer.from] || state.eliminated[state.tradeOffer.to])) {
+    state.tradeOffer = null;
+  }
   const alive = state.eliminated.filter(e => !e).length;
   if (alive === 1) { state.winner = state.eliminated.indexOf(false); state.phase = 'gameover'; }
   else if (alive === 0) { state.winner = 0; state.phase = 'gameover'; }
 }
+
 
 const DEFAULT_ROUND_LIMIT = 50;
 
@@ -159,6 +165,7 @@ function finishByAssets(state) {
 }
 
 function nextPlayer(state) {
+  state.tradeOffer = null;
   const prev = state.currentPlayer;
   let next = (prev + 1) % state._playerCount;
   let loops = 0;
@@ -174,6 +181,7 @@ function nextPlayer(state) {
   state.lastCard = null; state.lastCardEffect = null; state.lastMove = null; state.lastRent = null;
 }
 
+
 // Rolled doubles: once the landing is fully settled the same player rolls again.
 function settleRollAgain(state, playerIndex) {
   if (state.phase !== 'end_turn' || !state.rollAgain) return;
@@ -183,6 +191,13 @@ function settleRollAgain(state, playerIndex) {
 }
 
 function getGroupSpaces(group) { return BOARD.map((s, i) => ({ s, i })).filter(x => x.s && x.s.group === group); }
+
+function groupHasHouses(state, pos) {
+  const space = BOARD[pos];
+  if (!space || space.type !== 'property') return false;
+  const groupSpaces = getGroupSpaces(space.group);
+  return groupSpaces.some(x => state.properties[x.i] && (state.properties[x.i].houses || 0) > 0);
+}
 
 function canBuildOnSpace(state, playerIndex, pos) {
   const space = BOARD[pos];
@@ -336,8 +351,96 @@ exports.handleMove = (data, state, playerIndex) => {
     if (state.currentPlayer === playerIndex && state.phase === 'end_turn') { nextPlayer(state); return null; }
     return 'mp_eliminated';
   }
+  if (!data) return 'g_invalid_action';
+  if (data.pass || data.type === 'pass') {
+    if (state.tradeOffer) {
+      state.tradeOffer = null;
+    }
+    return null;
+  }
+  if (typeof data.type !== 'string') return 'g_invalid_action';
+
+
+  // --- Trade Action Handlers ---
+  if (data.type === 'trade_accept' || data.type === 'trade_decline') {
+    if (!state.tradeOffer) return 'mp_no_pending_trade';
+    if (state.tradeOffer.to !== playerIndex) return 'mp_not_trade_recipient';
+    if (data.type === 'trade_accept') {
+      const { from, to, offerCash, offerProps, requestCash, requestProps } = state.tradeOffer;
+      if (state.cash[from] < offerCash || state.cash[to] < requestCash) {
+        state.tradeOffer = null;
+        return 'mp_insufficient_funds';
+      }
+      for (const p of offerProps) {
+        if (!state.properties[p] || state.properties[p].owner !== from || groupHasHouses(state, p)) {
+          state.tradeOffer = null;
+          return 'mp_invalid_trade_assets';
+        }
+      }
+      for (const p of requestProps) {
+        if (!state.properties[p] || state.properties[p].owner !== to || groupHasHouses(state, p)) {
+          state.tradeOffer = null;
+          return 'mp_invalid_trade_assets';
+        }
+      }
+      state.cash[from] -= offerCash;
+      state.cash[to] += offerCash;
+      state.cash[to] -= requestCash;
+      state.cash[from] += requestCash;
+      for (const p of offerProps) state.properties[p].owner = to;
+      for (const p of requestProps) state.properties[p].owner = from;
+      state.lastTrade = { from, to, offerCash, offerProps, requestCash, requestProps, accepted: true };
+      state.tradeOffer = null;
+      return null;
+    } else {
+      state.lastTrade = { from: state.tradeOffer.from, to: state.tradeOffer.to, accepted: false };
+      state.tradeOffer = null;
+      return null;
+    }
+  }
+
+  if (data.type === 'trade_cancel') {
+    if (!state.tradeOffer) return 'mp_no_pending_trade';
+    if (state.tradeOffer.from !== playerIndex) return 'mp_not_trade_sender';
+    state.tradeOffer = null;
+    return null;
+  }
+
+  if (data.type === 'trade_offer') {
+    if (state.tradeOffer) return 'mp_trade_already_pending';
+    if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
+    const to = Number(data.to);
+    if (!Number.isInteger(to) || to < 0 || to >= state._playerCount || to === playerIndex) return 'mp_trade_invalid_target';
+    if (state.eliminated[to]) return 'mp_trade_invalid_target';
+
+    const offerCash = Math.max(0, Math.floor(Number(data.offerCash) || 0));
+    const requestCash = Math.max(0, Math.floor(Number(data.requestCash) || 0));
+    if (offerCash > state.cash[playerIndex]) return 'mp_insufficient_funds';
+    if (requestCash > state.cash[to]) return 'mp_insufficient_funds';
+
+    const offerProps = Array.isArray(data.offerProps) ? data.offerProps.map(Number) : [];
+    const requestProps = Array.isArray(data.requestProps) ? data.requestProps.map(Number) : [];
+
+    if (offerCash === 0 && requestCash === 0 && offerProps.length === 0 && requestProps.length === 0) {
+      return 'mp_trade_no_assets';
+    }
+
+    for (const p of offerProps) {
+      if (!state.properties[p] || state.properties[p].owner !== playerIndex) return 'mp_not_owner';
+      if (groupHasHouses(state, p)) return 'mp_group_has_houses';
+    }
+    for (const p of requestProps) {
+      if (!state.properties[p] || state.properties[p].owner !== to) return 'mp_not_owner';
+      if (groupHasHouses(state, p)) return 'mp_group_has_houses';
+    }
+
+    state.tradeOffer = { from: playerIndex, to, offerCash, offerProps, requestCash, requestProps };
+    return null;
+  }
+
+  if (state.tradeOffer) return 'mp_trade_pending';
   if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
-  if (!data || typeof data.type !== 'string') return 'g_invalid_action';
+
 
   if (data.type === 'roll') {
     if (state.phase !== 'waiting') return 'mp_cannot_roll';
@@ -440,3 +543,11 @@ exports.handleMove = (data, state, playerIndex) => {
 
   return 'mp_unknown_action';
 };
+
+exports.getCurrentActor = (state) => {
+  if (state.tradeOffer) return state.tradeOffer.to;
+  return state.currentPlayer;
+};
+
+exports.groupHasHouses = groupHasHouses;
+

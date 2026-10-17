@@ -514,6 +514,11 @@
 
     if (effectBanner) panel.appendChild(effectBanner);
 
+    if (st.tradeOffer) {
+      panel.appendChild(buildTradeOfferCard(st, pi));
+      return;
+    }
+
     if (!isMyTurn) {
       var w = document.createElement('div');
       w.style.cssText = 'color:var(--text-muted);font-size:13px;';
@@ -532,6 +537,7 @@
 
     if (st.phase === 'waiting') {
       addBtn(panel, _t('mp_roll_dice'), 'btn-primary', function () { wsSend({ type: 'roll' }); });
+      addBtn(panel, _t('mp_trade'), '', function () { openTradeDialog(st, pi); });
     } else if (st.phase === 'landed' && st.pendingAction === 'can_buy') {
       var sp = board[st.positions[pi]] || {};
       addBtn(panel, _tf('mp_buy', spName(sp), (sp.price || 0)), 'btn-primary', function () { wsSend({ type: 'buy' }); });
@@ -550,9 +556,223 @@
         var s = board[i];
         addBtn(panel, '🏗 ' + spName(s) + ' (' + (st.properties[i].houses || 0) + '→' + ((st.properties[i].houses || 0) + 1) + ') $' + (s.price / 2), '', function () { wsSend({ type: 'build', spaceIndex: i }); }, '11px');
       });
+      addBtn(panel, _t('mp_trade'), '', function () { openTradeDialog(st, pi); });
       addBtn(panel, _t('mp_end_turn'), 'btn-primary', function () { wsSend({ type: 'end_turn' }); });
     }
   }
+
+  function groupHasHousesClient(st, pos) {
+    var board = st.board || [];
+    var s = board[pos];
+    if (!s || s.type !== 'property') return false;
+    for (var i = 0; i < board.length; i++) {
+      var sp = board[i];
+      if (sp && sp.group === s.group && st.properties[i] && (st.properties[i].houses || 0) > 0) return true;
+    }
+    return false;
+  }
+
+  function buildTradeOfferCard(st, pi) {
+    var offer = st.tradeOffer;
+    var board = st.board || [];
+    var card = document.createElement('div');
+    card.style.cssText = 'background:#fffdf7;border:2px solid #c8a45c;border-radius:10px;padding:12px;margin:8px 0;width:100%;max-width:480px;box-shadow:0 4px 12px rgba(0,0,0,0.08);';
+
+    function propNames(arr) {
+      if (!arr || arr.length === 0) return _t('mp_trade_no_props');
+      return arr.map(function(idx) { return spName(board[idx]); }).join(', ');
+    }
+
+    if (offer.to === pi) {
+      var title = document.createElement('div');
+      title.style.cssText = 'font-weight:700;font-size:14px;color:#2c3e50;margin-bottom:8px;';
+      title.textContent = _tf('mp_trade_proposal', nameOf(offer.from));
+      card.appendChild(title);
+
+      var details = document.createElement('div');
+      details.style.cssText = 'font-size:13px;line-height:1.6;color:#555;margin-bottom:12px;';
+      details.innerHTML = '<div><strong>' + _t('mp_trade_gives') + ':</strong> ' + (offer.offerCash ? ('$' + offer.offerCash + ' ') : '') + propNames(offer.offerProps) + '</div>' +
+                          '<div><strong>' + _t('mp_trade_wants') + ':</strong> ' + (offer.requestCash ? ('$' + offer.requestCash + ' ') : '') + propNames(offer.requestProps) + '</div>';
+      card.appendChild(details);
+
+      var btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex;gap:10px;justify-content:center;';
+      addBtn(btnRow, _t('mp_trade_accept'), 'btn-primary', function() { wsSend({ type: 'trade_accept' }); });
+      addBtn(btnRow, _t('mp_trade_decline'), '', function() { wsSend({ type: 'trade_decline' }); });
+      card.appendChild(btnRow);
+    } else if (offer.from === pi) {
+      var outMsg = document.createElement('div');
+      outMsg.style.cssText = 'font-size:13px;color:#7f8c8d;margin-bottom:8px;text-align:center;';
+      outMsg.textContent = _tf('mp_trade_outgoing', nameOf(offer.to));
+      card.appendChild(outMsg);
+
+      var btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex;justify-content:center;';
+      addBtn(btnRow, _t('mp_trade_cancel'), '', function() { wsSend({ type: 'trade_cancel' }); });
+      card.appendChild(btnRow);
+    } else {
+      var otherMsg = document.createElement('div');
+      otherMsg.style.cssText = 'font-size:13px;color:#7f8c8d;text-align:center;';
+      otherMsg.textContent = _tf('mp_trade_waiting_other', nameOf(offer.from), nameOf(offer.to));
+      card.appendChild(otherMsg);
+    }
+    return card;
+  }
+
+  function openTradeDialog(st, pi) {
+    var oldModal = document.getElementById('mono-trade-modal');
+    if (oldModal) oldModal.remove();
+
+    var modal = document.createElement('div');
+    modal.id = 'mono-trade-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:12px;';
+
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#fffdf7;border-radius:12px;padding:20px;width:100%;max-width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 10px 30px rgba(0,0,0,0.3);display:flex;flex-direction:column;gap:12px;';
+
+    var header = document.createElement('div');
+    header.style.cssText = 'font-size:16px;font-weight:700;color:#2c3e50;display:flex;justify-content:space-between;align-items:center;';
+    header.innerHTML = '<span>' + _t('mp_trade') + '</span>';
+    var closeCross = document.createElement('span');
+    closeCross.style.cssText = 'cursor:pointer;font-size:18px;color:#888;';
+    closeCross.textContent = '✕';
+    closeCross.onclick = function() { modal.remove(); };
+    header.appendChild(closeCross);
+    box.appendChild(header);
+
+    // Target player select
+    var targetRow = document.createElement('div');
+    targetRow.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;';
+    targetRow.innerHTML = '<label>' + _t('mp_trade_select_player') + ':</label>';
+    var select = document.createElement('select');
+    select.style.cssText = 'flex:1;padding:4px 8px;border-radius:6px;border:1px solid #ccc;';
+
+    var targets = [];
+    for (var p = 0; p < (st._playerCount || 0); p++) {
+      if (p !== pi && (!st.eliminated || !st.eliminated[p])) {
+        targets.push(p);
+        var opt = document.createElement('option');
+        opt.value = p;
+        opt.textContent = nameOf(p) + ' ($' + (st.cash[p] || 0) + ')';
+        select.appendChild(opt);
+      }
+    }
+    targetRow.appendChild(select);
+    box.appendChild(targetRow);
+
+    if (targets.length === 0) {
+      modal.remove();
+      return;
+    }
+
+    var bodyContainer = document.createElement('div');
+    box.appendChild(bodyContainer);
+
+    function renderTradeColumns() {
+      bodyContainer.innerHTML = '';
+      var targetIdx = parseInt(select.value, 10);
+      var grid = document.createElement('div');
+      grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:14px;';
+
+      // Left Column: You Offer
+      var leftCol = document.createElement('div');
+      leftCol.style.cssText = 'border:1px solid #e0d5c1;border-radius:8px;padding:10px;background:#fcf9f2;';
+      leftCol.innerHTML = '<div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#8B5A2B;">' + _t('mp_trade_my_offer') + '</div>' +
+                          '<div style="margin-bottom:8px;"><label style="font-size:12px;">' + _t('mp_trade_cash') + ': $</label>' +
+                          '<input id="trade-offer-cash" type="number" min="0" max="' + (st.cash[pi] || 0) + '" value="0" style="width:70px;padding:2px 4px;border:1px solid #ccc;border-radius:4px;font-size:12px;" /></div>' +
+                          '<div style="font-size:12px;font-weight:600;margin-bottom:4px;">' + _t('mp_trade_props') + ':</div>';
+      var leftProps = document.createElement('div');
+      leftProps.style.cssText = 'display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto;font-size:12px;';
+
+      var myPropCount = 0;
+      for (var i = 0; i < (st.board || []).length; i++) {
+        var prop = st.properties[i];
+        if (prop && prop.owner === pi) {
+          myPropCount++;
+          var s = st.board[i];
+          var hasHouses = groupHasHousesClient(st, i);
+          var row = document.createElement('label');
+          row.style.cssText = 'display:flex;align-items:center;gap:4px;' + (hasHouses ? 'opacity:0.5;color:#999;' : '');
+          row.innerHTML = '<input type="checkbox" class="trade-offer-prop" value="' + i + '" ' + (hasHouses ? 'disabled' : '') + ' />' +
+                          '<span>' + spName(s) + (hasHouses ? ' (' + _t('mp_trade_has_houses') + ')' : '') + '</span>';
+          leftProps.appendChild(row);
+        }
+      }
+      if (myPropCount === 0) leftProps.innerHTML = '<span style="color:#999;font-size:11px;">' + _t('mp_trade_no_props') + '</span>';
+      leftCol.appendChild(leftProps);
+      grid.appendChild(leftCol);
+
+      // Right Column: You Request
+      var rightCol = document.createElement('div');
+      rightCol.style.cssText = 'border:1px solid #e0d5c1;border-radius:8px;padding:10px;background:#fcf9f2;';
+      rightCol.innerHTML = '<div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#2980b9;">' + _t('mp_trade_target_offer') + '</div>' +
+                           '<div style="margin-bottom:8px;"><label style="font-size:12px;">' + _t('mp_trade_cash') + ': $</label>' +
+                           '<input id="trade-request-cash" type="number" min="0" max="' + (st.cash[targetIdx] || 0) + '" value="0" style="width:70px;padding:2px 4px;border:1px solid #ccc;border-radius:4px;font-size:12px;" /></div>' +
+                           '<div style="font-size:12px;font-weight:600;margin-bottom:4px;">' + _t('mp_trade_props') + ':</div>';
+      var rightProps = document.createElement('div');
+      rightProps.style.cssText = 'display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto;font-size:12px;';
+
+      var targetPropCount = 0;
+      for (var j = 0; j < (st.board || []).length; j++) {
+        var tProp = st.properties[j];
+        if (tProp && tProp.owner === targetIdx) {
+          targetPropCount++;
+          var ts = st.board[j];
+          var tHasHouses = groupHasHousesClient(st, j);
+          var tRow = document.createElement('label');
+          tRow.style.cssText = 'display:flex;align-items:center;gap:4px;' + (tHasHouses ? 'opacity:0.5;color:#999;' : '');
+          tRow.innerHTML = '<input type="checkbox" class="trade-request-prop" value="' + j + '" ' + (tHasHouses ? 'disabled' : '') + ' />' +
+                           '<span>' + spName(ts) + (tHasHouses ? ' (' + _t('mp_trade_has_houses') + ')' : '') + '</span>';
+          rightProps.appendChild(tRow);
+        }
+      }
+      if (targetPropCount === 0) rightProps.innerHTML = '<span style="color:#999;font-size:11px;">' + _t('mp_trade_no_props') + '</span>';
+      rightCol.appendChild(rightProps);
+      grid.appendChild(rightCol);
+
+      bodyContainer.appendChild(grid);
+    }
+
+    select.onchange = renderTradeColumns;
+    renderTradeColumns();
+
+    var footer = document.createElement('div');
+    footer.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;margin-top:8px;';
+    addBtn(footer, _t('mp_trade_send'), 'btn-primary', function() {
+      var targetIdx = parseInt(select.value, 10);
+      var offerCash = parseInt(document.getElementById('trade-offer-cash').value, 10) || 0;
+      var requestCash = parseInt(document.getElementById('trade-request-cash').value, 10) || 0;
+
+      var offerProps = [];
+      document.querySelectorAll('.trade-offer-prop:checked').forEach(function(el) {
+        offerProps.push(parseInt(el.value, 10));
+      });
+      var requestProps = [];
+      document.querySelectorAll('.trade-request-prop:checked').forEach(function(el) {
+        requestProps.push(parseInt(el.value, 10));
+      });
+
+      if (offerCash === 0 && requestCash === 0 && offerProps.length === 0 && requestProps.length === 0) {
+        return;
+      }
+
+      wsSend({
+        type: 'trade_offer',
+        to: targetIdx,
+        offerCash: offerCash,
+        offerProps: offerProps,
+        requestCash: requestCash,
+        requestProps: requestProps,
+      });
+      modal.remove();
+    });
+    addBtn(footer, _t('mp_trade_close'), '', function() { modal.remove(); });
+    box.appendChild(footer);
+
+    modal.appendChild(box);
+    document.body.appendChild(modal);
+  }
+
 
   // 限时赛：显示 第 x/y 轮；因轮数上限结束时列出各人资产
   function buildRoundInfo(st) {

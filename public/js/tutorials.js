@@ -321,10 +321,12 @@
         { h: '机会卡', p: '停在「❓机会」格抽一张卡：可能得钱、罚款、向每位玩家收 50 元、前进/后退、回到起点、直接入狱，或获得免租卡（免一次租金，用掉即失效，地产、车站和电力公司都适用）。抽到前进/后退卡后，会在新位置继续结算（购买、付租金、交税）。' },
         { h: '税与其他格子', p: '「所得税」格要交 200 元；「探监」和「免费停车」格没有任何效果。' },
         { h: '监狱', p: '踩到「入狱」角格或抽到入狱卡会被关进监狱。在监狱里每回合掷骰：掷出双数立即出狱并按点数前进（这次不再额外掷骰）；连续 3 次没掷出双数，则交 50 元出狱并按第 3 次的点数前进。' },
-        { h: '破产', p: '现金一旦为负立即破产出局（没有抵押、出售或交易），名下地产变回无主。最后剩下的玩家获胜。' },
+        { h: '交易系统', p: '轮到你时，可以与其他存活玩家交易房产与现金。点击「🤝 交易」选择交易对象，勾选双方交换的地产与填入贴补现金。注意：根据大富翁官方规则，如果某个色组已建有房屋，则该色组的所有地产均不可交易，必须先将房屋拆除售空方可交易。' },
+        { h: '破产', p: '现金一旦为负立即破产出局，名下地产变回无主。最后剩下的玩家获胜。' },
         { h: '限时赛', p: '房主可设置轮数上限：30 / 50 / 80 轮或不限，默认 50 轮。所有存活玩家各走一回合算一轮（双骰再掷不算新的一轮）。到上限后按总资产（现金 + 地产买价 + 房屋造价）排名，最高者获胜，资产相同则现金多者获胜。' },
       ]
     },
+
     suikabattle: {
       sections: [
         { h: '目标', p: '往容器里投水果，相同的水果碰在一起会合成更大的一种，靠合成得分。多人对战时，容器先被堆满的人出局，最后留下的人获胜。' },
@@ -727,10 +729,12 @@
         { h: 'Chance Cards', p: 'Landing on "❓ Chance" draws a card: gain or lose money, collect $50 from every player, advance or go back, return to GO, go directly to Jail, or keep a Free Rent card that waives one rent payment (properties, railroads and utilities) and is then used up. A card that moves you resolves the new space (buy, rent, tax).' },
         { h: 'Tax & Other Spaces', p: 'The "Income Tax" space costs $200. "Just Visiting" jail and "Free Parking" do nothing.' },
         { h: 'Jail', p: 'Landing on "Go to Jail" or drawing the Jail card sends you to Jail. Each turn there, roll: doubles frees you and you move by that roll (no extra roll for it); after 3 failed rolls you pay $50 and move by the third roll.' },
-        { h: 'Bankruptcy', p: 'The moment your cash goes negative you are bankrupt and eliminated (there is no mortgaging, selling or trading) and your properties become unowned. Last player standing wins.' },
+        { h: 'Trading System', p: 'On your turn, you can trade properties and cash with other active players. Click "🤝 Trade" to select a partner, pick properties to exchange, and specify cash sweeteners. Note: According to official rules, any color group containing built houses cannot have its properties traded until all houses in that group are sold off.' },
+        { h: 'Bankruptcy', p: 'The moment your cash goes negative you are bankrupt and eliminated, and your properties become unowned. Last player standing wins.' },
         { h: 'Time Limit', p: 'The host can set a round limit: 30 / 50 / 80 rounds or unlimited (default 50). A round is one turn for every surviving player (a doubles re-roll does not start a new round). At the limit, players are ranked by total assets (cash + property prices + house costs) and the richest wins; equal assets go to the player with more cash.' },
       ]
     },
+
     suikabattle: {
       sections: [
         { h: 'Goal', p: 'Drop fruit into your container; two identical fruits that touch merge into the next bigger one and score points. In multiplayer, the first containers to overflow are knocked out and the last one standing wins.' },
