@@ -3,11 +3,24 @@ const { getDifficulty } = require('./lib/difficulty');
 
 exports.name = 'sudoku';
 
-exports.createBot = (playerIndex) => ({
+// Pace = minimum ms between fills (bots know the solution, so difficulty is speed). Hard fills on
+// every poll; the server polls a bot every few seconds, so normal/easy skip polls via {pass:true}.
+const FILL_GAP_MS = { hard: 0, normal: 9000, easy: 16000 };
+
+exports.createBot = (playerIndex) => {
+  let lastState = null;
+  let nextFillAt = 0;
+  return {
   name: botName(playerIndex, 'zh'),
   getMove(state) {
     if (state.eliminated && state.eliminated[playerIndex]) return {};
     const filled = state.filled[playerIndex];
+    if (state.puzzle !== lastState) { lastState = state.puzzle; nextFillAt = 0; }
+    // Only a live game (has counts) is paced; partial states passed in by unit tests always get a move
+    const gap = Array.isArray(state.counts) ? FILL_GAP_MS[getDifficulty(state)] || 0 : 0;
+    const now = Date.now();
+    if (now < nextFillAt) return idleMove(state, filled);
+    nextFillAt = now + gap * (0.75 + Math.random() * 0.5);
     const diff = getDifficulty(state);
 
     const blanks = [];
@@ -49,7 +62,19 @@ exports.createBot = (playerIndex) => ({
     const target = blanks[0];
     return { type: 'fill', row: target.r, col: target.c, val: target.val };
   },
-});
+  };
+};
+
+// "Still thinking": re-fill a cell that is already correct, which the game accepts as a silent no-op
+// (a bare pass would be an invalid move). Falls back to pass before the first cell is filled.
+function idleMove(state, filled) {
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      if (state.puzzle[r][c] === 0 && filled[r][c]) return { type: 'fill', row: r, col: c, val: state.solution[r][c] };
+    }
+  }
+  return { pass: true };
+}
 
 // `filled` is a per-player boolean grid; the digit of a filled cell comes from `solution`.
 function getCandidateCount(puzzle, filled, solution, row, col) {
