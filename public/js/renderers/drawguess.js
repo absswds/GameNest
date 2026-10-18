@@ -469,6 +469,31 @@
     stageLayout(container).innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted);font-size:15px;">' + (msg || _t('dg_waiting_default')) + '</div>';
   }
 
+  // Every stroke / undo / clear / guess broadcasts a full game_state. The stage screen is built once per
+  // round and role; later updates within it are patched in place (see updateStage).
+  var stageView = null; // { key, lay, wrap, header }
+
+  function stageKey(task) {
+    return state.round + ':' + state.drawerIndex + ':' + (task.canDraw ? 'draw' : task.correct ? 'correct' : 'guess');
+  }
+
+  function stageHeader(task) {
+    var drawer = (window._players && window._players[state.drawerIndex]) ? window._players[state.drawerIndex].name : (_t('dg_player_fallback') + (state.drawerIndex + 1));
+    return task.canDraw ? (_t('dg_round_prefix') + state.round + _t('dg_round_draw') + task.word) : (_t('dg_round_prefix') + state.round + _t('dg_round_sep') + drawer + _t('dg_is_drawing') + (task.correct ? _t('dg_guessed_correct') : task.wordMask));
+  }
+
+  // Same round and role: only strokes, scores and the timer changed. Rebuilding would replace the guess
+  // input, which closes the mobile keyboard and breaks IME composition on every stroke the drawer sends.
+  function updateStage(container, task) {
+    if (!stageView || stageView.key !== stageKey(task) || stageView.lay.parentNode !== container) return false;
+    stageView.header.textContent = stageHeader(task);
+    updateSides(stageView.lay);
+    if (task.canDraw) localStrokes = task.strokes || [];
+    redrawCanvas();
+    startTimer(stageView.wrap, state.stepRemainingMs, null);
+    return true;
+  }
+
   function renderStage(container, task) {
     var host = stageLayout(container);
     var wrap = document.createElement('div');
@@ -476,10 +501,10 @@
     host.appendChild(wrap);
     var header = document.createElement('div');
     header.className = 'dg-hdr';
-    var drawer = (window._players && window._players[state.drawerIndex]) ? window._players[state.drawerIndex].name : (_t('dg_player_fallback') + (state.drawerIndex + 1));
     header.style.cssText = 'font-size:16px;font-weight:800;text-align:center;margin-bottom:6px;';
-    header.textContent = task.canDraw ? (_t('dg_round_prefix') + state.round + _t('dg_round_draw') + task.word) : (_t('dg_round_prefix') + state.round + _t('dg_round_sep') + drawer + _t('dg_is_drawing') + (task.correct ? _t('dg_guessed_correct') : task.wordMask));
+    header.textContent = stageHeader(task);
     wrap.appendChild(header);
+    stageView = { key: stageKey(task), lay: host.parentNode, wrap: wrap, header: header };
     resizeCanvas();
     drawStrokes(task.strokes || []);
     wrap.appendChild(canvas);
@@ -490,7 +515,9 @@
     var input = document.createElement('input'); input.placeholder = _t('dg_stage_guess_placeholder'); input.maxLength = 20; input.style.cssText = 'flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;'; row.appendChild(input);
     var btn = document.createElement('button'); btn.className = 'btn btn-primary'; btn.textContent = _t('dg_guess_btn'); row.appendChild(btn);
     function guess() { var text = input.value.trim(); if (!text) return; wsSend({ type: 'stage_guess', text: text }); input.select(); }
-    btn.onclick = guess; input.onkeydown = function(e) { if (e.key === 'Enter') guess(); }; setTimeout(function(){ input.focus(); }, 50);
+    btn.onclick = guess; input.onkeydown = function(e) { if (e.key === 'Enter') guess(); };
+    // Autofocus once per round on desktop only: on touch devices it would pop the keyboard over the canvas
+    if (!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) setTimeout(function(){ input.focus(); }, 50);
   }
 
   function renderStageResult(container, st) {
@@ -691,7 +718,7 @@
           if (st.myTask && st.myTask.type === 'choose') renderChooseWord(container, st.myTask);
           else renderWaiting(container, _t('dg_waiting_drawer_choose'));
         } else if (st.phase === 'playing' && st.myTask) {
-          renderStage(container, st.myTask);
+          if (!updateStage(container, st.myTask)) renderStage(container, st.myTask);
         } else if (st.phase === 'round_result') {
           renderStageResult(container, st);
         } else if (st.phase === 'gameover') {
