@@ -274,7 +274,35 @@ app.post('/api/debug/room/:roomId/forceWin', express.json(), (req, res) => {
 
 logStep('[android-node] server.js init http/ws server');
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+// The server can be reachable from the internet, and every game message fans out to the whole room.
+// maxPayload: the biggest legitimate message is a whisper-mode drawing sent whole (~250KB for a dense 90s
+// drawing); ws closes the connection on anything larger (default would be 100MB).
+const WS_MAX_PAYLOAD = 1024 * 1024;
+// Per-connection token bucket. Normal play peaks around 20 msg/s (drawguess streams strokes every 50ms) plus
+// short bursts (suika merge chains), so the bucket allows a 200-message burst refilled at 50/s. Messages
+// over the limit are dropped; a client that keeps flooding after that is disconnected.
+const WS_BURST = 200;
+const WS_REFILL_PER_SEC = 50;
+const WS_MAX_DROPPED = 200;
+const wss = new WebSocketServer({ server, maxPayload: WS_MAX_PAYLOAD });
+
+function createRateLimiter(now) {
+  let tokens = WS_BURST;
+  let last = now;
+  let dropped = 0;
+  // Returns 'ok', 'drop' or 'close'
+  return function take(t) {
+    tokens = Math.min(WS_BURST, tokens + (t - last) * WS_REFILL_PER_SEC / 1000);
+    last = t;
+    if (tokens >= 1) {
+      tokens--;
+      if (tokens >= WS_BURST / 2) dropped = 0; // recovered: forgive earlier drops
+      return 'ok';
+    }
+    dropped++;
+    return dropped > WS_MAX_DROPPED ? 'close' : 'drop';
+  };
+}
 wss.on('error', (err) => {
   if (isRecoverablePortError(err)) return;
   console.error('WebSocket server error:', err.message);
@@ -994,8 +1022,12 @@ wss.on('connection', (ws) => {
   ws.on('error', () => {});
   let currentRoomId = null;
   let currentRoom = null;
+  const takeToken = createRateLimiter(Date.now());
 
   ws.on('message', (raw) => {
+    const verdict = takeToken(Date.now());
+    if (verdict === 'close') { ws.close(1008, 'rate limit'); return; }
+    if (verdict === 'drop') return;
     let msg;
     try { msg = JSON.parse(raw.toString()); } catch (e) { return; }
     const { type, data } = msg;
