@@ -1648,6 +1648,13 @@ wss.on('connection', (ws) => {
         return;
       }
 
+      // High-frequency moves (drawguess strokes) broadcast a small delta instead of the full state.
+      const delta = gameMod.moveDelta ? gameMod.moveDelta(data, currentRoom.state, playerInfo.index) : null;
+      if (delta) {
+        broadcastRoom(currentRoom, { type: 'game_delta', delta });
+        return;
+      }
+
       skipDisconnectedTurn(currentRoom);
 
       // Mahjong: settle the round before broadcasting the 'over' game_state so the
