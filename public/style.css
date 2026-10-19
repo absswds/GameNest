@@ -3046,6 +3046,15 @@ body.lobby-page {
 .hs-bar > i { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: var(--ge-ink, #1c1b19); opacity: .45; transition: left 80ms linear; }
 .hs-bar[hidden] { display: none; }
 
+/* The hero clips its background with overflow:hidden, so as a grid item its minimum height is 0: whenever
+   the lobby got less height than its content, the grid squeezed the hero to nothing. iOS Safari did exactly
+   that (the whole top block vanished and the page began at the game browser). max-content rows never
+   shrink below their content. */
+.lobby-page .lobby-shell {
+  grid-auto-rows: max-content;
+  flex-shrink: 0;
+}
+
 /* ====== Lobby: named create button + compact phone layout ====== */
 .lobby-page .quick-create-btn {
   width: auto; height: auto; min-height: 52px;
@@ -3113,6 +3122,13 @@ body.lobby-page {
 @media (max-width: 560px) {
   /* Phone: featured just repeats the first games of the grid below — drop it */
   .lobby-page .lobby-discovery { display: none; }
+  /* The compact 8px padding above dropped the safe-area insets: with viewport-fit=cover the top of the
+     lobby then sits under the iPhone status bar / Dynamic Island */
+  body.lobby-page {
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
   /* Shorter hero so the game grid starts within the first screen */
   .lobby-page .lobby-hero .hero-copy { min-height: 0 !important; height: auto !important; padding: 16px 18px !important; }
   .lobby-page .hero-title { font-size: 26px !important; margin: 0 !important; }
