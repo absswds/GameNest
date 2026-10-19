@@ -97,10 +97,20 @@ function applyRoomInfo(m) {
   if ('state' in m && m.state) { S.state = m.state; S.seq++; }
 }
 
+// drawguess strokes arrive as deltas on the current canvas instead of a full game_state
+function applyDelta(d) {
+  const task = S.state && S.state.myTask;
+  if (!d || !task || !Array.isArray(task.strokes)) return;
+  if (d.op === 'stroke' && d.stroke) task.strokes.push(d.stroke);
+  else if (d.op === 'trim') task.strokes.length = Math.min(task.strokes.length, d.n || 0);
+  S.seq++;
+}
+
 function onMessage(m) {
   switch (m.type) {
     case 'game_started': applyRoomInfo(m); S.phase = 'playing'; break;
     case 'game_state': applyRoomInfo(m); if (m.state) S.phase = 'playing'; break;
+    case 'game_delta': applyDelta(m.delta); break;
     case 'player_index_updated': S.mySeat = m.playerIndex; break;
     case 'left_room': case 'kicked': resetRoom(); break;
     case 'error': S.lastError = { seq: S.seq, message: m.message, code: m.code || null, at: Date.now() }; break;

@@ -3,13 +3,20 @@
   window.gameRenderers = window.gameRenderers || new Map();
 
   var canvas, ctx, overlayDiv;
-  var W, H;
+  // Every stroke is stored in one LOGICAL x LOGICAL space and scaled to each screen's canvas, so a picture
+  // drawn on a desktop looks the same on a phone. mcp/draw.js uses the same 0-280 space.
+  var LOGICAL = 280;
+  var canvasSize = 0, canvasW = 0;
   var state, playerIndex;
   var isDrawing = false;
-  var currentStroke = null;
-  var localStrokes = []; // strokes drawn this turn (for submit)
+  var activePointer = null;
+  var currentStroke = null; // points of the stroke being drawn that are not sent yet; pts[0] = last sent point
+  var localStrokes = []; // strokes drawn this turn (for submit); in stage mode a mirror of what the server has
+  var strokeSeq = 0;     // g: stroke id, shared by the segments of one stroke so undo removes it whole
+  var flushTimer = null;
+  var FLUSH_MS = 50;     // stage mode streams the stroke being drawn this often, so guessers watch it live
   var color = '#1a1a1a';
-  var lineWidth = 4;
+  var lineWidth = 3;
   var isEraser = false;
   var timerInterval = null;
   var revealStep = 0; // which chain step to show in reveal phase
@@ -86,6 +93,7 @@
     var st = state, task = st.myTask;
     var left = lay.querySelector('#dg-left'), right = lay.querySelector('#dg-right');
     var total = (st.scores || []).length;
+    var rounds = st.totalRounds || total;
     var isDrawer = playerIndex === st.drawerIndex;
     var word = '';
     if (st.phase === 'playing' && task) {
@@ -95,7 +103,7 @@
         '<div class="dg-word">' + esc(raw || '') + '</div></div>';
     }
     left.innerHTML =
-      '<div class="dg-card"><div class="dg-label">' + _t('dg_side_round') + '</div><div class="dg-big">' + st.round + ' / ' + total + '</div>' +
+      '<div class="dg-card"><div class="dg-label">' + _t('dg_side_round') + '</div><div class="dg-big">' + st.round + ' / ' + rounds + '</div>' +
         '<div class="dg-sub">' + _t('dg_side_drawer') + ' ' + esc(pname(st.drawerIndex)) + (isDrawer ? ' (' + _t('dg_side_you') + ')' : '') + '</div></div>' +
       word +
       '<div class="dg-card"><div class="dg-label">' + _t('dg_side_time') + '</div><div class="dg-big" id="dg-side-timer"></div></div>';
@@ -130,57 +138,104 @@
     ctx = canvas.getContext('2d');
 
     resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('resize', function () { resizeCanvas(); });
 
-    // Mouse events
-    canvas.addEventListener('mousedown', onPointerDown);
-    canvas.addEventListener('mousemove', onPointerMove);
-    canvas.addEventListener('mouseup', onPointerUp);
-    canvas.addEventListener('mouseleave', onPointerUp);
-    // Touch events
-    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-    canvas.addEventListener('touchend', onPointerUp);
+    if (window.PointerEvent) {
+      canvas.addEventListener('pointerdown', onPointerDown);
+      canvas.addEventListener('pointermove', onPointerMove);
+      canvas.addEventListener('pointerup', onPointerUp);
+      canvas.addEventListener('pointercancel', onPointerUp);
+    } else {
+      canvas.addEventListener('mousedown', onPointerDown);
+      canvas.addEventListener('mousemove', onPointerMove);
+      canvas.addEventListener('mouseup', onPointerUp);
+      canvas.addEventListener('mouseleave', onPointerUp);
+      canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+      canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+      canvas.addEventListener('touchend', onPointerUp);
+    }
   }
 
+  // Square canvas, as wide as the screen allows. While the guess input has focus the phone keyboard
+  // shrinks innerHeight; the canvas keeps its size then instead of jumping smaller and back.
   function resizeCanvas() {
     if (!canvas) return;
-    W = Math.min(window.innerWidth - 16, 500);
-    H = Math.min(window.innerHeight - 220, W);
-    W = Math.max(W, 280); H = Math.max(H, 280);
-    var dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(dpr, dpr);
+    var w = Math.min(window.innerWidth - 16, 500);
+    var ae = document.activeElement;
+    var typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
+    if (!(typing && canvasSize && w === canvasW)) {
+      canvasW = w;
+      canvasSize = Math.max(280, Math.min(w, window.innerHeight - 220));
+      var dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(canvasSize * dpr); canvas.height = Math.round(canvasSize * dpr);
+      canvas.style.width = canvasSize + 'px'; canvas.style.height = canvasSize + 'px';
+      var k = dpr * canvasSize / LOGICAL;
+      ctx.setTransform(k, 0, 0, k, 0, 0);
+    }
     if (state) redrawCanvas();
   }
 
   function getPos(e) {
     var r = canvas.getBoundingClientRect();
-    return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
+    return {
+      x: Math.round((e.clientX - r.left) * (LOGICAL / r.width) * 10) / 10,
+      y: Math.round((e.clientY - r.top) * (LOGICAL / r.height) * 10) / 10,
+    };
   }
 
   function onPointerDown(e) {
-    if (!isMyDrawTurn()) return;
+    if (!isMyDrawTurn() || isDrawing) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.pointerId !== undefined) {
+      activePointer = e.pointerId;
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* not capturable */ }
+    }
+    if (e.preventDefault && e.cancelable !== false) e.preventDefault();
     isDrawing = true;
-    var pt = getPos(e);
-    currentStroke = { color: isEraser ? '#fff' : color, width: isEraser ? 20 : lineWidth, pts: [pt] };
+    strokeSeq++;
+    currentStroke = { color: isEraser ? '#fff' : color, width: isEraser ? 14 : lineWidth, g: strokeSeq, pts: [getPos(e)], sent: false };
   }
   function onPointerMove(e) {
     if (!isDrawing || !currentStroke) return;
-    currentStroke.pts.push(getPos(e));
-    redrawCanvas();
-  }
-  function onPointerUp() {
-    if (!isDrawing || !currentStroke) return;
-    isDrawing = false;
-    if (currentStroke.pts.length > 1) {
-      localStrokes.push(currentStroke);
-      if (state && state.mode === 'stage') wsSend({ type: 'stage_stroke', stroke: currentStroke });
+    if (activePointer !== null && e.pointerId !== undefined && e.pointerId !== activePointer) return;
+    // Coalesced events: the full-rate pointer path even when the page only gets one event per frame
+    var evs = (e.getCoalescedEvents && e.getCoalescedEvents()) || [];
+    if (!evs.length) evs = [e];
+    var pts = currentStroke.pts;
+    for (var i = 0; i < evs.length; i++) {
+      var p = getPos(evs[i]), last = pts[pts.length - 1];
+      if (Math.abs(p.x - last.x) + Math.abs(p.y - last.y) < 0.8) continue; // skip sub-pixel jitter
+      drawSegment(ctx, last, p, currentStroke);
+      pts.push(p);
     }
+    if (state && state.mode === 'stage' && !flushTimer && pts.length > 1) flushTimer = setTimeout(flushStroke, FLUSH_MS);
+  }
+  function onPointerUp(e) {
+    if (!isDrawing || !currentStroke) return;
+    if (e && activePointer !== null && e.pointerId !== undefined && e.pointerId !== activePointer) return;
+    isDrawing = false;
+    activePointer = null;
+    if (currentStroke.pts.length === 1 && !currentStroke.sent) {
+      // A tap: draw a dot (a zero-length line draws nothing)
+      var p = currentStroke.pts[0];
+      currentStroke.pts.push({ x: p.x + 0.1, y: p.y });
+      drawOneStroke(currentStroke);
+    }
+    flushStroke();
     currentStroke = null;
-    redrawCanvas();
+  }
+  // Moves the drawn-but-unsent points into localStrokes as one segment and (stage mode) sends it.
+  // The next segment starts at this one's last point so the line stays continuous.
+  function flushStroke() {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+    var cs = currentStroke;
+    if (!cs || cs.pts.length < 2) return;
+    var seg = { color: cs.color, width: cs.width, g: cs.g, pts: cs.pts };
+    localStrokes.push(seg);
+    if (state && state.mode === 'stage') wsSend({ type: 'stage_stroke', stroke: seg });
+    cs.pts = [cs.pts[cs.pts.length - 1]];
+    cs.sent = true;
   }
   function onTouchStart(e) { e.preventDefault(); onPointerDown(e.touches[0]); }
   function onTouchMove(e) { e.preventDefault(); onPointerMove(e.touches[0]); }
@@ -189,11 +244,17 @@
     return state && state.phase === 'playing' && state.myTask && (state.myTask.type === 'draw' || (state.myTask.type === 'stage' && state.myTask.canDraw));
   }
 
+  function maxStrokeId(strokes) {
+    var m = 0;
+    (strokes || []).forEach(function (s) { if (typeof s.g === 'number' && s.g > m) m = s.g; });
+    return m;
+  }
+
   function redrawCanvas() {
     if (!ctx) return;
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, LOGICAL, LOGICAL);
     ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, LOGICAL, LOGICAL);
 
     var strokes;
     if (isMyDrawTurn()) {
@@ -212,21 +273,35 @@
     if (currentStroke) drawOneStroke(currentStroke);
   }
 
-  function drawStrokes(strokes) {
+  function drawStrokes(strokes, c) {
     if (!strokes || !strokes.length) return;
-    strokes.forEach(s => drawOneStroke(s));
+    strokes.forEach(function (s) { drawOneStroke(s, c); });
   }
 
-  function drawOneStroke(s) {
-    if (!s.pts || s.pts.length < 2) return;
-    ctx.beginPath();
-    ctx.strokeStyle = s.color;
-    ctx.lineWidth = s.width;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.moveTo(s.pts[0].x, s.pts[0].y);
-    for (var i = 1; i < s.pts.length; i++) ctx.lineTo(s.pts[i].x, s.pts[i].y);
-    ctx.stroke();
+  function drawOneStroke(s, c) {
+    c = c || ctx;
+    if (!c || !s || !s.pts || s.pts.length < 2) return;
+    c.beginPath();
+    c.strokeStyle = s.color;
+    c.lineWidth = s.width;
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+    c.moveTo(s.pts[0].x, s.pts[0].y);
+    for (var i = 1; i < s.pts.length; i++) c.lineTo(s.pts[i].x, s.pts[i].y);
+    c.stroke();
+  }
+
+  // While drawing only the newest piece is painted; repainting every stroke on every pointer move is what
+  // made long or heavily filled drawings lag
+  function drawSegment(c, a, b, style) {
+    c.beginPath();
+    c.strokeStyle = style.color;
+    c.lineWidth = style.width;
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+    c.moveTo(a.x, a.y);
+    c.lineTo(b.x, b.y);
+    c.stroke();
   }
 
   // ---- Toolbar ----
@@ -236,43 +311,59 @@
     tb.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;padding:8px 4px;max-width:500px;';
     wrap.appendChild(tb);
 
+    var ON = '#c8a45c', OFF = '#ccc';
+    var widthBtns = [], eTb;
+    function markTool() {
+      widthBtns.forEach(function (b) { b.style.borderColor = !isEraser && b._w === lineWidth ? ON : OFF; });
+      if (eTb) eTb.style.borderColor = isEraser ? ON : OFF;
+    }
+
     // Colors
     COLORS.forEach(function (c) {
       var btn = document.createElement('button');
       btn.style.cssText = 'width:26px;height:26px;border-radius:50%;border:2px solid #ccc;background:' + c + ';cursor:pointer;padding:0;flex-shrink:0;';
       btn.onclick = function () {
         color = c; isEraser = false;
-        tb.querySelectorAll('.clr-btn').forEach(b => b.style.borderColor = '#ccc');
-        btn.style.borderColor = '#c8a45c';
+        tb.querySelectorAll('.clr-btn').forEach(function (b) { b.style.borderColor = OFF; });
+        btn.style.borderColor = ON;
+        markTool();
       };
       btn.className = 'clr-btn';
-      if (c === '#1a1a1a') btn.style.borderColor = '#c8a45c';
+      if (c === color) btn.style.borderColor = ON;
       tb.appendChild(btn);
     });
 
-    // Width
-    [2, 5, 10].forEach(function (w) {
+    // Width (logical units: the biggest is for filling large areas)
+    [1.5, 3, 6, 12].forEach(function (w) {
       var btn = document.createElement('button');
-      btn.style.cssText = 'width:28px;height:28px;border-radius:4px;border:1px solid #ccc;background:#f8f9fa;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
-      btn.innerHTML = '<div style="width:' + (w * 2) + 'px;height:' + (w * 2) + 'px;border-radius:50%;background:#333;"></div>';
-      btn.onclick = function () { lineWidth = w; isEraser = false; };
+      btn._w = w;
+      var dot = Math.round(4 + w * 1.5);
+      btn.style.cssText = 'width:30px;height:30px;border-radius:6px;border:2px solid #ccc;background:#f8f9fa;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;';
+      btn.innerHTML = '<div style="width:' + dot + 'px;height:' + dot + 'px;border-radius:50%;background:#333;"></div>';
+      btn.onclick = function () { lineWidth = w; isEraser = false; markTool(); };
+      widthBtns.push(btn);
       tb.appendChild(btn);
     });
 
     // Eraser
-    var eTb = document.createElement('button');
+    eTb = document.createElement('button');
     eTb.textContent = _t('dg_eraser');
-    eTb.style.cssText = 'padding:4px 8px;border-radius:4px;border:1px solid #ccc;background:#f8f9fa;cursor:pointer;font-size:12px;';
-    eTb.onclick = function () { isEraser = true; };
+    eTb.style.cssText = 'padding:4px 8px;border-radius:6px;border:2px solid #ccc;background:#f8f9fa;cursor:pointer;font-size:12px;';
+    eTb.onclick = function () { isEraser = true; markTool(); };
     tb.appendChild(eTb);
+    markTool();
 
-    // Undo
+    // Undo: the last whole stroke (stage mode sends a long stroke as several segments with the same g)
     var undoBtn = document.createElement('button');
     undoBtn.textContent = _t('dg_undo');
-    undoBtn.style.cssText = 'padding:4px 8px;border-radius:4px;border:1px solid #ccc;background:#f8f9fa;cursor:pointer;font-size:12px;';
+    undoBtn.style.cssText = 'padding:4px 8px;border-radius:6px;border:1px solid #ccc;background:#f8f9fa;cursor:pointer;font-size:12px;';
     undoBtn.onclick = function () {
-      if (!localStrokes.length) return;
-      localStrokes.pop(); redrawCanvas();
+      if (isDrawing || !localStrokes.length) return;
+      var last = localStrokes.pop();
+      if (last.g !== undefined) {
+        while (localStrokes.length && localStrokes[localStrokes.length - 1].g === last.g) localStrokes.pop();
+      }
+      redrawCanvas();
       if (state && state.mode === 'stage') wsSend({ type: 'stage_undo' });
     };
     tb.appendChild(undoBtn);
@@ -280,8 +371,9 @@
     // Clear
     var clrBtn = document.createElement('button');
     clrBtn.textContent = _t('dg_clear');
-    clrBtn.style.cssText = 'padding:4px 8px;border-radius:4px;border:1px solid #e74c3c;background:#fff5f5;color:#e74c3c;cursor:pointer;font-size:12px;';
+    clrBtn.style.cssText = 'padding:4px 8px;border-radius:6px;border:1px solid #e74c3c;background:#fff5f5;color:#e74c3c;cursor:pointer;font-size:12px;';
     clrBtn.onclick = function () {
+      if (isDrawing) return;
       localStrokes = []; redrawCanvas();
       if (state && state.mode === 'stage') wsSend({ type: 'stage_clear' });
     };
@@ -359,6 +451,7 @@
     resizeCanvas();
     wrap.appendChild(canvas);
     function doSubmitDraw() {
+      if (isDrawing) onPointerUp(); // time ran out mid-stroke: keep it
       wsSend({ type: 'submit', content: localStrokes });
       clearInterval(timerInterval);
       localStrokes = [];
@@ -371,6 +464,21 @@
       if (localStrokes.length === 0) { alert(_t('dg_draw_first_alert')); return; }
       doSubmitDraw();
     });
+  }
+
+  // Enter while a Chinese/Japanese IME is composing only commits the candidate text: it must not submit
+  function isSubmitKey(e) {
+    return e.key === 'Enter' && !e.isComposing && e.keyCode !== 229;
+  }
+
+  // Plain answer box: no autocorrect/capitalisation rewriting the guess, and a "send" key on phone keyboards
+  function setGuessInputAttrs(input) {
+    if (!input.setAttribute) return;
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('autocorrect', 'off');
+    input.setAttribute('autocapitalize', 'off');
+    input.setAttribute('spellcheck', 'false');
+    input.setAttribute('enterkeyhint', 'send');
   }
 
   // ---- Render guess turn ----
@@ -391,14 +499,8 @@
       renderWaiting(container, _t('dg_guess_submitted'));
     });
 
-    // Draw the previous strokes on canvas
+    // Shows the previous player's drawing (redrawCanvas picks task.prevContent)
     resizeCanvas();
-    // Draw the previous content (strokes array)
-    var prevStrokes = task.prevContent || [];
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, W, H);
-    drawStrokes(prevStrokes);
     wrap.appendChild(canvas);
 
     var inputWrap = document.createElement('div');
@@ -409,6 +511,7 @@
     input.type = 'text';
     input.placeholder = _t('dg_guess_placeholder');
     input.maxLength = 20;
+    setGuessInputAttrs(input);
     input.style.cssText = 'flex:1;padding:10px 14px;border-radius:8px;border:1px solid var(--border);font-size:15px;';
     inputWrap.appendChild(input);
 
@@ -425,7 +528,7 @@
       renderWaiting(container, _t('dg_guess_submitted'));
     }
     submitBtn.onclick = doSubmit;
-    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSubmit(); });
+    input.addEventListener('keydown', function (e) { if (isSubmitKey(e)) doSubmit(); });
     setTimeout(function () { input.focus(); }, 100);
   }
 
@@ -479,19 +582,35 @@
 
   function stageHeader(task) {
     var drawer = (window._players && window._players[state.drawerIndex]) ? window._players[state.drawerIndex].name : (_t('dg_player_fallback') + (state.drawerIndex + 1));
-    return task.canDraw ? (_t('dg_round_prefix') + state.round + _t('dg_round_draw') + task.word) : (_t('dg_round_prefix') + state.round + _t('dg_round_sep') + drawer + _t('dg_is_drawing') + (task.correct ? _t('dg_guessed_correct') : task.wordMask));
+    var round = state.round + (state.totalRounds ? '/' + state.totalRounds : '');
+    return task.canDraw ? (_t('dg_round_prefix') + round + _t('dg_round_draw') + task.word) : (_t('dg_round_prefix') + round + _t('dg_round_sep') + drawer + _t('dg_is_drawing') + (task.correct ? _t('dg_guessed_correct') : task.wordMask));
   }
 
   // Same round and role: only strokes, scores and the timer changed. Rebuilding would replace the guess
   // input, which closes the mobile keyboard and breaks IME composition on every stroke the drawer sends.
+  // The drawer's own canvas is never replaced by what the server echoes back: those states trail the
+  // strokes already on screen, and overwriting localStrokes with them made fresh lines vanish and reappear.
   function updateStage(container, task) {
     if (!stageView || stageView.key !== stageKey(task) || stageView.lay.parentNode !== container) return false;
     stageView.header.textContent = stageHeader(task);
     updateSides(stageView.lay);
-    if (task.canDraw) localStrokes = task.strokes || [];
-    redrawCanvas();
+    if (!task.canDraw) redrawCanvas();
     startTimer(stageView.wrap, state.stepRemainingMs, null);
     return true;
+  }
+
+  // Strokes from game_delta: guessers paint just the new segment on top of the current picture
+  function applyStageDelta(d) {
+    if (!d || !state || state.mode !== 'stage' || state.phase !== 'playing' || !state.myTask || !stageView) return;
+    if (isMyDrawTurn()) return; // the drawer already has these strokes on screen
+    var strokes = state.myTask.strokes || (state.myTask.strokes = []);
+    if (d.op === 'stroke' && d.stroke) {
+      strokes.push(d.stroke);
+      drawOneStroke(d.stroke);
+    } else if (d.op === 'trim') {
+      strokes.length = Math.min(strokes.length, d.n || 0);
+      redrawCanvas();
+    }
   }
 
   function renderStage(container, task) {
@@ -505,17 +624,20 @@
     header.textContent = stageHeader(task);
     wrap.appendChild(header);
     stageView = { key: stageKey(task), lay: host.parentNode, wrap: wrap, header: header };
-    resizeCanvas();
-    drawStrokes(task.strokes || []);
+    clearTimeout(flushTimer); flushTimer = null;
+    isDrawing = false; currentStroke = null;
+    if (task.canDraw) { localStrokes = (task.strokes || []).slice(); strokeSeq = maxStrokeId(localStrokes); }
+    resizeCanvas(); // also paints the current strokes
     wrap.appendChild(canvas);
     startTimer(wrap, state.stepRemainingMs, null);
-    if (task.canDraw) { localStrokes = task.strokes || []; buildToolbar(wrap); return; }
+    if (task.canDraw) { buildToolbar(wrap); return; }
     if (task.correct) return;
     var row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;margin-top:10px;width:min(100%,500px);'; wrap.appendChild(row);
-    var input = document.createElement('input'); input.placeholder = _t('dg_stage_guess_placeholder'); input.maxLength = 20; input.style.cssText = 'flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;'; row.appendChild(input);
-    var btn = document.createElement('button'); btn.className = 'btn btn-primary'; btn.textContent = _t('dg_guess_btn'); row.appendChild(btn);
+    var input = document.createElement('input'); input.placeholder = _t('dg_stage_guess_placeholder'); input.maxLength = 20; input.style.cssText = 'flex:1;min-width:0;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:16px;'; row.appendChild(input);
+    setGuessInputAttrs(input);
+    var btn = document.createElement('button'); btn.className = 'btn btn-primary'; btn.textContent = _t('dg_guess_btn'); btn.style.cssText = 'flex:0 0 auto;width:auto;min-width:72px;padding-left:18px;padding-right:18px;'; row.appendChild(btn);
     function guess() { var text = input.value.trim(); if (!text) return; wsSend({ type: 'stage_guess', text: text }); input.select(); }
-    btn.onclick = guess; input.onkeydown = function(e) { if (e.key === 'Enter') guess(); };
+    btn.onclick = guess; input.onkeydown = function(e) { if (isSubmitKey(e)) guess(); };
     // Autofocus once per round on desktop only: on touch devices it would pop the keyboard over the canvas
     if (!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) setTimeout(function(){ input.focus(); }, 50);
   }
@@ -592,26 +714,17 @@
       if (step.type === 'draw') {
         var c2 = document.createElement('canvas');
         var cW = Math.min(window.innerWidth - 40, 460);
-        var cH = Math.round(cW * 0.75);
-        c2.width = cW * (window.devicePixelRatio || 1);
-        c2.height = cH * (window.devicePixelRatio || 1);
-        c2.style.width = cW + 'px'; c2.style.height = cH + 'px';
+        var dpr2 = window.devicePixelRatio || 1;
+        c2.width = Math.round(cW * dpr2);
+        c2.height = Math.round(cW * dpr2);
+        c2.style.width = cW + 'px'; c2.style.height = cW + 'px';
         c2.style.cssText += 'border-radius:8px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.1);display:block;margin:0 auto;';
         stepArea.appendChild(c2);
         var c2x = c2.getContext('2d');
-        c2x.setTransform(1, 0, 0, 1, 0, 0);
-        c2x.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
-        c2x.fillStyle = '#fff'; c2x.fillRect(0, 0, cW, cH);
-        // Scale strokes to canvas size (original drawn at W×H)
-        var sx = cW / (W || cW), sy = cH / (H || cH);
-        (step.content || []).forEach(function (s) {
-          if (!s.pts || s.pts.length < 2) return;
-          c2x.beginPath();
-          c2x.strokeStyle = s.color; c2x.lineWidth = s.width * sx; c2x.lineCap = 'round'; c2x.lineJoin = 'round';
-          c2x.moveTo(s.pts[0].x * sx, s.pts[0].y * sy);
-          for (var i = 1; i < s.pts.length; i++) c2x.lineTo(s.pts[i].x * sx, s.pts[i].y * sy);
-          c2x.stroke();
-        });
+        var k2 = dpr2 * cW / LOGICAL;
+        c2x.setTransform(k2, 0, 0, k2, 0, 0);
+        c2x.fillStyle = '#fff'; c2x.fillRect(0, 0, LOGICAL, LOGICAL);
+        drawStrokes(step.content || [], c2x);
       } else {
         var guessEl = document.createElement('div');
         guessEl.style.cssText = 'font-size:28px;font-weight:800;text-align:center;padding:30px;background:#f8f9fa;border-radius:12px;letter-spacing:2px;';
@@ -707,6 +820,10 @@
   window.gameRenderers.set('drawguess', {
     init: function (container) {
       setupCanvas(container);
+    },
+
+    applyDelta: function (delta) {
+      applyStageDelta(delta);
     },
 
     render: function (st, container, pi, winner) {

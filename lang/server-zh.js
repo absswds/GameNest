@@ -127,6 +127,7 @@ module.exports = {
   'dg_content_empty': '内容为空',
   'dg_invalid_vote': '无效投票',
   'dg_game_not_running': '游戏未进行',
+  'dg_canvas_full': '画布已满，先撤销或清空一些',
 
   // Exploding Kittens (ek_)
   'ek_you_are_out': '你已经出局了',

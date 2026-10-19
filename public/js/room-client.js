@@ -271,6 +271,10 @@
         renderGame();
         el.status.textContent = '';
       },
+      // Small incremental update (drawguess strokes) applied by the renderer without a full re-render
+      game_delta(msg) {
+        if (currentRenderer && currentRenderer.applyDelta) currentRenderer.applyDelta(msg.delta, el.boardArea);
+      },
       // Host started a new game: non-hosts should drop their result overlay
       // and see "continue" instead of "play again".
       game_restart(msg) {
@@ -829,7 +833,9 @@
         var dgDraw = roomOptions.drawTime !== undefined ? roomOptions.drawTime : 90;
         var dgGuess = roomOptions.guessTime !== undefined ? roomOptions.guessTime : 45;
         var dgChoices = roomOptions.wordChoices !== undefined ? roomOptions.wordChoices : 3;
+        var dgRounds = roomOptions.rounds !== undefined ? roomOptions.rounds : 0;
         var dgMode = roomOptions.mode || 'stage';
+        function _dgRoundsLbl(v) { return v ? _t('dg_rounds_each') + v + _t('dg_rounds_times') : _t('dg_rounds_auto'); }
         if (isHost) {
           var catHtml = '';
           dgCats.forEach(function(c) {
@@ -853,6 +859,7 @@
               '<label style="display:flex;align-items:center;gap:6px;">' + _t('draw_time_label') + ' ' + dgSel('optDgDraw', 'drawTime', [45,60,90,120,0], [_dgTimeLbl(45),_dgTimeLbl(60),_dgTimeLbl(90),_dgTimeLbl(120),_dgTimeLbl(0)], dgDraw) + '</label>' +
               '<label style="display:flex;align-items:center;gap:6px;">' + _t('guess_time_label') + ' ' + dgSel('optDgGuess', 'guessTime', [30,45,60,90,0], [_dgTimeLbl(30),_dgTimeLbl(45),_dgTimeLbl(60),_dgTimeLbl(90),_dgTimeLbl(0)], dgGuess) + '</label>' +
               '<label style="display:flex;align-items:center;gap:6px;">' + _t('word_count_label') + ' ' + dgSel('optDgChoices', 'wordChoices', [1,2,3,5], [_t('label_1choice'),_t('label_2choices'),_t('label_3choices'),_t('label_5choices')], dgChoices) + '</label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('dg_rounds_label') + ' ' + dgSel('optDgRounds', 'rounds', [0,1,2,3,4], [0,1,2,3,4].map(_dgRoundsLbl), dgRounds) + '</label>' +
             '</div>' +
             '<div style="font-size:13px;">' + _t('custom_words_label') + ':<br>' +
               '<textarea id="optDgCustom" rows="2" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="' + _t('custom_words_placeholder') + '">' + customVal + '</textarea>' +
@@ -865,7 +872,7 @@
             '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
             '<div style="font-size:13px;color:var(--text-muted)">' + _t('mode_label') + ': ' + (dgMode === 'stage' ? _t('mode_stage') : _t('mode_whisper')) + ' · ' + _t('word_categories') + ': ' + catNames +
             ' · ' + _t('draw_time_label') + ': ' + (dgDraw === 0 ? _t('unlimited') : dgDraw + _t('seconds')) + ' · ' + _t('guess_time_label') + ': ' + (dgGuess === 0 ? _t('unlimited') : dgGuess + _t('seconds')) +
-            ' · ' + _t('word_count_label') + ': ' + dgChoices + ' ' + _t('dg_choices_suffix') + (customCount > 0 ? ' · ' + _t('deck_custom') + ' ' + customCount + ' ' + _t('dg_choices_suffix') : '') + '</div>';
+            ' · ' + _t('word_count_label') + ': ' + dgChoices + ' ' + _t('dg_choices_suffix') + ' · ' + _t('dg_rounds_label') + ': ' + _dgRoundsLbl(dgRounds) + (customCount > 0 ? ' · ' + _t('deck_custom') + ' ' + customCount + ' ' + _t('dg_choices_suffix') : '') + '</div>';
         }
       } else if (isHost && game === 'reversi') {
         optionsEl.style.display = 'block';

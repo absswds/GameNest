@@ -109,6 +109,7 @@ function setup({ coarsePointer = false } = {}) {
     _t: (k) => k,
     alert() {},
     setTimeout: (fn) => { timeouts.push(fn); return timeouts.length; },
+    clearTimeout: (id) => { if (id) timeouts[id - 1] = () => {}; },
     setInterval: () => 0,
     clearInterval() {},
   };
@@ -121,7 +122,12 @@ function setup({ coarsePointer = false } = {}) {
   return {
     doc, container, moves,
     render(view) { renderer.render(view, container, view.__pi, view.winner); },
-    flushTimers() { while (timeouts.length) timeouts.shift()(); },
+    delta(d) { renderer.applyDelta(JSON.parse(JSON.stringify(d))); },
+    // Fires every pending timer (ids stay valid for clearTimeout: fired slots are blanked, not removed)
+    flushTimers() { for (let i = 0; i < timeouts.length; i++) { const fn = timeouts[i]; timeouts[i] = () => {}; fn(); } },
+    canvas() { return container.querySelector('canvas'); },
+    // Mouse path (the sandbox has no PointerEvent); the fake canvas is 300px on screen = 280 logical units
+    pointer(type, x, y) { (this.canvas().listeners[type] || []).forEach((fn) => fn({ clientX: x, clientY: y, preventDefault() {} })); },
   };
 }
 
@@ -241,7 +247,7 @@ test('drawguess stage: the drawer keeps the same toolbar and canvas while its st
   const before = canvas.ctx.strokes;
   dg.handleMove({ type: 'stage_clear' }, st, 0);
   ann.render(viewFor(st, 0));
-  assert.equal(canvas.ctx.strokes, before, 'clear is synced to the drawer canvas');
+  assert.equal(canvas.ctx.strokes, before, 'echoed states never repaint the drawer canvas (it is ahead of them)');
 });
 
 test('drawguess stage: a cleared board (e.g. restart) is rebuilt instead of patched', () => {
@@ -253,4 +259,78 @@ test('drawguess stage: a cleared board (e.g. restart) is rebuilt instead of patc
   ui.render(viewFor(st, 1));
   const rebuilt = ui.container.querySelector('input');
   assert.ok(rebuilt && rebuilt !== input);
+});
+
+// ---- Live strokes: the server sends deltas (moveDelta -> game_delta) instead of full states ----
+
+test('drawguess stage: guessers paint incoming stroke deltas incrementally and keep their input', () => {
+  const st = newGame();
+  const ui = setup({ coarsePointer: true });
+  ui.render(viewFor(st, 1));
+  const input = ui.container.querySelector('input');
+  input.value = '猫';
+  const canvas = ui.canvas();
+  const before = canvas.ctx.strokes;
+  for (let i = 0; i < 50; i++) {
+    const move = { type: 'stage_stroke', stroke: stroke(i) };
+    assert.equal(dg.handleMove(move, st, 0), null);
+    ui.delta(dg.moveDelta(move, st, 0));
+  }
+  assert.equal(canvas.ctx.strokes - before, 50, 'one paint per new stroke, no full repaint per delta');
+  assert.equal(ui.container.querySelector('input'), input);
+  assert.equal(input.value, '猫');
+
+  // undo/clear arrive as a trim to the server's stroke count
+  const undo = { type: 'stage_undo' };
+  dg.handleMove(undo, st, 0);
+  const mid = canvas.ctx.strokes;
+  ui.delta(dg.moveDelta(undo, st, 0));
+  assert.equal(canvas.ctx.strokes - mid, 49, 'trim repaints the remaining strokes');
+  // a later full state agrees with the delta-built picture
+  const v = viewFor(st, 1);
+  assert.equal(v.myTask.strokes.length, 49);
+});
+
+test('drawguess stage: the drawer streams a long stroke in segments and server echoes never wipe it', () => {
+  const st = newGame();
+  const ann = setup();
+  ann.render(viewFor(st, 0));
+  // one long stroke, flushed mid-way by the 50ms timer
+  ann.pointer('mousedown', 10, 10);
+  for (let x = 12; x < 60; x += 2) ann.pointer('mousemove', x, 10);
+  ann.flushTimers();
+  for (let x = 60; x < 120; x += 2) ann.pointer('mousemove', x, 20);
+  ann.pointer('mouseup');
+  const sent = ann.moves.filter((m) => m.type === 'stage_stroke');
+  assert.equal(sent.length, 2, 'two segments');
+  assert.equal(sent[0].stroke.g, sent[1].stroke.g, 'same stroke id');
+  assert.deepEqual(sent[1].stroke.pts[0], sent[0].stroke.pts[sent[0].stroke.pts.length - 1], 'segments join up');
+  assert.ok(sent[0].stroke.pts.every((p) => p.x >= 0 && p.x <= 280), 'logical coordinates');
+
+  // a second stroke, then a full state that only knows the first segment (it trails behind): nothing is lost
+  ann.pointer('mousedown', 100, 100); ann.pointer('mousemove', 150, 150); ann.pointer('mouseup');
+  dg.handleMove(sent[0], st, 0);
+  dg.handleMove({ type: 'stage_guess', text: 'dog' }, st, 1);
+  const canvas = ann.canvas();
+  const before = canvas.ctx.strokes;
+  ann.render(viewFor(st, 0));
+  assert.equal(canvas.ctx.strokes, before, 'the drawer canvas is not repainted from a stale echo');
+
+  // undo removes the whole second stroke; the server does the same with the g grouping
+  ann.moves.length = 0;
+  ann.container.querySelectorAll('button').find((b) => b.textContent === 'dg_undo').onclick();
+  assert.deepEqual(ann.moves, [{ type: 'stage_undo' }]);
+  assert.equal(canvas.ctx.strokes - before, 2, 'repainted with the 2 segments of the first stroke');
+});
+
+test('drawguess stage: a tap draws a dot', () => {
+  const st = newGame();
+  const ann = setup();
+  ann.render(viewFor(st, 0));
+  ann.pointer('mousedown', 30, 30);
+  ann.pointer('mouseup');
+  const sent = ann.moves.filter((m) => m.type === 'stage_stroke');
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].stroke.pts.length, 2);
+  assert.equal(dg.handleMove(sent[0], st, 0), null, 'server accepts it');
 });

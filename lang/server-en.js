@@ -127,6 +127,7 @@ module.exports = {
   'dg_content_empty': 'Content is empty',
   'dg_invalid_vote': 'Invalid vote',
   'dg_game_not_running': 'Game is not running',
+  'dg_canvas_full': 'The canvas is full: undo or clear some strokes first',
 
   // Exploding Kittens (ek_)
   'ek_you_are_out': 'You are out',

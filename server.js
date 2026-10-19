@@ -1451,6 +1451,13 @@ wss.on('connection', (ws) => {
         return;
       }
 
+      // High-frequency moves (drawguess strokes) broadcast a small delta instead of the full state.
+      const delta = gameMod.moveDelta ? gameMod.moveDelta(data, currentRoom.state, playerInfo.index) : null;
+      if (delta) {
+        broadcastRoom(currentRoom, { type: 'game_delta', delta });
+        return;
+      }
+
       skipDisconnectedTurn(currentRoom);
 
       // Clear 24-point round timer when a round ends via player submission

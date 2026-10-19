@@ -1,14 +1,27 @@
 // games/drawguess.js — 你画我猜 (Gartic Phone 风格传话链)
 // 玩法: 首位画家从候选词中选词→画→猜→画→猜... 依次传递，最后揭示全链，投票最好笑的一步
 // 房间设置: categories(词库分类) / drawTime / guessTime / wordChoices(候选词数) / customWords(自定义词)
+//           rounds(每人当几次画家，0 = 自动：人少时多轮，保证一局至少 MIN_TURNS 回合)
 const WORD_LIBRARY = require('./drawguess-words');
 const { pick } = require('./lib/i18n');
+const { toSimplified } = require('./lib/zh-variants');
 
 exports.name = 'drawguess';
 exports.maxPlayers = 8;
 exports.minPlayers = 1;
 
 const DEFAULTS = { drawTime: 90, guessTime: 45, wordChoices: 3 };
+const MIN_TURNS = 6;           // 自动轮数下一局至少画这么多回合（2 人 = 每人 3 次）
+const MAX_STROKE_PTS = 600;    // 单条 stage_stroke 的点数上限（客户端每 ~50ms 发一段，远小于此）
+const MAX_STAGE_STROKES = 6000; // 一回合画布上的笔段上限，防止恶意客户端撑爆内存/广播
+
+// 每人当画家的次数 → 总回合数
+function totalRoundsFor(options, playerCount) {
+  const n = Math.max(1, playerCount);
+  let cycles = parseInt(options.rounds, 10);
+  if (isNaN(cycles) || cycles <= 0) cycles = Math.ceil(MIN_TURNS / n);
+  return n * Math.min(cycles, 10);
+}
 
 function buildWordPool(options, lang) {
   const cats = Array.isArray(options.categories) && options.categories.length > 0
@@ -36,12 +49,32 @@ function buildWordPool(options, lang) {
   return pool;
 }
 
-function pickWords(pool, n) {
-  const copy = [...pool];
+// 同一局内不重复出词：优先从没出过的词里抽，用完了才重新放回
+function pickWords(pool, n, used) {
+  let copy = used ? pool.filter(w => !used.includes(w)) : [...pool];
+  if (copy.length < n) copy = [...pool];
   const out = [];
   while (out.length < n && copy.length > 0) {
     out.push(copy.splice(Math.floor(Math.random() * copy.length), 1)[0]);
   }
+  if (used) used.push(...out);
+  return out;
+}
+
+// 画笔数据来自客户端：只保留需要的字段，坐标取一位小数，限制点数和取值范围
+function sanitizeStroke(s) {
+  if (!s || !Array.isArray(s.pts) || s.pts.length < 2) return null;
+  const pts = [];
+  for (const p of s.pts.slice(0, MAX_STROKE_PTS)) {
+    const x = Number(p && p.x), y = Number(p && p.y);
+    if (!isFinite(x) || !isFinite(y)) return null;
+    pts.push({ x: Math.round(Math.max(-50, Math.min(330, x)) * 10) / 10, y: Math.round(Math.max(-50, Math.min(330, y)) * 10) / 10 });
+  }
+  const color = typeof s.color === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(s.color) ? s.color : '#1a1a1a';
+  const width = Math.max(1, Math.min(40, Number(s.width) || 4));
+  const out = { color, width, pts };
+  // g: 同一笔被切成多段实时发送时的笔画编号，撤销按整笔撤
+  if (Number.isInteger(s.g)) out.g = s.g;
   return out;
 }
 
@@ -62,15 +95,21 @@ exports.createState = () => ({
   _playerCount: 0,
   drawerIndex: 0,
   round: 1,
+  totalRounds: 1,
   scores: [],
   strokes: [],
   correct: {},
   roundResults: null,
   _wordPool: [],
+  _usedWords: [],
 });
 
+// 猜词比对：全角/半角统一（NFKC）、繁体转简体、忽略大小写空格和常见标点，
+// 所以「長頸鹿」「长颈鹿」「Spider Man」「spider-man」都算对
 function normalizeWord(value) {
-  return String(value || '').trim().replace(/\s+/g, '').toLowerCase();
+  return toSimplified(String(value || '').normalize('NFKC'))
+    .replace(/[\s\-_.,'"`·・!?！？。，、～~]+/g, '')
+    .toLowerCase();
 }
 
 function scoreForGuess(state) {
@@ -101,12 +140,12 @@ function startStageRound(state) {
   state.roundResults = null;
   const choices = Math.max(1, state.wordChoices || DEFAULTS.wordChoices);
   if (choices <= 1) {
-    state.word = pickWords(state._wordPool, 1)[0];
+    state.word = pickWords(state._wordPool, 1, state._usedWords)[0];
     state.wordOptions = [];
     state.phase = 'playing';
   } else {
     state.word = null;
-    state.wordOptions = pickWords(state._wordPool, choices);
+    state.wordOptions = pickWords(state._wordPool, choices, state._usedWords);
     state.phase = 'choosing';
   }
   state.stepStartTime = Date.now();
@@ -127,12 +166,12 @@ function startWhisperRound(state) {
   state.transmissionResult = null;
   state.roundResults = null;
   if (state.wordChoices <= 1) {
-    state.word = pickWords(state._wordPool, 1)[0];
+    state.word = pickWords(state._wordPool, 1, state._usedWords)[0];
     state.wordOptions = [];
     state.phase = 'playing';
   } else {
     state.word = null;
-    state.wordOptions = pickWords(state._wordPool, state.wordChoices);
+    state.wordOptions = pickWords(state._wordPool, state.wordChoices, state._usedWords);
     state.phase = 'choosing';
   }
   state.stepStartTime = Date.now();
@@ -159,6 +198,8 @@ exports.initGame = (state, playerCount) => {
   const wordChoices = Math.max(1, parseInt(options.wordChoices, 10) || DEFAULTS.wordChoices);
   const pool = buildWordPool(options, state._lang);
   state.wordChoices = wordChoices;
+  state.totalRounds = totalRoundsFor(options, playerCount);
+  state._usedWords = [];
 
   if (state.mode === 'stage') {
     state.drawerIndex = 0;
@@ -207,14 +248,23 @@ exports.handleMove = (data, state, playerIndex) => {
     }
     if (state.phase === 'playing') {
       if (data.type === 'stage_stroke') {
-        if (playerIndex !== state.drawerIndex || !data.stroke || !Array.isArray(data.stroke.pts) || data.stroke.pts.length < 2) return 'dg_cannot_draw_now';
-        state.strokes.push(data.stroke);
+        const stroke = playerIndex === state.drawerIndex ? sanitizeStroke(data.stroke) : null;
+        if (!stroke) return 'dg_cannot_draw_now';
+        if (state.strokes.length >= MAX_STAGE_STROKES) return 'dg_canvas_full';
+        state.strokes.push(stroke);
         return null;
       }
       if (data.type === 'stage_clear' || data.type === 'stage_undo') {
         if (playerIndex !== state.drawerIndex) return 'dg_cannot_draw_now';
         if (data.type === 'stage_clear') state.strokes = [];
-        else state.strokes.splice(Math.max(0, state.strokes.length - Math.min(60, Math.max(1, parseInt(data.count, 10) || 1))));
+        else if (data.count !== undefined) state.strokes.splice(Math.max(0, state.strokes.length - Math.min(60, Math.max(1, parseInt(data.count, 10) || 1))));
+        else {
+          // 不带 count：撤掉最后一整笔（实时发送时一笔会被切成多段，同一 g 的段一起撤）
+          const last = state.strokes.pop();
+          if (last && last.g !== undefined) {
+            while (state.strokes.length && state.strokes[state.strokes.length - 1].g === last.g) state.strokes.pop();
+          }
+        }
         return null;
       }
       if (data.type === 'stage_guess') {
@@ -313,10 +363,8 @@ exports.onTimeout = (state) => {
       return true;
     }
     if (state.phase === 'round_result') {
-      if (state.round >= state._playerCount) {
-        let best = 0;
-        for (let i = 1; i < state.scores.length; i++) if (state.scores[i] > state.scores[best]) best = i;
-        state.winner = best;
+      if (state.round >= (state.totalRounds || state._playerCount)) {
+        state.winner = highestScoreIndex(state.scores);
         state.phase = 'gameover';
         return true;
       }
@@ -328,7 +376,7 @@ exports.onTimeout = (state) => {
     return false;
   }
   if (state.phase === 'round_result') {
-    if (state.round >= state._playerCount) {
+    if (state.round >= (state.totalRounds || state._playerCount)) {
       state.winner = highestScoreIndex(state.scores);
       state.phase = 'gameover';
       state.stepDeadline = 0;
@@ -357,11 +405,24 @@ exports.onTimeout = (state) => {
   return false;
 };
 
+// 舞台模式的画笔/撤销/清空每秒可达几十次。整份 game_state 带着全部笔画，每次都广播会随画面变复杂越来越卡，
+// 所以服务端对这几种动作只广播一个增量（server.js 的 game_delta），客户端在本地笔画数组上应用。
+//   { op: 'stroke', stroke, n }  追加一段；n = 追加后的总段数
+//   { op: 'trim', n }            撤销/清空后只保留前 n 段
+// 笔画对所有人可见，增量不含隐藏信息。返回 null 表示照常广播完整状态。
+exports.moveDelta = (data, state) => {
+  if (state.mode !== 'stage' || state.phase !== 'playing' || !data) return null;
+  if (data.type === 'stage_stroke') return { op: 'stroke', stroke: state.strokes[state.strokes.length - 1], n: state.strokes.length };
+  if (data.type === 'stage_undo' || data.type === 'stage_clear') return { op: 'trim', n: state.strokes.length };
+  return null;
+};
+
 // Per-player view: hide the word and pending contents from everyone who shouldn't see them
 exports.playerView = (state, playerIndex) => {
   const view = Object.assign({}, state, { votes: Object.assign({}, state.votes) });
   view.stepRemainingMs = state.stepDeadline ? Math.max(0, state.stepDeadline - Date.now()) : 0;
   delete view._wordPool;
+  delete view._usedWords; // 含本回合的词
   if (state.mode === 'stage') {
     delete view._options;
     view.word = null;
