@@ -1,12 +1,30 @@
 // games/bigtwo.js
-// 大老二 (Big Two / 锄大地) — climbing card game
+// 大老二 (Big Two / 锄大地) — climbing card game, Hong Kong rules.
+//
+// - 3-4 players. 4 players: 13 cards each. 3 players: 17 each, the 52nd card
+//   goes to whoever holds the 3 of diamonds (18 cards).
+// - Plays are 1, 2, 3 or 5 cards. Five-card hands rank
+//   straight < flush < full house < four of a kind + 1 < straight flush,
+//   and a higher kind beats any lower kind.
+// - Straights: A may only start (A-2-3-4-5, the lowest) or end (10-J-Q-K-A,
+//   the highest) a straight. Straights compare by their top card, then its suit.
+// - Flushes compare by their highest card, then suit.
+// - Optional "next player has one card" rule (on by default): a single played
+//   while the next player holds one card must be your highest card.
+// - Scoring: each loser pays cards left x1 (under 10), x2 (10-12), x3 (13+);
+//   the winner collects the total. cumulativeScore carries across rounds.
 
 const SUITS = ['s','h','c','d'];
 const RANKS = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
 // Suit order: ♠ > ♥ > ♣ > ♦  (s > h > c > d)
 const SUIT_ORDER = { s: 3, h: 2, c: 1, d: 0 };
+// Rank as it sits in a straight (A is high here; A-2-3-4-5 is handled separately)
+const SEQ_VAL = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, J: 11, Q: 12, K: 13, A: 14 };
+// Five-card hand kinds, weakest first; a higher kind beats any lower kind
+const FIVE_KINDS = ['straight', 'flush', 'full_house', 'four_one', 'straight_flush'];
 
 exports.name = 'bigtwo';
+exports.minPlayers = 3;
 exports.maxPlayers = 4;
 
 function rankVal(rank) {
@@ -15,6 +33,10 @@ function rankVal(rank) {
 
 function suitVal(suit) {
   return SUIT_ORDER[suit] || 0;
+}
+
+function cardVal(c) {
+  return rankVal(c.rank) * 4 + suitVal(c.suit);
 }
 
 function createDeck() {
@@ -35,72 +57,58 @@ function shuffle(arr) {
 }
 
 function sortHand(hand) {
-  hand.sort((a, b) => {
-    const rv = rankVal(a.rank) - rankVal(b.rank);
-    if (rv !== 0) return rv;
-    return suitVal(a.suit) - suitVal(b.suit);
-  });
+  hand.sort((a, b) => cardVal(a) - cardVal(b));
 }
 
-// Compare two cards of the same rank — returns true if a beats b by suit
-function cardBeats(a, b) {
-  const rv = rankVal(a.rank) - rankVal(b.rank);
-  if (rv !== 0) return rv > 0;
-  return suitVal(a.suit) > suitVal(b.suit);
-}
-
-// Detect card combination type
-function detectType(cards) {
-  if (!cards || cards.length === 0) return null;
-  const n = cards.length;
-  const rvals = cards.map(c => rankVal(c.rank)).sort((a,b) => a-b);
-
-  // Count rank groups
-  const countMap = new Map();
-  for (const r of rvals) countMap.set(r, (countMap.get(r) || 0) + 1);
-  const groups = { 1: [], 2: [], 3: [], 4: [] };
-  for (const [r, c] of countMap) groups[c].push(r);
-  for (const k of Object.keys(groups)) groups[k].sort((a,b) => a-b);
-
-  // Single
-  if (n === 1) return { type: 'single', rank: rvals[0], suit: suitVal(cards[0].suit) };
-
-  // Pair
-  if (n === 2 && rvals[0] === rvals[1])
-    return { type: 'pair', rank: rvals[0], suit: Math.max(...cards.map(c => suitVal(c.suit))) };
-
-  // Triple
-  if (groups[3].length === 1 && n === 3)
-    return { type: 'triple', rank: groups[3][0] };
-
-  // Straight flush: 5 consecutive same suit (checked before the plain straight)
-  if (n === 5 && new Set(cards.map(c => c.suit)).size === 1 && isConsecutive(rvals, 5))
-    return { type: 'straight_flush', rank: rvals[0], suit: suitVal(cards[0].suit) };
-
-  // Straight: >=5 consecutive singles, max 13
-  if (n >= 5 && groups[1].length === n && isConsecutive(groups[1], n))
-    return { type: 'straight', rank: groups[1][0], length: n };
-
-  // Flush: 5 cards same suit, not consecutive
-  if (n === 5 && new Set(cards.map(c => c.suit)).size === 1 && !isConsecutive(rvals, 5))
-    return { type: 'flush', rank: rvals[4], suit: suitVal(cards[0].suit) };
-
-  // Full house: triple + pair
-  if (n === 5 && groups[3].length === 1 && groups[2].length === 1)
-    return { type: 'full_house', rank: groups[3][0] };
-
-  // Four of a kind + one
-  if (n === 5 && groups[4].length === 1)
-    return { type: 'four_one', rank: groups[4][0] };
-
+// Top card of a 5-card straight ({ seq, card }), or null if the cards are not a straight.
+function straightTop(cards) {
+  const seq = cards.map(c => ({ v: SEQ_VAL[c.rank], c })).sort((a, b) => a.v - b.v);
+  const run = (list) => list.every((x, i) => i === 0 || x.v - list[i - 1].v === 1);
+  if (run(seq)) return { seq: seq[4].v, card: seq[4].c };
+  // A-2-3-4-5: the ace counts as 1, so the 5 is the top card
+  if (seq[4].c.rank === 'A') {
+    const low = [{ v: 1, c: seq[4].c }].concat(seq.slice(0, 4));
+    if (run(low)) return { seq: 5, card: low[4].c };
+  }
   return null;
 }
 
-function isConsecutive(arr, len) {
-  for (let i = 0; i < len - 1; i++) {
-    if (arr[i + 1] - arr[i] !== 1) return false;
+// Detect card combination type. Every result carries rank and suit so canBeat can
+// compare plays of the same type; five-card kinds also carry `kind` (index in FIVE_KINDS).
+function detectType(cards) {
+  if (!cards || cards.length === 0) return null;
+  const n = cards.length;
+  const rvals = cards.map(c => rankVal(c.rank)).sort((a, b) => a - b);
+
+  if (n === 1) return { type: 'single', rank: rvals[0], suit: suitVal(cards[0].suit) };
+
+  if (n === 2) {
+    if (rvals[0] !== rvals[1]) return null;
+    return { type: 'pair', rank: rvals[0], suit: Math.max(...cards.map(c => suitVal(c.suit))) };
   }
-  return true;
+
+  if (n === 3) {
+    if (rvals[0] !== rvals[2]) return null;
+    return { type: 'triple', rank: rvals[0], suit: 0 };
+  }
+
+  if (n !== 5) return null;
+
+  const counts = new Map();
+  for (const r of rvals) counts.set(r, (counts.get(r) || 0) + 1);
+  const rankWithCount = (k) => { for (const [r, c] of counts) if (c === k) return r; return -1; };
+  const five = (type, rank, suit) => ({ type, kind: FIVE_KINDS.indexOf(type), rank, suit });
+
+  const sameSuit = new Set(cards.map(c => c.suit)).size === 1;
+  const st = counts.size === 5 ? straightTop(cards) : null;
+  if (st) return five(sameSuit ? 'straight_flush' : 'straight', st.seq, suitVal(st.card.suit));
+  if (sameSuit) {
+    const top = cards.reduce((a, b) => (cardVal(b) > cardVal(a) ? b : a));
+    return five('flush', rankVal(top.rank), suitVal(top.suit));
+  }
+  if (rankWithCount(3) >= 0 && rankWithCount(2) >= 0) return five('full_house', rankWithCount(3), 0);
+  if (rankWithCount(4) >= 0) return five('four_one', rankWithCount(4), 0);
+  return null;
 }
 
 // Five-card hand classes: straight < flush < full house < four-one < straight flush.
@@ -114,35 +122,84 @@ function fiveClass(p) {
 
 function canBeat(newPlay, lastPlay) {
   if (!lastPlay) return true;
-  const nc = fiveClass(newPlay), lc = fiveClass(lastPlay);
-  if (nc && lc && nc !== lc) return nc > lc; // different five-card types: the higher class wins
-  // Otherwise same type and length
-  if (newPlay.type !== lastPlay.type) return false;
-  if (newPlay.length !== lastPlay.length) return false;
-  // Same type: compare rank, then suit for flush/straight_flush
+  if (newPlay.kind !== undefined && lastPlay.kind !== undefined) {
+    if (newPlay.kind !== lastPlay.kind) return newPlay.kind > lastPlay.kind;
+  } else if (newPlay.type !== lastPlay.type) {
+    return false;
+  }
   if (newPlay.rank !== lastPlay.rank) return newPlay.rank > lastPlay.rank;
-  // Same rank: compare suit
   return (newPlay.suit || 0) > (lastPlay.suit || 0);
 }
 
-function findDiamond3Player(state) {
-  const n = state.hands.length;
-  for (let i = 0; i < n; i++) {
-    if (state.hands[i] && state.hands[i].some(c => c.id === '3d')) return i;
+function nextPlayer(state, i) {
+  return (i + 1) % state.hands.length;
+}
+
+// Checks whether `cards` (card objects from the player's hand) is a legal play
+// right now. Returns { play } or { error }. Does not change the state.
+function checkPlay(state, playerIndex, cards) {
+  const play = detectType(cards);
+  if (!play) return { error: 'bt_invalid_play' };
+
+  // First play of the game must contain the 3 of diamonds.
+  if (!state._opened && !cards.some(c => c.id === '3d')) return { error: 'bt_first_must_have_d3' };
+
+  const isFreePlay = !state.lastPlay || state.lastPlayPlayer === playerIndex;
+  if (!isFreePlay) {
+    if (cards.length !== state.lastPlay.cards.length) return { error: 'bt_doesnt_beat' };
+    if (!canBeat(play, state.lastPlay.play)) return { error: 'bt_doesnt_beat' };
   }
-  return 0;
+
+  // Next player down to one card: a single must be your highest card.
+  if (state.oneCardRule && play.type === 'single') {
+    const next = state.hands[nextPlayer(state, playerIndex)];
+    const hand = state.hands[playerIndex];
+    if (next && next.length === 1 && hand.some(c => cardVal(c) > cardVal(cards[0]))) {
+      return { error: 'bt_must_play_highest_single' };
+    }
+  }
+  return { play };
+}
+
+// HK penalty multiplier for the cards a loser still holds.
+function penaltyMultiplier(left) {
+  if (left >= 13) return 3;
+  if (left >= 10) return 2;
+  return 1;
+}
+
+function settle(state, winner) {
+  const n = state.hands.length;
+  const result = [];
+  let total = 0;
+  for (let i = 0; i < n; i++) {
+    if (i === winner) { result.push(null); continue; }
+    const left = state.hands[i].length;
+    const mult = penaltyMultiplier(left);
+    result.push({ left, mult, points: -left * mult });
+    total += left * mult;
+  }
+  result[winner] = { left: 0, mult: 0, points: total };
+  state.roundResult = result;
+  state.scores = result.map(r => r.points);
+  if (!Array.isArray(state.cumulativeScore) || state.cumulativeScore.length !== n) state.cumulativeScore = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) state.cumulativeScore[i] += state.scores[i];
 }
 
 exports.createState = () => {
   return {
     hands: [],
     currentPlayer: 0,
-    passCount: 0,
     passed: [],
     lastPlay: null,
     lastPlayPlayer: -1,
     winner: null,
     scores: [],
+    cumulativeScore: null,
+    roundNumber: 1,
+    roundResult: null,
+    oneCardRule: true,
+    _opened: false,
   };
 };
 
@@ -150,123 +207,96 @@ exports.initGame = function(state, playerCount) {
   const deck = createDeck();
   shuffle(deck);
 
-  const cardsPerPlayer = Math.floor(52 / playerCount);
+  const perPlayer = Math.floor(52 / playerCount);
   state.hands = [];
-  for (let i = 0; i < playerCount; i++) {
-    state.hands.push(deck.splice(0, cardsPerPlayer));
-    sortHand(state.hands[i]);
+  for (let i = 0; i < playerCount; i++) state.hands.push(deck.splice(0, perPlayer));
+  // 3 players: the leftover card goes to the holder of the 3 of diamonds
+  // (or to a random player when the leftover card is the 3 of diamonds itself).
+  for (const card of deck) {
+    let to = state.hands.findIndex(h => h.some(c => c.id === '3d'));
+    if (to < 0) to = Math.floor(Math.random() * playerCount);
+    state.hands[to].push(card);
   }
-  // Remainder cards go to first players (unusual but simple)
-  if (deck.length > 0) {
-    for (let i = 0; i < deck.length; i++) {
-      state.hands[i].push(deck[i]);
-      sortHand(state.hands[i]);
-    }
-  }
+  state.hands.forEach(sortHand);
 
-  state.passCount = 0;
+  const opts = state._options || {};
+  state.oneCardRule = opts.oneCardRule !== false;
   state.passed = new Array(playerCount).fill(false);
   state.lastPlay = null;
   state.lastPlayPlayer = -1;
   state.winner = null;
   state.scores = new Array(playerCount).fill(0);
+  state.roundResult = null;
+  if (!Array.isArray(state.cumulativeScore) || state.cumulativeScore.length !== playerCount) {
+    state.cumulativeScore = new Array(playerCount).fill(0);
+  }
+  if (!state.roundNumber) state.roundNumber = 1;
 
-  // ♦3 holder starts first round
+  // ♦3 holder starts and must play it
   state._opened = false;
-  state.currentPlayer = findDiamond3Player(state);
+  state.currentPlayer = state.hands.findIndex(h => h.some(c => c.id === '3d'));
 };
 
 exports.handleMove = (data, state, playerIndex) => {
   if (state.winner !== null) return 'g_game_over';
   if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';
+  if (!data || typeof data !== 'object') return 'bt_invalid_format';
 
-  let cardIds = data.cards;
-  if (!Array.isArray(cardIds)) {
-    // Server bot fallback ({pass:true} / {}): pass if allowed, otherwise lead the lowest single
-    if (!data.pass && Object.keys(data).length > 0) return 'bt_invalid_format';
-    const mustLead = !state.lastPlay || state.lastPlayPlayer === playerIndex;
-    const own = state.hands[playerIndex] || [];
-    cardIds = mustLead && own.length ? [own[0].id] : [];
-  }
+  const cardIds = data.pass === true ? [] : data.cards;
+  if (!Array.isArray(cardIds)) return 'bt_invalid_format';
 
   // PASS
   if (cardIds.length === 0) {
-    if (!state.lastPlay) return 'bt_must_lead';
-    if (state.lastPlayPlayer === playerIndex) return 'bt_cannot_pass_after_play';
+    if (!state.lastPlay || state.lastPlayPlayer === playerIndex) return 'bt_must_lead';
 
-    state.passCount++;
     state.passed[playerIndex] = true;
-    state.currentPlayer = (state.currentPlayer + 1) % state.hands.length;
+    state.currentPlayer = nextPlayer(state, playerIndex);
 
-    // If everyone except lastPlayPlayer passed, reset
-    const activePlayers = state.hands.filter(h => h && h.length > 0).length;
-    const passedCount = state.passed.filter(Boolean).length;
-    if (passedCount >= activePlayers - 1) {
+    // Everyone else passed in a row: the turn is back with the last player, who leads freely.
+    if (state.currentPlayer === state.lastPlayPlayer) {
       state.lastPlay = null;
       state.lastPlayPlayer = -1;
-      state.passCount = 0;
       state.passed = new Array(state.hands.length).fill(false);
     }
     return null;
   }
 
-  // Remove cards from hand
   const hand = state.hands[playerIndex];
   if (!hand) return 'bt_no_hand';
+  if (new Set(cardIds).size !== cardIds.length) return 'bt_invalid_format';
   const played = [];
   for (const id of cardIds) {
-    const idx = hand.findIndex(c => c.id === id);
-    if (idx === -1) {
-      hand.push(...played); sortHand(hand);
-      return 'bt_card_not_in_hand';
-    }
-    played.push(hand.splice(idx, 1)[0]);
+    const card = hand.find(c => c.id === id);
+    if (!card) return 'bt_card_not_in_hand';
+    played.push(card);
   }
 
-  const playType = detectType(played);
-  if (!playType) {
-    hand.push(...played); sortHand(hand);
-    return 'bt_invalid_play';
-  }
+  const check = checkPlay(state, playerIndex, played);
+  if (check.error) return check.error;
 
-  // Check if this is a free play (new round after everyone passed, or first move)
-  const isFreePlay = !state.lastPlay || state.lastPlayPlayer === playerIndex;
-  if (!isFreePlay) {
-    if (!canBeat(playType, state.lastPlay.play)) {
-      hand.push(...played); sortHand(hand);
-      return 'bt_doesnt_beat';
-    }
-  }
-  // First play of the game must contain the ♦3 (official rule).
-  if (!state._opened) {
-    const hasDiamond3 = played.some(function(c) { return c.rank === '3' && c.suit === 'd'; });
-    if (!hasDiamond3) {
-      hand.push(...played); sortHand(hand);
-      return 'bt_first_must_have_d3';
-    }
-  }
-
-  state._opened = true; // the opening play (with the 3 of diamonds) is done; later free leads may be anything
-  state.lastPlay = { player: playerIndex, cards: played.map(c => ({ ...c })), play: playType };
+  state.hands[playerIndex] = hand.filter(c => played.indexOf(c) < 0);
+  sortHand(played);
+  state._opened = true;
+  state.lastPlay = { player: playerIndex, cards: played.map(c => ({ ...c })), play: check.play };
   state.lastPlayPlayer = playerIndex;
-  state.passCount = 0;
   state.passed = new Array(state.hands.length).fill(false);
 
-  // Check win
-  if (hand.length === 0) {
+  if (state.hands[playerIndex].length === 0) {
     state.winner = playerIndex;
-    // Calculate scores: others count remaining cards
-    for (let i = 0; i < state.hands.length; i++) {
-      if (i !== playerIndex && state.hands[i]) {
-        state.scores[i] = state.hands[i].length;
-      }
-    }
+    settle(state, playerIndex);
     return null;
   }
 
-  state.currentPlayer = (state.currentPlayer + 1) % state.hands.length;
+  state.currentPlayer = nextPlayer(state, playerIndex);
   return null;
 };
+
+// Rule helpers shared with the bot and tests.
+exports.detectType = detectType;
+exports.canBeat = canBeat;
+exports.checkPlay = checkPlay;
+exports.cardVal = cardVal;
+exports.penaltyMultiplier = penaltyMultiplier;
 
 // Hide other players' cards (and draw piles) from each client.
 const { maskView } = require('./lib/hidden');

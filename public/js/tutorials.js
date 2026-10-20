@@ -155,14 +155,17 @@
     },
     bigtwo: {
       sections: [
-        { h: '目标', p: '大老二是 2-4 人的爬牌游戏：最先把手牌出完的人获胜。其他人按手中剩余牌数记分，牌越少越好。每局只打一手，没有多局累计。' },
-        { h: '发牌与先手', p: '使用 52 张牌（无王）。按人数平分，每人 floor(52/人数) 张，3 人时每人 17 张余 1 张，余牌依次发给前面的座位。持有方块 3 的玩家先出牌，并且第一手必须包含方块 3，否则提示「首出必须含方块3」。' },
+        { h: '目标', p: '大老二（港式规则）是 3-4 人的爬牌游戏：最先把手牌出完的人获胜，其他人按剩牌罚分。可以连续打多局，分数累计。' },
+        { h: '发牌与先手', p: '使用 52 张牌（无王）。4 人每人 13 张；3 人每人 17 张，多出的 1 张发给持有方块 3 的玩家（18 张）。持有方块 3 的玩家先出牌，并且第一手必须包含方块 3。' },
         { h: '大小顺序', p: '点数从小到大：3 4 5 6 7 8 9 10 J Q K A 2，2 最大，3 最小。花色从大到小：黑桃 > 红桃 > 梅花 > 方块。点数相同的牌比花色。' },
-        { h: '可出的牌型', p: '单张；对子（两张同点数，比较两张中较大的花色）；三条（三张同点数）；顺子（5 张及以上连续点数，最多 13 张，2 可以放在最高位，3 最小，没有 A-2-3 回环，比较最小的一张，起点相同的顺子不能互压）；同花（5 张同花色但不连续，比最大一张，再比花色）；葫芦（三条加一对，比三条的点数）；四条带一（四张同点数加任意一张，比四条的点数）；同花顺（5 张连续同花色，比最小一张，再比花色）。' },
-        { h: '出牌与压牌', p: '下家必须出与上一手相同牌型、相同张数的牌，并且更大。五张牌型之间有高低：顺子 < 同花 < 葫芦 < 四条带一 < 同花顺，高的牌型可以压低的牌型，同牌型再比点数和花色。超过 5 张的长顺子只能被同样张数的顺子压，五张牌型压不了它。' },
-        { h: '过牌与新一轮', p: '有人领出牌时不能过牌，只有跟牌时才能「过」。你自己打出的牌没有人跟时也不能过。当其余所有人都连续过牌后，最后出牌的人重新自由领出，可以出任何合法牌型。' },
-        { h: '胜负与计分', p: '第一个出完手牌的玩家获胜，游戏立刻结束。其他玩家的得分等于手中剩余牌数，数字越小越好，赢家为 0。' },
-        { h: '提示', p: '先把小牌和零散牌走掉，留着 2 和 A 控制出牌权。顺子可以一次走掉很多牌。对手手牌快打完时，要优先打出对方难以压住的大牌型。' },
+        { h: '可出的牌型', p: '只能出 1、2、3 或 5 张。单张；对子（比点数，再比两张中较大的花色）；三条；以及五张牌型，由小到大：顺子 < 同花 < 葫芦 < 四条带一 < 同花顺。' },
+        { h: '顺子', p: '顺子固定 5 张连续点数。A 只能放在开头或结尾：最小的顺子是 A-2-3-4-5，其次 2-3-4-5-6，最大的是 10-J-Q-K-A；J-Q-K-A-2 这类 A 在中间的不算顺子。顺子比最大的那张，相同再比那张的花色（同花顺同理）。' },
+        { h: '其他五张牌型', p: '同花（5 张同花色但不连续）比最大一张，再比花色；葫芦（三条加一对）比三条的点数；四条带一比四条的点数。' },
+        { h: '出牌与压牌', p: '跟牌必须出相同张数的牌并且更大。单张、对子、三条只能压同类；五张牌型可以跨类压：较大的牌型压任何较小的牌型，例如葫芦可以压顺子，同花顺可以压一切五张牌。' },
+        { h: '下家报一张', p: '房主可在设置中开关，默认开启。当你的下家只剩 1 张牌时，你如果出单张，必须出你手上最大的那张；出对子或其他牌型不受限制，也可以选择不出。' },
+        { h: '过牌与新一轮', p: '有人领出牌时不能过牌，只有跟牌时才能「过」。当其余所有人都连续过牌后，最后出牌的人重新自由领出，可以出任何合法牌型。' },
+        { h: '胜负与计分', p: '第一个出完手牌的玩家获胜。其他玩家按剩牌罚分：少于 10 张 ×1，10-12 张 ×2，13 张或以上 ×3；赢家收取所有人罚分的总和。房主点「再来一局」后累计分会继续保留。' },
+        { h: '提示', p: '先把小牌和零散牌走掉，留着 2 和 A 控制出牌权。五张牌型一次走掉 5 张，而且大牌型可以压小牌型。下家报一张时，记得留一张大单张。' },
       ]
     },
     'mahjong-sichuan': {
@@ -594,14 +597,17 @@
     },
     bigtwo: {
       sections: [
-        { h: 'Goal', p: 'Big Two is a climbing game for 2-4 players. The first player to empty their hand wins. The others score the number of cards left in hand, and fewer is better. Only one hand is played per game.' },
-        { h: 'Deal and first lead', p: 'A 52-card deck without jokers is divided evenly, floor(52 / players) cards each, with any leftover cards going to the first seats. The holder of the 3 of diamonds leads, and the first play must include that card.' },
+        { h: 'Goal', p: 'Big Two (Hong Kong rules) is a climbing game for 3-4 players. The first player to empty their hand wins and everyone else pays a penalty for the cards they still hold. Rounds can be played back to back and scores add up.' },
+        { h: 'Deal and first lead', p: 'A 52-card deck without jokers. With 4 players everyone gets 13 cards. With 3 players everyone gets 17 and the extra card goes to whoever holds the 3 of diamonds (18 cards). The holder of the 3 of diamonds leads, and the first play must include that card.' },
         { h: 'Ranking', p: 'Ranks from low to high: 3 4 5 6 7 8 9 10 J Q K A 2. The 2 is the highest and the 3 is the lowest. Suits from high to low: spades, hearts, clubs, diamonds. Equal ranks are compared by suit.' },
-        { h: 'Combinations', p: 'Single. Pair (compared by the higher suit of the two). Triple. Straight (5 or more consecutive ranks, up to 13 cards, the 2 may be used at the top, the 3 is lowest, no A-2-3 wrap, compared by the lowest card, so equal straights cannot beat each other). Flush (5 cards of one suit, not consecutive, compared by highest card then suit). Full house (triple plus pair, compared by the triple). Four plus one (compared by the four). Straight flush (5 consecutive cards of one suit, compared by lowest card then suit).' },
-        { h: 'Beating a play', p: 'You must answer with the same combination type and the same number of cards, and it must be higher. Five-card hands rank across types: straight < flush < full house < four plus one < straight flush, so a higher type beats a lower one, and equal types are compared by rank then suit. A straight longer than 5 cards can only be beaten by a straight of the same length.' },
-        { h: 'Passing and new rounds', p: 'You cannot pass when leading, only when following. You also cannot pass on your own play. When every other player has passed in a row, the last player to play leads again and may play any valid combination.' },
-        { h: 'Winning and scoring', p: 'The first player to play all cards wins and the game ends at once. Every other player scores the number of cards remaining in hand. Lower is better and the winner has 0.' },
-        { h: 'Tips', p: 'Get rid of low and awkward cards first and keep 2s and aces to take control of the lead. Straights shed many cards at once. When an opponent is nearly out, play the big combinations that are hard to beat.' },
+        { h: 'Combinations', p: 'You may play 1, 2, 3 or 5 cards: a single, a pair (rank, then the higher suit of the two), a triple, or a five-card hand. Five-card hands from low to high: straight < flush < full house < four of a kind plus one < straight flush.' },
+        { h: 'Straights', p: 'A straight is exactly 5 consecutive ranks. The ace may only start or end it: A-2-3-4-5 is the lowest straight, then 2-3-4-5-6, and 10-J-Q-K-A is the highest. J-Q-K-A-2 and other straights with the ace in the middle are not allowed. Straights compare by their top card, then the suit of that card (straight flushes too).' },
+        { h: 'Other five-card hands', p: 'Flush (5 cards of one suit, not consecutive): highest card, then suit. Full house (triple plus pair): rank of the triple. Four of a kind plus one: rank of the four.' },
+        { h: 'Beating a play', p: 'You must answer with the same number of cards and a higher play. Singles, pairs and triples only beat their own kind. Five-card hands beat any lower five-card kind, so a full house beats a straight and a straight flush beats every other five-card hand.' },
+        { h: 'Next player on one card', p: 'The host can turn this off in the settings; it is on by default. When the next player has one card left and you play a single, it must be your highest card. Pairs and other combinations are not restricted, and you may still pass.' },
+        { h: 'Passing and new rounds', p: 'You cannot pass when leading, only when following. When every other player has passed in a row, the last player to play leads again and may play any valid combination.' },
+        { h: 'Winning and scoring', p: 'The first player to play all cards wins. Every other player pays the cards left in hand: x1 under 10 cards, x2 for 10-12, x3 for 13 or more. The winner collects the total. Totals carry over when the host starts another round.' },
+        { h: 'Tips', p: 'Get rid of low and awkward cards first and keep 2s and aces to take control of the lead. Five-card hands shed five cards at once and a stronger kind beats a weaker one. When the next player is on one card, keep a big single.' },
       ]
     },
     'mahjong-sichuan': {

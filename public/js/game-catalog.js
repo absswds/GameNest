@@ -188,7 +188,7 @@
       icon: '♠',
       subtitle: '顺牌压制，先出完获胜',
       description: '节奏干脆的传统扑克对抗。',
-      players: '2-4人',
+      players: '3-4人',
       duration: '约10分钟',
       category: '牌桌竞技',
       tags: ['出牌博弈', '传统'],

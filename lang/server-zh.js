@@ -38,6 +38,7 @@ module.exports = {
   'bt_card_not_in_hand': '你手上没有这张牌',
   'bt_invalid_play': '无效牌型',
   'bt_doesnt_beat': '打不过上家的牌',
+  'bt_must_play_highest_single': '下家只剩一张牌，出单张必须出你最大的牌',
 
   // Checkers (ck_)
   'ck_out_of_bounds': '超出棋盘范围',

@@ -43,6 +43,8 @@
 
   // Games that can be started and played solo (no AI / opponent needed).
   const SOLO_GAMES = ['2048', 'sudoku', 'minesweeper', 'numberbomb', 'twentyfour', 'suikabattle', 'drawguess', 'quizrace'];
+  // Games that need more than 2 players to start (mirrors the server-side minPlayers)
+  const MIN_PLAYERS = { bigtwo: 3 };
 
   let roomOptions = {};
   let match = null; // best-of-N score for board games, from the server
@@ -862,6 +864,21 @@
         optionsEl.innerHTML =
           '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
           '<div style="font-size:13px;color:var(--text-muted)">' + _t('break_in_rule') + ': ' + (breakOn2 ? _t('break_on') : _t('break_off')) + '</div>';
+      } else if (isHost && game === 'bigtwo') {
+        optionsEl.style.display = 'block';
+        var oneCardOn = roomOptions.oneCardRule !== false; // default true
+        optionsEl.innerHTML =
+          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
+          '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">' +
+            '<input type="checkbox" id="optOneCardRule" ' + (oneCardOn ? 'checked' : '') + ' onchange="window._setGameOption(\'oneCardRule\', this.checked)">' +
+            _t('bt_one_card_rule') +
+          '</label>';
+      } else if (game === 'bigtwo') {
+        optionsEl.style.display = 'block';
+        var oneCardOn2 = roomOptions.oneCardRule !== false;
+        optionsEl.innerHTML =
+          '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+          '<div style="font-size:13px;color:var(--text-muted)">' + _t('bt_one_card_rule_short') + ': ' + (oneCardOn2 ? _t('bt_rule_on') : _t('bt_rule_off')) + '</div>';
       } else if (game === 'doudizhu') {
         optionsEl.style.display = 'block';
         var bm = roomOptions.bidMode || 'rob';

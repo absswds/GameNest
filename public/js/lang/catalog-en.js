@@ -132,7 +132,7 @@
       name: 'Big Two',
       subtitle: 'Climb the ladder, empty your hand',
       description: 'Sharp traditional climbing card game.',
-      players: '2-4 Players',
+      players: '3-4 Players',
       duration: '~10 min',
       category: 'Cards & Tiles',
       tags: ['Climbing', 'Traditional'],

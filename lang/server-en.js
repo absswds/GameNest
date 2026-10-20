@@ -38,6 +38,7 @@ module.exports = {
   'bt_card_not_in_hand': 'Card not in hand',
   'bt_invalid_play': 'Invalid play',
   'bt_doesnt_beat': "Doesn't beat previous play",
+  'bt_must_play_highest_single': 'The next player has one card left: a single must be your highest card',
 
   // Checkers (ck_)
   'ck_out_of_bounds': 'Out of bounds',

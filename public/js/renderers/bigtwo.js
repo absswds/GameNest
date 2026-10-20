@@ -65,8 +65,9 @@
       if (!el) return;
 
       if (s.winner != null) {
-        var winnerName = escHtml(window.getPlayerName ? window.getPlayerName(s.winner) : (_t('bt_player_fallback') + (s.winner + 1)));
-        el.innerHTML = '<div style="font-size:15px;font-weight:700;color:var(--success);">' + winnerName + _t('bt_wins') + '</div>';
+        var winnerName = window.getPlayerName ? window.getPlayerName(s.winner) : (_t('bt_player_fallback') + (s.winner + 1));
+        el.innerHTML = '<div style="font-size:15px;font-weight:700;color:var(--success);">' + winnerName + _t('bt_wins') + '</div>' +
+          scoreTable(s, selfIdx);
         return;
       }
 
@@ -136,73 +137,108 @@
     }
   });
 
+  // Round result (cards left x multiplier) and running totals, shown once someone goes out.
+  function scoreTable(s, selfIdx) {
+    if (!s.roundResult) return '';
+    var signed = function(v) { return v > 0 ? '+' + v : String(v); };
+    var cell = 'padding:3px 8px;text-align:right;';
+    var html = '<table style="margin-top:6px;font-size:12px;border-collapse:collapse;">' +
+      '<tr style="color:var(--text-muted);"><th style="' + cell + 'text-align:left;"></th>' +
+      '<th style="' + cell + '">' + _t('bt_score_left') + '</th>' +
+      '<th style="' + cell + '">' + _t('bt_score_round') + '</th>' +
+      '<th style="' + cell + '">' + _t('bt_score_total') + (s.roundNumber > 1 ? ' (' + s.roundNumber + ')' : '') + '</th></tr>';
+    for (var i = 0; i < s.roundResult.length; i++) {
+      var r = s.roundResult[i];
+      var name = i === selfIdx ? _t('bt_you') : (window.getPlayerName ? window.getPlayerName(i) : (_t('bt_player_fallback') + (i + 1)));
+      var total = s.cumulativeScore ? s.cumulativeScore[i] : r.points;
+      html += '<tr' + (i === selfIdx ? ' style="font-weight:700;"' : '') + '>' +
+        '<td style="' + cell + 'text-align:left;">' + escapeHtml(name) + '</td>' +
+        '<td style="' + cell + '">' + (i === s.winner ? '—' : r.left + (r.mult > 1 ? ' ×' + r.mult : '')) + '</td>' +
+        '<td style="' + cell + 'color:' + (r.points >= 0 ? 'var(--success)' : '#e74c3c') + ';">' + signed(r.points) + '</td>' +
+        '<td style="' + cell + '">' + signed(total) + '</td></tr>';
+    }
+    return html + '</table>';
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function(ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+  }
+
   function cardSpan(c) {
     return window.CardUI.render(c, { size: 'sm' });
   }
 
   // ---- Card type detection (client-side) ----
-  function _rankVal(rank) {
-    return ['3','4','5','6','7','8','9','10','J','Q','K','A','2'].indexOf(rank);
-  }
+  // Mirrors detectType / canBeat in games/bigtwo.js (tests/bigtwo-renderer.test.js checks they agree).
+  var RANKS = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
+  var SUIT_ORDER = { s: 3, h: 2, c: 1, d: 0 };
+  var SEQ_VAL = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, J: 11, Q: 12, K: 13, A: 14 };
+  var FIVE_KINDS = ['straight', 'flush', 'full_house', 'four_one', 'straight_flush'];
 
-  function _isConsecutive(arr, len) {
-    for (var i = 0; i < len - 1; i++) {
-      if (arr[i + 1] - arr[i] !== 1) return false;
+  function _rankVal(rank) { return RANKS.indexOf(rank); }
+  function _suitVal(suit) { return SUIT_ORDER[suit] || 0; }
+  function _cardVal(c) { return _rankVal(c.rank) * 4 + _suitVal(c.suit); }
+
+  function _straightTop(cards) {
+    var seq = cards.map(function(c) { return { v: SEQ_VAL[c.rank], c: c }; }).sort(function(a, b) { return a.v - b.v; });
+    function run(list) {
+      for (var i = 1; i < list.length; i++) if (list[i].v - list[i - 1].v !== 1) return false;
+      return true;
     }
-    return true;
+    if (run(seq)) return { seq: seq[4].v, card: seq[4].c };
+    if (seq[4].c.rank === 'A') {
+      var low = [{ v: 1, c: seq[4].c }].concat(seq.slice(0, 4));
+      if (run(low)) return { seq: 5, card: low[4].c };
+    }
+    return null;
   }
 
   function _detectType(cards) {
     if (!cards || cards.length === 0) return null;
     var n = cards.length;
-    var rvals = cards.map(function(c) { return _rankVal(c.rank); }).sort(function(a,b) { return a-b; });
+    var rvals = cards.map(function(c) { return _rankVal(c.rank); }).sort(function(a, b) { return a - b; });
+    var result = null;
 
-    var countMap = new Map();
-    for (var i = 0; i < rvals.length; i++) {
-      var r = rvals[i];
-      countMap.set(r, (countMap.get(r) || 0) + 1);
-    }
-    var groups = { 1: [], 2: [], 3: [], 4: [] };
-    countMap.forEach(function(c, r) { groups[c].push(r); });
-    for (var k in groups) groups[k].sort(function(a,b) { return a-b; });
-
-    var result = null, typeName = '';
-    var suits = cards.map(function(c) { return c.suit; });
-    var allSameSuit = new Set(suits).size === 1;
-
-    if (n === 1) { typeName = _t('bt_single'); result = { type: 'single', rank: rvals[0], suit: Math.max.apply(null, suits.map(function(s) { return ({s:3,h:2,c:1,d:0})[s]||0; })) }; }
+    if (n === 1) result = { type: 'single', rank: rvals[0], suit: _suitVal(cards[0].suit) };
     else if (n === 2 && rvals[0] === rvals[1]) {
-      typeName = _t('bt_pair');
-      var maxSuit = Math.max.apply(null, cards.map(function(c) { return ({s:3,h:2,c:1,d:0})[c.suit]||0; }));
-      result = { type: 'pair', rank: rvals[0], suit: maxSuit };
+      result = { type: 'pair', rank: rvals[0], suit: Math.max(_suitVal(cards[0].suit), _suitVal(cards[1].suit)) };
     }
-    else if (groups[3].length === 1 && n === 3) { typeName = _t('bt_triple'); result = { type: 'triple', rank: groups[3][0] }; }
-    else if (n === 5 && allSameSuit && _isConsecutive(rvals, 5)) {
-      typeName = _t('bt_straight_flush');
-      result = { type: 'straight_flush', rank: rvals[0], suit: Math.max.apply(null, suits.map(function(x) { return ({s:3,h:2,c:1,d:0})[x]||0; })) };
+    else if (n === 3 && rvals[0] === rvals[2]) result = { type: 'triple', rank: rvals[0], suit: 0 };
+    else if (n === 5) {
+      var counts = {};
+      rvals.forEach(function(r) { counts[r] = (counts[r] || 0) + 1; });
+      var keys = Object.keys(counts);
+      var withCount = function(k) { for (var i = 0; i < keys.length; i++) if (counts[keys[i]] === k) return +keys[i]; return -1; };
+      var sameSuit = cards.every(function(c) { return c.suit === cards[0].suit; });
+      var st = keys.length === 5 ? _straightTop(cards) : null;
+      var five = function(type, rank, suit) { return { type: type, kind: FIVE_KINDS.indexOf(type), rank: rank, suit: suit }; };
+      if (st) result = five(sameSuit ? 'straight_flush' : 'straight', st.seq, _suitVal(st.card.suit));
+      else if (sameSuit) {
+        var top = cards.reduce(function(a, b) { return _cardVal(b) > _cardVal(a) ? b : a; });
+        result = five('flush', _rankVal(top.rank), _suitVal(top.suit));
+      }
+      else if (withCount(3) >= 0 && withCount(2) >= 0) result = five('full_house', withCount(3), 0);
+      else if (withCount(4) >= 0) result = five('four_one', withCount(4), 0);
     }
-    else if (n >= 5 && groups[1].length === n && _isConsecutive(groups[1], n)) {
-      typeName = _t('bt_straight'); result = { type: 'straight', rank: groups[1][0], length: n };
-    }
-    else if (n === 5 && allSameSuit && !_isConsecutive(rvals, 5)) {
-      typeName = _t('bt_flush');
-      var maxSuit2 = Math.max.apply(null, cards.map(function(c) { return ({s:3,h:2,c:1,d:0})[c.suit]||0; }));
-      result = { type: 'flush', rank: rvals[rvals.length-1], suit: maxSuit2 };
-    }
-    else if (n === 5 && groups[3].length === 1 && groups[2].length === 1) { typeName = _t('bt_full_house'); result = { type: 'full_house', rank: groups[3][0] }; }
-    else if (n === 5 && groups[4].length === 1) { typeName = _t('bt_four_one'); result = { type: 'four_one', rank: groups[4][0] }; }
 
-    if (result) { result.name = typeName; return result; }
-    return null;
+    if (result && typeof _t === 'function') result.name = _t(TYPE_NAMES[result.type]);
+    return result;
   }
 
   function _canBeat(newPlay, lastPlay) {
     if (!lastPlay) return true;
-    if (newPlay.type !== lastPlay.type) return false;
-    if ((newPlay.length || 0) !== (lastPlay.length || 0)) return false;
+    if (newPlay.kind !== undefined && lastPlay.kind !== undefined) {
+      if (newPlay.kind !== lastPlay.kind) return newPlay.kind > lastPlay.kind;
+    } else if (newPlay.type !== lastPlay.type) {
+      return false;
+    }
     if (newPlay.rank !== lastPlay.rank) return newPlay.rank > lastPlay.rank;
     return (newPlay.suit || 0) > (lastPlay.suit || 0);
   }
+
+  window._btRules = { detectType: _detectType, canBeat: _canBeat };
 
   function _getCardById(hand, id) {
     for (var i = 0; i < hand.length; i++) {
@@ -242,9 +278,14 @@
     } else {
       var lastPlay = state.lastPlay;
       var isFree = !lastPlay || lastPlay.player === selfIdx;
-      var canBeat = isFree || _canBeat(playType, lastPlay.play);
+      var canBeat = isFree || (cards.length === lastPlay.cards.length && _canBeat(playType, lastPlay.play));
+      var next = state.hands[(selfIdx + 1) % state.hands.length] || [];
+      var mustBeHighest = state.oneCardRule && playType.type === 'single' && next.length === 1 &&
+        hand.some(function(h) { return _cardVal(h) > _cardVal(cards[0]); });
       var html = '<span style="color:#5a9e6f;font-weight:600;">' + playType.name + '</span>';
-      if (isFree) {
+      if (mustBeHighest) {
+        html += ' <span style="color:#e74c3c;">' + _t('bt_hint_must_highest') + '</span>';
+      } else if (isFree) {
         html += ' <span style="color:#5a9e6f;">' + _t('bt_hint_free') + '</span>';
       } else if (canBeat) {
         html += ' <span style="color:#5a9e6f;">' + _t('bt_hint_can_beat') + '</span>';
