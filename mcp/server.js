@@ -301,7 +301,7 @@ tool('clear_canvas', 'drawguess, drawer only: wipe the whole canvas. 清空画�
 // The bot only ever sees what this seat can see, so suggestions never peek at hidden info.
 function toBotState(game, v, me) {
   const s = Object.assign({}, v);
-  const unknown = (n) => new Array(n || 0).fill(null);
+  const unknown = (n) => new Array(Math.min(Math.max(0, n | 0), 200)).fill(null);
   if (game === 'hearts' && Array.isArray(v.handSizes)) {
     s.hands = v.handSizes.map((n, i) => (i === me ? v.myHand || [] : unknown(n)));
     s.passSubmissions = v.myPassCards ? { [me]: v.myPassCards } : {};

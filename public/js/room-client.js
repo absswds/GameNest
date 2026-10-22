@@ -423,7 +423,7 @@
         }
       }
 
-      const handler = handlers[msg.type];
+      const handler = Object.prototype.hasOwnProperty.call(handlers, msg.type) ? handlers[msg.type] : null;
       if (handler) handler(msg);
     };
     ws.onclose = () => {
