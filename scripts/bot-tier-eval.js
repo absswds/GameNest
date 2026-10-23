@@ -8,10 +8,10 @@
  *
  * Flags:
  *   --dup         Duplicate deals: games k and k+1 (k even) share the same seed with swapped seats.
- *   --calibrate   Check ceiling (hard vs random >= 75%), then log-space binary-search normal@Tn and easy@Te
- *                 temperatures toward --target (default 0.65) over [--tlo, --thi] in --iters steps (--dup on),
- *                 and confirm both calibrated pairs with 2x --n games.
- *   Tier specs also accept 'random', '<tier>@<temp>', and '<tier>@<temp>,<maxLoss|inf>'.
+ *   --calibrate   Check ceiling (hard vs random >= 75%), optionally scan cfg.depths for each weaker tier, then
+ *                 log-space binary-search normal@Tn and easy@Te temperatures toward --target (default 0.65)
+ *                 over [--tlo, --thi] in --iters steps (--dup on), and confirm both calibrated pairs with 2x --n games.
+ *   Tier specs also accept 'random', '<tier>@<temp>', '<tier>@<temp>,<maxLoss|inf>', and '<tier>@<temp>,<maxLoss|inf>,<depth>'.
  *
  * For every game it plays tier pairs (hard vs easy, normal vs easy, hard vs normal) and reports how often
  * tier A (the stronger one) wins. Seats alternate between the two tiers (A B A B ...) and the assignment is
@@ -67,13 +67,13 @@ console.error = () => {}; // game modules log noisy errors on refused moves
 
 // ---------------------------------------------------------------- game table
 // n: seats. opts: room options. cap: step cap. N: games per pair (default --n). kind: driver.
-// metric(s, seat): optional number reported as the per-tier mean in the note.
+// metric(s, seat): optional number reported as the per-tier mean in the note. depths: calibration depth candidates.
 const G = {
   reversi: { n: 2, N: 12 },
   gomoku: { n: 2 },
   chess: { n: 2, N: 6, cap: 600, wall: 400000 },
   connect4: { n: 2 },
-  checkers: { n: 2, cap: 600 },
+  checkers: { n: 2, cap: 600, depths: [2, 3, 4, 5, 6, 7, 8] },
   chinesechess: { n: 2, cap: 600 },
   go9: { n: 2, cap: 400 },
   tictactoe: { n: 2 },
@@ -155,7 +155,7 @@ function tierOpts(spec) {
   const [head, at] = spec.split('#')[0].split('@');
   const o = { difficulty: head };
   if (at !== undefined) {
-    const [tStr, lStr] = at.split(',');
+    const [tStr, lStr, dStr] = at.split(',');
     if (tStr) {
       const t = Number(tStr);
       if (Number.isFinite(t) && t > 0) o.botTemp = t;
@@ -163,6 +163,10 @@ function tierOpts(spec) {
     if (lStr !== undefined && lStr !== '') {
       const l = lStr === 'inf' || lStr === 'Infinity' ? Infinity : Number(lStr);
       if (!Number.isNaN(l)) o.botMaxLoss = l;
+    }
+    if (dStr !== undefined && dStr !== '') {
+      const d = Number(dStr);
+      if (Number.isInteger(d) && d > 0) o.botDepth = d;
     }
   }
   return o;
@@ -418,7 +422,24 @@ function winRate(r) {
   return r.games ? (r.creditA + r.draws * 0.5) / r.games : 0.5;
 }
 
-function searchTemp(id, cfg, tierA, baseTierB, seedKey) {
+function tierSpec(base, T, d) {
+  return d ? base + '@' + T + ',,' + d : base + '@' + T;
+}
+
+function searchDepth(id, cfg, tierA, baseTierB, depths, seedKey) {
+  for (const d of depths) {
+    const tierB = tierSpec(baseTierB, OPT.tlo, d);
+    const r = evalPair(id, cfg, tierA, tierB, tierA + ' vs ' + tierB, { n: OPT.n, dup: true, seedKey });
+    const w = winRate(r);
+    console.log('  [' + id + ' ' + seedKey + ' depth] d=' + d + ' (T=' + OPT.tlo + ') -> W=' + w.toFixed(3) + ' (' + (w * 100).toFixed(1) + '%)');
+    if (w <= OPT.target) return d;
+  }
+  const chosen = depths[depths.length - 1];
+  console.log('  [' + id + ' ' + seedKey + ' depth] warning: target ' + OPT.target + ' unreachable even at max depth d=' + chosen);
+  return chosen;
+}
+
+function searchTemp(id, cfg, tierA, baseTierB, seedKey, depth) {
   let lo = Math.log(OPT.tlo), hi = Math.log(OPT.thi);
   let bestT = Math.round(Math.exp(0.5 * (lo + hi)));
   let bestDiff = Infinity;
@@ -426,10 +447,10 @@ function searchTemp(id, cfg, tierA, baseTierB, seedKey) {
     const mid = 0.5 * (lo + hi);
     const rawT = Math.exp(mid);
     const T = rawT >= 10 ? Math.round(rawT) : Number(rawT.toFixed(2));
-    const tierB = baseTierB + '@' + T;
+    const tierB = tierSpec(baseTierB, T, depth);
     const r = evalPair(id, cfg, tierA, tierB, tierA + ' vs ' + tierB, { n: OPT.n, dup: true, seedKey });
     const w = winRate(r);
-    console.log('  [' + id + ' ' + seedKey + ' #' + it + '] T=' + T + ' -> W=' + w.toFixed(3) + ' (' + (w * 100).toFixed(1) + '%)');
+    console.log('  [' + id + ' ' + seedKey + ' #' + it + '] T=' + T + (depth ? ' d=' + depth : '') + ' -> W=' + w.toFixed(3) + ' (' + (w * 100).toFixed(1) + '%)');
     const d = Math.abs(w - OPT.target);
     if (d <= bestDiff) { bestDiff = d; bestT = T; }
     if (w < OPT.target) lo = mid; else hi = mid;
@@ -445,11 +466,20 @@ function calibrateGame(id, cfg, rows) {
     console.log(id + ': ceiling too low (W=' + wCeil.toFixed(3) + ' < 0.75) — suggest two tiers or a "mostly luck" label; skipping search');
     return;
   }
-  const Tn = searchTemp(id, cfg, 'hard', 'normal', 'hard-normal');
-  const Te = searchTemp(id, cfg, 'normal@' + Tn, 'easy', 'normal-easy');
-  console.log('{ easy: ' + Te + ', normal: ' + Tn + ' }');
-  const rHN = evalPair(id, cfg, 'hard', 'normal@' + Tn, 'hard vs normal@' + Tn, { n: OPT.n * 2, dup: true, seedKey: 'hard-normal' });
-  const rNE = evalPair(id, cfg, 'normal@' + Tn, 'easy@' + Te, 'normal@' + Tn + ' vs easy@' + Te, { n: OPT.n * 2, dup: true, seedKey: 'normal-easy' });
+  const hasDepths = Array.isArray(cfg.depths) && cfg.depths.length > 0;
+  const Dn = hasDepths ? searchDepth(id, cfg, 'hard', 'normal', cfg.depths, 'hard-normal') : null;
+  const Tn = searchTemp(id, cfg, 'hard', 'normal', 'hard-normal', Dn);
+  const normSpec = tierSpec('normal', Tn, Dn);
+  const De = hasDepths ? searchDepth(id, cfg, normSpec, 'easy', cfg.depths.filter((d) => d <= Dn), 'normal-easy') : null;
+  const Te = searchTemp(id, cfg, normSpec, 'easy', 'normal-easy', De);
+  const easySpec = tierSpec('easy', Te, De);
+  if (hasDepths) {
+    console.log('{ easy: { depth: ' + De + ', temp: ' + Te + ' }, normal: { depth: ' + Dn + ', temp: ' + Tn + ' } }');
+  } else {
+    console.log('{ easy: ' + Te + ', normal: ' + Tn + ' }');
+  }
+  const rHN = evalPair(id, cfg, 'hard', normSpec, 'hard vs ' + normSpec, { n: OPT.n * 2, dup: true, seedKey: 'hard-normal' });
+  const rNE = evalPair(id, cfg, normSpec, easySpec, normSpec + ' vs ' + easySpec, { n: OPT.n * 2, dup: true, seedKey: 'normal-easy' });
   for (const r of [rHN, rNE]) {
     const row = fmtRow(r, cfg);
     rows.push(row);

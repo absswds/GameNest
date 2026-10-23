@@ -275,3 +275,17 @@ test('pickFor: matches pickByDifficulty without overrides and applies botTemp/bo
   assert.deepEqual(baseOpts.temp, { normal: 15 });
   assert.deepEqual(baseOpts.maxLoss, { normal: 40 });
 });
+
+test('getDepth: honours positive integer botDepth and ignores invalid values', () => {
+  const { getDepth } = require('../bots/lib/difficulty');
+  const map = { easy: 2, normal: 4, hard: 8 };
+  assert.equal(getDepth({ _options: { difficulty: 'easy' } }, map), 2);
+  assert.equal(getDepth({ _options: { difficulty: 'normal' } }, map), 4);
+  assert.equal(getDepth({ _options: { difficulty: 'hard' } }, map), 8);
+  assert.equal(getDepth({}, map), 4);
+  assert.equal(getDepth(null, {}), 3);
+  assert.equal(getDepth({ _options: { difficulty: 'easy', botDepth: 6 } }, map), 6);
+  for (const bad of [0, -1, 2.5, 'x', null, undefined, NaN, Infinity]) {
+    assert.equal(getDepth({ _options: { difficulty: 'easy', botDepth: bad } }, map), 2);
+  }
+});

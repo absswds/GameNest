@@ -6,6 +6,8 @@ function getDifficulty(state) {
 }
 
 function getDepth(state, depthMap) {
+  const d = state && state._options && state._options.botDepth;
+  if (Number.isInteger(d) && d > 0) return d;
   const diff = getDifficulty(state);
   return depthMap[diff] || depthMap.normal || 3;
 }
