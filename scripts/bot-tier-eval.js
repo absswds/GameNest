@@ -4,6 +4,14 @@
  * Bot difficulty-tier evaluation (in-process, no server).
  *
  *   node scripts/bot-tier-eval.js [games...] [--n=40] [--seed=1] [--out=path.md] [--budget=180] [--verbose]
+ *     [--dup] [--calibrate] [--target=0.65] [--tlo=1] [--thi=2000] [--iters=6]
+ *
+ * Flags:
+ *   --dup         Duplicate deals: games k and k+1 (k even) share the same seed with swapped seats.
+ *   --calibrate   Check ceiling (hard vs random >= 75%), then log-space binary-search normal@Tn and easy@Te
+ *                 temperatures toward --target (default 0.65) over [--tlo, --thi] in --iters steps (--dup on),
+ *                 and confirm both calibrated pairs with 2x --n games.
+ *   Tier specs also accept 'random', '<tier>@<temp>', and '<tier>@<temp>,<maxLoss|inf>'.
  *
  * For every game it plays tier pairs (hard vs easy, normal vs easy, hard vs normal) and reports how often
  * tier A (the stronger one) wins. Seats alternate between the two tiers (A B A B ...) and the assignment is
@@ -32,6 +40,12 @@ const OPT = {
   out: flag('out', null),
   budget: Number(flag('budget', 180)), // wall-clock seconds per pair
   verbose: argv.includes('--verbose'),
+  dup: argv.includes('--dup'),
+  calibrate: argv.includes('--calibrate'),
+  target: Number(flag('target', 0.65)),
+  tlo: Number(flag('tlo', 1)),
+  thi: Number(flag('thi', 2000)),
+  iters: Number(flag('iters', 6)),
 };
 const wanted = argv.filter((a) => !a.startsWith('--'));
 
@@ -137,10 +151,27 @@ function makeCtx(id, cfg, tiers, rngSeed) {
 
 function bump(map, k) { map[k] = (map[k] || 0) + 1; }
 
+function tierOpts(spec) {
+  const [head, at] = spec.split('#')[0].split('@');
+  const o = { difficulty: head };
+  if (at !== undefined) {
+    const [tStr, lStr] = at.split(',');
+    if (tStr) {
+      const t = Number(tStr);
+      if (Number.isFinite(t) && t > 0) o.botTemp = t;
+    }
+    if (lStr !== undefined && lStr !== '') {
+      const l = lStr === 'inf' || lStr === 'Infinity' ? Infinity : Number(lStr);
+      if (!Number.isNaN(l)) o.botMaxLoss = l;
+    }
+  }
+  return o;
+}
+
 // ask the bot of `seat` for a move, with that seat's own difficulty
 function botMove(ctx, seat) {
   const { s, bots, tiers } = ctx;
-  const view = Object.assign({}, s, { _options: Object.assign({}, s._options, { difficulty: tiers[seat].split('#')[0] }) });
+  const view = Object.assign({}, s, { _options: Object.assign({}, s._options, tierOpts(tiers[seat])) });
   ctx.calls++;
   const check = ctx.calls <= 12 || ctx.calls % 40 === 0;
   let before = null;
@@ -329,15 +360,18 @@ function playGame(id, cfg, tiers, seed) {
   return { ctx, status };
 }
 
-function evalPair(id, cfg, tierA, tierB, label) {
-  const N = cfg.N || OPT.n;
-  const res = { id, label, games: 0, creditA: 0, draws: 0, stuck: 0, errs: {}, threw: {}, mut: 0, mA: 0, mB: 0, mCount: 0, ms: 0 };
+function evalPair(id, cfg, tierA, tierB, label, pairOpts) {
+  const N = (pairOpts && pairOpts.n) || cfg.N || OPT.n;
+  const dup = Boolean((pairOpts && pairOpts.dup) || OPT.dup);
+  const seedTag = (pairOpts && pairOpts.seedKey) || label;
+  const res = { id, label, expected: N, games: 0, creditA: 0, draws: 0, stuck: 0, errs: {}, threw: {}, mut: 0, mA: 0, mB: 0, mCount: 0, ms: 0 };
   const t0 = realNow();
   for (let k = 0; k < N; k++) {
     if ((realNow() - t0) / 1000 > OPT.budget) break;
     const tiers = [];
     for (let i = 0; i < cfg.n; i++) tiers.push((i + k) % 2 === 0 ? tierA : tierB);
-    const seed = (OPT.seed * 1000003 + hashStr(id + label) + k * 7919) >>> 0;
+    const kSeed = dup ? (k & ~1) : k;
+    const seed = (OPT.seed * 1000003 + hashStr(id + seedTag) + kSeed * 7919) >>> 0;
     const { ctx, status } = playGame(id, cfg, tiers, seed);
     for (const [e, c] of Object.entries(ctx.errs)) res.errs[e] = (res.errs[e] || 0) + c;
     for (const [e, c] of Object.entries(ctx.threw || {})) res.threw[e] = (res.threw[e] || 0) + c;
@@ -371,13 +405,57 @@ function fmtRow(r, cfg) {
   if (cfg.metric && r.mCount) notes.push('mean metric A=' + (r.mA / r.mCount).toFixed(1) + ' B=' + (r.mB / r.mCount).toFixed(1));
   if (r.mut) notes.push('MUTATED STATE x' + r.mut);
   if (Object.keys(r.threw).length) notes.push('THREW: ' + Object.entries(r.threw).map(([k, v]) => k + ' x' + v).join('; '));
-  if (r.games < (cfg.N || OPT.n) && r.games + r.stuck < (cfg.N || OPT.n)) notes.push('time budget hit');
+  const expected = r.expected || cfg.N || OPT.n;
+  if (r.games < expected && r.games + r.stuck < expected) notes.push('time budget hit');
   notes.push((r.ms / 1000).toFixed(0) + 's');
   return '| ' + r.id + ' | ' + r.label + ' | ' + r.games + ' | ' + (isNaN(pct) ? 'n/a' : pct.toFixed(1) + '%') + ' | ' + r.draws +
     ' | ' + r.stuck + ' | ' + errTotal + (errTxt ? ' (' + errTxt + ')' : '') + ' | ' + notes.join('; ') + ' |';
 }
 
 const PAIRS = [['hard', 'easy'], ['normal', 'easy'], ['hard', 'normal']];
+
+function winRate(r) {
+  return r.games ? (r.creditA + r.draws * 0.5) / r.games : 0.5;
+}
+
+function searchTemp(id, cfg, tierA, baseTierB, seedKey) {
+  let lo = Math.log(OPT.tlo), hi = Math.log(OPT.thi);
+  let bestT = Math.round(Math.exp(0.5 * (lo + hi)));
+  let bestDiff = Infinity;
+  for (let it = 1; it <= OPT.iters; it++) {
+    const mid = 0.5 * (lo + hi);
+    const rawT = Math.exp(mid);
+    const T = rawT >= 10 ? Math.round(rawT) : Number(rawT.toFixed(2));
+    const tierB = baseTierB + '@' + T;
+    const r = evalPair(id, cfg, tierA, tierB, tierA + ' vs ' + tierB, { n: OPT.n, dup: true, seedKey });
+    const w = winRate(r);
+    console.log('  [' + id + ' ' + seedKey + ' #' + it + '] T=' + T + ' -> W=' + w.toFixed(3) + ' (' + (w * 100).toFixed(1) + '%)');
+    const d = Math.abs(w - OPT.target);
+    if (d <= bestDiff) { bestDiff = d; bestT = T; }
+    if (w < OPT.target) lo = mid; else hi = mid;
+  }
+  return bestT;
+}
+
+function calibrateGame(id, cfg, rows) {
+  const ceil = evalPair(id, cfg, 'hard', 'random', 'hard vs random', { n: OPT.n, dup: true, seedKey: 'ceiling' });
+  const wCeil = winRate(ceil);
+  console.log(id + ' ceiling (hard vs random): W=' + wCeil.toFixed(3) + ' (' + (wCeil * 100).toFixed(1) + '%, n=' + ceil.games + ')');
+  if (wCeil < 0.75) {
+    console.log(id + ': ceiling too low (W=' + wCeil.toFixed(3) + ' < 0.75) — suggest two tiers or a "mostly luck" label; skipping search');
+    return;
+  }
+  const Tn = searchTemp(id, cfg, 'hard', 'normal', 'hard-normal');
+  const Te = searchTemp(id, cfg, 'normal@' + Tn, 'easy', 'normal-easy');
+  console.log('{ easy: ' + Te + ', normal: ' + Tn + ' }');
+  const rHN = evalPair(id, cfg, 'hard', 'normal@' + Tn, 'hard vs normal@' + Tn, { n: OPT.n * 2, dup: true, seedKey: 'hard-normal' });
+  const rNE = evalPair(id, cfg, 'normal@' + Tn, 'easy@' + Te, 'normal@' + Tn + ' vs easy@' + Te, { n: OPT.n * 2, dup: true, seedKey: 'normal-easy' });
+  for (const r of [rHN, rNE]) {
+    const row = fmtRow(r, cfg);
+    rows.push(row);
+    console.log(row);
+  }
+}
 
 function main() {
   const ids = wanted.length ? wanted : Object.keys(G);
@@ -387,6 +465,10 @@ function main() {
   for (const id of ids) {
     const cfg = G[id];
     if (!cfg) { console.log('| ' + id + ' | - | - | - | - | - | - | unknown game (skipped) |'); continue; }
+    if (OPT.calibrate) {
+      calibrateGame(id, cfg, rows);
+      continue;
+    }
     const list = PAIRS.map(([a, b]) => [a, b, a + ' vs ' + b]);
     if (cfg.control) list.push(['normal#A', 'normal#B', 'control normal vs normal (seat-parity A vs B)']);
     for (const [a, b, label] of list) {

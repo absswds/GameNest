@@ -4,7 +4,7 @@
 const ROWS = 8, COLS = 8;
 
 const { botName } = require('./lib/bot-name');
-const { getDepth, getDifficulty, pickByDifficulty } = require('./lib/difficulty');
+const { getDepth, pickFor } = require('./lib/difficulty');
 
 exports.name = 'checkers';
 
@@ -188,7 +188,6 @@ exports.createBot = function(playerIndex) {
       if (moves.length === 0) return null;
       if (moves.length === 1) return { from: moves[0].from, to: moves[0].to };
 
-      var diff = getDifficulty(state);
       var depth = getDepth(state, DEPTHS);
       var cands = [];
       for (var i = 0; i < moves.length; i++) {
@@ -205,7 +204,7 @@ exports.createBot = function(playerIndex) {
         undoMove(board, m, info);
         cands.push({ move: m, score: val });
       }
-      var pick = pickByDifficulty(cands, diff, PICK);
+      var pick = pickFor(state, cands, PICK);
       return { from: pick.from, to: pick.to };
     }
   };

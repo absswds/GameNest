@@ -242,3 +242,36 @@ test('pickByDifficulty: hard takes the best, easy/normal stay within maxLoss', (
   assert.ok(seen.has('b'), 'normal sometimes plays a slightly worse move');
   assert.equal(pickByDifficulty([], 'easy'), null);
 });
+
+test('pickByDifficulty: random tier is uniform over all cands ignoring maxLoss', () => {
+  const { pickByDifficulty } = require('../bots/lib/difficulty');
+  const cands = [{ move: 'a', score: 100 }, { move: 'b', score: 50 }, { move: 'c', score: -1000 }];
+  assert.equal(pickByDifficulty(cands, 'random', { random: () => 0.99 }), 'c');
+  let s = 12345;
+  const rng = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  const seen = new Set();
+  for (let i = 0; i < 60; i++) seen.add(pickByDifficulty(cands, 'random', { random: rng }));
+  assert.deepEqual([...seen].sort(), ['a', 'b', 'c']);
+});
+
+test('pickFor: matches pickByDifficulty without overrides and applies botTemp/botMaxLoss without mutating opts', () => {
+  const { pickByDifficulty, pickFor } = require('../bots/lib/difficulty');
+  const cands = [{ move: 'a', score: 100 }, { move: 'b', score: 70 }, { move: 'c', score: -500 }];
+  for (const r of [0.05, 0.5, 0.95]) {
+    for (const diff of ['easy', 'normal', 'hard', 'random']) {
+      assert.equal(
+        pickFor({ _options: { difficulty: diff } }, cands, { random: () => r }),
+        pickByDifficulty(cands, diff, { random: () => r })
+      );
+    }
+  }
+  // With default normal temp=15, score 70 has weight exp(-30/15) = exp(-2) ≈ 0.135 (share ≈ 0.119), so r=0.35 picks 'a'.
+  // With botTemp=1000, weights are ~1 and ~0.97 (share ≈ 0.492), so r=0.95 picks 'b'.
+  const baseOpts = { temp: { normal: 15 }, maxLoss: { normal: 40 }, random: () => 0.95 };
+  assert.equal(pickFor({ _options: { difficulty: 'normal', botTemp: 1 } }, cands, baseOpts), 'a');
+  assert.equal(pickFor({ _options: { difficulty: 'normal', botTemp: 1000 } }, cands, baseOpts), 'b');
+  // Candidate 'c' (loss 600) is excluded by default maxLoss=40, but included when botMaxLoss=Infinity.
+  assert.equal(pickFor({ _options: { difficulty: 'normal', botTemp: 1000, botMaxLoss: Infinity } }, cands, { random: () => 0.99 }), 'c');
+  assert.deepEqual(baseOpts.temp, { normal: 15 });
+  assert.deepEqual(baseOpts.maxLoss, { normal: 40 });
+});

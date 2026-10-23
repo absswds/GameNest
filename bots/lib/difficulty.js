@@ -26,11 +26,13 @@ function maybeBlunder(diff, blunderProb, bestAction, fallbackAction) {
 }
 
 // Stockfish-skill-style move choice. cands = [{move, score}] (higher is better).
-// hard: best (ties random). easy/normal: softmax over scores with a temperature, never worse than best - maxLoss.
+// hard: best (ties random). random: uniform over all cands.
+// easy/normal: softmax over scores with a temperature, never worse than best - maxLoss.
 function pickByDifficulty(cands, diff, opts) {
   if (!cands || !cands.length) return null;
   opts = opts || {};
   const rnd = opts.random || Math.random;
+  if (diff === 'random') return cands[Math.floor(rnd() * cands.length)].move;
   let best = -Infinity;
   for (const c of cands) if (c.score > best) best = c.score;
   if (diff === 'hard') {
@@ -46,4 +48,16 @@ function pickByDifficulty(cands, diff, opts) {
   return pool[pool.length - 1].move;
 }
 
-module.exports = { getDepth, getDifficulty, isEasy, isHard, maybeBlunder, pickByDifficulty };
+function pickFor(state, cands, opts) {
+  const diff = getDifficulty(state);
+  const o = (state && state._options) || {};
+  const hasTemp = typeof o.botTemp === 'number' && Number.isFinite(o.botTemp) && o.botTemp > 0;
+  const hasMaxLoss = typeof o.botMaxLoss === 'number' && !Number.isNaN(o.botMaxLoss);
+  if (!hasTemp && !hasMaxLoss) return pickByDifficulty(cands, diff, opts);
+  const opts2 = Object.assign({}, opts);
+  if (hasTemp) opts2.temp = Object.assign({}, opts && opts.temp, { [diff]: o.botTemp });
+  if (hasMaxLoss) opts2.maxLoss = Object.assign({}, opts && opts.maxLoss, { [diff]: o.botMaxLoss });
+  return pickByDifficulty(cands, diff, opts2);
+}
+
+module.exports = { getDepth, getDifficulty, isEasy, isHard, maybeBlunder, pickByDifficulty, pickFor };
