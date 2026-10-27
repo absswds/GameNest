@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 'use strict';
 /*
- * Bot difficulty-tier evaluation (in-process, no server).
+ * Bot difficulty-tier evaluation (in-process or worker_threads pool, no server).
  *
- *   node scripts/bot-tier-eval.js [games...] [--n=40] [--seed=1] [--out=path.md] [--budget=180] [--verbose]
+ *   node scripts/bot-tier-eval.js [games...] [--n=40] [--seed=1] [--out=path.md] [--budget=180] [--jobs=N] [--verbose]
  *     [--dup] [--calibrate] [--target=0.65] [--tlo=1] [--thi=2000] [--iters=6]
  *
  * Flags:
+ *   --jobs=N      Worker threads for parallel games per pair (default: max(1, cpus - 1); 1 = in-process sequential).
  *   --dup         Duplicate deals: games k and k+1 (k even) share the same seed with swapped seats.
- *   --calibrate   Check ceiling (hard vs random >= 75%), optionally scan cfg.depths for each weaker tier, then
+ *   --calibrate   Check ceiling (hard vs random >= 75%), optionally binary-search cfg.depths for each weaker tier, then
  *                 log-space binary-search normal@Tn and easy@Te temperatures toward --target (default 0.65)
  *                 over [--tlo, --thi] in --iters steps (--dup on), and confirm both calibrated pairs with 2x --n games.
  *   Tier specs also accept 'random', '<tier>@<temp>', '<tier>@<temp>,<maxLoss|inf>', and '<tier>@<temp>,<maxLoss|inf>,<depth>'.
@@ -27,6 +28,8 @@
  */
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const { Worker, isMainThread, parentPort } = require('worker_threads');
 
 const ROOT = path.resolve(__dirname, '..');
 const argv = process.argv.slice(2);
@@ -34,11 +37,13 @@ const flag = (name, def) => {
   const a = argv.find((x) => x.startsWith('--' + name + '='));
   return a ? a.slice(name.length + 3) : def;
 };
+const defaultJobs = Math.max(1, (os.cpus() || []).length - 1);
 const OPT = {
   n: Number(flag('n', 40)),
   seed: Number(flag('seed', 1)),
   out: flag('out', null),
   budget: Number(flag('budget', 180)), // wall-clock seconds per pair
+  jobs: Math.max(1, Number(flag('jobs', defaultJobs)) || 1),
   verbose: argv.includes('--verbose'),
   dup: argv.includes('--dup'),
   calibrate: argv.includes('--calibrate'),
@@ -364,38 +369,131 @@ function playGame(id, cfg, tiers, seed) {
   return { ctx, status };
 }
 
-function evalPair(id, cfg, tierA, tierB, label, pairOpts) {
+let POOL = null;
+function getPool(size) {
+  if (!POOL) {
+    POOL = [];
+    for (let i = 0; i < size; i++) POOL.push(new Worker(__filename));
+  }
+  return POOL;
+}
+
+async function closePool() {
+  if (!POOL) return;
+  const p = POOL;
+  POOL = null;
+  await Promise.all(p.map((w) => w.terminate()));
+}
+
+function aggregateGame(res, id, cfg, label, k, tiers, tierA, g) {
+  for (const [e, c] of Object.entries(g.errs)) res.errs[e] = (res.errs[e] || 0) + c;
+  for (const [e, c] of Object.entries(g.threw || {})) res.threw[e] = (res.threw[e] || 0) + c;
+  if (g.mut) res.mut += typeof g.mut === 'number' ? g.mut : (g.mut[id] || 0);
+  if (g.status !== 'ok') { res.stuck++; if (OPT.verbose) realConsoleError(id, label, 'game', k, g.status); return; }
+  res.games++;
+  const r = g.outcome;
+  if (r.draw || (r.seats && !r.seats.length)) res.draws++;
+  else if (r.credit !== undefined) res.creditA += r.credit;
+  else if (r.loserSeat !== undefined) res.creditA += tiers[r.loserSeat] === tierA ? 0 : 1;
+  else {
+    const a = r.seats.filter((i) => tiers[i] === tierA).length;
+    res.creditA += a / r.seats.length;
+  }
+  if (g.metrics) {
+    for (let i = 0; i < cfg.n; i++) {
+      const m = g.metrics[i];
+      if (tiers[i] === tierA) { res.mA += m; res.mCount++; } else res.mB += m;
+    }
+  }
+}
+
+async function evalPair(id, cfg, tierA, tierB, label, pairOpts) {
   const N = (pairOpts && pairOpts.n) || cfg.N || OPT.n;
   const dup = Boolean((pairOpts && pairOpts.dup) || OPT.dup);
   const seedTag = (pairOpts && pairOpts.seedKey) || label;
   const res = { id, label, expected: N, games: 0, creditA: 0, draws: 0, stuck: 0, errs: {}, threw: {}, mut: 0, mA: 0, mB: 0, mCount: 0, ms: 0 };
   const t0 = realNow();
-  for (let k = 0; k < N; k++) {
-    if ((realNow() - t0) / 1000 > OPT.budget) break;
-    const tiers = [];
-    for (let i = 0; i < cfg.n; i++) tiers.push((i + k) % 2 === 0 ? tierA : tierB);
-    const kSeed = dup ? (k & ~1) : k;
-    const seed = (OPT.seed * 1000003 + hashStr(id + seedTag) + kSeed * 7919) >>> 0;
-    const { ctx, status } = playGame(id, cfg, tiers, seed);
-    for (const [e, c] of Object.entries(ctx.errs)) res.errs[e] = (res.errs[e] || 0) + c;
-    for (const [e, c] of Object.entries(ctx.threw || {})) res.threw[e] = (res.threw[e] || 0) + c;
-    if (ctx.mut) res.mut += ctx.mut[id] || 0;
-    if (status !== 'ok') { res.stuck++; if (OPT.verbose) realConsoleError(id, label, 'game', k, status); continue; }
-    res.games++;
-    const r = resolve(id, ctx.s, tiers, tierA);
-    if (r.draw || (r.seats && !r.seats.length)) res.draws++;
-    else if (r.credit !== undefined) res.creditA += r.credit;
-    else if (r.loserSeat !== undefined) res.creditA += tiers[r.loserSeat] === tierA ? 0 : 1;
-    else {
-      const a = r.seats.filter((i) => tiers[i] === tierA).length;
-      res.creditA += a / r.seats.length;
-    }
-    if (cfg.metric) {
-      for (let i = 0; i < cfg.n; i++) {
-        const m = cfg.metric(ctx.s, i);
-        if (tiers[i] === tierA) { res.mA += m; res.mCount++; } else res.mB += m;
+  if (OPT.jobs <= 1) {
+    for (let k = 0; k < N; k++) {
+      if ((realNow() - t0) / 1000 > OPT.budget) break;
+      const tiers = [];
+      for (let i = 0; i < cfg.n; i++) tiers.push((i + k) % 2 === 0 ? tierA : tierB);
+      const kSeed = dup ? (k & ~1) : k;
+      const seed = (OPT.seed * 1000003 + hashStr(id + seedTag) + kSeed * 7919) >>> 0;
+      const { ctx, status } = playGame(id, cfg, tiers, seed);
+      for (const [e, c] of Object.entries(ctx.errs)) res.errs[e] = (res.errs[e] || 0) + c;
+      for (const [e, c] of Object.entries(ctx.threw || {})) res.threw[e] = (res.threw[e] || 0) + c;
+      if (ctx.mut) res.mut += ctx.mut[id] || 0;
+      if (status !== 'ok') { res.stuck++; if (OPT.verbose) realConsoleError(id, label, 'game', k, status); continue; }
+      res.games++;
+      const r = resolve(id, ctx.s, tiers, tierA);
+      if (r.draw || (r.seats && !r.seats.length)) res.draws++;
+      else if (r.credit !== undefined) res.creditA += r.credit;
+      else if (r.loserSeat !== undefined) res.creditA += tiers[r.loserSeat] === tierA ? 0 : 1;
+      else {
+        const a = r.seats.filter((i) => tiers[i] === tierA).length;
+        res.creditA += a / r.seats.length;
+      }
+      if (cfg.metric) {
+        for (let i = 0; i < cfg.n; i++) {
+          const m = cfg.metric(ctx.s, i);
+          if (tiers[i] === tierA) { res.mA += m; res.mCount++; } else res.mB += m;
+        }
       }
     }
+    res.ms = realNow() - t0;
+    return res;
+  }
+
+  const pool = getPool(OPT.jobs);
+  const tiersByK = new Array(N);
+  const out = [];
+  let nextK = 0;
+  let inFlight = 0;
+  await new Promise((resolvePair, rejectPair) => {
+    const dispatch = (w) => {
+      const k = nextK++;
+      const tiers = [];
+      for (let i = 0; i < cfg.n; i++) tiers.push((i + k) % 2 === 0 ? tierA : tierB);
+      tiersByK[k] = tiers;
+      const kSeed = dup ? (k & ~1) : k;
+      const seed = (OPT.seed * 1000003 + hashStr(id + seedTag) + kSeed * 7919) >>> 0;
+      inFlight++;
+      w.postMessage({ id, k, tiers, seed });
+    };
+    const onMsgMap = new Map();
+    const cleanup = () => {
+      for (const w of pool) {
+        w.removeListener('message', onMsgMap.get(w));
+        w.removeListener('error', onErr);
+      }
+    };
+    const onErr = (err) => { cleanup(); rejectPair(err); };
+    for (const w of pool) {
+      const onMsg = (msg) => {
+        out[msg.k] = msg;
+        inFlight--;
+        if (nextK < N && (realNow() - t0) / 1000 <= OPT.budget) {
+          dispatch(w);
+        } else if (inFlight === 0) {
+          cleanup();
+          resolvePair();
+        }
+      };
+      onMsgMap.set(w, onMsg);
+      w.on('message', onMsg);
+      w.on('error', onErr);
+    }
+    const initial = Math.min(pool.length, N);
+    for (let i = 0; i < initial; i++) {
+      if (nextK >= N || (realNow() - t0) / 1000 > OPT.budget) break;
+      dispatch(pool[i]);
+    }
+    if (inFlight === 0) { cleanup(); resolvePair(); }
+  });
+  for (let k = 0; k < nextK; k++) {
+    const g = out[k];
+    if (g) aggregateGame(res, id, cfg, label, k, tiersByK[k], tierA, g);
   }
   res.ms = realNow() - t0;
   return res;
@@ -426,20 +524,29 @@ function tierSpec(base, T, d) {
   return d ? base + '@' + T + ',,' + d : base + '@' + T;
 }
 
-function searchDepth(id, cfg, tierA, baseTierB, depths, seedKey) {
-  for (const d of depths) {
+async function searchDepth(id, cfg, tierA, baseTierB, depths, seedKey) {
+  let lo = 0, hi = depths.length - 1, chosen = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const d = depths[mid];
     const tierB = tierSpec(baseTierB, OPT.tlo, d);
-    const r = evalPair(id, cfg, tierA, tierB, tierA + ' vs ' + tierB, { n: OPT.n, dup: true, seedKey });
+    const r = await evalPair(id, cfg, tierA, tierB, tierA + ' vs ' + tierB, { n: OPT.n, dup: true, seedKey });
     const w = winRate(r);
     console.log('  [' + id + ' ' + seedKey + ' depth] d=' + d + ' (T=' + OPT.tlo + ') -> W=' + w.toFixed(3) + ' (' + (w * 100).toFixed(1) + '%)');
-    if (w <= OPT.target) return d;
+    if (w <= OPT.target) {
+      chosen = d;
+      hi = mid - 1;
+    } else {
+      lo = mid + 1;
+    }
   }
-  const chosen = depths[depths.length - 1];
+  if (chosen !== -1) return chosen;
+  chosen = depths[depths.length - 1];
   console.log('  [' + id + ' ' + seedKey + ' depth] warning: target ' + OPT.target + ' unreachable even at max depth d=' + chosen);
   return chosen;
 }
 
-function searchTemp(id, cfg, tierA, baseTierB, seedKey, depth) {
+async function searchTemp(id, cfg, tierA, baseTierB, seedKey, depth) {
   let lo = Math.log(OPT.tlo), hi = Math.log(OPT.thi);
   let bestT = Math.round(Math.exp(0.5 * (lo + hi)));
   let bestDiff = Infinity;
@@ -448,7 +555,7 @@ function searchTemp(id, cfg, tierA, baseTierB, seedKey, depth) {
     const rawT = Math.exp(mid);
     const T = rawT >= 10 ? Math.round(rawT) : Number(rawT.toFixed(2));
     const tierB = tierSpec(baseTierB, T, depth);
-    const r = evalPair(id, cfg, tierA, tierB, tierA + ' vs ' + tierB, { n: OPT.n, dup: true, seedKey });
+    const r = await evalPair(id, cfg, tierA, tierB, tierA + ' vs ' + tierB, { n: OPT.n, dup: true, seedKey });
     const w = winRate(r);
     console.log('  [' + id + ' ' + seedKey + ' #' + it + '] T=' + T + (depth ? ' d=' + depth : '') + ' -> W=' + w.toFixed(3) + ' (' + (w * 100).toFixed(1) + '%)');
     const d = Math.abs(w - OPT.target);
@@ -458,8 +565,8 @@ function searchTemp(id, cfg, tierA, baseTierB, seedKey, depth) {
   return bestT;
 }
 
-function calibrateGame(id, cfg, rows) {
-  const ceil = evalPair(id, cfg, 'hard', 'random', 'hard vs random', { n: OPT.n, dup: true, seedKey: 'ceiling' });
+async function calibrateGame(id, cfg, rows) {
+  const ceil = await evalPair(id, cfg, 'hard', 'random', 'hard vs random', { n: OPT.n, dup: true, seedKey: 'ceiling' });
   const wCeil = winRate(ceil);
   console.log(id + ' ceiling (hard vs random): W=' + wCeil.toFixed(3) + ' (' + (wCeil * 100).toFixed(1) + '%, n=' + ceil.games + ')');
   if (wCeil < 0.75) {
@@ -467,19 +574,19 @@ function calibrateGame(id, cfg, rows) {
     return;
   }
   const hasDepths = Array.isArray(cfg.depths) && cfg.depths.length > 0;
-  const Dn = hasDepths ? searchDepth(id, cfg, 'hard', 'normal', cfg.depths, 'hard-normal') : null;
-  const Tn = searchTemp(id, cfg, 'hard', 'normal', 'hard-normal', Dn);
+  const Dn = hasDepths ? await searchDepth(id, cfg, 'hard', 'normal', cfg.depths, 'hard-normal') : null;
+  const Tn = await searchTemp(id, cfg, 'hard', 'normal', 'hard-normal', Dn);
   const normSpec = tierSpec('normal', Tn, Dn);
-  const De = hasDepths ? searchDepth(id, cfg, normSpec, 'easy', cfg.depths.filter((d) => d <= Dn), 'normal-easy') : null;
-  const Te = searchTemp(id, cfg, normSpec, 'easy', 'normal-easy', De);
+  const De = hasDepths ? await searchDepth(id, cfg, normSpec, 'easy', cfg.depths.filter((d) => d <= Dn), 'normal-easy') : null;
+  const Te = await searchTemp(id, cfg, normSpec, 'easy', 'normal-easy', De);
   const easySpec = tierSpec('easy', Te, De);
   if (hasDepths) {
     console.log('{ easy: { depth: ' + De + ', temp: ' + Te + ' }, normal: { depth: ' + Dn + ', temp: ' + Tn + ' } }');
   } else {
     console.log('{ easy: ' + Te + ', normal: ' + Tn + ' }');
   }
-  const rHN = evalPair(id, cfg, 'hard', normSpec, 'hard vs ' + normSpec, { n: OPT.n * 2, dup: true, seedKey: 'hard-normal' });
-  const rNE = evalPair(id, cfg, normSpec, easySpec, normSpec + ' vs ' + easySpec, { n: OPT.n * 2, dup: true, seedKey: 'normal-easy' });
+  const rHN = await evalPair(id, cfg, 'hard', normSpec, 'hard vs ' + normSpec, { n: OPT.n * 2, dup: true, seedKey: 'hard-normal' });
+  const rNE = await evalPair(id, cfg, normSpec, easySpec, normSpec + ' vs ' + easySpec, { n: OPT.n * 2, dup: true, seedKey: 'normal-easy' });
   for (const r of [rHN, rNE]) {
     const row = fmtRow(r, cfg);
     rows.push(row);
@@ -487,33 +594,57 @@ function calibrateGame(id, cfg, rows) {
   }
 }
 
-function main() {
-  const ids = wanted.length ? wanted : Object.keys(G);
-  const rows = [];
-  const header = '| game | pair (A vs B) | games | tier A win% | draws | stuck | bot errors | note |\n|---|---|---|---|---|---|---|---|';
-  console.log(header);
-  for (const id of ids) {
-    const cfg = G[id];
-    if (!cfg) { console.log('| ' + id + ' | - | - | - | - | - | - | unknown game (skipped) |'); continue; }
-    if (OPT.calibrate) {
-      calibrateGame(id, cfg, rows);
-      continue;
+async function main() {
+  try {
+    const ids = wanted.length ? wanted : Object.keys(G);
+    const rows = [];
+    const header = '| game | pair (A vs B) | games | tier A win% | draws | stuck | bot errors | note |\n|---|---|---|---|---|---|---|---|';
+    console.log(header);
+    for (const id of ids) {
+      const cfg = G[id];
+      if (!cfg) { console.log('| ' + id + ' | - | - | - | - | - | - | unknown game (skipped) |'); continue; }
+      if (OPT.calibrate) {
+        await calibrateGame(id, cfg, rows);
+        continue;
+      }
+      const list = PAIRS.map(([a, b]) => [a, b, a + ' vs ' + b]);
+      if (cfg.control) list.push(['normal#A', 'normal#B', 'control normal vs normal (seat-parity A vs B)']);
+      for (const [a, b, label] of list) {
+        const r = await evalPair(id, cfg, a, b, label);
+        const row = fmtRow(r, cfg);
+        rows.push(row);
+        console.log(row);
+      }
     }
-    const list = PAIRS.map(([a, b]) => [a, b, a + ' vs ' + b]);
-    if (cfg.control) list.push(['normal#A', 'normal#B', 'control normal vs normal (seat-parity A vs B)']);
-    for (const [a, b, label] of list) {
-      const r = evalPair(id, cfg, a, b, label);
-      const row = fmtRow(r, cfg);
-      rows.push(row);
-      console.log(row);
+    const md = header + '\n' + rows.join('\n') + '\n';
+    if (OPT.out) {
+      // append when the file already holds rows from an earlier invocation with the same header
+      let prev = '';
+      try { prev = fs.readFileSync(OPT.out, 'utf8'); } catch (e) { /* new file */ }
+      fs.writeFileSync(OPT.out, prev ? prev.replace(/\n*$/, '\n') + rows.join('\n') + '\n' : md);
     }
-  }
-  const md = header + '\n' + rows.join('\n') + '\n';
-  if (OPT.out) {
-    // append when the file already holds rows from an earlier invocation with the same header
-    let prev = '';
-    try { prev = fs.readFileSync(OPT.out, 'utf8'); } catch (e) { /* new file */ }
-    fs.writeFileSync(OPT.out, prev ? prev.replace(/\n*$/, '\n') + rows.join('\n') + '\n' : md);
+  } finally {
+    await closePool();
   }
 }
-main();
+
+if (!isMainThread) {
+  parentPort.on('message', ({ id, k, tiers, seed }) => {
+    const cfg = G[id];
+    const { ctx, status } = playGame(id, cfg, tiers, seed);
+    const tierA = tiers[k & 1];
+    const outcome = status === 'ok' ? resolve(id, ctx.s, tiers, tierA) : null;
+    const metrics = status === 'ok' && cfg.metric ? Array.from({ length: cfg.n }, (_, i) => cfg.metric(ctx.s, i)) : null;
+    parentPort.postMessage({
+      k,
+      status,
+      errs: ctx.errs,
+      threw: ctx.threw || {},
+      mut: (ctx.mut && ctx.mut[id]) || 0,
+      outcome,
+      metrics,
+    });
+  });
+} else {
+  main();
+}
