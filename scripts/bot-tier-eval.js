@@ -4,14 +4,16 @@
  * Bot difficulty-tier evaluation (in-process or worker_threads pool, no server).
  *
  *   node scripts/bot-tier-eval.js [games...] [--n=40] [--seed=1] [--out=path.md] [--budget=180] [--jobs=N] [--verbose]
- *     [--dup] [--calibrate] [--target=0.65] [--tlo=1] [--thi=2000] [--iters=6]
+ *     [--dup] [--calibrate] [--target=0.70] [--tlo=1] [--thi=2000] [--grid=7]
  *
  * Flags:
  *   --jobs=N      Worker threads for parallel games per pair (default: max(1, cpus - 1); 1 = in-process sequential).
  *   --dup         Duplicate deals: games k and k+1 (k even) share the same seed with swapped seats.
- *   --calibrate   Check ceiling (hard vs random >= 75%), optionally binary-search cfg.depths for each weaker tier, then
- *                 log-space binary-search normal@Tn and easy@Te temperatures toward --target (default 0.65)
- *                 over [--tlo, --thi] in --iters steps (--dup on), and confirm both calibrated pairs with 2x --n games.
+ *   --calibrate   Check ceiling (hard vs random) against Elo logit targets, sweep cfg.depths with PAV isotonic
+ *                 smoothing, evaluate a log-spaced temperature grid against hard, fit a logistic curve in ln(T),
+ *                 and verify hard vs normal, normal vs easy, and hard vs easy with 2x --n games and Wilson CIs.
+ *   --target=P    Per-step target win rate for calibration (default: 0.70; acceptance bar is >= 0.65).
+ *   --grid=K      Number of log-spaced temperatures over [--tlo, --thi] per distinct depth (default: 7).
  *   Tier specs also accept 'random', '<tier>@<temp>', '<tier>@<temp>,<maxLoss|inf>', and '<tier>@<temp>,<maxLoss|inf>,<depth>'.
  *
  * For every game it plays tier pairs (hard vs easy, normal vs easy, hard vs normal) and reports how often
@@ -30,6 +32,15 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { Worker, isMainThread, parentPort } = require('worker_threads');
+const {
+  logit,
+  sigmoid,
+  eloTargetLogit,
+  wilson,
+  fitLogistic,
+  solveX,
+  pavDecreasing,
+} = require('./lib/tier-fit');
 
 const ROOT = path.resolve(__dirname, '..');
 const argv = process.argv.slice(2);
@@ -47,10 +58,10 @@ const OPT = {
   verbose: argv.includes('--verbose'),
   dup: argv.includes('--dup'),
   calibrate: argv.includes('--calibrate'),
-  target: Number(flag('target', 0.65)),
+  target: Number(flag('target', 0.70)),
   tlo: Number(flag('tlo', 1)),
   thi: Number(flag('thi', 2000)),
-  iters: Number(flag('iters', 6)),
+  grid: Math.max(1, Number(flag('grid', 7)) || 7),
 };
 const wanted = argv.filter((a) => !a.startsWith('--'));
 
@@ -524,73 +535,124 @@ function tierSpec(base, T, d) {
   return d ? base + '@' + T + ',,' + d : base + '@' + T;
 }
 
-async function searchDepth(id, cfg, tierA, baseTierB, depths, seedKey) {
-  let lo = 0, hi = depths.length - 1, chosen = -1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    const d = depths[mid];
-    const tierB = tierSpec(baseTierB, OPT.tlo, d);
-    const r = await evalPair(id, cfg, tierA, tierB, tierA + ' vs ' + tierB, { n: OPT.n, dup: true, seedKey });
-    const w = winRate(r);
-    console.log('  [' + id + ' ' + seedKey + ' depth] d=' + d + ' (T=' + OPT.tlo + ') -> W=' + w.toFixed(3) + ' (' + (w * 100).toFixed(1) + '%)');
-    if (w <= OPT.target) {
-      chosen = d;
-      hi = mid - 1;
-    } else {
-      lo = mid + 1;
-    }
-  }
-  if (chosen !== -1) return chosen;
-  chosen = depths[depths.length - 1];
-  console.log('  [' + id + ' ' + seedKey + ' depth] warning: target ' + OPT.target + ' unreachable even at max depth d=' + chosen);
-  return chosen;
+function roundTemp(rawT) {
+  return rawT >= 10 ? Math.round(rawT) : Number(rawT.toFixed(2));
 }
 
-async function searchTemp(id, cfg, tierA, baseTierB, seedKey, depth) {
-  let lo = Math.log(OPT.tlo), hi = Math.log(OPT.thi);
-  let bestT = Math.round(Math.exp(0.5 * (lo + hi)));
-  let bestDiff = Infinity;
-  for (let it = 1; it <= OPT.iters; it++) {
-    const mid = 0.5 * (lo + hi);
-    const rawT = Math.exp(mid);
-    const T = rawT >= 10 ? Math.round(rawT) : Number(rawT.toFixed(2));
-    const tierB = tierSpec(baseTierB, T, depth);
-    const r = await evalPair(id, cfg, tierA, tierB, tierA + ' vs ' + tierB, { n: OPT.n, dup: true, seedKey });
-    const w = winRate(r);
-    console.log('  [' + id + ' ' + seedKey + ' #' + it + '] T=' + T + (depth ? ' d=' + depth : '') + ' -> W=' + w.toFixed(3) + ' (' + (w * 100).toFixed(1) + '%)');
-    const d = Math.abs(w - OPT.target);
-    if (d <= bestDiff) { bestDiff = d; bestT = T; }
-    if (w < OPT.target) lo = mid; else hi = mid;
+function solveTempForTier(id, tierName, fit, targetLogit) {
+  const xStar = solveX(fit, targetLogit);
+  if (xStar === null) {
+    const fallback = roundTemp(sigmoid(fit.a) <= sigmoid(targetLogit) ? OPT.tlo : OPT.thi);
+    console.log('  [' + id + ' ' + tierName + '] warning: solveX returned null (flat or non-convergent temperature fit); using T=' + fallback);
+    return fallback;
   }
-  return bestT;
+  const rawT = Math.exp(xStar);
+  if (rawT < OPT.tlo || rawT > OPT.thi) {
+    console.log('  [' + id + ' ' + tierName + '] warning: target unreachable in range [' + OPT.tlo + ', ' + OPT.thi + '] (unclamped T=' + roundTemp(rawT) + '), clamping');
+  }
+  const clamped = Math.min(OPT.thi, Math.max(OPT.tlo, rawT));
+  return roundTemp(clamped);
 }
 
 async function calibrateGame(id, cfg, rows) {
   const ceil = await evalPair(id, cfg, 'hard', 'random', 'hard vs random', { n: OPT.n, dup: true, seedKey: 'ceiling' });
   const wCeil = winRate(ceil);
+  const tN = eloTargetLogit(OPT.target, 1);
+  const tE = eloTargetLogit(OPT.target, 2);
   console.log(id + ' ceiling (hard vs random): W=' + wCeil.toFixed(3) + ' (' + (wCeil * 100).toFixed(1) + '%, n=' + ceil.games + ')');
-  if (wCeil < 0.75) {
-    console.log(id + ': ceiling too low (W=' + wCeil.toFixed(3) + ' < 0.75) — suggest two tiers or a "mostly luck" label; skipping search');
+  if (logit(wCeil) < tN) {
+    console.log(id + ': too luck-driven: one tier only');
     return;
   }
+  const twoTiersOnly = logit(wCeil) < tE;
+  if (twoTiersOnly) {
+    console.log(id + ': two tiers only (normal = easy)');
+  }
+
   const hasDepths = Array.isArray(cfg.depths) && cfg.depths.length > 0;
-  const Dn = hasDepths ? await searchDepth(id, cfg, 'hard', 'normal', cfg.depths, 'hard-normal') : null;
-  const Tn = await searchTemp(id, cfg, 'hard', 'normal', 'hard-normal', Dn);
+  let Dn = null;
+  let De = null;
+  if (hasDepths) {
+    const depths = cfg.depths.slice();
+    const rawRates = [];
+    const preSmoothed = [];
+    const weights = [];
+    for (const d of depths) {
+      const spec = tierSpec('normal', OPT.tlo, d);
+      const r = await evalPair(id, cfg, 'hard', spec, 'hard vs ' + spec, { n: OPT.n, dup: true, seedKey: 'depth' });
+      const score = r.creditA + r.draws * 0.5;
+      const n = r.games;
+      rawRates.push(winRate(r));
+      preSmoothed.push((score + 0.5) / (n + 1));
+      weights.push(n || 1);
+    }
+    const smoothed = pavDecreasing(preSmoothed, weights);
+    console.log('  [' + id + ' depth] depth | raw win% | smoothed win%');
+    for (let i = 0; i < depths.length; i++) {
+      console.log('  [' + id + ' depth] d=' + depths[i] + ' | ' + (rawRates[i] * 100).toFixed(1) + '% | ' + (smoothed[i] * 100).toFixed(1) + '%');
+    }
+    const pickDepth = (tierName, targetLogit) => {
+      const targetRate = sigmoid(targetLogit);
+      for (let i = 0; i < depths.length; i++) {
+        if (smoothed[i] <= targetRate) return depths[i];
+      }
+      const deepest = depths[depths.length - 1];
+      console.log('  [' + id + ' depth] warning: ' + tierName + ' target ' + (targetRate * 100).toFixed(1) + '% unreachable even at max depth d=' + deepest);
+      return deepest;
+    };
+    Dn = pickDepth('normal', tN);
+    De = twoTiersOnly ? Dn : pickDepth('easy', tE);
+  }
+
+  const distinctDepths = hasDepths ? [...new Set(twoTiersOnly ? [Dn] : [Dn, De])] : [null];
+  const fitByDepth = new Map();
+  const loLog = Math.log(OPT.tlo);
+  const hiLog = Math.log(OPT.thi);
+  for (const d of distinctDepths) {
+    const points = [];
+    for (let i = 0; i < OPT.grid; i++) {
+      const frac = OPT.grid <= 1 ? 0.5 : i / (OPT.grid - 1);
+      const T = roundTemp(Math.exp(loLog + frac * (hiLog - loLog)));
+      const spec = tierSpec('normal', T, d);
+      const r = await evalPair(id, cfg, 'hard', spec, 'hard vs ' + spec, { n: OPT.n, dup: true, seedKey: 'temp' });
+      const score = r.creditA + r.draws * 0.5;
+      const w = winRate(r);
+      console.log('  [' + id + ' temp' + (d ? ' d=' + d : '') + '] T=' + T + ' games=' + r.games + ' win%=' + (w * 100).toFixed(1) + '%');
+      // +0.5/+1 keeps the fit finite when hard wins (or loses) every game at some temperatures
+      points.push({ x: Math.log(T), score: score + 0.5, n: r.games + 1 });
+    }
+    const fit = fitLogistic(points);
+    console.log('  [' + id + ' fit' + (d ? ' d=' + d : '') + '] a=' + fit.a.toFixed(4) + ' b=' + fit.b.toFixed(4) + ' ok=' + fit.ok);
+    fitByDepth.set(d, fit);
+  }
+
+  const Tn = solveTempForTier(id, 'normal', fitByDepth.get(Dn), tN);
+  const Te = twoTiersOnly ? Tn : solveTempForTier(id, 'easy', fitByDepth.get(De), tE);
   const normSpec = tierSpec('normal', Tn, Dn);
-  const De = hasDepths ? await searchDepth(id, cfg, normSpec, 'easy', cfg.depths.filter((d) => d <= Dn), 'normal-easy') : null;
-  const Te = await searchTemp(id, cfg, normSpec, 'easy', 'normal-easy', De);
-  const easySpec = tierSpec('easy', Te, De);
+  const easySpec = twoTiersOnly ? normSpec : tierSpec('normal', Te, De);
+
   if (hasDepths) {
     console.log('{ easy: { depth: ' + De + ', temp: ' + Te + ' }, normal: { depth: ' + Dn + ', temp: ' + Tn + ' } }');
   } else {
     console.log('{ easy: ' + Te + ', normal: ' + Tn + ' }');
   }
-  const rHN = await evalPair(id, cfg, 'hard', normSpec, 'hard vs ' + normSpec, { n: OPT.n * 2, dup: true, seedKey: 'hard-normal' });
-  const rNE = await evalPair(id, cfg, normSpec, easySpec, normSpec + ' vs ' + easySpec, { n: OPT.n * 2, dup: true, seedKey: 'normal-easy' });
-  for (const r of [rHN, rNE]) {
+  console.log('  note: both tiers were measured with the normal tier\'s maxLoss; give easy the same maxLoss in the bot');
+
+  const verifyPairs = [
+    ['hard', normSpec, 'verify-hn'],
+    [normSpec, easySpec, 'verify-ne'],
+    ['hard', easySpec, 'verify-he'],
+  ];
+  for (const [a, b, seedKey] of verifyPairs) {
+    const r = await evalPair(id, cfg, a, b, a + ' vs ' + b, { n: OPT.n * 2, dup: true, seedKey });
     const row = fmtRow(r, cfg);
     rows.push(row);
     console.log(row);
+    const score = r.creditA + r.draws * 0.5;
+    const w = winRate(r);
+    const ci = wilson(score, r.games);
+    const status = w >= 0.65 ? 'PASS' : 'FAIL';
+    console.log('  [' + id + ' ' + seedKey + '] W=' + (w * 100).toFixed(1) + '% wilson95=[' + (ci.lo * 100).toFixed(1) + '%, ' + (ci.hi * 100).toFixed(1) + '%] ' + status);
   }
 }
 

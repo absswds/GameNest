@@ -210,5 +210,6 @@ exports.createBot = function(playerIndex) {
   };
 };
 
-var DEPTHS = { easy: 2, normal: 4, hard: 8 };
-var PICK = { temp: { easy: 80, normal: 20 }, maxLoss: { easy: 300, normal: 60 } };
+// From `bot-tier-eval.js checkers --calibrate` (2026-10-27): hard vs normal 72.5%, normal vs easy 65.6%, hard vs easy 81.9%
+var DEPTHS = { easy: 6, normal: 6, hard: 8 };
+var PICK = { temp: { easy: 2000, normal: 1 }, maxLoss: { easy: 60, normal: 60 } };
