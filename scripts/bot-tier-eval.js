@@ -85,12 +85,12 @@ console.error = () => {}; // game modules log noisy errors on refused moves
 // n: seats. opts: room options. cap: step cap. N: games per pair (default --n). kind: driver.
 // metric(s, seat): optional number reported as the per-tier mean in the note. depths: calibration depth candidates.
 const G = {
-  reversi: { n: 2, N: 12 },
-  gomoku: { n: 2 },
-  chess: { n: 2, N: 6, cap: 600, wall: 400000 },
-  connect4: { n: 2 },
+  reversi: { n: 2, N: 12, depths: [1, 2, 3, 4, 5, 6] },
+  gomoku: { n: 2, depths: [1, 2] },
+  chess: { n: 2, N: 6, cap: 600, wall: 400000, depths: [1, 2, 3, 4] },
+  connect4: { n: 2, depths: [1, 2, 3, 4, 5, 6, 7, 8] },
   checkers: { n: 2, cap: 600, depths: [2, 3, 4, 5, 6, 7, 8] },
-  chinesechess: { n: 2, cap: 600 },
+  chinesechess: { n: 2, cap: 600, depths: [1, 2, 3] },
   go9: { n: 2, cap: 400 },
   tictactoe: { n: 2 },
   battleship: { n: 2, kind: 'battleship' },

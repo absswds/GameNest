@@ -18,7 +18,7 @@ test('TicTacToe Bot respects difficulty', () => {
   // O O _
   // _ _ _
   const state = {
-    board: ['X', 'X', null, 'O', 'O', null, null, null, null],
+    board: [0, 0, null, 1, 1, null, null, null, null],
     _options: { difficulty: 'hard' },
   };
   const hardMove = bot.getMove(state);
@@ -28,7 +28,7 @@ test('TicTacToe Bot respects difficulty', () => {
   // Hard bot as player O: must block player X
   const botO = tictactoeBot.createBot(1);
   const blockState = {
-    board: ['X', 'X', null, 'O', null, null, null, null, null],
+    board: [0, 0, null, 1, null, null, null, null, null],
     _options: { difficulty: 'hard' },
   };
   const blockMove = botO.getMove(blockState);

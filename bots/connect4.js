@@ -4,7 +4,7 @@
 
 const ROWS = 6, COLS = 7;
 const { botName } = require('./lib/bot-name');
-const { getDepth } = require('./lib/difficulty');
+const { getDepth, pickFor } = require('./lib/difficulty');
 
 exports.name = 'connect4';
 
@@ -196,27 +196,24 @@ exports.createBot = (playerIndex) => ({
 
     if (moves.length === 0) return null;
 
-    var diff = (state && state._options && state._options.difficulty) || 'normal';
-    if (diff === 'easy' && Math.random() < 0.30) {
-      return { col: moves[Math.floor(Math.random() * moves.length)] };
-    }
-
-    var bestMove = moves[0];
-    var bestVal = -Infinity;
-    var depth = getDepth(state, { easy: 2, normal: 6, hard: 8 });
+    var depth = getDepth(state, DEPTHS);
+    var cands = [];
 
     for (var i = 0; i < moves.length; i++) {
       var col = moves[i];
       var row = dropPiece(board, col, side);
+      // every tier takes an immediate win (slower forced wins score within maxLoss of it)
+      if (checkWinAt(board, row, col, side)) return { col: col };
       var val = minimax(board, depth - 1, -Infinity, Infinity, false, side);
       removePiece(board, row, col);
-      if (val > bestVal) {
-        bestVal = val;
-        bestMove = col;
-      }
+      cands.push({ move: col, score: val });
     }
 
+    var bestMove = pickFor(state, cands, PICK);
     return { col: bestMove };
-
   },
 });
+
+// From `bot-tier-eval.js connect4 --calibrate` (2026-10-28): hard vs normal 76.3%, normal vs easy 66.3%, hard vs easy 93.1%
+var DEPTHS = { easy: 6, normal: 6, hard: 8 };
+var PICK = { temp: { easy: 338, normal: 1 }, maxLoss: { easy: 30, normal: 30 } };
