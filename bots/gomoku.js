@@ -1,11 +1,13 @@
 // bots/gomoku.js — Gomoku AI with pattern scoring
 const { botName } = require('./lib/bot-name');
-const { getDifficulty } = require('./lib/difficulty');
+const { getDepth, pickFor } = require('./lib/difficulty');
 
 exports.name = 'gomoku';
 
 const SIZE = 15;
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
+const DEPTHS = { easy: 1, normal: 1, hard: 2 };
+const PICK = { temp: { easy: 1500, normal: 80 }, maxLoss: { easy: 15000, normal: 15000 } };
 
 exports.createBot = (playerIndex) => ({
   name: botName(playerIndex, 'zh'),
@@ -15,8 +17,6 @@ exports.createBot = (playerIndex) => ({
     const me = playerIndex;
     const opp = 1 - me;
 
-    const diff = getDifficulty(state);
-    const hard = diff === 'hard';
     const cands = [];
 
     for (let r = 0; r < SIZE; r++) {
@@ -25,18 +25,16 @@ exports.createBot = (playerIndex) => ({
         // Only consider positions near existing stones
         if (!hasNeighbor(board, r, c)) continue;
 
-        const atk = evaluate(board, r, c, me, hard);
-        const def = evaluate(board, r, c, opp, hard);
+        const atk = evaluate(board, r, c, me);
+        const def = evaluate(board, r, c, opp);
 
         let score;
         if (atk >= 100000) {
           score = atk * 3; // Immediate win takes absolute priority
         } else if (def >= 100000) {
           score = def * 2.5; // Must block immediate opponent win
-        } else if (hard) {
-          score = Math.max(atk * 1.15, def * 1.35);
         } else {
-          score = Math.max(atk, def * 1.1); // Win first, else slightly prefer defense
+          score = Math.max(atk * 1.15, def * 1.35);
         }
         cands.push({ row: r, col: c, score, atk, def });
       }
@@ -44,8 +42,13 @@ exports.createBot = (playerIndex) => ({
 
     if (cands.length > 0) {
       cands.sort((x, y) => y.score - x.score);
-      if (hard) return pick(refine(board, cands, me, opp));
-      return pick(softPick(cands, diff));
+      if (cands[0].atk >= 100000 || cands[0].def >= 100000) {
+        return { row: cands[0].row, col: cands[0].col };
+      }
+      // depth 2 subtracts the opponent's best reply (hard); depth 1 judges each stone on its own
+      const scored = getDepth(state, DEPTHS) >= 2 ? refine(board, cands, me, opp)
+        : cands.slice(0, 10).map((cd) => ({ move: { row: cd.row, col: cd.col }, score: cd.score }));
+      return pickFor(state, scored, PICK);
     }
 
     // Fallback when no neighboured cell exists (e.g. empty board, or stones only at edges):
@@ -64,47 +67,23 @@ exports.createBot = (playerIndex) => ({
   },
 });
 
-
-function pick(m) { return { row: m.row, col: m.col }; }
-
-// Quality-based slips for normal/easy: softmax over log-score among candidates within `cap` of the best.
-// Forced wins/blocks score orders of magnitude higher, so they are normally still taken; easy sometimes
-// overlooks a forced block, like a distracted human.
-const TIER = { normal: { T: 0.55, cap: 0.08, oversee: 0.1 }, easy: { T: 0.9, cap: 0.01, oversee: 0.3 } };
-function softPick(cands, diff) {
-  const { T, cap, oversee } = TIER[diff] || TIER.normal;
-  let list = cands;
-  if (oversee && list[0].atk < 100000 && list[0].def >= 100000 && list.length > 1 && Math.random() < oversee) {
-    list = list.slice(1);
-  }
-  const best = list[0].score;
-  const pool = list.filter(x => x.score >= best * cap).slice(0, 12);
-  const w = pool.map(x => Math.pow(x.score / best, 1 / T));
-  let r = Math.random() * w.reduce((a, b) => a + b, 0);
-  for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) return pool[i]; }
-  return pool[0];
-}
-
-// Hard: 2-ply refinement. For the top candidates, place the stone and subtract the opponent's best reply.
+// 2-ply refinement: for the top candidates, place the stone and subtract the opponent's best reply.
 function refine(board, cands, me, opp) {
-  if (cands[0].atk >= 100000) return cands[0];
-  if (cands[0].def >= 100000) return cands[0];
-  let best = null, bestVal = -Infinity;
+  const out = [];
   for (const cd of cands.slice(0, 10)) {
     board[cd.row][cd.col] = me;
     let reply = 0;
     for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) {
         if (board[r][c] !== null || !hasNeighbor(board, r, c)) continue;
-        const v = evaluate(board, r, c, opp, true);
+        const v = evaluate(board, r, c, opp);
         if (v > reply) reply = v;
       }
     }
     board[cd.row][cd.col] = null;
-    const val = cd.score - 0.5 * reply;
-    if (val > bestVal) { bestVal = val; best = cd; }
+    out.push({ move: { row: cd.row, col: cd.col }, score: cd.score - 0.5 * reply });
   }
-  return best;
+  return out;
 }
 
 function hasNeighbor(board, r, c) {
@@ -118,7 +97,7 @@ function hasNeighbor(board, r, c) {
   return false;
 }
 
-function evaluate(board, r, c, player, isHard) {
+function evaluate(board, r, c, player) {
   board[r][c] = player;
   let score = 0;
   let threats = 0;
@@ -158,7 +137,7 @@ function evaluate(board, r, c, player, isHard) {
   }
 
   // Double threat combo (e.g. 4-3, 3-3, 4-4) is virtually unstoppable
-  if (isHard && threats >= 2) {
+  if (threats >= 2) {
     score += 35000;
   }
 
