@@ -8,8 +8,8 @@ function eff(state, pi, tile) { return gameMod._internal.effPattern(state, pi, t
 
 exports.name = 'sheeptile';
 
-// Provisional values; will be set by scripts/bot-tier-eval.js --calibrate
-const PICK = { temp: { easy: 80, normal: 25 }, maxLoss: { easy: 300, normal: 100 } };
+// calibrated 2026-10-28 (bot-tier-eval --calibrate --dup, lossK 4): hard>normal 58.8%, normal>easy 85.0%, hard>easy 90.0%
+const PICK = { temp: { easy: 39, normal: 11 }, lossK: { easy: 4, normal: 4 } };
 
 exports.createBot = (playerIndex) => ({
   name: botName(playerIndex, 'zh'),

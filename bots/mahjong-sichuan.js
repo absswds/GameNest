@@ -10,8 +10,8 @@ const cantoneseBot = require('./mahjong-cantonese');
 
 exports.name = 'mahjong-sichuan';
 
-// Provisional values; will be set by scripts/bot-tier-eval.js --calibrate
-const PICK = { temp: { easy: 500, normal: 40 }, maxLoss: { easy: 1500, normal: 200 } };
+// calibrated 2026-10-28 (bot-tier-eval --calibrate --dup, lossK 4): hard>normal 62.5%, normal>easy 81.5%, hard>easy 94.8%
+const PICK = { temp: { easy: 2000, normal: 172 }, lossK: { easy: 4, normal: 4 } };
 
 exports.createBot = (playerIndex) => {
   // Cantonese bot is reused lazily: when the unified entry routes to Cantonese,
