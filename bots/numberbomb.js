@@ -1,19 +1,21 @@
-// bots/numberbomb.js — Number Bomb AI with easy, normal, and hard difficulties
+// bots/numberbomb.js — Number Bomb AI with candidate scoring
 const { botName } = require('./lib/bot-name');
-const { getDifficulty } = require('./lib/difficulty');
+const { pickFor, isHard } = require('./lib/difficulty');
 
 exports.name = 'numberbomb';
 
-// Hard: the bomb is uniform in [low, high], so a guess g in a range of m numbers kills with probability 1/m and
+// Provisional values; will be set by scripts/bot-tier-eval.js --calibrate
+const PICK = { temp: { easy: 80, normal: 15 }, maxLoss: { easy: 400, normal: 30 } };
+
+// The bomb is uniform in [low, high], so a guess g in a range of m numbers kills with probability 1/m and
 // otherwise hands the next player a range of g-1 or m-g numbers. Whoever is left with one number dies, so the
-// seat/parity matters. best[n][m] is the 1-based guess that minimises our own chance of dying this round
-// when n players are alive and the other n-1 either split the range in the middle (normal bots) or guess at random (easy bots).
+// seat/parity matters. R[m][k] is our own chance of dying this round when k turns remain before ours
+// and the other n-1 players either split the range in the middle or guess at random.
 const MID_W = 0.8;
 const tables = {};
-function bestTable(n, M) {
-  if (tables[n] && tables[n].M >= M) return tables[n].best;
+function getRTable(n, M) {
+  if (tables[n] && tables[n].M >= M) return tables[n].R;
   const R = [null]; // R[m][k]: our death probability, k turns before ours
-  const best = [null];
   R[1] = new Array(n).fill(0); R[1][0] = 1;
   for (let m = 2; m <= M; m++) {
     const r = new Array(n).fill(0);
@@ -28,18 +30,18 @@ function bestTable(n, M) {
       }
       r[k] = v;
     }
-    let bv = Infinity, bg = Math.ceil(m / 2);
+    let bv = Infinity;
     for (let x = 1; x <= m; x++) {
       const xa = x - 1, xb = m - x;
       let v = 1 / m;
       if (xa) v += (xa / m) * R[xa][n - 1];
       if (xb) v += (xb / m) * R[xb][n - 1];
-      if (v < bv - 1e-12) { bv = v; bg = x; }
+      if (v < bv - 1e-12) bv = v;
     }
-    r[0] = bv; R[m] = r; best[m] = bg;
+    r[0] = bv; R[m] = r;
   }
-  tables[n] = { M, best };
-  return best;
+  tables[n] = { M, R };
+  return R;
 }
 
 exports.createBot = (playerIndex) => ({
@@ -50,20 +52,24 @@ exports.createBot = (playerIndex) => ({
     const high = state.high;
     if (low >= high) return { guess: low };
 
-    const diff = getDifficulty(state);
+    const m = high - low + 1;
+    const n = Math.max(2, (state.lives || []).filter((l) => l > 0).length);
+    const R = getRTable(n, Math.max(100, m));
+    const gm = Math.ceil(m / 2);
+    const cands = [];
+    const hard = isHard(state);
 
-    if (diff === 'easy') {
-      // Easy: guesses randomly in the remaining inclusive range [low, high]
-      return { guess: low + Math.floor(Math.random() * (high - low + 1)) };
+    for (let x = 1; x <= m; x++) {
+      const xa = x - 1, xb = m - x;
+      let v = 1 / m;
+      if (xa) v += (xa / m) * R[xa][n - 1];
+      if (xb) v += (xb / m) * R[xb][n - 1];
+      // hard plays the seat/parity optimum; easy/normal split the range around the midpoint (a few numbers of spread)
+      const score = hard ? -v * 1000 - (x === gm ? 0 : 1e-4 * Math.abs(x - gm)) : -10 * Math.abs(x - gm);
+      cands.push({ move: { guess: low + x - 1 }, score });
     }
 
-    if (diff === 'hard') {
-      const n = Math.max(2, (state.lives || []).filter((l) => l > 0).length);
-      const best = bestTable(n, Math.max(100, high - low + 1));
-      return { guess: low + best[high - low + 1] - 1 };
-    }
-
-    // Normal: midpoint
-    return { guess: Math.floor((low + high) / 2) };
+    cands.sort((a, b) => b.score - a.score);
+    return pickFor(state, cands, PICK);
   },
 });

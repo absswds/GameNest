@@ -5,86 +5,85 @@
 const core = require('../games/lib/mahjong-core');
 const { huCheck } = core;
 const { botName } = require('./lib/bot-name');
+const { pickFor } = require('./lib/difficulty');
 const cantoneseBot = require('./mahjong-cantonese');
 
 exports.name = 'mahjong-sichuan';
+
+// Provisional values; will be set by scripts/bot-tier-eval.js --calibrate
+const PICK = { temp: { easy: 500, normal: 40 }, maxLoss: { easy: 1500, normal: 200 } };
 
 exports.createBot = (playerIndex) => {
   // Cantonese bot is reused lazily: when the unified entry routes to Cantonese,
   // delegate decision-making to the Cantonese AI.
   const cantBot = cantoneseBot.createBot(playerIndex);
   return {
-  name: botName(playerIndex, 'zh'),
-  playerIndex,
-  getMove(state) {
-    // Cantonese mode (router set state._variants, or wall present)
-    if (state._variants === 'cantonese' || state.wall) {
-      return cantBot.getMove(state);
-    }
-
-    const hand = state.hands[playerIndex] || [];
-    const melds = state.melds[playerIndex] || [];
-    const voidSuit = state.voidSuit[playerIndex];
-    const phase = state.phase;
-
-    // Swap phase (换三张): select 3 same-suit tiles to swap.
-    if (phase === 'swap') {
-      return { type: 'swap', tileIds: chooseSwapTiles(hand, getDifficulty(state) === 'hard' ? chooseVoidSmart(hand, melds) : null) };
-    }
-
-    // Void phase: pick the suit we have the fewest of (easy to discard).
-    if (phase === 'void') {
-      return { type: 'void', suit: getDifficulty(state) === 'hard' ? chooseVoidSmart(hand, melds) : chooseVoid(hand) };
-    }
-
-    // Claim phase: decide whether to pung/kong/win/pass the last discard.
-    if (phase === 'claim') {
-      return claimDecision(state, playerIndex, hand, melds);
-    }
-
-    // Play phase: discard, or win if possible.
-    if (phase === 'play') {
-      // 碰牌后没有摸牌（_noDraw）：不能自摸，也不能暗杠/补杠，只能出牌。
-      const noDraw = state._noDraw === true;
-      // Win if hand is complete (self-draw).
-      const info = noDraw ? null : huCheck(hand, melds, state.cfg || core.SICHUAN);
-      if (info && info.win) {
-        if (voidSatisfied(hand, voidSuit)) {
-          return { type: 'win' };
-        }
+    name: botName(playerIndex, 'zh'),
+    playerIndex,
+    getMove(state) {
+      // Cantonese mode (router set state._variants, or wall present)
+      if (state._variants === 'cantonese' || state.wall) {
+        return cantBot.getMove(state);
       }
-      // Self-kong (暗杠): if we have 4 identical tiles and rain is on
-      if (state._rain && !noDraw) {
-        const selfKong = chooseSelfKong(hand);
-        if (selfKong) {
-          return { type: 'selfkong', suit: selfKong.k, num: selfKong.n };
-        }
-      }
-      return { type: 'discard', tileId: chooseDiscard(hand, voidSuit, state, playerIndex) };
-    }
 
-    return {};
-  },
+      const hand = state.hands[playerIndex] || [];
+      const melds = state.melds[playerIndex] || [];
+      const voidSuit = state.voidSuit[playerIndex];
+      const phase = state.phase;
+
+      // Swap phase (换三张): select 3 same-suit tiles to swap.
+      if (phase === 'swap') {
+        return { type: 'swap', tileIds: chooseSwapTiles(hand, chooseVoidSmart(hand, melds)) };
+      }
+
+      // Void phase: score each suit by resulting shanten and tile count.
+      if (phase === 'void') {
+        const cands = SUITS3.map((suit) => {
+          const n = countSuit(hand, suit);
+          const sh = shanten(toCounts(hand, suit), melds.length);
+          return { move: { type: 'void', suit }, score: -sh * 400 - n * 60 };
+        });
+        return pickFor(state, cands, PICK);
+      }
+
+      // Claim phase: decide whether to pung/kong/win/pass the last discard.
+      if (phase === 'claim') {
+        return claimDecision(state, playerIndex, hand, melds);
+      }
+
+      // Play phase: discard, or win if possible.
+      if (phase === 'play') {
+        // 碰牌后没有摸牌（_noDraw）：不能自摸，也不能暗杠/补杠，只能出牌。
+        const noDraw = state._noDraw === true;
+        // Win if hand is complete (self-draw).
+        const info = noDraw ? null : huCheck(hand, melds, state.cfg || core.SICHUAN);
+        if (info && info.win) {
+          if (voidSatisfied(hand, voidSuit)) {
+            return { type: 'win' };
+          }
+        }
+        // Self-kong (暗杠): if we have 4 identical tiles and rain is on
+        if (state._rain && !noDraw) {
+          const selfKong = chooseSelfKong(hand);
+          if (selfKong) {
+            return { type: 'selfkong', suit: selfKong.k, num: selfKong.n };
+          }
+        }
+        return chooseDiscard(hand, voidSuit, state, playerIndex);
+      }
+
+      return {};
+    },
   };
 };
 
-// hard: give up the suit whose removal hurts the shape least
+// Give up the suit whose removal hurts the shape least
 function chooseVoidSmart(hand, melds) {
   let best = null, bestS = Infinity, bestN = Infinity;
   for (const suit of SUITS3) {
     const n = countSuit(hand, suit);
     const sh = shanten(toCounts(hand, suit), (melds || []).length);
     if (sh < bestS || (sh === bestS && n < bestN)) { bestS = sh; bestN = n; best = suit; }
-  }
-  return best;
-}
-
-function chooseVoid(hand) {
-  const suits = ['wan', 'tong', 'tiao'];
-  let best = suits[0], bestCount = Infinity;
-  for (const s of suits) {
-    const c = countSuit(hand, s);
-    if (c < bestCount) { bestCount = c; best = s; }
   }
   return best;
 }
@@ -114,9 +113,7 @@ function tileConnectivity(hand, tile) {
   return score;
 }
 
-const { getDifficulty } = require('./lib/difficulty');
-
-// ---- shanten engine (normal / hard tiers) ----
+// ---- shanten engine ----
 const SUITS3 = ['wan', 'tong', 'tiao'];
 const idxOf = (t) => SUITS3.indexOf(t.k) * 9 + (t.n - 1);
 
@@ -170,31 +167,43 @@ function visibleCounts(state, playerIndex) {
   return v;
 }
 
-// best discard among `pool` (hand has 3n+2 tiles). Returns the tile.
-function bestDiscard(state, playerIndex, hand, pool, voidSuit, useVisible) {
+// Score all unique candidate discards in `hand` and pick via pickFor.
+function chooseDiscard(hand, voidSuit, state, playerIndex) {
+  if (hand.length === 1) return { type: 'discard', tileId: hand[0].id };
+
   const fixed = (state.melds[playerIndex] || []).length;
   const c = toCounts(hand, voidSuit);
-  const vis = useVisible ? visibleCounts(state, playerIndex) : null;
+  const vis = visibleCounts(state, playerIndex);
   const act = [];
   for (let o = 0; o < (state.hands || []).length; o++) {
     if (o !== playerIndex && !(state.winners || []).includes(o)) act.push(o);
   }
+
   const seen = new Set();
-  let best = null, bestScore = -Infinity;
-  for (const tile of pool) {
+  const cands = [];
+  for (const tile of hand) {
     const key = tile.k + tile.n;
     if (seen.has(key)) continue;
     seen.add(key);
+
+    if (tile.k === voidSuit) {
+      cands.push({
+        move: { type: 'discard', tileId: tile.id },
+        score: 3000 - tileConnectivity(hand, tile),
+      });
+      continue;
+    }
+
     const i = idxOf(tile);
     c[i]--;
     const s0 = shanten(c, fixed);
     let ukeire = 0;
-    for (let j = 0; j < 27 && useVisible; j++) {
+    for (let j = 0; j < 27; j++) {
       if (j === i || SUITS3[(j / 9) | 0] === voidSuit) continue;
       const near = c[j] > 0 || (j % 9 > 0 && c[j - 1] > 0) || (j % 9 < 8 && c[j + 1] > 0)
         || (j % 9 > 1 && c[j - 2] > 0) || (j % 9 < 7 && c[j + 2] > 0);
       if (!near && s0 > 0) continue;
-      const avail = 4 - c[j] - (vis ? vis[j] : 0);
+      const avail = 4 - c[j] - vis[j];
       if (avail <= 0) continue;
       c[j]++;
       if (shanten(c, fixed) < s0) ukeire += avail;
@@ -202,46 +211,18 @@ function bestDiscard(state, playerIndex, hand, pool, voidSuit, useVisible) {
     }
     c[i]++;
     let score = -s0 * 1000 + ukeire * 10 - tileConnectivity(hand, tile);
-    if (useVisible && s0 >= 1) {
+    if (s0 >= 1) {
       // safety: a suit an opponent gave up cannot be won on by them
       let safe = 0;
       for (const o of act) if (state.voidSuit[o] === tile.k) safe++;
       score += safe * 12;
-      const v = vis[i];
-      score += v * 2;
+      score += vis[i] * 2;
     }
-    if (score > bestScore) { bestScore = score; best = tile; }
-  }
-  return best || pool[0];
-}
-
-function chooseDiscard(hand, voidSuit, state, playerIndex) {
-  // Must discard void-suit tiles first.
-  const voidTiles = voidSuit ? hand.filter(t => t.k === voidSuit) : [];
-  const pool = voidTiles.length > 0 ? voidTiles : hand;
-
-  const diff = getDifficulty(state);
-  if (diff === 'easy' && Math.random() < 0.3) {
-    return pool[Math.floor(Math.random() * pool.length)].id;
+    cands.push({ move: { type: 'discard', tileId: tile.id }, score });
   }
 
-  if (diff !== 'easy' && voidTiles.length === 0) {
-    return bestDiscard(state, playerIndex, hand, pool, voidSuit, diff === 'hard').id;
-  }
-
-  // Among candidates, discard the least-connected tile (isolated).
-  let best = pool[0], bestScore = Infinity;
-  const discards = (state && state.discards) || [];
-  for (const tile of pool) {
-    let score = tileConnectivity(hand, tile);
-    // In hard mode: safe discard preference (favor discarding already seen tiles to avoid dealing in)
-    if (diff === 'hard' && voidTiles.length === 0) {
-      const seenCount = discards.filter(d => d && d.k === tile.k && d.n === tile.n).length;
-      if (seenCount >= 2) score -= 1.5; // safer to discard
-    }
-    if (score < bestScore) { bestScore = score; best = tile; }
-  }
-  return best.id;
+  if (cands.length === 1) return cands[0].move;
+  return pickFor(state, cands, PICK);
 }
 
 // 换三张：选3张同色牌（优先选数目最多的花色中的孤张）
@@ -289,20 +270,22 @@ function claimDecision(state, playerIndex, hand, melds) {
     return { type: 'win' };
   }
 
-  // Pung if we have a pair of the discarded tile and it's not our void suit.
+  const cands = [{ move: { type: 'pass' }, score: 0 }];
+
+  // Pung/kong if we have a pair/triplet of the discarded tile and it's not our void suit.
   if (ld.k !== voidSuit) {
     let c = 0;
     for (const tile of hand) {
       if (tile.k === ld.k && tile.n === ld.n) c++;
     }
     if (c >= 3 && (state.deck ? state.deck.length : state.deckCount) > 4) {
-      // Kong when safe (keep a reserve of tiles) for extra fan.
-      return { type: 'kong' };
+      cands.push({ move: { type: 'kong' }, score: 800 });
     }
     if (c >= 2) {
-      return { type: 'pung' };
+      cands.push({ move: { type: 'pung' }, score: 600 });
     }
   }
 
-  return { type: 'pass' };
+  if (cands.length === 1) return cands[0].move;
+  return pickFor(state, cands, PICK);
 }
