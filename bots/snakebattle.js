@@ -1,6 +1,6 @@
 // bots/snakebattle.js — Snake Battle AI with difficulty and floodfill safety
 const { botName } = require('./lib/bot-name');
-const { getDifficulty } = require('./lib/difficulty');
+const { pickFor } = require('./lib/difficulty');
 
 const VECTORS = {
   up: { x: 0, y: -1, opposite: 'down' },
@@ -10,6 +10,9 @@ const VECTORS = {
 };
 
 exports.name = 'snakebattle';
+
+// Provisional values; will be set by scripts/bot-tier-eval.js --calibrate
+const PICK = { temp: { easy: 30, normal: 6 }, maxLoss: { easy: 300, normal: 40 } };
 
 function cellKey(cell) {
   return `${cell.x},${cell.y}`;
@@ -86,7 +89,6 @@ exports.createBot = playerIndex => ({
     const snake = state.snakes[playerIndex];
     if (!snake || !snake.alive) return { direction: 'up' };
 
-    const diff = getDifficulty(state);
     const blocked = new Set();
     state.snakes.forEach(other => other.body.forEach(cell => blocked.add(cellKey(cell))));
     const tail = snake.body[snake.body.length - 1];
@@ -103,50 +105,33 @@ exports.createBot = playerIndex => ({
     });
 
     if (safeDirections.length === 0) return { direction: snake.direction };
+    if (safeDirections.length === 1) return { direction: safeDirections[0].direction };
 
-    const contested = diff === 'easy' ? new Set() : contestedCells(state, playerIndex);
-    // Hard always sidesteps a head-on cell, normal mostly does; easy never looks.
-    const avoidContested = diff === 'hard' || (diff === 'normal' && Math.random() < 0.9);
-    let pool = safeDirections;
-    if (avoidContested) {
-      const calm = safeDirections.filter(({ next }) => !contested.has(cellKey(next)));
-      if (calm.length) pool = calm;
-    }
+    const contested = contestedCells(state, playerIndex);
+    const rivalHeads = state.snakes.filter((o, i) => i !== playerIndex && o.alive).map(o => o.body[0]);
+    const hasDims = Number.isInteger(state.width) && Number.isInteger(state.height);
+    const cands = [];
 
-    if (diff === 'easy' && Math.random() < 0.4) {
-      return { direction: pool[Math.floor(Math.random() * pool.length)].direction };
-    }
-
-    let bestDirection = safeDirections[0].direction;
-    let bestScore = -Infinity;
-
-    pool.forEach(({ direction, next }) => {
+    safeDirections.forEach(({ direction, next }) => {
       const distance = state.food ? Math.abs(next.x - state.food.x) + Math.abs(next.y - state.food.y) : 0;
       let score = -distance + (direction === snake.direction ? 0.2 : 0);
 
-      if (diff === 'hard') {
-        const rivalHeads = state.snakes.filter((o, i) => i !== playerIndex && o.alive).map(o => o.body[0]);
-        const t = Number.isInteger(state.width) && Number.isInteger(state.height)
-          ? territory(next, state, blocked, rivalHeads)
-          : { area: floodFillCount(next, state.width, state.height, blocked, snake.body.length + 5), foodDist: null };
-        if (t.area < snake.body.length) {
-          score -= 500; // heavy trap penalty
-        } else {
-          score += t.area * 0.5;
-          // Chase food only when it is not lost to a closer rival
-          if (t.foodDist !== null && t.foodDist <= t.foodRival) score += 40 - t.foodDist * 3;
-        }
-      } else if (diff === 'normal') {
-        const room = floodFillCount(next, state.width, state.height, blocked, snake.body.length + 5);
-        if (room < snake.body.length) score -= 500;
+      if (contested.has(cellKey(next))) score -= 250;
+
+      const t = hasDims
+        ? territory(next, state, blocked, rivalHeads)
+        : { area: floodFillCount(next, state.width, state.height, blocked, snake.body.length + 5), foodDist: null, foodRival: Infinity };
+      if (t.area < snake.body.length) {
+        score -= 500; // heavy trap penalty
+      } else {
+        score += t.area * 0.5;
+        // Chase food only when it is not lost to a closer rival
+        if (t.foodDist !== null && t.foodDist <= t.foodRival) score += 40 - t.foodDist * 3;
       }
 
-      if (score > bestScore) {
-        bestScore = score;
-        bestDirection = direction;
-      }
+      cands.push({ move: { direction }, score });
     });
 
-    return { direction: bestDirection };
+    return pickFor(state, cands, PICK);
   },
 });

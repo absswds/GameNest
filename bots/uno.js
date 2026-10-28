@@ -1,12 +1,14 @@
 const { botName } = require('./lib/bot-name');
+const { pickFor } = require('./lib/difficulty');
 
 exports.name = 'uno';
 
-const { getDifficulty } = require('./lib/difficulty');
-
 const COLORS = ['red', 'blue', 'green', 'yellow'];
 
-// hard tier: remember which colours each opponent could not match (they had to draw) -- public info only.
+// Provisional values; will be set by scripts/bot-tier-eval.js --calibrate
+const PICK = { temp: { easy: 40, normal: 12 }, maxLoss: { easy: 150, normal: 45 } };
+
+// Remember which colours each opponent could not match (they had to draw) -- public info only.
 function createMemory() {
   return { prevHands: null, prevColor: null, prevTop: null, prevDiscard: 0, lacks: {} };
 }
@@ -42,54 +44,73 @@ function observe(mem, state) {
 exports.createBot = (playerIndex) => {
   const mem = createMemory();
   return {
-  name: botName(playerIndex, 'zh'),
-  getMove(state) {
-    const diff = getDifficulty(state);
-    if (diff === 'hard') observe(mem, state);
+    name: botName(playerIndex, 'zh'),
+    getMove(state) {
+      observe(mem, state);
 
-    // Answer a pending +4. The +4 player's hand is hidden, so challenge now and then without peeking.
-    if (state.pendingChallenge) {
-      const chalProb = diff === 'hard' ? 0.5 : diff === 'easy' ? 0.15 : 0.25;
-      return { challengeResponse: Math.random() < chalProb ? 'challenge' : 'accept' };
-    }
-    const hand = state.hands[playerIndex];
-    if (!hand || hand.length === 0) return {};
+      // Answer a pending +4 using public info only (the +4 player's hand is hidden).
+      if (state.pendingChallenge) {
+        const ch = state.pendingChallenge;
+        const byHandSize = (state.hands && state.hands[ch.by] && state.hands[ch.by].length) || 0;
+        const byLacks = mem.lacks[ch.by] && mem.lacks[ch.by].has(ch.priorColor);
+        const seen = countSeen(state, (state.hands && state.hands[playerIndex]) || []);
+        const unseenPrior = 25 - (seen[ch.priorColor] || 0);
+        const challengeScore = byLacks ? -40 : (byHandSize * 4 + unseenPrior - 22);
+        return pickFor(state, [
+          { move: { challengeResponse: 'accept' }, score: 0 },
+          { move: { challengeResponse: 'challenge' }, score: challengeScore },
+        ], PICK);
+      }
 
-    if (hand.length === 1 && (!state.unoCalled || !state.unoCalled[playerIndex])) {
-      // In easy mode: 40% chance of forgetting to call UNO
-      if (diff !== 'easy' || Math.random() >= 0.3) {
+      const hand = state.hands[playerIndex];
+      if (!hand || hand.length === 0) return {};
+
+      if (hand.length === 1 && (!state.unoCalled || !state.unoCalled[playerIndex])) {
         return { uno: true };
       }
-    }
 
-    if (state.drawStack > 0) {
-      const stackCard = chooseStackCard(hand);
-      if (!stackCard) return {};
-      return {
-        cardId: stackCard.id,
-        chosenColor: stackCard.color === 'wild' ? chooseColorAfterPlay(hand, stackCard, diff === 'hard' ? mem.lacks[getNextPlayerIndex(state)] : null) : undefined,
-      };
-    }
+      const nextIndex = getNextPlayerIndex(state);
+      const nextHand = (state.hands && state.hands[nextIndex]) || [];
+      const nextHandSize = nextHand.length;
+      const nextLacks = mem.lacks[nextIndex];
 
-    const playable = hand.filter((card) => canPlay(card, state));
-    if (playable.length === 0) return {};
+      if (state.drawStack > 0) {
+        const stackable = hand.filter((card) => card.value === '+2' || card.value === '+4');
+        if (stackable.length === 0) return {};
+        const cands = [{ move: {}, score: -120 }];
+        for (const card of stackable) {
+          const remaining = countColors(hand, card);
+          if (card.color === 'wild') {
+            const [color, cVal] = bestColor(remaining, nextLacks);
+            // keep the +4 while a +2 can answer the penalty
+            const spare = stackable.some((c) => c.color !== 'wild') ? 70 : 0;
+            cands.push({
+              move: { cardId: card.id, chosenColor: color },
+              score: 20 + cVal * 18 - spare,
+            });
+          } else {
+            cands.push({
+              move: { cardId: card.id },
+              score: 40 + (remaining[card.color] || 0) * 18,
+            });
+          }
+        }
+        cands.sort((a, b) => b.score - a.score);
+        return pickFor(state, cands, PICK);
+      }
 
-    const nextIndex = getNextPlayerIndex(state);
-    const nextHand = (state.hands && state.hands[nextIndex]) || [];
-    const nextHandSize = nextHand.length;
-    const top = state.discard && state.discard[0];
+      const playable = hand.filter((card) => canPlay(card, state));
+      if (playable.length === 0) return {};
+      if (playable.length === 1 && playable[0].color !== 'wild') {
+        return { cardId: playable[0].id };
+      }
 
-    const nextLacks = diff === 'hard' ? mem.lacks[nextIndex] : null;
-    const seenColors = diff === 'hard' ? countSeen(state, hand) : null;
+      const top = state.discard && state.discard[0];
+      const seenColors = countSeen(state, hand);
+      const cands = [];
 
-    let bestCard = playable[0];
-    let bestScore = -Infinity;
-    const scored = [];
-
-    for (const card of playable) {
-      // easy: does not look at the opponent's hand size
-      let score = scoreCard(card, hand, top, diff === 'easy' ? 7 : nextHandSize, state);
-      if (diff === 'hard') {
+      for (const card of playable) {
+        let score = scoreCard(card, hand, top, nextHandSize, state);
         if (nextHandSize <= 2) {
           // High urgency to stop next player
           if (card.value === 'skip' || card.value === 'reverse') score += 50;
@@ -97,48 +118,46 @@ exports.createBot = (playerIndex) => {
         }
         // colour the next player already failed to match: they will probably have to draw
         if (card.color !== 'wild' && nextLacks && nextLacks.has(card.color)) score += 22;
-                // dump colours that are nearly exhausted elsewhere (hard to get back into), keep long ones
+        // dump colours that are nearly exhausted elsewhere (hard to get back into), keep long ones
         if (card.color !== 'wild' && seenColors) score += (seenColors[card.color] || 0) * 0.6;
-        // others are close to winning: shed points-like/dangerous cards less greedily is irrelevant, play fast
         if (hand.length > 4 && card.color === 'wild') score -= 20;
-      }
-      scored.push([card, score]);
-      if (score > bestScore) {
-        bestScore = score;
-        bestCard = card;
-      }
-    }
 
-    if (diff === 'easy') bestCard = softPick(scored, 28, 70);
+        if (card.color === 'wild') {
+          const [color, cVal] = bestColor(countColors(hand, card), nextLacks);
+          // a wild is not spent while an ordinary card works (unless the next player has one card left)
+          const spare = nextHandSize > 1 && playable.some((c) => c.color !== 'wild') ? 120 : 0;
+          cands.push({
+            move: { cardId: card.id, chosenColor: color },
+            score: score + cVal * 18 - spare,
+          });
+        } else {
+          cands.push({ move: { cardId: card.id }, score });
+        }
+      }
 
-    return {
-      cardId: bestCard.id,
-      chosenColor: bestCard.color === 'wild'
-        ? chooseColorAfterPlay(hand, bestCard, nextLacks)
-        : undefined,
-    };
-  },
+      cands.sort((a, b) => b.score - a.score);
+      return pickFor(state, cands, PICK);
+    },
   };
 };
 
-// number of cards of each colour already visible in the discard pile (hard only)
+// Wild colour is not a difficulty knob: most held colour, nextLacks bonus as tiebreak.
+function bestColor(remaining, nextLacks) {
+  let best = COLORS[0];
+  let bestVal = -Infinity;
+  for (const color of COLORS) {
+    const v = (remaining[color] || 0) + (nextLacks && nextLacks.has(color) ? 1.5 : 0);
+    if (v > bestVal) { best = color; bestVal = v; }
+  }
+  return [best, bestVal];
+}
+
+// number of cards of each colour already visible in the discard pile and own hand
 function countSeen(state, hand) {
   const seen = { red: 0, blue: 0, green: 0, yellow: 0 };
   for (const c of state.discard || []) if (seen[c.color] !== undefined) seen[c.color] += 1;
   for (const c of hand) if (seen[c.color] !== undefined) seen[c.color] += 1;
   return seen;
-}
-
-// softmax pick over [item, score]; options scoring more than cap below the best are never chosen
-function softPick(scored, temp, cap) {
-  let best = -Infinity;
-  for (const [, s] of scored) if (s > best) best = s;
-  const pool = scored.filter(([, s]) => s >= best - cap);
-  let total = 0;
-  const w = pool.map(([, s]) => { const x = Math.exp((s - best) / temp); total += x; return x; });
-  let r = Math.random() * total;
-  for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) return pool[i][0]; }
-  return pool[pool.length - 1][0];
 }
 
 function canPlay(card, state) {
@@ -149,32 +168,11 @@ function canPlay(card, state) {
   return card.value === top.value || card.color === state.currentColor;
 }
 
-function chooseStackCard(hand) {
-  return hand.find((card) => card.value === '+2')
-    || hand.find((card) => card.value === '+4')
-    || null;
-}
-
 function getNextPlayerIndex(state) {
   const hands = state.hands || [];
   if (!hands.length) return 0;
   const direction = state.direction || 1;
   return ((state.currentPlayer + direction) % hands.length + hands.length) % hands.length;
-}
-
-function chooseColorAfterPlay(hand, playedCard, nextLacks) {
-  const counts = countColors(hand, playedCard);
-  let bestColor = 'red';
-  let bestCount = -1;
-  for (const color of COLORS) {
-    // hard: a colour the next player lacks is worth about a card
-    const c = (counts[color] || 0) + (nextLacks && nextLacks.has(color) ? 1.5 : 0);
-    if (c > bestCount) {
-      bestCount = c;
-      bestColor = color;
-    }
-  }
-  return bestColor;
 }
 
 function countColors(hand, excludeCard) {
@@ -189,7 +187,7 @@ function countColors(hand, excludeCard) {
 function scoreCard(card, hand, top, nextHandSize, state) {
   const remainingColors = countColors(hand, card);
   const dominantColorCount = card.color === 'wild'
-    ? Math.max(remainingColors.red, remainingColors.blue, remainingColors.green, remainingColors.yellow)
+    ? 0
     : (remainingColors[card.color] || 0);
 
   let score = 0;
