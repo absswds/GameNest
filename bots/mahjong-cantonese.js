@@ -3,6 +3,7 @@
 // In claim phase: win if possible, else pung/kong number tiles, chow when beneficial.
 
 const { botName } = require('./lib/bot-name');
+const { pickFor } = require('./lib/difficulty');
 const core = require('../games/lib/mahjong-core');
 // 规则判定直接复用游戏模块，避免两边各写一份后不同步
 const game = require('../games/mahjong-cantonese');
@@ -10,10 +11,26 @@ const { getCfg, findChowPairs, winAllowed } = game;
 
 exports.name = 'mahjong-cantonese';
 
+// Provisional values; will be set by scripts/bot-tier-eval.js --calibrate
+const PICK = { temp: { easy: 35, normal: 8 }, maxLoss: { easy: 90, normal: 30 } };
+
 // Count tiles in hand matching (k, n).
 function matchCount(hand, k, n) {
   let c = 0;
   for (const t of hand) if (t.k === k && t.n === n) c++;
+  return c;
+}
+
+// Count copies of (k, n) visible in discard piles.
+function seenInDiscards(discards, k, n) {
+  let c = 0;
+  for (const pile of discards || []) {
+    if (Array.isArray(pile)) {
+      for (const d of pile) if (d && d.k === k && d.n === n) c++;
+    } else if (pile && pile.k === k && pile.n === n) {
+      c++;
+    }
+  }
   return c;
 }
 
@@ -48,8 +65,6 @@ function bestChowPair(hand, tile) {
   return pairs.length ? pairs[0] : null;
 }
 
-const { getDifficulty } = require('./lib/difficulty');
-
 exports.createBot = function (playerIndex) {
   return {
     name: botName(playerIndex, 'zh'),
@@ -57,7 +72,6 @@ exports.createBot = function (playerIndex) {
     getMove: function (state) {
       const hand = state.hands[playerIndex];
       const cfg = getCfg(state);
-      const diff = getDifficulty(state);
 
       // ---- claim phase: only act if this bot is the current responder ----
       if (state.phase === 'claim' && state.claim) {
@@ -74,24 +88,24 @@ exports.createBot = function (playerIndex) {
           return { type: 'win' };
         }
 
-        // Easy mode: 35% chance to ignore claim opportunities
-        if (diff === 'easy' && Math.random() < 0.35) return { type: 'pass' };
-
+        const cands = [{ move: { type: 'pass' }, score: 0 }];
         const m = matchCount(hand, tile.k, tile.n);
         // kong: only for number tiles with 3 copies
         if (m >= 3 && tile.k !== 'feng' && tile.k !== 'jian') {
-          return { type: 'kong' };
+          cands.push({ move: { type: 'kong' }, score: 80 });
         }
         // pung: number tiles with a pair
         if (m >= 2 && tile.k !== 'feng' && tile.k !== 'jian') {
-          return { type: 'pung' };
+          cands.push({ move: { type: 'pung' }, score: 60 });
         }
-        // chow: upstream only, and only if it improves connectivity
+        // chow: upstream only
         if (isUpstream) {
           const pair = bestChowPair(hand, tile);
-          if (pair) return { type: 'chow', tiles: pair.map(t => t.id) };
+          if (pair) cands.push({ move: { type: 'chow', tiles: pair.map(t => t.id) }, score: 45 });
         }
-        return { type: 'pass' };
+        if (cands.length === 1) return cands[0].move;
+        cands.sort((a, b) => b.score - a.score);
+        return pickFor(state, cands, PICK);
       }
 
       // ---- play phase ----
@@ -113,22 +127,22 @@ exports.createBot = function (playerIndex) {
         const wc = cfg.wildcard;
         const isWild = (t) => !!wc && t.k === wc.k && t.n === wc.n;
         const pool = hand.some(t => !isWild(t)) ? hand.filter(t => !isWild(t)) : hand;
+        if (pool.length === 1) return { type: 'discard', tileId: pool[0].id };
 
-        if (diff === 'easy' && Math.random() < 0.3) {
-          return { type: 'discard', tileId: pool[Math.floor(Math.random() * pool.length)].id };
-        }
-
-        let worst = pool[0], worstScore = Infinity;
         const discards = (state && state.discards) || [];
+        const seenKeys = new Set();
+        const cands = [];
         for (const t of pool) {
+          const key = t.k + ':' + t.n;
+          if (seenKeys.has(key)) continue;
+          seenKeys.add(key);
           let sc = connectivity(hand, t);
-          if (diff === 'hard') {
-            const seen = discards.filter(d => d && d.k === t.k && d.n === t.n).length;
-            if (seen >= 2) sc -= 1.5; // safer to discard
-          }
-          if (sc < worstScore) { worstScore = sc; worst = t; }
+          if (seenInDiscards(discards, t.k, t.n) >= 2) sc -= 1.5; // safer to discard
+          cands.push({ move: { type: 'discard', tileId: t.id }, score: -sc * 10 });
         }
-        return { type: 'discard', tileId: worst.id };
+        if (cands.length === 1) return cands[0].move;
+        cands.sort((a, b) => b.score - a.score);
+        return pickFor(state, cands, PICK);
       }
 
       return { type: 'pass' };
