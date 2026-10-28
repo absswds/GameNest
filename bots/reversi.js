@@ -3,7 +3,7 @@
 // Standard Othello heuristics with dynamic PST generation
 
 const { botName } = require('./lib/bot-name');
-const { getDepth } = require('./lib/difficulty');
+const { getDepth, pickFor } = require('./lib/difficulty');
 
 exports.name = 'reversi';
 
@@ -211,28 +211,22 @@ exports.createBot = (playerIndex) => ({
       return vb - va;
     });
 
-    var diff = (state && state._options && state._options.difficulty) || 'normal';
-    if (diff === 'easy' && Math.random() < 0.30) {
-      var randMove = moves[Math.floor(Math.random() * moves.length)];
-      return { row: randMove.row, col: randMove.col };
-    }
-
-    var depth = getDepth(state, { easy: 2, normal: 4, hard: 6 });
-    var bestMove = moves[0];
-    var bestVal = -Infinity;
+    var depth = getDepth(state, DEPTHS);
+    var cands = [];
 
     for (var i = 0; i < moves.length; i++) {
       var move = moves[i];
       var flipped = applyMove(board, move, side);
       var val = minimax(board, depth - 1, -Infinity, Infinity, false, side, ROWS, COLS, PST);
       undoMove(board, move, flipped);
-      if (val > bestVal) {
-        bestVal = val;
-        bestMove = move;
-      }
+      cands.push({ move: move, score: val });
     }
 
+    var bestMove = pickFor(state, cands, PICK);
     return { row: bestMove.row, col: bestMove.col };
-
   },
 });
+
+// calibrated 2026-10-28 (bot-tier-eval --calibrate, lossK 4): hard wins ~90% against any shallower search, so easy is depth 4
+var DEPTHS = { easy: 4, normal: 6, hard: 6 };
+var PICK = { temp: { easy: 1, normal: 60 }, lossK: { easy: 4, normal: 4 } };
