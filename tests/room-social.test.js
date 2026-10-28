@@ -100,3 +100,34 @@ test('host_changed is broadcast when the host leaves', async () => {
     a.ws.close(); b.ws.close();
   });
 });
+
+test('release_seat frees a left seat at once and hands over the host role', async () => {
+  await withServer(async () => {
+    const a = await client();
+    a.send({ type: 'create_room', data: { game: 'tictactoe', lang: 'zh' } });
+    await delay(150);
+    const created = a.msgs.find(m => m.type === 'room_created');
+    const b = await client();
+    b.send({ type: 'join_room', data: { roomId: created.roomId, lang: 'zh' } });
+    await delay(150);
+    const bIndex = b.msgs.find(m => m.type === 'room_joined').playerIndex;
+
+    // a seat that is still connected is not released
+    const c = await client();
+    c.send({ type: 'release_seat', data: { roomId: created.roomId, resumeToken: created.resumeToken } });
+    await delay(150);
+    assert.equal(b.msgs.some(m => m.type === 'host_changed'), false);
+
+    // the host goes back to the lobby (seat kept for the grace period), then the lobby releases it
+    a.send({ type: 'leave_room' });
+    a.ws.close();
+    await delay(150);
+    assert.equal(b.msgs.some(m => m.type === 'host_changed'), false);
+    c.send({ type: 'release_seat', data: { roomId: created.roomId, resumeToken: created.resumeToken } });
+    await delay(200);
+    const hc = b.msgs.find(m => m.type === 'host_changed');
+    assert.ok(hc, 'host_changed received');
+    assert.equal(hc.hostIndex, bIndex);
+    b.ws.close(); c.ws.close();
+  });
+});

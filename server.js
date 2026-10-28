@@ -1759,6 +1759,20 @@ wss.on('connection', (ws) => {
       return;
     }
 
+    // --- release_seat (lobby is creating/joining another room: free the seat this browser left behind) ---
+    // Without this the old seat (and host role) stays for the whole grace period, but its resume
+    // token is about to be overwritten, so nobody could ever come back to it.
+    if (type === 'release_seat') {
+      const { roomId, resumeToken } = data || {};
+      const room = typeof roomId === 'string' && rooms.get(roomId);
+      if (!room || typeof resumeToken !== 'string' || !resumeToken) return;
+      const seat = Array.from(room.players.entries()).find(([, i]) => i.resumeToken === resumeToken);
+      if (!seat || !seat[1].disconnectedAt) return; // still connected somewhere: leave it alone
+      if (seat[1]._disconnectTimer) clearTimeout(seat[1]._disconnectTimer);
+      expireSeat(room, roomId, seat[0], seat[1]);
+      return;
+    }
+
     // --- leave_room (go back to lobby, with grace period for resume) ---
     if (type === 'leave_room') {
       if (!currentRoom) return;
