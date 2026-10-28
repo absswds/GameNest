@@ -11,8 +11,8 @@ const { getCfg, findChowPairs, winAllowed } = game;
 
 exports.name = 'mahjong-cantonese';
 
-// Provisional values; will be set by scripts/bot-tier-eval.js --calibrate
-const PICK = { temp: { easy: 35, normal: 8 }, maxLoss: { easy: 90, normal: 30 } };
+// calibrated 2026-10-28 (bot-tier-eval --calibrate --dup, lossK 4): hard>normal 75.6%, normal>easy 77.5%, hard>easy 95.0%
+const PICK = { temp: { easy: 106, normal: 15 }, lossK: { easy: 4, normal: 4 } };
 
 // Count tiles in hand matching (k, n).
 function matchCount(hand, k, n) {
