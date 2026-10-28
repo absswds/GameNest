@@ -111,7 +111,7 @@
           '<div class="rk-info">' +
             '<span class="rk-break" id="rkBreakBadge" style="display:none"></span>' +
             '<span class="rk-pool-info" id="rkPoolInfo">' + _tf('rk_pool', 0) + '</span>' +
-            '<button class="btn btn-outline btn-sm" id="rkSortBtn" style="min-height:30px;padding:2px 10px;font-size:12px;">' + _t('rk_sort') + '</button>' +
+            '<button class="btn btn-outline btn-sm" id="rkSortBtn" style="min-height:36px;padding:2px 12px;font-size:12px;">' + _t('rk_sort') + '</button>' +
           '</div>' +
           '<div class="rk-table-area" id="rkTable"><div class="rk-empty">' + _t('rk_table_placeholder') + '</div></div>' +
           '<div class="rk-status" id="rkStatus"></div>' +

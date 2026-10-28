@@ -18,7 +18,13 @@
       w = box.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
     }
     var top = container ? container.getBoundingClientRect().top + (window.scrollY || 0) : 240;
-    var h = window.innerHeight - Math.max(120, Math.min(top, 320)) - 24;
+    // The 120px floor keeps room for the action bar under the board. The side layout (square
+    // boards on wide or sideways screens) puts that bar in its own column, and on a phone held
+    // sideways (~375px tall) the board matters more than keeping the bar on screen.
+    var stage = box && box.closest('#gameStage.stage-side');
+    var sideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
+    var floor = sideways || (stage && getComputedStyle(stage).display === 'grid') ? 0 : 120;
+    var h = window.innerHeight - Math.max(floor, Math.min(top, 320)) - 24;
     return { w: w, h: h };
   };
 })();

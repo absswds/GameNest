@@ -242,8 +242,9 @@
     ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(fx, fy, fr, 0, Math.PI * 2); ctx.stroke();
 
     // Emoji
-    if (fr > 12) {
-      ctx.font = Math.max(10, fr * 1.1) + 'px serif';
+    var minFr = (window.innerHeight < 540 && window.innerWidth > window.innerHeight) ? 5 : 12;
+    if (fr > minFr) {
+      ctx.font = Math.max(8, fr * 1.1) + 'px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(info.emoji, fx, fy);
     }
@@ -405,18 +406,40 @@
     '.sk-who em{margin-left:6px;font-style:normal;font-size:11px;color:#e74c3c}',
     '.sk-row b{font-variant-numeric:tabular-nums;font-size:15px}',
     '.sk-tips ol{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text-muted);line-height:1.5}',
+    '.sk.sideways{gap:12px;padding:0;align-items:center}',
+    '.sk.sideways .sk-side{width:160px;gap:6px;overflow-y:auto}',
+    '.sk.sideways .sk-card{padding:6px 8px;font-size:11px}',
+    '.sk.sideways .sk-label{font-size:11px;margin-bottom:4px}',
+    '.sk.sideways .sk-pit{height:34px}',
+    '.sk.sideways .sk-fname{margin-top:2px;font-size:11px}',
+    '.sk.sideways .sk-row{padding:4px 6px}',
+    '.sk.sideways .sk-tips{display:none}',
   ].join('\n');
 
   // Box size from the space the stage really has; on wide screens leave room for both side panels
   function resize(container) {
-    if (!canvas) return;
+    if (!canvas || !container) return;
     var wrap = container.querySelector('.sk');
-    var fit = window.boardFit ? window.boardFit(container) : { w: window.innerWidth - 20, h: window.innerHeight - 160 };
-    var wide = fit.w >= BOX_W * 1.4 + SIDE_W * 2 + 48 && fit.h >= 420;
-    if (wrap) wrap.classList.toggle('wide', wide);
-    var availW = wide ? fit.w - SIDE_W * 2 - 60 : fit.w - 12;
-    var availH = wide ? fit.h - 12 : fit.h - 56; // narrow: score and opponent rows sit above the box
-    SCALE = Math.max(0.6, Math.min(availW / BOX_W, availH / BOX_H, 1.6));
+    var sideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
+    var fitEl = sideways && (container.closest && container.closest('.board-wrap')) || container;
+    var fit = window.boardFit ? window.boardFit(fitEl) : { w: window.innerWidth - 20, h: window.innerHeight - 160 };
+    var sideW = sideways ? 160 : SIDE_W;
+    var wide = sideways
+      ? fit.w >= 120 + sideW * 2 + 24
+      : (fit.w >= BOX_W * 1.4 + SIDE_W * 2 + 48 && fit.h >= 420);
+    if (wrap) {
+      wrap.classList.toggle('sideways', sideways);
+      wrap.classList.toggle('wide', wide);
+    }
+    var availW = wide ? fit.w - sideW * 2 - (sideways ? 24 : 60) : fit.w - 12;
+    var availH = wide ? fit.h - (sideways ? 4 : 12) : fit.h - 56; // narrow: score and opponent rows sit above the box
+    var minScale = sideways ? 0.25 : 0.6;
+    SCALE = Math.max(minScale, Math.min(availW / BOX_W, availH / BOX_H, 1.6));
+    var left = document.getElementById('suika-left');
+    var right = document.getElementById('suika-right');
+    var sideMaxH = sideways ? Math.max(110, fit.h - 4) + 'px' : '';
+    if (left) left.style.maxHeight = sideMaxH;
+    if (right) right.style.maxHeight = sideMaxH;
     var dpr = window.devicePixelRatio || 1;
     canvas.width = BOX_W * SCALE * dpr;
     canvas.height = BOX_H * SCALE * dpr;
@@ -543,6 +566,7 @@
         gameOver = true;
       }
       updateSides();
+      resize(container);
     },
   });
 })();

@@ -436,7 +436,7 @@
     'can_add_bot': '可加 AI',
     'pvp_only': '纯玩家对战',
     'need_all_ready': '需所有玩家准备',
-    'need_more_players': '至少需要 2 名玩家',
+    'need_more_players': '至少需要 %s 名玩家，可以添加 AI 补位',
     'pvp_only_hint': '本游戏需真人对战，不能加 AI',
     'solo_ok': '可单人玩',
     'featured_label': '精选推荐',

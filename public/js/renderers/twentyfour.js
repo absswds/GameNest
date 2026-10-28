@@ -14,6 +14,7 @@
   var _usedNums = [];
   var _lastState = null;
   var _playerIndex = 0;
+  var _container = null;
 
   var SIDE_W = 220; // side panel width on wide screens
 
@@ -63,7 +64,29 @@
     '.tf-srow .ok{color:#5a9e6f;font-size:12px;font-weight:700;flex:none;}' +
     '.tf-srow .expr{display:block;font-size:11px;font-weight:400;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;}' +
     '.tf-srow b{font-variant-numeric:tabular-nums;font-size:15px;color:var(--accent);flex:none;}' +
-    '.tf-tips{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text-muted);line-height:1.5;}';
+    '.tf-tips{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text-muted);line-height:1.5;}' +
+    // Sideways landscape phones
+    '.tf-lay.sideways{gap:12px;align-items:center;}' +
+    '.tf-lay.sideways.wide > .tf-wrap{width:310px;display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center;}' +
+    '.tf-lay.sideways > .tf-wrap > *{grid-column:1/-1;}' +
+    '.tf-lay.sideways #tfNums{grid-column:1;gap:5px;}' +
+    '.tf-lay.sideways #tfExpr{grid-column:2;min-height:38px;padding:4px 8px;font-size:15px;border-radius:9px;display:flex;align-items:center;justify-content:center;}' +
+    '.tf-lay.sideways .tf-num{width:40px;height:38px;font-size:20px;border-radius:9px;}' +
+    '.tf-lay.sideways .tf-ops{gap:5px;}' +
+    '.tf-lay.sideways .tf-op{width:40px;height:36px;font-size:18px;border-radius:9px;}' +
+    '.tf-lay.sideways .tf-actions{gap:5px;}' +
+    '.tf-lay.sideways .tf-actions .btn{min-height:36px;height:36px;padding:0 10px;font-size:12px;}' +
+    '.tf-lay.sideways .tf-hint:empty{display:none;}' +
+    '.tf-lay.sideways .tf-hint{min-height:0;padding:0;font-size:11px;line-height:1.2;}' +
+    '.tf-lay.sideways .tf-round-winner{padding:2px;font-size:12px;}' +
+    '.tf-lay.sideways .tf-side{width:155px;gap:6px;overflow-y:auto;}' +
+    '.tf-lay.sideways .tf-card{padding:6px 8px;font-size:11px;}' +
+    '.tf-lay.sideways .tf-label{font-size:11px;margin-bottom:4px;}' +
+    '.tf-lay.sideways .tf-side-round{font-size:15px;}' +
+    '.tf-lay.sideways .tf-side-timer{margin-top:2px;min-height:0;font-size:12px;}' +
+    '.tf-lay.sideways .tf-mini b{font-size:14px;border-radius:6px;}' +
+    '.tf-lay.sideways .tf-srow{padding:4px 6px;}' +
+    '.tf-lay.sideways #tfRight .tf-card:last-child{display:none;}';
 
   var _numColors = ['tf-n0', 'tf-n1', 'tf-n2', 'tf-n3'];
 
@@ -71,6 +94,7 @@
     init: function(container) {
       _expr = '';
       _usedNums = [];
+      _container = container;
       injectStylesOnce('tfStyles', STYLES);
 
       container.innerHTML =
@@ -122,6 +146,7 @@
       if (!state || !state.numbers) return;
       _lastState = state;
       _playerIndex = playerIndex;
+      _container = container;
 
       // Round indicator
       var roundEl = document.getElementById('tfRound');
@@ -279,15 +304,28 @@
         updateCountdownDisplay(remaining);
       }
       updateSides();
+      fitSides(container);
     }
   });
 
-  // Wide screens only: show the side panels when both fit next to the 420px board
+  // Wide screens only: show the side panels when both fit next to the board
   function fitSides(container) {
     var lay = document.getElementById('tfLay');
     if (!lay) return;
-    var fit = window.boardFit ? window.boardFit(container) : { w: window.innerWidth - 32 };
-    lay.classList.toggle('wide', fit.w >= 420 + SIDE_W * 2 + 48);
+    var el = container || _container;
+    var sideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
+    var fitEl = sideways && (el && el.closest && el.closest('.board-wrap')) || el;
+    var fit = window.boardFit && fitEl ? window.boardFit(fitEl) : { w: window.innerWidth - 32, h: window.innerHeight - 160 };
+    var sideW = sideways ? 155 : SIDE_W;
+    var mainW = sideways ? 310 : 420;
+    var wide = sideways ? (fit.w >= mainW + sideW * 2 + 24) : (fit.w >= 420 + SIDE_W * 2 + 48);
+    lay.classList.toggle('sideways', sideways);
+    lay.classList.toggle('wide', wide);
+    var left = document.getElementById('tfLeft');
+    var right = document.getElementById('tfRight');
+    var sideMaxH = sideways ? Math.max(120, fit.h) + 'px' : '';
+    if (left) left.style.maxHeight = sideMaxH;
+    if (right) right.style.maxHeight = sideMaxH;
   }
 
   function esc(v) { return String(v).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }

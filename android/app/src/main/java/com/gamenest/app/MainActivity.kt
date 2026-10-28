@@ -2,6 +2,7 @@ package com.gamenest.app
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -14,6 +15,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -139,6 +141,15 @@ class MainActivity : AppCompatActivity() {
                     requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
                     applyImmersive(false)
                 }
+            }
+
+            // Links off the local server (e.g. the GitHub link in the lobby footer) open in the
+            // system browser instead of replacing the game UI inside the WebView.
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val uri = request.url
+                if (uri.port == SERVER_PORT || (uri.scheme != "http" && uri.scheme != "https")) return false
+                try { startActivity(Intent(Intent.ACTION_VIEW, uri)) } catch (e: Exception) { Log.w(TAG, "open link failed", e) }
+                return true
             }
 
             override fun onPageFinished(view: WebView, url: String?) {

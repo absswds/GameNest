@@ -436,7 +436,7 @@
     'can_add_bot': 'Bots OK',
     'pvp_only': 'PvP Only',
     'need_all_ready': 'All players must be ready',
-    'need_more_players': 'At least 2 players needed',
+    'need_more_players': 'At least %s players needed, add AI to fill seats',
     'pvp_only_hint': 'Human players only, no AI for this game',
     'solo_ok': 'Solo OK',
     'featured_label': 'Featured',

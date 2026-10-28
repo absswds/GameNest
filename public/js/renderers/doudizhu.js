@@ -11,8 +11,32 @@
   var _lastHandHtml = '';
   var _deadlineKey = null, _localDeadline = 0;
 
+  // Phone held sideways: opponents go to the sides and everything shrinks so hand + buttons fit.
+  // (The markup uses inline styles, hence !important.)
+  var LANDSCAPE_CSS = '@media (orientation: landscape) and (max-height: 540px){' +
+    '#ddzWrap{display:grid !important;grid-template-columns:minmax(0,110px) minmax(0,1fr) minmax(0,110px);gap:4px 8px !important;max-width:760px !important;}' +
+    '#ddzOpponents{display:contents !important;}' +
+    '#ddzOpponents>div{padding:4px 8px !important;align-self:start;min-width:0;}' +
+    '#ddzOpponents>div:nth-child(1){grid-column:1;grid-row:1;}' +
+    '#ddzOpponents>div:nth-child(2){grid-column:3;grid-row:1;}' +
+    '#ddzOpponents>div>div:nth-child(2){font-size:18px !important;margin-top:0 !important;}' +
+    '#ddzPlayArea{grid-column:2;grid-row:1;min-height:0 !important;padding:6px 10px !important;gap:2px !important;border-radius:16px !important;}' +
+    '#ddzHint{grid-column:1/-1;grid-row:2;padding:2px 8px !important;}' +
+    '#ddzHand{grid-column:1/-1;grid-row:3;min-height:0 !important;padding:0 !important;}' +
+    '#ddzHand .pc-md{--w:40px;}' +
+    '#ddzHand .pc-layout-hand{padding-top:12px;}' +
+    '#ddzActions{grid-column:1/-1;grid-row:4;gap:8px !important;}' +
+    '#ddzActions .btn{min-height:32px;padding-top:4px;padding-bottom:4px;}' +
+  '}';
+
   window.gameRenderers.set('doudizhu', {
     init: function(container) {
+      if (!document.getElementById('ddz-styles')) {
+        var st = document.createElement('style');
+        st.id = 'ddz-styles';
+        st.textContent = LANDSCAPE_CSS;
+        document.head.appendChild(st);
+      }
       container.innerHTML =
         '<div id="ddzWrap" style="width:100%;max-width:640px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
           '<div id="ddzOpponents" style="display:flex;justify-content:space-around;gap:8px;"></div>' +

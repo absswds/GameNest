@@ -10,6 +10,8 @@
   var _preventNextClick = false;
   var _container = null;
   var _flagMode = false; // tap flags instead of revealing (phones)
+  var _rows = 10;
+  var _cols = 10;
   var SIDE_W = 230; // side panel width on wide screens
 
   var STYLES = '' +
@@ -97,7 +99,24 @@
     // === Responsive ===
     '@media(max-width:400px){.ms-cell{width:30px;height:30px;font-size:12px;}.ms-grid{padding:4px;gap:2px;}}' +
     '@media(max-width:340px){.ms-cell{width:26px;height:26px;font-size:10px;border-radius:3px;}}' +
-    '@media(min-width:768px){.ms-cell{width:44px;height:44px;font-size:18px;}.ms-grid{gap:4px;}}';
+    '@media(min-width:768px){.ms-cell{width:44px;height:44px;font-size:18px;}.ms-grid{gap:4px;}}' +
+
+    // === Sideways landscape phones ===
+    '.ms.sideways{gap:10px;align-items:center;}' +
+    '.ms.sideways .ms-wrap{display:grid;grid-template-columns:auto auto;align-items:center;gap:4px 10px;}' +
+    '.ms.sideways .ms-status{grid-column:1/-1;font-size:12px;min-height:16px;line-height:1.2;}' +
+    '.ms.sideways .ms-grid-wrap{grid-column:1;padding:0;overflow:visible;}' +
+    '.ms.sideways .ms-grid{padding:4px;gap:2px;border-radius:10px;}' +
+    '.ms.sideways .ms-cell{width:var(--ms-cell,20px);height:var(--ms-cell,20px);font-size:calc(var(--ms-cell,20px) * 0.55);border-radius:3px;}' +
+    '.ms.sideways .ms-flagbtn{grid-column:2;min-height:38px;height:38px;padding:0 12px;font-size:12px;white-space:nowrap;}' +
+    '.ms.sideways .ms-side{width:155px;gap:6px;overflow-y:auto;}' +
+    '.ms.sideways .ms-card{padding:6px 8px;font-size:11px;}' +
+    '.ms.sideways .ms-label{font-size:11px;margin-bottom:4px;}' +
+    '.ms.sideways .ms-stats{gap:4px 6px;}' +
+    '.ms.sideways .ms-stats b{font-size:13px;}' +
+    '.ms.sideways .ms-stats .big b{font-size:18px;}' +
+    '.ms.sideways .ms-row{padding:4px 6px;}' +
+    '.ms.sideways .ms-tips{display:none;}';
 
   function colorClass(n) { return n >= 1 && n <= 8 ? ' ms-adj-' + n : ''; }
 
@@ -183,9 +202,37 @@
     var wrap = _container && _container.querySelector('.ms');
     if (!wrap) return;
     var grid = document.getElementById('msGrid');
-    var gridW = grid ? grid.offsetWidth : 500;
-    var fit = window.boardFit ? window.boardFit(_container) : { w: window.innerWidth - 32, h: window.innerHeight - 160 };
-    wrap.classList.toggle('wide', fit.w >= gridW + SIDE_W * 2 + 72);
+    var sideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
+    var fitEl = sideways && (_container && _container.closest && _container.closest('.board-wrap')) || _container;
+    var fit = window.boardFit ? window.boardFit(fitEl) : { w: window.innerWidth - 32, h: window.innerHeight - 160 };
+    wrap.classList.toggle('sideways', sideways);
+    var left = document.getElementById('msLeft');
+    var right = document.getElementById('msRight');
+    if (sideways) {
+      var sideW = 155;
+      var flagBtn = document.getElementById('msFlagBtn');
+      var flagW = flagBtn && flagBtn.offsetWidth ? flagBtn.offsetWidth + 12 : 110;
+      var wide = fit.w >= 130 + flagW + sideW * 2 + 24;
+      wrap.classList.toggle('wide', wide);
+      var statusEl = document.getElementById('msStatus');
+      var statusH = (statusEl ? statusEl.offsetHeight : 16) + 6;
+      var availH = Math.max(110, fit.h - statusH);
+      var availW = wide ? (fit.w - sideW * 2 - flagW - 24) : (fit.w - flagW - 16);
+      var rows = _rows || 10, cols = _cols || 10;
+      var cellH = Math.floor((availH - 8 - (rows - 1) * 2) / rows);
+      var cellW = Math.floor((availW - 8 - (cols - 1) * 2) / cols);
+      var cellSz = Math.max(12, Math.min(cellH, cellW, 34));
+      if (grid) grid.style.setProperty('--ms-cell', cellSz + 'px');
+      var sideMaxH = Math.max(110, fit.h) + 'px';
+      if (left) left.style.maxHeight = sideMaxH;
+      if (right) right.style.maxHeight = sideMaxH;
+    } else {
+      if (grid) grid.style.removeProperty('--ms-cell');
+      if (left) left.style.maxHeight = '';
+      if (right) right.style.maxHeight = '';
+      var gridW = grid ? grid.offsetWidth : 500;
+      wrap.classList.toggle('wide', fit.w >= gridW + SIDE_W * 2 + 72);
+    }
   }
 
   function updateSides(state, alive, revealed, playerIndex) {
@@ -259,6 +306,8 @@
       var alive = state.alive || [];
       var revealed = state.cellsRevealed || [];
       var safeCells = state.safeCells || 85;
+      if (state.rows) _rows = state.rows;
+      if (state.cols) _cols = state.cols;
 
       // Players bar
       var colors = ['#5dade2','#f7dc6f','#58d68d','#af7ac5','#f0b27a','#48c9b0'];

@@ -7,7 +7,7 @@
   var PLAYER_EMOJIS = ['🔴','🔵','🟢','🟡','🟣','🩵'];
   var DICE_FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
 
-  var canvas, ctx, playerIndex, winnerIdx = null;
+  var canvas, ctx, playerIndex, winnerIdx = null, _cont, wrapEl, sideEl;
   var W, H, CS, CO;        // 画布尺寸、边格短边、角格边长
   var cells = [];          // 28 个格子的几何
   var latestState = null;  // 最新服务端 state
@@ -30,8 +30,25 @@
 
   // ---------- 布局 ----------
   function computeSize() {
-    var availW = Math.min(window.innerWidth - 12, window.innerHeight - 200, 680);
-    W = Math.max(300, availW);
+    var sideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
+    if (sideways) {
+      var fit = window.boardFit && _cont ? window.boardFit(_cont) : { h: window.innerHeight - 110 };
+      W = Math.max(200, Math.min(fit.h - 8, 680));
+    } else {
+      W = Math.max(300, Math.min(window.innerWidth - 12, window.innerHeight - 200, 680));
+    }
+    if (wrapEl) {
+      // phone held sideways: board on the left, controls in a narrow column on the right
+      wrapEl.style.flexDirection = sideways ? 'row' : 'column';
+      wrapEl.style.alignItems = sideways ? 'flex-start' : 'center';
+      wrapEl.style.justifyContent = sideways ? 'center' : '';
+      wrapEl.style.gap = sideways ? '12px' : '';
+      sideEl.style.cssText = sideways ? 'display:flex;flex-direction:column;align-items:center;width:210px;overflow-y:auto;' : 'display:contents;';
+      sideEl.style.maxHeight = sideways ? Math.round(W) + 'px' : '';
+      var pn = document.getElementById('mono-panel'), lg = document.getElementById('mono-legend');
+      if (pn) pn.style.maxWidth = sideways ? 'none' : W + 'px';
+      if (lg) lg.style.maxWidth = sideways ? 'none' : W + 'px';
+    }
     CS = W / 8.6;            // 6 边格 + 2 角格(1.3) = 6 + 2.6 = 8.6
     CO = CS * 1.3;
     W = Math.round(CO * 2 + CS * 6);
@@ -820,12 +837,16 @@
       container.innerHTML = '';
       latestState = displayState = prevSnap = null; eventLog = [];
       stopAnim(); anim.queue = []; anim.floats = [];
+      _cont = container;
       var wrap = document.createElement('div');
       wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;padding:6px;';
       container.appendChild(wrap);
+      wrapEl = wrap;
+      sideEl = document.createElement('div');
       canvas = document.createElement('canvas');
       canvas.style.cssText = 'border-radius:10px;box-shadow:0 4px 20px rgba(90,74,50,.18);';
       wrap.appendChild(canvas);
+      wrap.appendChild(sideEl);
       ctx = canvas.getContext('2d');
       computeSize();
       if (window._monoResize) window.removeEventListener('resize', window._monoResize);
@@ -833,12 +854,12 @@
       window.addEventListener('resize', window._monoResize);
       var panel = document.createElement('div');
       panel.id = 'mono-panel';
-      panel.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;max-width:' + W + 'px;justify-content:center;';
-      wrap.appendChild(panel);
+      panel.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;max-width:' + W + 'px' + ';justify-content:center;';
+      sideEl.appendChild(panel);
       var legend = document.createElement('div');
       legend.id = 'mono-legend';
-      legend.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:12px;justify-content:center;max-width:' + W + 'px;';
-      wrap.appendChild(legend);
+      legend.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:12px;justify-content:center;max-width:' + W + 'px' + ';';
+      sideEl.appendChild(legend);
     },
 
     render: function (st, container, pi, winner) {

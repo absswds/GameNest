@@ -41,21 +41,41 @@
 
   // ---------- 尺寸 / 布局 ----------
   function computeSize() {
-    if (wrapEl && stageEl) {
-      var fit = window.boardFit ? window.boardFit(stageEl) : { w: window.innerWidth - 32 };
-      wrapEl.classList.toggle('wide', fit.w >= 560 + SIDE_W * 2 + 48 && window.innerHeight >= 600);
-    }
-    W = Math.max(300, Math.min(window.innerWidth - 12, 560));
-    // 高度 = 视口 - 画布顶部 - 道具栏高度(含边距)，保证槽位和道具栏不用滚动就能看到
-    // 用 .board-wrap 顶部（#boardArea 会在其中居中，自身位置不稳定）
+    var sideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
+    var sideW = sideways ? 160 : SIDE_W;
     var bw = stageEl && stageEl.closest && stageEl.closest('.board-wrap');
-    var top = bw ? bw.getBoundingClientRect().top + (window.scrollY || 0) : 0;
-    var panelH = Math.max(52, panel ? panel.offsetHeight : 0) + 8 +
-      (oppBar && oppBar.offsetParent ? oppBar.offsetHeight + 8 : 0);
-    var ga = document.getElementById('gameActions');
-    panelH += ga && ga.offsetParent ? ga.offsetHeight + 8 : 0; // 底部"离开"操作栏也在流内
-    H = top > 0 ? window.innerHeight - top - panelH - 24 : window.innerHeight - 210;
-    H = Math.max(360, Math.min(H, 720));
+    var fitEl = (sideways && bw) || stageEl;
+    var fit = window.boardFit && fitEl ? window.boardFit(fitEl) : { w: window.innerWidth - 32, h: window.innerHeight - 210 };
+    var wide = sideways
+      ? fit.w >= 200 + sideW * 2 + 24
+      : (fit.w >= 560 + SIDE_W * 2 + 48 && window.innerHeight >= 600);
+    if (wrapEl) {
+      wrapEl.classList.toggle('sideways', sideways);
+      wrapEl.classList.toggle('wide', wide);
+    }
+    if (sideways) {
+      var availW = wide ? (fit.w - sideW * 2 - 24) : (fit.w - 12);
+      W = Math.max(180, Math.min(availW, 420));
+      var pH = (panel && panel.offsetHeight ? panel.offsetHeight : 38) + 4 +
+        (!wide && oppBar && oppBar.offsetParent ? oppBar.offsetHeight + 4 : 0);
+      H = Math.max(115, Math.min(fit.h - pH, 720));
+    } else {
+      W = Math.max(300, Math.min(window.innerWidth - 12, 560));
+      // 高度 = 视口 - 画布顶部 - 道具栏高度(含边距)，保证槽位和道具栏不用滚动就能看到
+      // 用 .board-wrap 顶部（#boardArea 会在其中居中，自身位置不稳定）
+      var top = bw ? bw.getBoundingClientRect().top + (window.scrollY || 0) : 0;
+      var panelH = Math.max(52, panel ? panel.offsetHeight : 0) + 8 +
+        (oppBar && oppBar.offsetParent ? oppBar.offsetHeight + 8 : 0);
+      var ga = document.getElementById('gameActions');
+      panelH += ga && ga.offsetParent ? ga.offsetHeight + 8 : 0; // 底部"离开"操作栏也在流内
+      H = top > 0 ? window.innerHeight - top - panelH - 24 : window.innerHeight - 210;
+      H = Math.max(360, Math.min(H, 720));
+    }
+    var left = document.getElementById('sheep-left');
+    var right = document.getElementById('sheep-right');
+    var sideMaxH = sideways ? Math.max(120, fit.h) + 'px' : '';
+    if (left) left.style.maxHeight = sideMaxH;
+    if (right) right.style.maxHeight = sideMaxH;
     var dpr = window.devicePixelRatio || 1;
     canvas.width = W * dpr; canvas.height = H * dpr;
     canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
@@ -72,16 +92,19 @@
       if (t.y < minY) minY = t.y; if (t.y > maxY) maxY = t.y;
     });
     curBounds = { minX: minX, maxX: maxX, minY: minY, maxY: maxY };
+    var sideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
     // 槽位条
-    slotCS = Math.min((W - 16) / 7, 56);
-    slotPad = 8;
+    slotCS = sideways
+      ? Math.min((W - 12) / 7, Math.max(20, Math.floor(H * 0.22)), 56)
+      : Math.min((W - 16) / 7, 56);
+    slotPad = sideways ? 4 : 8;
     var slotH = slotCS + slotPad * 2;
-    boardBottom = H - slotH - 8;
-    slotY = boardBottom + 8 + slotPad;
-    // 棋盘缩放（顶部留 30px 关卡标题）
-    var topPad = 30, padX = 10;
+    boardBottom = H - slotH - (sideways ? 4 : 8);
+    slotY = boardBottom + (sideways ? 4 : 8) + slotPad;
+    // 棋盘缩放（顶部留关卡标题）
+    var topPad = sideways ? 18 : 30, padX = sideways ? 6 : 10;
     var spanX = (maxX - minX) + 1, spanY = (maxY - minY) + 1;
-    var availW = W - padX * 2, availH = boardBottom - topPad - 8;
+    var availW = W - padX * 2, availH = boardBottom - topPad - (sideways ? 4 : 8);
     TS = Math.min(availW / spanX, availH / spanY, 64);
     var boardW = spanX * TS, boardH = spanY * TS;
     var offX = (W - boardW) / 2, offY = topPad + (availH - boardH) / 2;
@@ -105,8 +128,8 @@
     var tiles = curLevelTiles();
     var remain = tiles.filter(function (t) { return !me().removed[t.id]; }).length;
     ctx.fillStyle = '#2e6b46'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = 'bold 18px sans-serif';
-    ctx.fillText(_tf('st_level_remaining', lv, remain), W / 2, 16);
+    ctx.font = 'bold ' + (H < 220 ? 13 : 18) + 'px sans-serif';
+    ctx.fillText(_tf('st_level_remaining', lv, remain), W / 2, H < 220 ? 10 : 16);
 
     // 卡牌：低 z 先画
     var ids = tiles.map(function (t) { return t.id; }).filter(function (id) { return !me().removed[id]; });
@@ -425,6 +448,16 @@
     '.st-who em{margin-left:6px;font-style:normal;font-size:11px;color:#c45d52}',
     '.st-row b{font-variant-numeric:tabular-nums;font-size:14px}',
     '.st-tips ol{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text-muted);line-height:1.5}',
+    '.st-wrap.sideways{gap:12px;padding:0;align-items:center}',
+    '.st-wrap.sideways .st-side{width:160px;gap:6px;overflow-y:auto}',
+    '.st-wrap.sideways .st-card{padding:6px 8px;font-size:11px}',
+    '.st-wrap.sideways .st-label{font-size:11px;margin-bottom:4px}',
+    '.st-wrap.sideways .st-big{font-size:18px}',
+    '.st-wrap.sideways .st-cell{font-size:12px}',
+    '.st-wrap.sideways .st-row{padding:4px 6px}',
+    '.st-wrap.sideways .st-tips{display:none}',
+    '.st-wrap.sideways #sheep-panel{margin-top:4px !important;gap:6px !important}',
+    '.st-wrap.sideways #sheep-panel .btn{min-height:36px;height:36px;padding:0 10px !important;font-size:12px !important}',
   ].join('\n');
 
   // ---------- 渲染入口 ----------
@@ -446,10 +479,6 @@
       ctx = canvas.getContext('2d');
       canvas.addEventListener('click', onClick);
       canvas.addEventListener('touchstart', function (e) { e.preventDefault(); if (e.touches[0]) onClick(e.touches[0]); }, { passive: false });
-      computeSize();
-      if (window._sheepResize) window.removeEventListener('resize', window._sheepResize);
-      window._sheepResize = function () { computeSize(); if (state) drawBoard(); };
-      window.addEventListener('resize', window._sheepResize);
 
       oppBar = document.createElement('div');
       oppBar.id = 'sheep-opp';
@@ -460,6 +489,11 @@
       panel.id = 'sheep-panel';
       panel.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px;';
       wrap.appendChild(panel);
+
+      computeSize();
+      if (window._sheepResize) window.removeEventListener('resize', window._sheepResize);
+      window._sheepResize = function () { computeSize(); if (state) drawBoard(); };
+      window.addEventListener('resize', window._sheepResize);
     },
 
     render: function (st, container, pi, winner) {
@@ -467,6 +501,21 @@
       state = st; playerIndex = pi;
       winnerIdx = (winner === null || winner === undefined) ? null : winner;
       if (!st || !st.players || !st.players[pi]) return;
+
+      var statusEl = document.getElementById('status');
+      if (statusEl) {
+        if (winner !== null && winner !== undefined) {
+          var wn = (window._players && window._players[winner]) ? window._players[winner].name : _t('st_player') + ' ' + (winner + 1);
+          statusEl.textContent = winner === pi ? _t('st_you_win') : wn + ' ' + _t('st_other_wins');
+        } else if (me().eliminated) {
+          statusEl.textContent = _t('st_spectating');
+        } else { statusEl.textContent = ''; }
+      }
+
+      buildPanel();
+      buildOppBar();
+      buildSides();
+      computeSize();
 
       if (newGame) {
         prevSlotLen = 0; prevLevel = me().level; layoutBoard();
@@ -497,20 +546,7 @@
       prevEliminated = !!me().eliminated;
 
       drawBoard();
-      buildPanel();
-      buildOppBar();
-      buildSides();
       ensureLoop();
-
-      var statusEl = document.getElementById('status');
-      if (statusEl) {
-        if (winner !== null && winner !== undefined) {
-          var wn = (window._players && window._players[winner]) ? window._players[winner].name : _t('st_player') + ' ' + (winner + 1);
-          statusEl.textContent = winner === pi ? _t('st_you_win') : wn + ' ' + _t('st_other_wins');
-        } else if (me().eliminated) {
-          statusEl.textContent = _t('st_spectating');
-        } else { statusEl.textContent = ''; }
-      }
     },
   });
 })();

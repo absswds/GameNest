@@ -49,7 +49,7 @@
 '.dv-color-white{background:#f5f5f5;color:#333;}' +
 '.dv-color-black{background:#333;color:#fff;}' +
 '.dv-num-row{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}' +
-'.dv-num-btn{width:32px;height:40px;border-radius:6px;border:1px solid var(--border);background:var(--bg);font-size:14px;font-weight:600;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;}' +
+'.dv-num-btn{min-width:40px;height:40px;border-radius:6px;border:1px solid var(--border);background:var(--bg);font-size:14px;font-weight:600;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;}' +
 '.dv-num-btn:active{transform:scale(.9);}' +
 '.dv-num-btn.selected{border-color:var(--accent);background:var(--accent-dim);box-shadow:0 0 0 1px var(--accent);}' +
 '.dv-guess-actions{display:flex;gap:8px;}' +
