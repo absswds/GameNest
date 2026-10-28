@@ -27,10 +27,10 @@ Since then it has become our go-to for dorm nights, parties, family evenings, an
 ## Highlights
 
 - **Works offline**: planes, trains, campsites, basements. One phone hotspot or one shared WiFi is enough; no internet is needed at any point.
-- **Only the host installs anything**: an Android phone, a Windows PC (standalone exe), or any machine with Node.js can host. Everyone else scans a QR code or types a room code and plays in the browser.
+- **Only the host installs anything**: an Android phone, a Windows PC (standalone exe), or any machine with Node.js can host. Everyone else scans a QR code, types a room code or taps the room in the lobby's LAN room list, and plays in the browser.
 - **34 games**: board games, poker, mahjong, party games, deduction, social deduction, puzzle races, and real-time battles, for 2 players up to a whole group.
-- **Bots fill empty seats**: most turn-based games have AI players, so you can also practise alone.
-- **Reconnect and resume**: drop out or leave by accident and the lobby's resume card puts you back in your seat.
+- **Bots fill empty seats**: most turn-based games have AI players with Easy / Normal / Hard levels, so you can also practise alone.
+- **Reconnect and resume**: drop out, lock your phone or close the page by accident and the lobby's resume card puts you back in your seat; your name and avatar are remembered too.
 - **Hidden info stays hidden**: hands and roles are only sent to their owner, so nobody can peek at the network traffic.
 - **Chinese and English** UI and rules tutorials.
 - **No accounts, no ads, no tracking**: Apache-2.0, with a simple stack (Express 4 + `ws` + plain JS, no build step) that makes adding a game easy.

@@ -33,6 +33,9 @@ node_modules/
 # Planning artifacts (local workspace, not part of the codebase)
 .planning/
 docs/superpowers/
+*.local.md
+*.local.patch
+*.local/
 
 # OS files
 Thumbs.db
