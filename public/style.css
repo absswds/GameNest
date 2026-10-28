@@ -3235,7 +3235,8 @@ body.lobby-page {
   .game-title-stack strong { font-size: 16px; }
   .room-stage { gap: 8px; }
   #gameStage.game-stage-panel { gap: 4px; padding: 6px 10px; }
-  #gameStage .player-bar { margin-bottom: 0; padding-bottom: 2px; }
+  /* 90vmin (from the >=768px rule) is only ~338px here, which cut off 3-4 player name tags */
+  #gameStage .player-bar { margin-bottom: 0; padding-bottom: 2px; max-width: none; }
   #gameStage .player-tag { padding: 4px 8px; }
   #gameStage .game-status { margin-bottom: 0; min-height: 0; font-size: 14px; line-height: 20px; }
   #gameStage .game-actions-fixed { margin-top: 4px; padding-top: 6px; }
