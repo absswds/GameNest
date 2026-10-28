@@ -182,7 +182,12 @@ exports.createBot = function(playerIndex) {
         return row.map(function(cell) { return cell ? { type: cell.type, side: cell.side } : null; });
       });
       var side = playerIndex;
-      var cont = state.mustCapture ? { row: state._lastCaptureRow, col: state._lastCaptureCol } : null;
+      var cont = null;
+      if (state.mustCapture) {
+        if (state._lastCaptureRow != null) cont = { row: state._lastCaptureRow, col: state._lastCaptureCol };
+        // A playerView (MCP suggest_move) has no _lastCapture*: every legal move starts from the jumping piece
+        else if (Array.isArray(state.legalMoves) && state.legalMoves.length) cont = { row: state.legalMoves[0].from.row, col: state.legalMoves[0].from.col };
+      }
       var moves = turnMoves(board, side, cont);
       if (moves.length === 0 && cont && Array.isArray(state.legalMoves)) moves = state.legalMoves;
       if (moves.length === 0) return null;
