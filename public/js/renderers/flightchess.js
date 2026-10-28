@@ -427,13 +427,14 @@
     init: function(container) {
       cnt = container;
       container.innerHTML =
-        '<div style="width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;">' +
+        '<div id="fcWrap" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;">' +
         '<div id="fcLegend" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;min-height:26px;"></div>' +
         '<canvas id="fcCanvas" style="display:block;border-radius:16px;touch-action:manipulation;cursor:pointer;box-shadow:0 6px 28px rgba(0,0,0,.18);"></canvas>' +
+        '<div id="fcSide" style="display:contents;">' +
         '<div id="fcDice" style="display:flex;align-items:center;justify-content:center;gap:12px;min-height:60px;"></div>' +
         '<div id="fcInfo" style="font-size:15px;color:#666;font-weight:600;text-align:center;min-height:22px;"></div>' +
         '<button id="fcRollBtn" class="btn btn-accent" style="font-size:17px;padding:13px 48px;border-radius:30px;">' + _t('fc_roll_button') + '</button>' +
-        '</div>';
+        '</div></div>';
       cvs = document.getElementById('fcCanvas'); ctx = cvs.getContext('2d');
 
       // Reset animation state on init (e.g. game restart)
@@ -441,10 +442,25 @@
       prevPlanes = null;
 
       var rs = function() {
-        var avW = window.innerWidth - (window.innerWidth > 600 ? 80 : 28);
-        var avH = window.innerHeight - 260;
-        var pw = Math.min(avW, avH, 920);
-        pw = Math.max(pw, 260);
+        var sideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
+        var wrapEl = document.getElementById('fcWrap'), sideEl = document.getElementById('fcSide'), legEl = document.getElementById('fcLegend');
+        var pw;
+        if (sideways) {
+          // phone held sideways: board on the left, legend/dice/roll button in a narrow column
+          var fit = window.boardFit ? window.boardFit(container) : { w: window.innerWidth - 28, h: window.innerHeight - 110 };
+          pw = Math.max(200, Math.min(fit.h - 4, fit.w - 230, 920));
+          wrapEl.style.flexDirection = 'row'; wrapEl.style.alignItems = 'flex-start'; wrapEl.style.justifyContent = 'center';
+          sideEl.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;width:210px;';
+          if (legEl.parentNode !== sideEl) sideEl.insertBefore(legEl, sideEl.firstChild);
+        } else {
+          wrapEl.style.flexDirection = 'column'; wrapEl.style.alignItems = 'center'; wrapEl.style.justifyContent = '';
+          sideEl.style.cssText = 'display:contents;';
+          if (legEl.parentNode !== wrapEl) wrapEl.insertBefore(legEl, cvs);
+          var avW = window.innerWidth - (window.innerWidth > 600 ? 80 : 28);
+          var avH = window.innerHeight - 260;
+          pw = Math.min(avW, avH, 920);
+          pw = Math.max(pw, 260);
+        }
         var dpr = window.devicePixelRatio || 1; W = pw;
         cvs.width = pw * dpr; cvs.height = pw * dpr;
         cvs.style.width = pw + 'px'; cvs.style.height = pw + 'px';

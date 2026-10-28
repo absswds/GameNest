@@ -36,6 +36,8 @@
         window.makeGameMove({ row: cell.row, col: cell.col });
       });
       canvas.addEventListener('mousemove', function(e) {
+        // A tap fires a compatibility mousemove before click; it must not arm the preview.
+        if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
         var cell = _myTurn ? cellAt(e) : null;
         if (cell && _lastState && _lastState.board[cell.row][cell.col] !== null) cell = null;
         var changed = (cell && (!_hover || _hover.row !== cell.row || _hover.col !== cell.col)) || (!cell && _hover);
@@ -52,10 +54,12 @@
       }
     },
     render: function(state, container, playerIndex, winner) {
+      var boardChanged = false;
       if (_prevBoard) {
         for (var r = 0; r < SIZE; r++) {
           for (var c = 0; c < SIZE; c++) {
             if (_prevBoard[r][c] === null && state.board[r][c] !== null) {
+              boardChanged = true;
               _lastMove = { row: r, col: c };
               _anim = { row: r, col: c, start: performance.now() };
             }
@@ -65,7 +69,7 @@
       _prevBoard = state.board.map(function(row) { return row.slice(); });
       _myTurn = state.winner === null && state.currentPlayer === playerIndex;
       _myColor = playerIndex;
-      if (!_myTurn) _hover = null;
+      if (!_myTurn || boardChanged) _hover = null;
       _lastState = state;
       if (_anim && !(window.Motion && window.Motion.reduced())) animate(); else { _anim = null; draw(state); }
     }

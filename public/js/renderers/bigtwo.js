@@ -14,7 +14,7 @@
   window.gameRenderers.set('bigtwo', {
     init: function(container) {
       container.innerHTML =
-        '<div id="btWrap" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
+        '<div id="btWrap" style="width:100%;max-width:900px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
           '<div id="btOpponents" style="display:flex;justify-content:space-around;gap:8px;"></div>' +
           '<div id="btPlayArea" style="min-height:80px;background:var(--bg);border-radius:var(--radius-sm);padding:12px 16px;display:flex;flex-direction:column;align-items:center;gap:6px;"></div>' +
           '<div id="btHint" style="display:none;text-align:center;font-size:13px;padding:4px 8px;background:var(--bg);border-radius:12px;"></div>' +

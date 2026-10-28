@@ -17,6 +17,7 @@
 
   let ws, state, players, currentRenderer;
   let currentRendererKey = null;  // 麻将四川/广东切换时据此重新 init
+  let roomMinPlayers = 0;     // from the server; 0 until room_joined arrives
   let roomPhase = 'lobby';   // 'lobby' | 'ready' | 'playing'
   let isHost = false;
   let myReady = false;
@@ -373,15 +374,32 @@
       players = msg.players || players;
       window._players = players;
       roomPhase = msg.phase || 'lobby';
+      if (msg.minPlayers) roomMinPlayers = msg.minPlayers;
       if (msg.options) roomOptions = msg.options;
       if (msg.isPrivate !== undefined) roomOptions.isPrivate = !!msg.isPrivate;
       if (msg.match !== undefined) match = msg.match;
       if (msg.resumeToken) GNSession.set({ resumeToken: msg.resumeToken });
+      restoreSavedOptions(msg);
       updateWaitingRoom();
       if (roomPhase === 'playing') {
         showGame();
         renderGame();
       }
+    }
+
+    // A fresh room (no options set yet) gets the host's last options for this game back.
+    function restoreSavedOptions(msg) {
+      if (roomPhase === 'playing' || !msg.options) return;
+      const me = (msg.players || []).find(function(p) { return p.index === playerIndex && !p.isBot; });
+      if (!me || !me.isHost) return;
+      if (Object.keys(msg.options).some(function(k) { return k !== 'isPrivate'; })) return;
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem('gn_opts_' + game) || 'null'); } catch (e) {}
+      if (!saved || typeof saved !== 'object') return;
+      Object.keys(saved).forEach(function(k) {
+        roomOptions[k] = saved[k];
+        send('set_option', { key: k, value: saved[k] });
+      });
     }
 
     function handlePlayerChange(msg, type) {
@@ -1269,11 +1287,11 @@
       if (isHost) {
         const allReady = players && players.filter(p => !p.isBot).every(p => p.ready);
         const totalPlayers = players ? players.length : 0;
-        const minPlayers = SOLO_GAMES.indexOf(game) >= 0 ? 1 : 2;
+        const minPlayers = roomMinPlayers || (SOLO_GAMES.indexOf(game) >= 0 ? 1 : 2);
         const canStart = allReady && totalPlayers >= minPlayers;
         startBtn.disabled = !canStart;
         startBtn.classList.toggle('disabled', !canStart);
-        setInlineHint(startBtn, 'startHint', canStart ? '' : _t(allReady ? 'need_more_players' : 'need_all_ready'));
+        setInlineHint(startBtn, 'startHint', canStart ? '' : allReady ? _t('need_more_players').replace('%s', minPlayers) : _t('need_all_ready'));
       } else {
         setInlineHint(startBtn, 'startHint', '');
       }
@@ -1740,6 +1758,11 @@
   window._setGameOption = function(key, value) {
     roomOptions[key] = value;
     send('set_option', { key, value });
+    try {
+      const saved = JSON.parse(localStorage.getItem('gn_opts_' + game) || '{}') || {};
+      saved[key] = value;
+      localStorage.setItem('gn_opts_' + game, JSON.stringify(saved));
+    } catch (e) {}
   };
 
   window._setPrivate = function(checked) {

@@ -70,7 +70,30 @@
 
     // === Responsive ===
     '@media(max-width:400px){.ht-card{width:44px;height:66px;}.ht-card .rank{font-size:14px;}.ht-card .suit{font-size:11px;}' +
-    '.ht-trick-card{width:50px;height:72px;}.ht-trick-card .rank{font-size:14px;}.ht-trick-slot{width:56px;height:80px;}}';
+    '.ht-trick-card{width:50px;height:72px;}.ht-trick-card .rank{font-size:14px;}.ht-trick-slot{width:56px;height:80px;}}' +
+
+    // === Phone held sideways: scores/status left, trick right, hand full width underneath ===
+    '@media (orientation: landscape) and (max-height: 540px){' +
+    '.ht-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:2px 12px;max-width:720px;align-items:center;}' +
+    '.ht-scores{grid-column:1;grid-row:1;gap:6px;}' +
+    '.ht-score-card{padding:3px 8px;min-width:0;flex:1;}' +
+    '.ht-score-card .ptotal{font-size:15px;}' +
+    '.ht-status{grid-column:1;grid-row:2;font-size:12px;min-height:0;}' +
+    '.ht-last-trick{grid-column:1;grid-row:3;min-height:0;font-size:10px;}' +
+    '.ht-pass-bar{grid-column:1;grid-row:4;margin:0;}' +
+    '.ht-pass-btn{padding:5px 18px;font-size:13px;}' +
+    '.ht-trick-area{grid-column:2;grid-row:1/5;height:124px;margin:0 auto;max-width:260px;}' +
+    '.ht-trick-slot{width:60px;height:62px;}' +
+    '.ht-trick-card,.ht-trick-empty{width:36px;height:50px;border-radius:6px;}' +
+    '.ht-trick-card .rank{font-size:13px;}.ht-trick-card .suit{font-size:11px;}' +
+    '.ht-trick-label{font-size:9px;margin-top:0;}' +
+    '.ht-hand-wrap{grid-column:1/-1;grid-row:5;padding:0;}' +
+    '.ht-hand-label{font-size:10px;margin-bottom:2px;}' +
+    '.ht-my-hand{min-height:0;padding-top:10px;gap:3px;}' +
+    '.ht-card{width:42px;height:60px;border-radius:6px;}' +
+    '.ht-card .rank{font-size:14px;}.ht-card .suit{font-size:11px;}' +
+    '.ht-card .corner{top:2px;left:3px;font-size:8px;}' +
+    '}';
 
   var container = null;
   var selectedCards = [];

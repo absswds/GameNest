@@ -421,6 +421,12 @@ function uniqueRoomName(room, ws, name) {
   }
 }
 
+// Fewest seats (people + bots) the game can start with; the waiting room greys out Start below it
+function minPlayersOf(room) {
+  const mod = gameRegistry[room.game];
+  return (mod && mod.minPlayers) || 2;
+}
+
 function roomPlayersList(room) {
   const list = [];
   for (const [client, info] of room.players) {
@@ -1158,7 +1164,7 @@ wss.on('connection', (ws) => {
         type: 'room_created',
         roomId: result.roomId,
         game,
-        maxPlayers: currentRoom.maxPlayers,
+        maxPlayers: currentRoom.maxPlayers, minPlayers: minPlayersOf(currentRoom),
         playerIndex: 0,
         players: roomPlayersList(currentRoom),
         phase: currentRoom.phase,
@@ -1296,7 +1302,7 @@ wss.on('connection', (ws) => {
         if (room.hostWS === oldWs) room.hostWS = ws;
         currentRoomId = roomId;
         currentRoom = room;
-        ws.send(JSON.stringify({ type: 'room_joined', roomId, game: room.game, maxPlayers: room.maxPlayers,
+        ws.send(JSON.stringify({ type: 'room_joined', roomId, game: room.game, maxPlayers: room.maxPlayers, minPlayers: minPlayersOf(room),
           playerIndex: info.index, players: roomPlayersList(room), state: viewFor(room, info.index), match: room.match || null, phase: room.phase,
           options: room.options, isPrivate: !!room.isPrivate, resumeToken: info.resumeToken }));
         sendToRoom(room, {
@@ -1317,7 +1323,7 @@ wss.on('connection', (ws) => {
           type: 'room_joined',
           roomId,
           game: room.game,
-          maxPlayers: room.maxPlayers,
+          maxPlayers: room.maxPlayers, minPlayers: minPlayersOf(room),
           playerIndex: existing[1].index,
           players: roomPlayersList(room),
           state: viewFor(room, existing[1].index), match: room.match || null,
@@ -1372,7 +1378,7 @@ wss.on('connection', (ws) => {
         type: 'room_joined',
         roomId,
         game: room.game,
-        maxPlayers: room.maxPlayers,
+        maxPlayers: room.maxPlayers, minPlayers: minPlayersOf(room),
         playerIndex: idx,
         players: roomPlayersList(room),
         state: viewFor(room, idx), match: room.match || null,

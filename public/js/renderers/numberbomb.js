@@ -3,6 +3,7 @@
 // Aesthetic: bold arcade/retro game feel, big numbers, dark card, neon glow
 (function() {
   var SIDE_W = 220; // side panel width on wide screens
+  var _container = null;
   window.gameRenderers = window.gameRenderers || new Map();
 
   function esc(v) { return String(v).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -57,8 +58,28 @@
         '<li>' + _t('nb_side_tip_1') + '</li><li>' + _t('nb_side_tip_2') + '</li><li>' + _t('nb_side_tip_3') + '</li><li>' + _t('nb_side_tip_4') + '</li></ol></div>';
   }
 
+  function fit(c) {
+    var wrap = document.getElementById('nbWrap');
+    if (!wrap) return;
+    var el = c || _container;
+    var sideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
+    var fitEl = sideways && (el && el.closest && el.closest('.board-wrap')) || el;
+    var f = window.boardFit && fitEl ? window.boardFit(fitEl) : { w: window.innerWidth - 32, h: window.innerHeight - 160 };
+    var sideW = sideways ? 155 : SIDE_W;
+    var shellW = sideways ? 280 : 360;
+    var wide = sideways ? (f.w >= shellW + sideW * 2 + 24) : (f.w >= 360 + SIDE_W * 2 + 48);
+    wrap.classList.toggle('sideways', sideways);
+    wrap.classList.toggle('wide', wide);
+    var left = document.getElementById('nbLeft');
+    var right = document.getElementById('nbRight');
+    var sideMaxH = sideways ? Math.max(120, f.h) + 'px' : '';
+    if (left) left.style.maxHeight = sideMaxH;
+    if (right) right.style.maxHeight = sideMaxH;
+  }
+
   window.gameRenderers.set('numberbomb', {
     init: function(container) {
+      _container = container;
       container.innerHTML = '' +
         '<div class="nb-wrap" id="nbWrap"><aside class="nb-side" id="nbLeft"></aside>' +
         '<div class="nb-shell">' +
@@ -187,17 +208,29 @@
           '@keyframes nbPillHit{0%{transform:scale(1);background:#ffe0e0;}30%{transform:scale(1.08);}100%{transform:scale(1);}}' +
           '@keyframes nbLogHit{0%{background:rgba(231,76,60,.25);}100%{background:rgba(231,76,60,.06);}}' +
           '@keyframes nbIconBounce{0%{transform:scale(1);}30%{transform:scale(1.2) rotate(-10deg);}60%{transform:scale(.9);}100%{transform:scale(1);}}' +
-          '@media(max-width:400px){.nb-card{padding:18px 14px 16px;}.nb-range{font-size:24px;}.nb-key{font-size:19px;}.nb-icon{font-size:44px;}}');
+          '@media(max-width:400px){.nb-card{padding:18px 14px 16px;}.nb-range{font-size:24px;}.nb-key{font-size:19px;}.nb-icon{font-size:44px;}}' +
+          // Sideways landscape phones
+          '.nb-wrap.sideways{gap:12px;align-items:center;}' +
+          '.nb-wrap.sideways.wide .nb-shell{width:280px;gap:4px;}' +
+          '.nb-wrap.sideways .nb-side{width:155px;gap:6px;overflow-y:auto;}' +
+          '.nb-wrap.sideways .nb-scard{padding:6px 8px;font-size:11px;}' +
+          '.nb-wrap.sideways .nb-slabel{font-size:11px;margin-bottom:4px;}' +
+          '.nb-wrap.sideways .nb-sbig{font-size:20px;}' +
+          '.nb-wrap.sideways .nb-sbar{height:6px;margin:6px 0 4px;}' +
+          '.nb-wrap.sideways .nb-prow{padding:3px 6px;}' +
+          '.nb-wrap.sideways .nb-tips{display:none;}' +
+          '.nb-wrap.sideways .nb-card{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:6px 10px;padding:8px 10px;border-radius:14px;}' +
+          '.nb-wrap.sideways .nb-icon{display:none;}' +
+          '.nb-wrap.sideways .nb-range{font-size:18px;letter-spacing:1px;white-space:nowrap;}' +
+          '.nb-wrap.sideways .nb-input{padding:4px 8px;height:36px;min-height:36px;font-size:18px;border-radius:9px;}' +
+          '.nb-wrap.sideways .nb-pad{grid-column:1/-1;grid-template-columns:repeat(6,1fr);gap:4px;max-width:none;}' +
+          '.nb-wrap.sideways .nb-key{aspect-ratio:auto;height:36px;min-height:36px;min-width:36px;font-size:15px;border-radius:9px;}' +
+          '.nb-wrap.sideways .nb-key-fire{font-size:13px;}' +
+          '.nb-wrap.sideways .nb-status{font-size:12px;min-height:16px;line-height:1.2;}');
 
-      function fit() {
-        var wrap = document.getElementById('nbWrap');
-        if (!wrap) return;
-        var f = window.boardFit ? window.boardFit(container) : { w: window.innerWidth - 32 };
-        wrap.classList.toggle('wide', f.w >= 360 + SIDE_W * 2 + 48);
-      }
-      fit();
+      fit(container);
       if (window._nbResize) window.removeEventListener('resize', window._nbResize);
-      window._nbResize = fit;
+      window._nbResize = function() { fit(container); };
       window.addEventListener('resize', window._nbResize);
 
       var input = document.getElementById('nbInput');
@@ -208,6 +241,7 @@
     },
     render: function(state, container, playerIndex, winner) {
       window._nbState = state;
+      _container = container;
       // Lives
       var livesEl = document.getElementById('nbLives');
       if (livesEl && state.lives) {
@@ -292,6 +326,7 @@
       }
 
       renderSides(state, playerIndex, winner);
+      fit(container);
 
       // Boom overlay
       if (state.lastGuess && state.lastGuess.hit) {

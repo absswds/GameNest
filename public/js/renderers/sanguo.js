@@ -618,6 +618,7 @@
     '.sg-chips{display:flex;gap:6px;flex:none}' +
     '.sg.cramped .sg-center{top:66%}.sg.cramped .sg-log div:nth-child(2){display:none}' +
     '.sg-chip{all:unset;font-size:12px;line-height:24px;padding:0 10px;border-radius:12px;background:rgba(0,0,0,.35);border:1px solid rgba(217,180,106,.35);color:var(--gold2);white-space:nowrap}' +
+    '@media(pointer:coarse){.sg-chip.btn{position:relative;cursor:pointer}.sg-chip.btn::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:44px;transform:translate(-50%,-50%)}}' +
     '.sg-chip.btn{cursor:pointer}' +
     '.sg-center .cards{display:flex;gap:6px;justify-content:center}' +
     '.sg-center .cap{font-size:12px;color:var(--gold2);background:rgba(0,0,0,.35);padding:2px 10px;border-radius:10px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}' +

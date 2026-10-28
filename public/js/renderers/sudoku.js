@@ -13,6 +13,7 @@
   var _timerRaf = null;   // interval handle for the live timer
   var _inited = false;
   var _container = null;
+  var _playerIndex = 0;
   var SIDE_W = 230;       // side panel width on wide screens
 
   var ACCENT = '#c8a45c';
@@ -27,6 +28,7 @@
 
   var STYLES = ''
     + '.su-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;}'
+    + '.su-pad-box{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;}'
     + '.su-status{text-align:center;font-size:15px;font-weight:700;min-height:22px;letter-spacing:.3px;}'
     + '.su-timer{text-align:center;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-muted);min-height:20px;letter-spacing:.5px;}'
     + '.su-lives{display:flex;gap:4px;font-size:22px;line-height:1;min-height:26px;align-items:center;}'
@@ -69,11 +71,30 @@
     + '.su-dg b{font-size:18px;font-weight:800;}'
     + '.su-dg span{font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums;}'
     + '.su-dg.done{opacity:.35;}'
-    + '.su-tips ol{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text-muted);line-height:1.5;}';
+    + '.su-tips ol{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text-muted);line-height:1.5;}'
+    // sideways landscape phones
+    + '.su.sideways{gap:10px;align-items:center;}'
+    + '.su.sideways .su-wrap{gap:4px;}'
+    + '.su.sideways .su-status{font-size:12px;min-height:16px;line-height:1.2;}'
+    + '.su.sideways #suLeft{width:155px;gap:6px;overflow-y:auto;}'
+    + '.su.sideways #suRight{width:196px;gap:6px;overflow-y:auto;}'
+    + '.su.sideways #suRightInfo{display:none;}'
+    + '.su.sideways .su-pad-box{gap:5px;}'
+    + '.su.sideways .su-controls{max-width:none;}'
+    + '.su.sideways .su-hint{height:38px;min-height:38px;font-size:13px;border-radius:9px;}'
+    + '.su.sideways .su-pad{gap:4px;max-width:none;grid-template-columns:repeat(5,1fr);}'
+    + '.su.sideways .su-num{height:38px;min-width:36px;font-size:16px;border-radius:9px;padding:0;}'
+    + '.su.sideways .su-num-clear{grid-column:auto !important;font-size:12px;}'
+    + '.su.sideways .su-card{padding:6px 8px;font-size:11px;}'
+    + '.su.sideways .su-label{font-size:11px;margin-bottom:4px;}'
+    + '.su.sideways .su-stats{gap:4px 6px;}'
+    + '.su.sideways .su-stats b{font-size:13px;}'
+    + '.su.sideways .su-stats .big b{font-size:18px;}'
+    + '.su.sideways .su-hearts{font-size:14px;}';
 
   function updateSides(state) {
     var left = document.getElementById('suLeft');
-    var right = document.getElementById('suRight');
+    var right = document.getElementById('suRightInfo') || document.getElementById('suRight');
     if (!left || !right || !state || !state.board) return;
     var blanks = state.blanks || 1, done = state.doneCount || 0;
     var pct = Math.min(100, Math.round(done / blanks * 100));
@@ -104,17 +125,45 @@
 
   function computeLayout() {
     var wrap = _container && _container.querySelector('.su');
-    var fit = window.boardFit && _container ? window.boardFit(_container) : { w: window.innerWidth - 24, h: window.innerHeight - 160 };
-    var wide = fit.w >= 380 + SIDE_W * 2 + 72 && fit.h >= 520;
-    if (wrap) wrap.classList.toggle('wide', wide);
-    var maxBoard = Math.min(window.innerWidth - 24, 520, window.innerHeight * 0.5);
-    if (wide) {
-      // room for everything in the middle column that is not the board (status, hint, pad)
-      var mid = _container.querySelector('.su-wrap');
-      var extra = mid && canvas ? mid.offsetHeight - canvas.offsetHeight : 260;
-      maxBoard = Math.min(fit.w - SIDE_W * 2 - 72, fit.h - extra - 4, 600);
+    var sideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
+    var fitEl = sideways && (_container && _container.closest && _container.closest('.board-wrap')) || _container;
+    var fit = window.boardFit && fitEl ? window.boardFit(fitEl) : { w: window.innerWidth - 24, h: window.innerHeight - 160 };
+    var sideL = 155, sideR = 196;
+    var wide = sideways
+      ? fit.w >= 130 + sideL + sideR + 20
+      : (fit.w >= 380 + SIDE_W * 2 + 72 && fit.h >= 520);
+    if (wrap) {
+      wrap.classList.toggle('sideways', sideways);
+      wrap.classList.toggle('wide', wide);
     }
-    maxBoard = Math.max(maxBoard, 240);
+    var padBox = document.getElementById('suPadBox');
+    var rightPad = document.getElementById('suRightPad');
+    var midWrap = _container && _container.querySelector('.su-wrap');
+    if (padBox && rightPad && midWrap) {
+      var targetParent = (sideways && wide) ? rightPad : midWrap;
+      if (padBox.parentNode !== targetParent) targetParent.appendChild(padBox);
+    }
+    var maxBoard;
+    if (sideways) {
+      var statusEl = document.getElementById('suStatus');
+      var extraH = (statusEl ? statusEl.offsetHeight : 16) + 6;
+      var availW = wide ? (fit.w - sideL - sideR - 24) : (fit.w - 12);
+      maxBoard = Math.max(120, Math.min(availW, fit.h - extraH));
+    } else {
+      maxBoard = Math.min(window.innerWidth - 24, 520, window.innerHeight * 0.5);
+      if (wide) {
+        // room for everything in the middle column that is not the board (status, hint, pad)
+        var mid = _container.querySelector('.su-wrap');
+        var extra = mid && canvas ? mid.offsetHeight - canvas.offsetHeight : 260;
+        maxBoard = Math.min(fit.w - SIDE_W * 2 - 72, fit.h - extra - 4, 600);
+      }
+      maxBoard = Math.max(maxBoard, 240);
+    }
+    var left = document.getElementById('suLeft');
+    var right = document.getElementById('suRight');
+    var sideMaxH = sideways ? Math.max(120, fit.h) + 'px' : '';
+    if (left) left.style.maxHeight = sideMaxH;
+    if (right) right.style.maxHeight = sideMaxH;
     var size = Math.floor(maxBoard);
     var cell = size / N;
     _layout.size = size;
@@ -357,25 +406,27 @@
           + '<div class="su-timer" id="suTimer"></div>'
           + '<div class="su-lives" id="suLives"></div>'
           + '<div class="su-board-wrap" id="suBoardWrap"></div>'
-          + '<div class="su-controls">'
-            + '<button class="su-hint" id="suHint" onclick="window._sudokuHint()">'
-              + t('sudoku_hint', 'Hint') + ' <span class="su-hint-badge" id="suHintBadge">×3</span>'
-            + '</button>'
+          + '<div class="su-pad-box" id="suPadBox">'
+            + '<div class="su-controls">'
+              + '<button class="su-hint" id="suHint" onclick="window._sudokuHint()">'
+                + t('sudoku_hint', 'Hint') + ' <span class="su-hint-badge" id="suHintBadge">×3</span>'
+              + '</button>'
+            + '</div>'
+            + '<div id="suPadHint" style="display:none;text-align:center;font-size:12px;color:var(--text-muted);">' + t('sudoku_pick_cell', 'Select a cell first') + '</div>'
+            + '<div class="su-pad" id="suPad">'
+              + '<button class="su-num" data-v="1" onclick="window._sudokuFill(1)">1</button>'
+              + '<button class="su-num" data-v="2" onclick="window._sudokuFill(2)">2</button>'
+              + '<button class="su-num" data-v="3" onclick="window._sudokuFill(3)">3</button>'
+              + '<button class="su-num" data-v="4" onclick="window._sudokuFill(4)">4</button>'
+              + '<button class="su-num" data-v="5" onclick="window._sudokuFill(5)">5</button>'
+              + '<button class="su-num" data-v="6" onclick="window._sudokuFill(6)">6</button>'
+              + '<button class="su-num" data-v="7" onclick="window._sudokuFill(7)">7</button>'
+              + '<button class="su-num" data-v="8" onclick="window._sudokuFill(8)">8</button>'
+              + '<button class="su-num" data-v="9" onclick="window._sudokuFill(9)">9</button>'
+              + '<button class="su-num su-num-clear" onclick="window._sudokuClear()" style="grid-column:1/-1;">' + t('sudoku_clear', 'Clear') + '</button>'
+            + '</div>'
           + '</div>'
-          + '<div id="suPadHint" style="display:none;text-align:center;font-size:12px;color:var(--text-muted);">' + t('sudoku_pick_cell', 'Select a cell first') + '</div>'
-          + '<div class="su-pad" id="suPad">'
-            + '<button class="su-num" data-v="1" onclick="window._sudokuFill(1)">1</button>'
-            + '<button class="su-num" data-v="2" onclick="window._sudokuFill(2)">2</button>'
-            + '<button class="su-num" data-v="3" onclick="window._sudokuFill(3)">3</button>'
-            + '<button class="su-num" data-v="4" onclick="window._sudokuFill(4)">4</button>'
-            + '<button class="su-num" data-v="5" onclick="window._sudokuFill(5)">5</button>'
-            + '<button class="su-num" data-v="6" onclick="window._sudokuFill(6)">6</button>'
-            + '<button class="su-num" data-v="7" onclick="window._sudokuFill(7)">7</button>'
-            + '<button class="su-num" data-v="8" onclick="window._sudokuFill(8)">8</button>'
-            + '<button class="su-num" data-v="9" onclick="window._sudokuFill(9)">9</button>'
-            + '<button class="su-num su-num-clear" onclick="window._sudokuClear()" style="grid-column:1/-1;">' + t('sudoku_clear', 'Clear') + '</button>'
-          + '</div>'
-        + '</div></div><aside class="su-side" id="suRight"></aside></div>';
+        + '</div></div><aside class="su-side" id="suRight"><div id="suRightPad"></div><div id="suRightInfo"></div></aside></div>';
 
       canvas = document.createElement('canvas');
       canvas.id = 'suCanvas';
@@ -431,10 +482,11 @@
 
       if (!ctx) ctx = canvas.getContext('2d');
       updateSides(state);
-      computeLayout();
       updateStatus(state, winner);
       updateLives(state);
       updateHintBtn(state);
+      updatePad();
+      computeLayout();
 
       // Timer: start on first render, freeze on game over
       if (state && state.startTime) {
