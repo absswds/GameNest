@@ -4,7 +4,7 @@
 const ROWS = 10, COLS = 9;
 
 const { botName } = require('./lib/bot-name');
-const { getDepth } = require('./lib/difficulty');
+const { getDepth, pickFor } = require('./lib/difficulty');
 
 exports.name = 'chinesechess';
 
@@ -311,23 +311,20 @@ exports.createBot = (playerIndex) => ({
       return cb - ca;
     });
 
-    let bestMove = moves[0];
-    let bestVal = -Infinity;
-    const depth = getDepth(state, { easy: 1, normal: 2, hard: 3 });
-
+    const depth = getDepth(state, DEPTHS);
     const seen = state._seen || {};
     const enemy = 1 - side;
+    const cands = [];
     for (const move of moves) {
       const cap = applyMove(board, move);
       let val = minimax(board, depth - 1, -Infinity, Infinity, false, side);
       // Don't shuffle back into positions that already happened (avoids endless repetition)
       val -= 40 * (seen[require('../games/chinesechess').positionKey(board, enemy)] || 0);
       undoMove(board, move, cap);
-      if (val > bestVal) {
-        bestVal = val;
-        bestMove = move;
-      }
+      cands.push({ move, score: val });
     }
+
+    const bestMove = pickFor(state, cands, PICK);
 
     return {
       from: { row: bestMove.fromRow, col: bestMove.fromCol },
@@ -335,3 +332,7 @@ exports.createBot = (playerIndex) => ({
     };
   },
 });
+
+// calibrated 2026-10-28 (scripts/bot-tier-eval.js --calibrate, lossK 4): all tiers search depth 3, weaker tiers sample hotter
+const DEPTHS = { easy: 3, normal: 3, hard: 3 };
+const PICK = { temp: { easy: 1000, normal: 120 }, lossK: { easy: 4, normal: 4 } };
