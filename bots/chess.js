@@ -3,7 +3,7 @@
 
 const Chess = require('../games/vendor/chessjs').Chess;
 const { botName } = require('./lib/bot-name');
-const { getDepth } = require('./lib/difficulty');
+const { getDepth, pickFor } = require('./lib/difficulty');
 
 const files = 'abcdefgh';
 
@@ -180,19 +180,17 @@ exports.createBot = (playerIndex) => ({
       return pieceVal(b.captured) - pieceVal(a.captured);
     });
 
-    var bestMove = moves[0];
-    var bestVal = -Infinity;
-    var depth = getDepth(state, { easy: 1, normal: 3, hard: 4 });
+    var depth = getDepth(state, DEPTHS);
+    var cands = [];
 
     for (var i = 0; i < moves.length; i++) {
       c.move(moves[i]);
       var val = -negamax(c, depth - 1, -Infinity, Infinity);
       c.undo();
-      if (val > bestVal) {
-        bestVal = val;
-        bestMove = moves[i];
-      }
+      cands.push({ move: moves[i], score: val });
     }
+
+    var bestMove = pickFor(state, cands, PICK);
 
     return {
       from: { row: 8 - parseInt(bestMove.from[1]), col: files.indexOf(bestMove.from[0]) },
@@ -201,3 +199,6 @@ exports.createBot = (playerIndex) => ({
     };
   },
 });
+
+var DEPTHS = { easy: 1, normal: 3, hard: 4 };
+var PICK = { temp: { easy: 60, normal: 15 }, maxLoss: { easy: 200, normal: 60 } };
