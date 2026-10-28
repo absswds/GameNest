@@ -42,7 +42,13 @@ function pickByDifficulty(cands, diff, opts) {
     return top[Math.floor(rnd() * top.length)].move;
   }
   const temp = Object.assign({ easy: 60, normal: 15 }, opts.temp)[diff] || 15;
-  const maxLoss = Object.assign({ easy: 250, normal: 40 }, opts.maxLoss)[diff];
+  const explicitMaxLoss = opts.maxLoss && opts.maxLoss[diff];
+  const lossK = opts.lossK && opts.lossK[diff];
+  const maxLoss = explicitMaxLoss !== undefined
+    ? explicitMaxLoss
+    : (typeof lossK === 'number' && !Number.isNaN(lossK)
+      ? lossK * temp
+      : { easy: 250, normal: 40 }[diff]);
   const pool = cands.filter((c) => c.score >= best - (maxLoss === undefined ? 40 : maxLoss));
   const ws = pool.map((c) => Math.exp((c.score - best) / temp));
   let r = rnd() * ws.reduce((a, b) => a + b, 0);
@@ -55,9 +61,16 @@ function pickFor(state, cands, opts) {
   const o = (state && state._options) || {};
   const hasTemp = typeof o.botTemp === 'number' && Number.isFinite(o.botTemp) && o.botTemp > 0;
   const hasMaxLoss = typeof o.botMaxLoss === 'number' && !Number.isNaN(o.botMaxLoss);
-  if (!hasTemp && !hasMaxLoss) return pickByDifficulty(cands, diff, opts);
+  const hasLossK = typeof o.botLossK === 'number' && Number.isFinite(o.botLossK) && o.botLossK > 0;
+  if (!hasTemp && !hasMaxLoss && !hasLossK) return pickByDifficulty(cands, diff, opts);
   const opts2 = Object.assign({}, opts);
   if (hasTemp) opts2.temp = Object.assign({}, opts && opts.temp, { [diff]: o.botTemp });
+  if (hasLossK) {
+    opts2.lossK = Object.assign({}, opts && opts.lossK, { [diff]: o.botLossK });
+    if (!hasMaxLoss && opts2.maxLoss) {
+      opts2.maxLoss = Object.assign({}, opts.maxLoss, { [diff]: undefined });
+    }
+  }
   if (hasMaxLoss) opts2.maxLoss = Object.assign({}, opts && opts.maxLoss, { [diff]: o.botMaxLoss });
   return pickByDifficulty(cands, diff, opts2);
 }

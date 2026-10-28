@@ -10,7 +10,11 @@ const {
   fitLogistic,
   solveX,
   pavDecreasing,
+  pickInitialDepth,
+  pickClosestDepth,
+  chooseDepthWithFallback,
 } = require('../scripts/lib/tier-fit');
+const { pickByDifficulty, pickFor } = require('../bots/lib/difficulty');
 
 test('fitLogistic recovers a and b from synthetic exact data', () => {
   const trueA = -1;
@@ -55,4 +59,68 @@ test('eloTargetLogit two-step 0.65 sigmoid is about 0.775', () => {
   const p = sigmoid(z);
   assert.ok(Math.abs(p - 0.775) <= 0.005, `expected ~0.775, got ${p}`);
   assert.ok(Math.abs(sigmoid(logit(0.65)) - 0.65) < 1e-9);
+});
+
+test('pickByDifficulty lossK scales maxLoss with temp and preserves existing behaviour when absent', () => {
+  const cands = [
+    { move: 'best', score: 100 },
+    { move: 'mid', score: 50 },   // loss 50 (filtered out by default normal maxLoss=40)
+    { move: 'worst', score: -200 }, // loss 300
+  ];
+
+  // Without lossK, default normal maxLoss=40 filters out 'mid' (loss 50) even when r -> 1
+  const withoutLossK = pickByDifficulty(cands, 'normal', {
+    temp: { normal: 20 },
+    random: () => 0.9999,
+  });
+  assert.equal(withoutLossK, 'best');
+
+  // With lossK=4 and temp=20, maxLoss = 80, so 'mid' (loss 50) is included in pool while 'worst' (loss 300) is excluded
+  const withLossK = pickByDifficulty(cands, 'normal', {
+    temp: { normal: 20 },
+    lossK: { normal: 4 },
+    random: () => 0.9999,
+  });
+  assert.equal(withLossK, 'mid');
+
+  // Scaling with higher temp=100 and lossK=4 gives maxLoss = 400, including 'worst' (loss 300)
+  const withHighTemp = pickByDifficulty(cands, 'normal', {
+    temp: { normal: 100 },
+    lossK: { normal: 4 },
+    random: () => 0.9999,
+  });
+  assert.equal(withHighTemp, 'worst');
+
+  // Explicit maxLoss override takes precedence over lossK
+  const withExplicitMaxLoss = pickByDifficulty(cands, 'normal', {
+    temp: { normal: 100 },
+    lossK: { normal: 4 },
+    maxLoss: { normal: 30 },
+    random: () => 0.9999,
+  });
+  assert.equal(withExplicitMaxLoss, 'best');
+
+  // pickFor reads state._options.botLossK and overrides bot maxLoss when botMaxLoss is not set
+  const state = { _options: { difficulty: 'normal', botTemp: 20, botLossK: 4 } };
+  const fromPickFor = pickFor(state, cands, {
+    temp: { normal: 15 },
+    maxLoss: { normal: 30 },
+    random: () => 0.9999,
+  });
+  assert.equal(fromPickFor, 'mid');
+});
+
+test('chooseDepthWithFallback picks depth 2 in chinesechess easy example when depth 3 cannot reach target', () => {
+  const targetRate = sigmoid(eloTargetLogit(0.70, 2)); // ~0.845
+  const table = [
+    { depth: 1, winRate: 0.98 },
+    { depth: 2, winRate: 0.92 },
+    { depth: 3, winRate: 0.40, maxWinRate: 0.67 },
+  ];
+  assert.equal(pickInitialDepth(table, targetRate), 3);
+  const res = chooseDepthWithFallback(table, targetRate);
+  assert.equal(res.candidateDepth, 3);
+  assert.equal(res.depth, 2);
+  assert.equal(res.fallback, true);
+  assert.equal(pickClosestDepth(table, targetRate), 2);
 });
