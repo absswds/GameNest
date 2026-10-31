@@ -369,4 +369,9 @@ module.exports = {
   'g_bad_move': '无效的出招',
   'rv_must_play_if_possible': '有可下的位置，不能跳过',
   'uno_no_challenge_pending': '当前没有可质疑的+4',
+  'qr_not_now': '当前不在答题阶段',
+  'qr_reveal_wait': '正在公布答案，请等待下一题',
+  'qr_invalid_player': '无效的玩家座位',
+  'qr_invalid_option': '请选择有效的选项（A–D）',
+  'qr_already_answered': '本题你已经作答过了',
 };

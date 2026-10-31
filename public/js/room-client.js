@@ -32,7 +32,7 @@
     'reversi', 'gomoku', 'chess', 'connect4', 'checkers', 'chinesechess', 'go9', 'hearts', 'battleship',
     'tictactoe', 'numberbomb', 'twentyfour', 'uno', 'doudizhu', 'bigtwo', 'texas', 'liarsbar',
     'exploding-kittens', 'flightchess', 'mahjong-sichuan', 'mahjong-cantonese',
-    'monopoly', 'werewolf', 'sanguo', 'rummikub', 'davinci', '2048', 'snakebattle', 'sudoku', 'sheeptile'
+    'monopoly', 'werewolf', 'sanguo', 'rummikub', 'davinci', '2048', 'snakebattle', 'sudoku', 'sheeptile', 'quizrace'
   ];
 
   // ---- Game name lookup ----
@@ -42,7 +42,7 @@
   }
 
   // Games that can be started and played solo (no AI / opponent needed).
-  const SOLO_GAMES = ['2048', 'sudoku', 'minesweeper', 'numberbomb', 'twentyfour', 'suikabattle', 'drawguess'];
+  const SOLO_GAMES = ['2048', 'sudoku', 'minesweeper', 'numberbomb', 'twentyfour', 'suikabattle', 'drawguess', 'quizrace'];
 
   let roomOptions = {};
   let match = null; // best-of-N score for board games, from the server
@@ -1182,6 +1182,44 @@
               _t('mj_rule_minFan') + ': ' + (roomOptions.mj_minFan ? tf('mj_fan_n', roomOptions.mj_minFan) : _t('mj_fan_chicken')) +
             '</div>' : '');
         }
+      } else if (game === 'quizrace') {
+        optionsEl.style.display = 'block';
+        var qrCount = [10, 15, 20].indexOf(Number(roomOptions.questionCount)) >= 0 ? Number(roomOptions.questionCount) : 10;
+        var qrTime = [10, 15, 20].indexOf(Number(roomOptions.timePerQuestion)) >= 0 ? Number(roomOptions.timePerQuestion) : 15;
+        var qrCat = roomOptions.category || 'all';
+        var qrDiff = roomOptions.difficulty || 'normal';
+        var qrCats = ['all', 'general', 'geography', 'science', 'history', 'nature', 'sports', 'culture'];
+        var qrSelStyle = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
+        if (isHost) {
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_question_count') + ' <select onchange="window._setGameOption(\'questionCount\', parseInt(this.value))" style="' + qrSelStyle + '">' +
+                [10, 15, 20].map(function(n) { return '<option value="' + n + '"' + (qrCount === n ? ' selected' : '') + '>' + n + _t('qr_opt_questions_unit') + '</option>'; }).join('') +
+              '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_time_per_question') + ' <select onchange="window._setGameOption(\'timePerQuestion\', parseInt(this.value))" style="' + qrSelStyle + '">' +
+                [10, 15, 20].map(function(s) { return '<option value="' + s + '"' + (qrTime === s ? ' selected' : '') + '>' + s + _t('qr_opt_seconds_unit') + '</option>'; }).join('') +
+              '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_category') + ' <select onchange="window._setGameOption(\'category\', this.value)" style="' + qrSelStyle + '">' +
+                qrCats.map(function(c) { return '<option value="' + c + '"' + (qrCat === c ? ' selected' : '') + '>' + _t('qr_cat_' + c) + '</option>'; }).join('') +
+              '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="' + qrSelStyle + '">' +
+                '<option value="easy"' + (qrDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
+                '<option value="normal"' + (qrDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
+                '<option value="hard"' + (qrDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
+              '</select></label>' +
+            '</div>';
+        } else {
+          var qrDiffLbl = qrDiff === 'easy' ? _t('difficulty_easy') : qrDiff === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+            '<div style="font-size:13px;color:var(--text-muted)">' +
+              _t('qr_opt_question_count') + ' ' + qrCount + _t('qr_opt_questions_unit') + ' · ' +
+              _t('qr_opt_time_per_question') + ' ' + qrTime + _t('qr_opt_seconds_unit') + ' · ' +
+              _t('qr_opt_category') + ' ' + _t('qr_cat_' + qrCat) + ' · ' +
+              _t('difficulty_label') + ': ' + qrDiffLbl +
+            '</div>';
+        }
       } else if (isHost && gameInfo.supportsAI && window._gamesWithDifficulty.indexOf(game) >= 0) {
         // AI difficulty selector only for games whose bots actually read it
         optionsEl.style.display = 'block';
@@ -1416,7 +1454,7 @@
       else if (state && state.currentPlayer >= 0) st.textContent = _t('opponent_turn');
       else if (state) st.textContent = _t('realtime_race');
       // These renderers draw their own whose-turn header; the generic line would be wrong for them.
-      if (game === 'sanguo' || game === 'werewolf') st.style.display = 'none';
+      if (game === 'sanguo' || game === 'werewolf' || game === 'quizrace') st.style.display = 'none';
     }
   }
 
@@ -1617,6 +1655,14 @@
       isWin = winner === -2 ? wolfSide : !wolfSide;
       txt = isWin ? _t('you_win') : _t('you_lose');
       sub = _t(winner === -2 ? 'ww_win_wolf' : 'ww_win_good');
+    } else if (game === 'quizrace' && state && Array.isArray(state.ranking)) {
+      isWin = (winner === playerIndex);
+      txt = isWin ? _t('you_win') : _t('you_lose');
+      sub = state.ranking.map(function(r, idx) {
+        var nm = r.player === playerIndex ? _t('you') : window.getPlayerName(r.player);
+        var avgS = ((r.avgTimeMs || 0) / 1000).toFixed(1) + 's';
+        return (idx + 1) + '. ' + nm + ' ' + r.score + ' (' + r.correctCount + '/' + (state.totalQuestions || 10) + ' · ' + avgS + ')';
+      }).join(' · ');
     } else {
       isWin = (winner === playerIndex);
       txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';

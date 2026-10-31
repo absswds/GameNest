@@ -369,4 +369,9 @@ module.exports = {
   'g_bad_move': 'Invalid move',
   'rv_must_play_if_possible': 'You have a legal move and cannot pass',
   'uno_no_challenge_pending': 'There is no +4 to challenge',
+  'qr_not_now': 'Cannot answer right now',
+  'qr_reveal_wait': 'Revealing answer, wait for the next question',
+  'qr_invalid_player': 'Invalid player seat',
+  'qr_invalid_option': 'Please choose a valid option (0-3)',
+  'qr_already_answered': 'You have already answered this question',
 };
