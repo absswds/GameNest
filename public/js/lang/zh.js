@@ -1076,6 +1076,8 @@
     'sb_game_over': '本局结束，观看下一局吧',
     'sb_eliminated': '💥 你已淘汰，继续观战',
     'sb_controls': '滑动、方向键或点按按钮控制蛇头',
+    'sb_time_left': '剩余',
+    'sb_time_up': '时间到，最长的蛇获胜',
     'rc_win_rounds_label': '获胜回合:',
     // ---- Monopoly ----
     'mp_player': '玩家',

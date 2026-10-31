@@ -18,6 +18,9 @@ exports.name = 'snakebattle';
 exports.maxPlayers = 6;
 exports.realtime = true;
 exports.tickMs = 120;
+// 3 minutes; when time runs out the longest surviving snake wins.
+const TIME_LIMIT_TICKS = 1500;
+exports.TIME_LIMIT_TICKS = TIME_LIMIT_TICKS;
 
 exports.createState = () => ({
   width: 28,
@@ -67,6 +70,8 @@ exports.initGame = (state, playerCount) => {
   for (let i = 0; i < playerCount; i++) state.snakes.push(makeSnake(i, SPAWNS[i]));
   state.winner = null;
   state.tick = 0;
+  state.timeLimitTicks = TIME_LIMIT_TICKS;
+  state.endReason = null;
   state.realtime = true;
   spawnFood(state);
 };
@@ -152,6 +157,12 @@ exports.tick = state => {
   state.tick++;
   const survivors = state.snakes.filter(snake => snake.alive);
   if (survivors.length <= 1) state.winner = survivors.length === 1 ? survivors[0].player : -1;
+  else if (state.tick >= TIME_LIMIT_TICKS) {
+    const longest = Math.max(...survivors.map(snake => snake.body.length));
+    const leaders = survivors.filter(snake => snake.body.length === longest);
+    state.winner = leaders.length === 1 ? leaders[0].player : -1;
+    state.endReason = 'time';
+  }
   return true;
 };
 

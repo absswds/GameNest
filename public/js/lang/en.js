@@ -1076,6 +1076,8 @@
     'sb_game_over': 'Game over, watch next round',
     'sb_eliminated': '💥 Eliminated, keep watching',
     'sb_controls': 'Swipe or arrow keys to steer',
+    'sb_time_left': 'Time left',
+    'sb_time_up': 'Time up, the longest snake wins',
     'rc_win_rounds_label': 'Win rounds:',
     // ---- Monopoly ----
     'mp_player': 'Player',

@@ -93,6 +93,12 @@
     if (!status) return;
     var me = state.snakes[playerIndex];
     status.textContent = state.winner != null ? (state.winner === -1 ? _t('sb_draw') : state.winner === playerIndex ? _t('sb_you_survived') : _t('sb_game_over')) : (!me || !me.alive ? _t('sb_eliminated') : _t('sb_controls'));
+    if (state.winner == null && state.timeLimitTicks) {
+      var left = Math.max(0, Math.ceil((state.timeLimitTicks - state.tick) * 0.12));
+      status.textContent += ' · ' + _t('sb_time_left') + ' ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+    } else if (state.endReason === 'time') {
+      status.textContent += ' · ' + _t('sb_time_up');
+    }
   }
 
   function installStyles() {

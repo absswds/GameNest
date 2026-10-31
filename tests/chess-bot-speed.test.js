@@ -3,7 +3,9 @@ const assert = require('node:assert/strict');
 const chess = require('../games/chess');
 const chessBot = require('../bots/chess');
 
-test('hard bot plays 20 plies from start position under 30s without error', () => {
+// The limit only catches a runaway search: hard spends about 1s a move, and
+// GitHub CI runners took 31-36s for these 20 plies.
+test('hard bot plays 20 plies from start position under 60s without error', () => {
   const state = chess.createState();
   state._options = { difficulty: 'hard' };
   chess.initGame(state);
@@ -21,7 +23,7 @@ test('hard bot plays 20 plies from start position under 30s without error', () =
   }
 
   const elapsedMs = Date.now() - t0;
-  assert.ok(elapsedMs < 30000, `expected 20 plies < 30000ms, got ${elapsedMs}ms`);
+  assert.ok(elapsedMs < 60000, `expected 20 plies < 60000ms, got ${elapsedMs}ms`);
 });
 
 test('mate-in-1 position is solved at easy, normal and hard', () => {

@@ -233,7 +233,7 @@
         { h: '吃苹果', p: '场上始终有一个苹果，被吃掉后会在空位重新出现。吃到苹果蛇身长 1 格、得 1 分。分数只用于展示，不决定胜负。' },
         { h: '死亡', p: '撞墙、撞到任何蛇身（包括自己和已死亡的蛇留下的身体），或两条蛇的头同时进入同一格，都会死亡。两条蛇头对穿互换位置也算双方死亡。蛇尾移开的格子可以立刻进入（正在变长时除外）。' },
         { h: '尸体', p: '死亡的蛇身体会留在场上成为障碍，直到本局结束，所以后期场地会越来越拥挤。' },
-        { h: '胜负', p: '场上活着的蛇不超过 1 条时结束，剩下的那条获胜。若最后几条蛇在同一刻全部死亡，则平局。' },
+        { h: '胜负', p: '场上活着的蛇不超过 1 条时结束，剩下的那条获胜。若最后几条蛇在同一刻全部死亡，则平局。每局限时 3 分钟，时间到时活着的蛇里最长的获胜，一样长则平局。' },
         { h: '提示', p: '沿边缘和蛇群外围走更安全，利用别人的尸体逼对手拐进死路；不要为了苹果冲进狭窄区域。至少需要 2 名玩家，可添加电脑。' },
       ]
     },
@@ -641,7 +641,7 @@
         { h: 'Food', p: 'There is always one apple on the field and a new one appears on a free cell after it is eaten. Eating grows you by 1 and gives 1 point. Score is for display only and does not decide the winner.' },
         { h: 'Dying', p: 'You die by hitting a wall, any snake body (your own and the bodies of dead snakes included), or by two heads entering the same cell. Two heads swapping places kills both. A cell the tail is leaving can be entered right away, unless that snake is growing.' },
         { h: 'Corpses', p: 'A dead snake stays on the board as an obstacle until the round ends, so the field gets more crowded.' },
-        { h: 'Winning', p: 'The round ends when at most one snake is alive and that survivor wins. If the last snakes all die on the same tick, it is a draw.' },
+        { h: 'Winning', p: 'The round ends when at most one snake is alive and that survivor wins. If the last snakes all die on the same tick, it is a draw. Each round lasts at most 3 minutes; when time runs out the longest living snake wins, and equal lengths are a draw.' },
         { h: 'Tips', p: 'Stay near the edges and the outside of the pack, and use corpses to box opponents in; do not dive into tight spots for an apple. At least 2 players are needed; bots can fill seats.' },
       ]
     },
