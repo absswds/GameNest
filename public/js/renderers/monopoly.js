@@ -130,7 +130,16 @@
     ctx.fillStyle = '#5a4a32';
     ctx.font = Math.floor(CS * 0.3) + 'px "Nunito", "LXGW WenKai", sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if (winnerIdx === null || winnerIdx === undefined) {
+    var tot = anim.total, tAge = tot ? Date.now() - tot.start : 0;
+    if (tot && tAge < tot.dur) {
+      // Dice total takes the turn line for a moment, in the title's brush font.
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, tAge / 200, (tot.dur - tAge) / 300);
+      ctx.fillStyle = tot.doubles ? '#c0392b' : '#b9954f';
+      ctx.font = 'bold ' + Math.floor(CS * 0.5) + 'px "Ma Shan Zheng", serif';
+      ctx.fillText(tot.text, W / 2, H / 2 + h * 0.17);
+      ctx.restore();
+    } else if (winnerIdx === null || winnerIdx === undefined) {
       ctx.fillText(_tf('mp_turn_prefix', nameOf(st.currentPlayer)), W / 2, H / 2 + h * 0.16);
     }
 
@@ -321,17 +330,9 @@
       ctx.save();
       ctx.globalAlpha = 1 - prog;
       ctx.fillStyle = f.color;
-      ctx.font = 'bold ' + Math.floor(CS * (f.big ? 0.75 : 0.34)) + 'px "Nunito", "LXGW WenKai", sans-serif';
+      ctx.font = 'bold ' + Math.floor(CS * 0.34) + 'px "Nunito", "LXGW WenKai", sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      if (f.big) {
-        ctx.globalAlpha = prog < 0.7 ? 1 : (1 - prog) / 0.3; // stay readable, then fade
-        var tw = Math.max(ctx.measureText(f.text).width + CS * 0.5, CS * 1.1), th = CS * 1.05;
-        var fy = f.y - prog * CS * 0.5;
-        ctx.fillStyle = '#fffdf8'; ctx.strokeStyle = f.color; ctx.lineWidth = 2;
-        roundRect(f.x - tw / 2, fy - th / 2, tw, th, th / 2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = f.color;
-      }
-      ctx.fillText(f.text, f.x, f.y - prog * CS * (f.big ? 0.5 : 1.2));
+      ctx.fillText(f.text, f.x, f.y - prog * CS * 1.2);
       ctx.restore();
     }
   }
@@ -367,7 +368,8 @@
     if (!anim.cur) {
       if (anim.queue.length === 0) {
         // 动画全部完成 → 对齐到最新 state
-        if (anim.floats.length === 0) {
+        if (anim.total && now - anim.total.start >= anim.total.dur) anim.total = null;
+        if (anim.floats.length === 0 && !anim.total) {
           anim.running = false;
           displayState = latestState;
           drawFrame(displayState);
@@ -450,17 +452,16 @@
       if (ev.passedGo) spawnFloat(cellCenter(0), '+200', '#27ae60');
     } else if (ev.type === 'dice') {
       anim.dice = { faces: ev.final, p: 1 };
-      var mid = { x: W / 2, y: H / 2 - CO * 0.35 };
-      var sum = ev.final[0] + ev.final[1];
-      spawnFloat(mid, ev.final[0] === ev.final[1] ? _tf('mp_doubles_float', sum) : String(sum), ev.final[0] === ev.final[1] ? '#d35400' : '#5a4a32', 2200, true);
+      var sum = ev.final[0] + ev.final[1], dbl = ev.final[0] === ev.final[1];
+      anim.total = { text: _tf(dbl ? 'mp_doubles_float' : 'mp_total_float', sum), doubles: dbl, start: Date.now(), dur: 2600 };
     } else if (ev.type === 'rent') {
       var c = cellCenter(ev.space);
       spawnFloat(c, '-' + ev.amount, '#e74c3c');
     }
   }
 
-  function spawnFloat(ctr, text, color, dur, big) {
-    anim.floats.push({ x: ctr.x, y: ctr.y, text: text, color: color, start: Date.now(), dur: dur || 1400, big: !!big });
+  function spawnFloat(ctr, text, color) {
+    anim.floats.push({ x: ctr.x, y: ctr.y, text: text, color: color, start: Date.now(), dur: 1400 });
   }
 
   // ---------- diff → 事件 ----------
