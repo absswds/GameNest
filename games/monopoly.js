@@ -78,7 +78,7 @@ exports.createState = () => ({
   phase: 'waiting', positions: [], cash: [], properties: {}, inJail: [],
   jailTurns: [], eliminated: [], currentPlayer: 0, dice: [0, 0],
   lastCard: null, winner: null, _playerCount: 0, pendingAction: null,
-  freeRentCards: [], lastCardEffect: null, doublesCount: 0, rollAgain: false, round: 1, roundLimit: DEFAULT_ROUND_LIMIT, assets: [], endReason: null,
+  freeRentCards: [], lastCardEffect: null, doublesCount: 0, rollAgain: false, rollCount: 0, round: 1, roundLimit: DEFAULT_ROUND_LIMIT, assets: [], endReason: null,
   board: BOARD, lastMove: null, lastRent: null, tradeOffer: null, lastTrade: null,
 });
 
@@ -99,6 +99,7 @@ exports.initGame = (state, playerCount) => {
   state.lastCardEffect = null;
   state.doublesCount = 0;
   state.rollAgain = false;
+  state.rollCount = 0; // bumped on every roll so the client animates repeat values too
   state.round = 1;
   state.roundLimit = roundLimitOf(state);
   state.assets = [];
@@ -463,6 +464,7 @@ exports.handleMove = (data, state, playerIndex) => {
     if (state.phase !== 'waiting') return 'mp_cannot_roll';
     const dice = rollDice();
     state.dice = dice;
+    state.rollCount = (state.rollCount || 0) + 1;
     const steps = dice[0] + dice[1];
     const isDouble = dice[0] === dice[1];
     const jailedAtRollStart = !!state.inJail[playerIndex];

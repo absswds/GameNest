@@ -113,8 +113,17 @@
     if (dice && (dice[0] || dice[1])) {
       var ds = CO * 0.62, gap = CO * 0.2;
       var dx = W / 2 - ds - gap / 2, dy = H / 2 - ds * 0.2;
-      drawDie(dx, dy, ds, dice[0]);
-      drawDie(dx + ds + gap, dy, ds, dice[1]);
+      var tp = anim.dice && anim.dice.p < 1 ? anim.dice.p : -1;
+      if (tp >= 0) {
+        // Thrown: bigger, tumbling and bouncing, settling as p -> 1.
+        var big = ds * (1.45 - 0.45 * tp);
+        var hop = -Math.abs(Math.sin(tp * Math.PI * 3)) * (1 - tp) * CO * 0.9;
+        drawDie(W / 2 - big - gap / 2, dy + ds / 2 - big / 2 + hop, big, dice[0], (1 - tp) * (1 - tp) * Math.PI * 5);
+        drawDie(W / 2 + gap / 2, dy + ds / 2 - big / 2 + hop * 0.8, big, dice[1], -(1 - tp) * (1 - tp) * Math.PI * 4);
+      } else {
+        drawDie(dx, dy, ds, dice[0]);
+        drawDie(dx + ds + gap, dy, ds, dice[1]);
+      }
     }
 
     // 当前玩家
@@ -133,7 +142,15 @@
     }
   }
 
-  function drawDie(x, y, s, val) {
+  function drawDie(x, y, s, val, angle) {
+    if (angle) {
+      ctx.save();
+      ctx.translate(x + s / 2, y + s / 2); ctx.rotate(angle); ctx.translate(-x - s / 2, -y - s / 2);
+      ctx.shadowColor = 'rgba(90,74,50,.35)'; ctx.shadowBlur = s * 0.25; ctx.shadowOffsetY = s * 0.12;
+      drawDie(x, y, s, val);
+      ctx.restore();
+      return;
+    }
     ctx.fillStyle = '#fff'; ctx.strokeStyle = '#c8a45c'; ctx.lineWidth = 2;
     roundRect(x, y, s, s, s * 0.18); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#333';
@@ -304,9 +321,17 @@
       ctx.save();
       ctx.globalAlpha = 1 - prog;
       ctx.fillStyle = f.color;
-      ctx.font = 'bold ' + Math.floor(CS * 0.34) + 'px "Nunito", "LXGW WenKai", sans-serif';
+      ctx.font = 'bold ' + Math.floor(CS * (f.big ? 0.75 : 0.34)) + 'px "Nunito", "LXGW WenKai", sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(f.text, f.x, f.y - prog * CS * 1.2);
+      if (f.big) {
+        ctx.globalAlpha = prog < 0.7 ? 1 : (1 - prog) / 0.3; // stay readable, then fade
+        var tw = Math.max(ctx.measureText(f.text).width + CS * 0.5, CS * 1.1), th = CS * 1.05;
+        var fy = f.y - prog * CS * 0.5;
+        ctx.fillStyle = '#fffdf8'; ctx.strokeStyle = f.color; ctx.lineWidth = 2;
+        roundRect(f.x - tw / 2, fy - th / 2, tw, th, th / 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = f.color;
+      }
+      ctx.fillText(f.text, f.x, f.y - prog * CS * (f.big ? 0.5 : 1.2));
       ctx.restore();
     }
   }
@@ -363,7 +388,13 @@
     var p = Math.min(elapsed / ev.dur, 1);
 
     if (ev.type === 'dice') {
-      anim.dice = { faces: p < 1 ? [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)] : ev.final };
+      // Faces change on a slowing schedule (quick at first, then settling) instead of every frame.
+      var step = Math.floor((1 - Math.pow(1 - p, 2)) * 11);
+      if (step !== ev.step) {
+        ev.step = step;
+        ev.faces = [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)];
+      }
+      anim.dice = { faces: p < 1 ? ev.faces : ev.final, p: p };
     } else if (ev.type === 'move') {
       updateMove(ev, p);
     }
@@ -378,6 +409,7 @@
   }
 
   function beginEvent(ev) {
+    if (ev.type === 'announce' && window.Motion && Motion.announce) Motion.announce(ev.title, ev.opts);
     if (ev.type === 'move' && ev.kind !== 'teleport') {
       // 构造路径
       var path = [ev.from];
@@ -387,7 +419,7 @@
       var cur = ev.from;
       for (var k = 0; k < n; k++) { cur = (cur + dir + 28) % 28; path.push(cur); }
       ev.path = path;
-      ev.dur = Math.max(400, n * 130);
+      ev.dur = Math.max(500, n * 240); // one hop at a time, slow enough to count along
     }
   }
 
@@ -417,25 +449,31 @@
       if (displayState && displayState.positions) displayState.positions[ev.player] = ev.to;
       if (ev.passedGo) spawnFloat(cellCenter(0), '+200', '#27ae60');
     } else if (ev.type === 'dice') {
-      anim.dice = { faces: ev.final };
+      anim.dice = { faces: ev.final, p: 1 };
+      var mid = { x: W / 2, y: H / 2 - CO * 0.35 };
+      var sum = ev.final[0] + ev.final[1];
+      spawnFloat(mid, ev.final[0] === ev.final[1] ? _tf('mp_doubles_float', sum) : String(sum), ev.final[0] === ev.final[1] ? '#d35400' : '#5a4a32', 2200, true);
     } else if (ev.type === 'rent') {
       var c = cellCenter(ev.space);
       spawnFloat(c, '-' + ev.amount, '#e74c3c');
     }
   }
 
-  function spawnFloat(ctr, text, color) {
-    anim.floats.push({ x: ctr.x, y: ctr.y, text: text, color: color, start: Date.now(), dur: 1000 });
+  function spawnFloat(ctr, text, color, dur, big) {
+    anim.floats.push({ x: ctr.x, y: ctr.y, text: text, color: color, start: Date.now(), dur: dur || 1400, big: !!big });
   }
 
   // ---------- diff → 事件 ----------
   function buildEvents(st) {
     var evs = [];
+    var rolled = prevSnap && st.rollCount != null ? st.rollCount !== prevSnap.rollCount
+      : st.lastMove && moveSignature(st.lastMove) !== (prevSnap && prevSnap.lastMove) && st.lastMove.kind === 'walk' && st.lastMove.steps === (st.dice[0] + st.dice[1]);
+    if (rolled && st.dice && st.dice[0]) {
+      evs.push({ type: 'dice', dur: 1100, final: [st.dice[0], st.dice[1]] });
+      // Hold on the result so the total can be read before the token starts walking.
+      evs.push({ type: 'wait', dur: 650 });
+    }
     if (st.lastMove && moveSignature(st.lastMove) !== (prevSnap && prevSnap.lastMove)) {
-      var dchanged = !prevSnap || st.dice[0] !== prevSnap.dice[0] || st.dice[1] !== prevSnap.dice[1];
-      if (dchanged && st.lastMove.kind === 'walk' && st.lastMove.steps === (st.dice[0] + st.dice[1])) {
-        evs.push({ type: 'dice', dur: 700, final: [st.dice[0], st.dice[1]] });
-      }
       evs.push({ type: 'move', player: st.lastMove.player, from: st.lastMove.from, to: st.lastMove.to, steps: st.lastMove.steps, kind: st.lastMove.kind, passedGo: st.lastMove.passedGo, dur: 600 });
     }
     if (st.lastRent && st.lastRent !== (prevSnap && prevSnap.lastRent) && st.lastRent.amount > 0) {
@@ -444,8 +482,35 @@
     }
     if (st.lastCard && st.lastCard !== (prevSnap && prevSnap.lastCard)) {
       pushLog('🎴 ' + st.lastCard.text);
+      var eff = st.lastCardEffect;
+      var who = eff && eff.player === playerIndex ? _t('mp_you_drew_card') : _tf('mp_drew_card', nameOf(eff ? eff.player : st.currentPlayer));
+      announceEv(evs, who, { icon: '🎴', sub: (eff && eff.summary) || st.lastCard.text, tone: eff && eff.tone === 'gain' ? 'gain' : eff && eff.tone === 'loss' ? 'loss' : 'info', ms: 2200 });
+    }
+    if (prevSnap) {
+      var board = st.board || [];
+      var owners = ownersOf(st);
+      Object.keys(owners).forEach(function (i) {
+        var prop = { owner: owners[i] }, before = prevSnap.owners[i];
+        if (prop.owner != null && before == null && !(st.lastTrade && st.lastTrade !== prevSnap.lastTrade)) {
+          announceEv(evs, _tf('mp_ann_bought', prop.owner === playerIndex ? _t('mp_you') : nameOf(prop.owner), spName(board[i])), { icon: '🏠', tone: 'gain', ms: 1300 });
+        }
+      });
+      (st.inJail || []).forEach(function (j, i) {
+        if (j && !prevSnap.jail[i]) announceEv(evs, _tf('mp_ann_jail', i === playerIndex ? _t('mp_you') : nameOf(i)), { icon: '🚔', tone: 'warn', ms: 1800 });
+      });
+      if (st.lastTrade && st.lastTrade.accepted && st.lastTrade !== prevSnap.lastTrade) {
+        announceEv(evs, _t('mp_ann_trade_done'), { icon: '🤝', sub: nameOf(st.lastTrade.from) + ' ⇄ ' + nameOf(st.lastTrade.to), tone: 'info', ms: 1600 });
+      }
+      (st.eliminated || []).forEach(function (e, i) {
+        if (e && !prevSnap.elim[i]) announceEv(evs, _tf('mp_ann_bankrupt', i === playerIndex ? _t('mp_you') : nameOf(i)), { icon: '💸', tone: 'loss', ms: 2000 });
+      });
     }
     return evs;
+  }
+
+  // Queue an announcement card after the moves before it, and pause the board while it shows.
+  function announceEv(evs, title, opts) {
+    evs.push({ type: 'announce', title: title, opts: opts, dur: Math.min(opts.ms || 1500, 1600) });
   }
 
   function pushLog(s) { eventLog.push(s); if (eventLog.length > 3) eventLog.shift(); }
@@ -495,7 +560,19 @@
   }
 
   function snapOf(st) {
-    return { lastMove: moveSignature(st.lastMove), lastCard: st.lastCard, lastRent: st.lastRent, dice: st.dice ? [st.dice[0], st.dice[1]] : [0, 0] };
+    return {
+      lastMove: moveSignature(st.lastMove), lastCard: st.lastCard, lastRent: st.lastRent, dice: st.dice ? [st.dice[0], st.dice[1]] : [0, 0], rollCount: st.rollCount,
+      lastTrade: st.lastTrade,
+      owners: ownersOf(st),
+      jail: (st.inJail || []).slice(), elim: (st.eliminated || []).slice()
+    };
+  }
+
+  // properties is keyed by board index (object or array); map index -> owner
+  function ownersOf(st) {
+    var o = {};
+    Object.keys(st.properties || {}).forEach(function (k) { var p = st.properties[k]; o[k] = p ? p.owner : null; });
+    return o;
   }
 
   function moveSignature(move) {
@@ -886,15 +963,15 @@
 
       if (evs.length > 0) {
         // 队列过长则快进
-        if (anim.queue.length > 3) {
+        if (anim.queue.length > 8) {
           anim.queue = []; stopAnim();
           displayState = cloneForDisplay(st);
           drawFrame(displayState); buildPanel(displayState);
         } else {
           // 把当前 displayState 作为动画起点（其 positions 仍是动画前的旧值）
           for (var i = 0; i < evs.length; i++) anim.queue.push(evs[i]);
-          buildPanel(displayState); // 动画中禁用按钮
           startAnim();
+          buildPanel(displayState); // 动画中禁用按钮（startAnim 之后 anim.running 才为真）
         }
       } else {
         displayState = cloneForDisplay(st);
