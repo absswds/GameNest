@@ -420,11 +420,20 @@ async function runOnce(game, runIdx, seed) {
         if (move && !realtime && !fresh && game !== 'suikabattle' && game !== 'minesweeper') { /* retry same */ }
       } else {
         if (!myTurn(c)) return;
-        const cands = [];
-        try { const m = botMoveFor(c); if (m !== undefined && m !== null) cands.push(m); } catch (e) { issueNotes.add('my-seat bot threw (view-based state): ' + e.message.slice(0, 120)); }
-        cands.push({ pass: true }, {});
-        move = cands[Math.min(c.attempt, cands.length - 1)];
-        c.attempt++;
+        if (game === 'twentyfour') {
+          // The bot returns {} while it is still "thinking"; sending that only earns an error and
+          // used to leave single-player runs stuck, so wait for a real expression instead.
+          let m = null;
+          try { m = botMoveFor(c); } catch (e) { issueNotes.add('my-seat bot threw (view-based state): ' + e.message.slice(0, 120)); }
+          if (!m || !m.expression) { c.lastSentAt = now; return; }
+          move = m;
+        } else {
+          const cands = [];
+          try { const m = botMoveFor(c); if (m !== undefined && m !== null) cands.push(m); } catch (e) { issueNotes.add('my-seat bot threw (view-based state): ' + e.message.slice(0, 120)); }
+          cands.push({ pass: true }, {});
+          move = cands[Math.min(c.attempt, cands.length - 1)];
+          c.attempt++;
+        }
       }
       if (!move) return;
       c.lastSentAt = now; c.lastSentSeq = c.seq; c.moves++; res.myMoves++;
