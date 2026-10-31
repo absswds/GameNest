@@ -210,7 +210,11 @@
     startTime: 0,
     // Per-cell pop animations: key "r,c" -> { type:'pop'|'merge', start }
     pops: {},
+    // Tiles sliding to their new cells: { moves:[{fr,fc,tr,tc,v}], start }
+    slide: null,
   };
+  var SLIDE_MS = 110;
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function startAnimLoop() {
     if (animState.running) return;
@@ -267,53 +271,137 @@
 
     var now = performance.now();
     var POP_MS = 160;
+    var g = cell * 0.06;
 
     for (var r = 0; r < N; r++) {
       for (var c = 0; c < N; c++) {
-        var x = _layout.ox + c * cell;
-        var y = _layout.oy + r * cell;
-        var v = state.board[r][c];
-        var g = cell * 0.06;
-
         // Cell background (empty slot)
         ctx.fillStyle = '#3a3f4b';
-        ctx.beginPath(); rr(x + g, y + g, cell - 2 * g, cell - 2 * g, cell * 0.12); ctx.fill();
+        ctx.beginPath(); rr(_layout.ox + c * cell + g, _layout.oy + r * cell + g, cell - 2 * g, cell - 2 * g, cell * 0.12); ctx.fill();
+      }
+    }
 
+    // While sliding, draw the old tiles gliding to their targets; the new board shows afterwards.
+    var slide = animState.slide;
+    if (slide && now - slide.start < SLIDE_MS) {
+      var p = (now - slide.start) / SLIDE_MS;
+      p = 1 - Math.pow(1 - p, 3); // ease-out
+      slide.moves.forEach(function (m) {
+        drawTile(_layout.ox + (m.fc + (m.tc - m.fc) * p) * cell, _layout.oy + (m.fr + (m.tr - m.fr) * p) * cell, m.v, 1);
+      });
+      return;
+    }
+    animState.slide = null;
+
+    for (var r2 = 0; r2 < N; r2++) {
+      for (var c2 = 0; c2 < N; c2++) {
+        var v = state.board[r2][c2];
         if (v === 0) continue;
 
-        // Pop/merge scale animation
-        var key = r + ',' + c;
-        var pop = animState.pops[key];
-        var scale = 1, ox = 0, oy = 0;
+        // Pop/merge scale animation (a pop may be scheduled to start after the slide)
+        var pop = animState.pops[r2 + ',' + c2];
+        var scale = 1;
         if (pop) {
-          var t = Math.min((now - pop.start) / POP_MS, 1);
+          if (now < pop.start && pop.type === 'spawn') continue;
+          var t = Math.max(0, Math.min((now - pop.start) / POP_MS, 1));
           // ease-out back for a little overshoot on merge
-          var s = pop.type === 'merge'
-            ? 1 + 0.18 * Math.sin(Math.min(t, 1) * Math.PI)
+          scale = pop.type === 'merge'
+            ? 1 + 0.18 * Math.sin(t * Math.PI)
             : 0.6 + 0.4 * (1 - Math.pow(1 - t, 3));
-          scale = s;
-          ox = (cell - cell * scale) / 2;
-          oy = (cell - cell * scale) / 2;
         }
-
-        ctx.fillStyle = tileColor(v);
-        ctx.beginPath();
-        rr(x + g + ox, y + g + oy, cell * scale - 2 * g, cell * scale - 2 * g, cell * 0.12);
-        ctx.fill();
-
-        // Number
-        ctx.fillStyle = textColor(v);
-        var fontSize = v >= 1024 ? cell * 0.3 : v >= 128 ? cell * 0.35 : cell * 0.42;
-        ctx.font = 'bold ' + Math.floor(fontSize) + 'px system-ui,-apple-system,sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(String(v), x + cell / 2, y + cell / 2 + 1);
+        drawTile(_layout.ox + c2 * cell, _layout.oy + r2 * cell, v, scale);
       }
     }
   }
 
+  function drawTile(x, y, v, scale) {
+    var cell = _layout.cell;
+    var g = cell * 0.06;
+    var off = (cell - cell * scale) / 2;
+    ctx.fillStyle = tileColor(v);
+    ctx.beginPath();
+    rr(x + g + off, y + g + off, cell * scale - 2 * g, cell * scale - 2 * g, cell * 0.12);
+    ctx.fill();
+
+    // Number
+    ctx.fillStyle = textColor(v);
+    var fontSize = (v >= 1024 ? cell * 0.3 : v >= 128 ? cell * 0.35 : cell * 0.42) * scale;
+    ctx.font = 'bold ' + Math.floor(fontSize) + 'px system-ui,-apple-system,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(v), x + cell / 2, y + cell / 2 + 1);
+  }
+
+  // Cells of each line, ordered from the edge the tiles slide toward.
+  function linesFor(dir) {
+    var lines = [];
+    for (var i = 0; i < N; i++) {
+      var line = [];
+      for (var j = 0; j < N; j++) {
+        if (dir === 'left') line.push([i, j]);
+        else if (dir === 'right') line.push([i, N - 1 - j]);
+        else if (dir === 'up') line.push([j, i]);
+        else line.push([N - 1 - j, i]);
+      }
+      lines.push(line);
+    }
+    return lines;
+  }
+
+  // Replay one move on the old board (same rules as games/lib/game2048.js) and record where
+  // every tile went. Returns null unless it explains the new board up to one spawned tile.
+  function planSlide(prev, next) {
+    var dirs = ['left', 'right', 'up', 'down'];
+    for (var d = 0; d < dirs.length; d++) {
+      var result = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+      var moves = [], merges = [];
+      linesFor(dirs[d]).forEach(function (line) {
+        var tiles = line.filter(function (rc) { return prev[rc[0]][rc[1]] !== 0; });
+        var k = 0;
+        for (var i = 0; i < tiles.length; k++) {
+          var to = line[k], a = tiles[i], v = prev[a[0]][a[1]];
+          moves.push({ fr: a[0], fc: a[1], tr: to[0], tc: to[1], v: v });
+          if (i + 1 < tiles.length && prev[tiles[i + 1][0]][tiles[i + 1][1]] === v) {
+            var b = tiles[i + 1];
+            moves.push({ fr: b[0], fc: b[1], tr: to[0], tc: to[1], v: v });
+            result[to[0]][to[1]] = v * 2;
+            merges.push(to);
+            i += 2;
+          } else {
+            result[to[0]][to[1]] = v;
+            i += 1;
+          }
+        }
+      });
+      var spawned = [], ok = true, moved = false;
+      for (var r = 0; r < N && ok; r++) {
+        for (var c = 0; c < N; c++) {
+          if (result[r][c] !== prev[r][c]) moved = true;
+          if (result[r][c] === next[r][c]) continue;
+          if (result[r][c] === 0 && spawned.length === 0) spawned.push([r, c]);
+          else { ok = false; break; }
+        }
+      }
+      if (ok && moved) return { moves: moves, merges: merges, spawned: spawned };
+    }
+    return null;
+  }
+
   // Detect merges/pops by comparing the new board against the previous snapshot.
   function triggerPopAnims(prev, next) {
+    var changed = false;
+    if (prev) {
+      for (var r0 = 0; r0 < N; r0++) for (var c0 = 0; c0 < N; c0++) if (prev[r0][c0] !== next[r0][c0]) changed = true;
+    }
+    var plan = changed && !reduceMotion ? planSlide(prev, next) : null;
+    if (plan) {
+      var now = performance.now();
+      animState.slide = { moves: plan.moves, start: now };
+      plan.merges.forEach(function (rc) { animState.pops[rc[0] + ',' + rc[1]] = { type: 'merge', start: now + SLIDE_MS }; });
+      plan.spawned.forEach(function (rc) { animState.pops[rc[0] + ',' + rc[1]] = { type: 'spawn', start: now + SLIDE_MS }; });
+      startAnimLoop();
+      return;
+    }
     if (prev) {
       for (var r = 0; r < N; r++) {
         for (var c = 0; c < N; c++) {
@@ -404,9 +492,9 @@
       var prev = window._g2048Prev;
       if (!ctx) ctx = canvas.getContext('2d');
       computeLayout();
-      // Always draw at least once (animation loop may not start on first render)
-      drawFrame();
+      // Plan the slide first so the new board does not flash in before it; then draw at least once.
       triggerPopAnims(prev, state.board);
+      drawFrame();
       window._g2048Prev = state.board.map(function (r) { return r.slice(); });
 
       var scoreEl = document.getElementById('g2048Score');
