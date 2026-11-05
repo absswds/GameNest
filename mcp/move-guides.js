@@ -38,4 +38,5 @@ module.exports = {
   truthdare: 'Move {action:"draw",kind:"truth"|"dare"|"random"}.',
   werewolf: 'Moves by {type}: chat {type:"chat",text}; night wolf/seer {type:"act"?,target:seat|-1}; witch {save:bool,poison:seat|-1}; sheriff {type:"run",run:bool}; vote {target:seat|-1}; hunter/badge {target}. Phase-driven; exact type names are in games/werewolf.js (state.phase, state.ask-like fields). Use suggest_move.',
   sanguo: 'Phase driven by state.ask (to === my seat). play: {type:"use",cardId,targets:[seats]} | {type:"skill",skill,cardIds,targets} | {type:"end"}; respond: {type:"use",cardId} or {type:"pass"}; discard: {type:"discard",cardIds}. Use suggest_move for legal shapes.',
+  undercover: 'Speech phase (state.phase==="speech", state.speakers[state.speakerPos]===mySeat): in face mode {type:"done",text?} (or {type:"end_speech"}); in chat mode {type:"chat",text} (max 30 chars, must not contain your own word state.myWord). Vote phase (state.phase==="vote"): {type:"vote",target:seat|-1} (target in state.voteCandidates, -1 to abstain). Room option wordDiff (mixed/easy/normal/hard) picks how close the two words are.',
 };

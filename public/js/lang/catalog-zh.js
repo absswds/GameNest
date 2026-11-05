@@ -309,4 +309,13 @@
       tags: ['身份', '推理'],
     },
   };
+  window.__LANG.zh.catalog.undercover = {
+    name: '谁是卧底',
+    subtitle: '同词暗战，一言识破',
+    description: '平民拿到相同词语，卧底拿到相近词语，白板没有词语。轮流描述并投票找出卧底。',
+    players: '4-10人',
+    duration: '约15分钟',
+    category: '派对同乐',
+    tags: ['身份', '推理', '词汇'],
+  };
 })();

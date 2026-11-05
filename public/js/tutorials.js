@@ -409,6 +409,17 @@
     },
   };
 
+  TUTORIALS_ZH.undercover = {
+    sections: [
+      { h: '目标', p: '4–10 人词汇推理派对游戏。大多数玩家是平民（拿到同一个词），1–2 名玩家是卧底（拿到意思相近的另一个词），6 人以上还可开启 1 名白板（没有词语，属于卧底阵营）。活着的时候谁都不知道自己是平民还是卧底（白板知道自己没有词）。' },
+      { h: '轮流描述', p: '每一轮从轮换的首位发言人开始，存活玩家按座位顺序依次用一句话描述自己的词语，既要让同伴听懂，又不能太直白被卧底猜出。打字模式下最多 30 字，且不能直接包含自己的词语。' },
+      { h: '投票与平票 PK', p: '所有人发言完毕后同时投票（可以弃票）。得票最高的一人出局并亮明身份。若最高票平票，平票玩家各自再进行一次 PK 发言，全员在平票玩家中重投；若仍然平票或全员弃票，则本轮无人出局。' },
+      { h: '胜负条件', p: '所有卧底和白板全部出局，平民阵营获胜；当存活人数只剩 3 人或更少且仍有卧底或白板存活时，卧底阵营获胜。' },
+      { h: '房间设置与提示', p: '房主可设置发言方式（当面说 / 打字）、发言限时（30 / 45 / 60 秒）、卧底人数（自动 / 1 人 / 2 人）以及是否加入白板。可选词语难度（混合 / 简单 / 普通 / 困难，决定两个词有多接近）。支持添加 AI 机器人并调节难度：机器人的做法见下一节。' },
+      { h: '机器人怎么玩', p: '机器人发言是从词库里自己词的预设描述中挑一句，不会回应你说了什么。它也听不懂人说话：当面说模式下，真人说的话它听不到，只能根据其他机器人的发言和投票做判断，真人在它眼里没有线索；打字模式下，它只拿你打的字和词库里的描述比对有多少相同的字词，听不懂比喻、反话和换种说法。简单：直接说一句具体描述，投票完全随机。普通：第一轮说得含糊些，之后越来越具体，投给发言与自己词的描述重合最少的人。困难：先说得含糊，每轮更具体，同时比对自己词和近义词两边的描述，发现多数人的描述更像另一个词就当自己是卧底，改说含糊的话混在人群里，并投给看起来不合群的人。' },
+    ]
+  };
+
   var TUTORIALS_EN = {
     tictactoe: {
       sections: [
@@ -815,6 +826,17 @@
         { h: 'Bots and Tips', p: 'You can add a bot and choose its difficulty. Do not always hug the edges or line ships up; when you score a hit, probe the four neighbors, and search on a checkerboard pattern since every ship is at least 2 cells long.' },
       ]
     },
+  };
+
+  TUTORIALS_EN.undercover = {
+    sections: [
+      { h: 'Objective', p: 'A 4 to 10 player word deduction party game. Most players are Civilians with the same word, 1 or 2 are Undercovers with a close word, and with 6 or more players an optional Blank gets no word at all and plays on the undercover side. Nobody knows their own role while alive, except the Blank who sees no word.' },
+      { h: 'Describing', p: 'Each round, alive players describe their word in seat order starting from a rotating first speaker. In face-to-face mode you speak aloud and tap Done; in text chat mode you type one clue up to 30 characters without using your own word.' },
+      { h: 'Voting and Tie-break', p: 'After everyone speaks, all alive players vote at the same time (abstaining is allowed). The player with the most votes is eliminated and their role is revealed. On a tie, the tied players each give one PK speech and everyone revotes among them; a second tie means nobody is eliminated that round.' },
+      { h: 'Winning', p: 'Civilians win when all Undercovers and the Blank are eliminated. The Undercover side wins if 3 or fewer players remain alive with an Undercover or Blank still in the game.' },
+      { h: 'Settings and Tips', p: 'The host can choose speech mode, speech timer (30, 45 or 60s), undercover count (auto, 1 or 2), and Blank mode. Word level (Mixed, Easy, Normal or Hard) controls how close the two words are. Bots are supported with adjustable difficulty: see the next section for how bots play.' },
+      { h: 'How Bots Play', p: 'A bot picks a line from the preset descriptions of its own word in the word bank and never reacts to what you said. It cannot understand people either: in face-to-face mode it hears nothing a human says and judges only from the other bots speeches and votes, so a human gives it no clues; in text chat mode it only counts how many characters or words your text shares with the word bank descriptions, so metaphors, sarcasm and rephrasing go over its head. Easy: states a specific description at once and votes completely at random. Normal: vague in round 1, then more specific, and votes for whoever overlaps least with its own word descriptions. Hard: starts vague and gets more specific, compares speeches against both its own word and the neighbouring word, and if most speeches fit the other word it assumes it is the undercover, speaks vaguely to blend in and votes for whoever looks out of step.' },
+    ]
   };
 
   function getTutorials() {

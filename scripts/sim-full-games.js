@@ -97,6 +97,7 @@ const CONFIG = {
   tictactoe: { sizes: [2] },
   truthdare: { sizes: [3, 2], humans: 'all', noEnd: true },
   twentyfour: { sizes: [2, 1] },
+  undercover: { sizes: [6, 4] },
   uno: { sizes: [4, 2] },
   werewolf: { sizes: [8, 6] },
 };

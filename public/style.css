@@ -3393,3 +3393,28 @@ body.lobby-page {
     background: rgba(24, 24, 22, 0.05);
   }
 }
+
+/* 跑得快结算积分表 */
+.pdk-score-wrap { overflow-x: auto; margin: 4px 0 6px; max-width: 100%; text-align: left; }
+.pdk-score { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; color: var(--text); font-variant-numeric: tabular-nums; }
+.pdk-score th, .pdk-score td { padding: 6px 8px; white-space: nowrap; border-bottom: 1px solid var(--border); background: var(--surface); }
+.pdk-score th { font-weight: 500; font-size: 12px; color: var(--text-muted); }
+.pdk-score .pdk-num { text-align: right; }
+.pdk-score .pdk-name { position: sticky; left: 0; z-index: 1; text-align: left; max-width: 7em; overflow: hidden; text-overflow: ellipsis; }
+.pdk-score .pos { color: var(--accent); }
+.pdk-score .neg { color: var(--ge-red); opacity: .8; }
+.pdk-score .pdk-total { font-weight: 700; }
+.pdk-score tr.me td { background: var(--accent-dim); font-weight: 600; }
+.pdk-score tbody tr:last-child td { border-bottom: 0; }
+
+/* 卧底结算：阵营 + 词卡 + 身份表 */
+.res-camp { font-size: 20px; font-weight: 700; text-align: center; margin: 2px 0 8px; }
+.res-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 8px; }
+.res-card { flex: 1 1 88px; max-width: 140px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); }
+.res-card span { font-size: 11px; color: var(--text-muted); }
+.res-card b { font-size: 16px; color: var(--text); overflow-wrap: anywhere; text-align: center; }
+.res-card.uc { border-color: var(--ge-red); }
+.res-card.blank { border-style: dashed; }
+.res-tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--border); color: var(--text-muted); }
+.res-tag.undercover { background: var(--ge-red); color: #fff; }
+.res-tag.blank { background: #7c5cbf; color: #fff; }

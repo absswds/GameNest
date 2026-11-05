@@ -309,4 +309,13 @@
       tags: ['Hidden roles', 'Deduction'],
     },
   };
+  window.__LANG.en.catalog.undercover = {
+    name: 'Who Is the Undercover',
+    subtitle: 'Similar words, hidden roles',
+    description: 'Civilians share one word, undercovers get a similar word, and the blank gets none. Describe and vote to find the undercover.',
+    players: '4-10 players',
+    duration: '~15 min',
+    category: 'Party',
+    tags: ['Hidden roles', 'Deduction', 'Words'],
+  };
 })();
