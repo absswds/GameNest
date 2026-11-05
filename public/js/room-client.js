@@ -32,7 +32,7 @@
     'reversi', 'gomoku', 'chess', 'connect4', 'checkers', 'chinesechess', 'go9', 'hearts', 'battleship',
     'tictactoe', 'numberbomb', 'twentyfour', 'uno', 'doudizhu', 'bigtwo', 'texas', 'liarsbar',
     'exploding-kittens', 'flightchess', 'mahjong-sichuan', 'mahjong-cantonese',
-    'monopoly', 'werewolf', 'sanguo', 'rummikub', 'davinci', '2048', 'snakebattle', 'sudoku', 'sheeptile'
+    'monopoly', 'werewolf', 'sanguo', 'rummikub', 'davinci', '2048', 'snakebattle', 'sudoku', 'sheeptile', 'undercover'
   ];
 
   // ---- Game name lookup ----
@@ -626,7 +626,7 @@
     el.emojiRow.style.display = 'none';
     el.gameStage.style.display = '';
     el.playerBar.style.display = '';
-    el.status.style.display = '';
+    el.status.style.display = (game === 'sanguo' || game === 'werewolf' || game === 'undercover') ? 'none' : '';
     // 动作条现在在文档流最底部、不遮挡棋盘，所有游戏都照常显示
     el.gameActions.style.display = '';
     setImmersiveLandscape(IMMERSIVE_GAMES.indexOf(game) !== -1);
@@ -1027,6 +1027,49 @@
             ' · ' + _t('ww_discuss_time') + ': ' + wwDiscussLabel(wwDiscuss) + ' · ' + _t('ww_speech_time') + ': ' + wwSpeech + _t('seconds') +
             ' · ' + _t('ww_sheriff_opt') + ': ' + _t(wwSheriff ? 'ww_on' : 'ww_off') + '</div>' + wwHint;
         }
+      } else if (game === 'undercover') {
+        optionsEl.style.display = 'block';
+        var ucTalk = roomOptions.talkMode === 'chat' ? 'chat' : 'face';
+        var ucTime = [30, 45, 60].indexOf(Number(roomOptions.speechTime)) >= 0 ? Number(roomOptions.speechTime) : 45;
+        var ucCount = (roomOptions.ucCount === 1 || roomOptions.ucCount === '1') ? '1' : (roomOptions.ucCount === 2 || roomOptions.ucCount === '2') ? '2' : 'auto';
+        var ucBlank = !!roomOptions.blank;
+        var ucDiff = roomOptions.difficulty || 'normal';
+        var ucWD = ['mixed', 'easy', 'normal', 'hard'].indexOf(roomOptions.wordDiff) >= 0 ? roomOptions.wordDiff : 'mixed';
+        var ucHead = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+        if (isHost) {
+          var ucSel = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
+          optionsEl.innerHTML = ucHead +
+            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('uc_opt_talk_label') + ' <select onchange="window._setGameOption(\'talkMode\', this.value)" style="' + ucSel + '">' +
+                '<option value="face"' + (ucTalk === 'face' ? ' selected' : '') + '>' + _t('uc_opt_talk_face') + '</option>' +
+                '<option value="chat"' + (ucTalk === 'chat' ? ' selected' : '') + '>' + _t('uc_opt_talk_chat') + '</option>' +
+              '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('uc_opt_time_label') + ' <select onchange="window._setGameOption(\'speechTime\', parseInt(this.value))" style="' + ucSel + '">' +
+                '<option value="30"' + (ucTime === 30 ? ' selected' : '') + '>' + _t('uc_opt_time_30') + '</option>' +
+                '<option value="45"' + (ucTime === 45 ? ' selected' : '') + '>' + _t('uc_opt_time_45') + '</option>' +
+                '<option value="60"' + (ucTime === 60 ? ' selected' : '') + '>' + _t('uc_opt_time_60') + '</option>' +
+              '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('uc_opt_count_label') + ' <select onchange="window._setGameOption(\'ucCount\', this.value === \'auto\' ? \'auto\' : parseInt(this.value))" style="' + ucSel + '">' +
+                '<option value="auto"' + (ucCount === 'auto' ? ' selected' : '') + '>' + _t('uc_opt_count_auto') + '</option>' +
+                '<option value="1"' + (ucCount === '1' ? ' selected' : '') + '>' + _t('uc_opt_count_1') + '</option>' +
+                '<option value="2"' + (ucCount === '2' ? ' selected' : '') + '>' + _t('uc_opt_count_2') + '</option>' +
+              '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox"' + (ucBlank ? ' checked' : '') + ' onchange="window._setGameOption(\'blank\', this.checked)">' + _t('uc_opt_blank_label') + '</label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('uc_opt_worddiff_label') + ' <select onchange="window._setGameOption(\'wordDiff\', this.value)" style="' + ucSel + '">' +
+                ['mixed', 'easy', 'normal', 'hard'].map(function(d) { return '<option value="' + d + '"' + (ucWD === d ? ' selected' : '') + '>' + _t('uc_worddiff_' + d) + '</option>'; }).join('') +
+              '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('difficulty_label') + ' <select onchange="window._setGameOption(\'difficulty\', this.value)" style="' + ucSel + '">' +
+                '<option value="easy"' + (ucDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
+                '<option value="normal"' + (ucDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
+                '<option value="hard"' + (ucDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
+              '</select></label>' +
+              '<div style="flex-basis:100%;font-size:12px;color:var(--text-muted)">' + _t('uc_bot_hint') + '</div>' +
+            '</div>';
+        } else {
+          var ucCountLabel = ucCount === '1' ? _t('uc_opt_count_1') : ucCount === '2' ? _t('uc_opt_count_2') : _t('uc_opt_count_auto');
+          optionsEl.innerHTML = ucHead + '<div style="font-size:13px;color:var(--text-muted)">' +
+            tf('uc_opt_summary', _t(ucTalk === 'chat' ? 'uc_opt_talk_chat' : 'uc_opt_talk_face'), ucTime, ucCountLabel, ucBlank ? _t('uc_opt_blank_on') : '') + ' · ' + _t('uc_opt_worddiff_label') + ' ' + _t('uc_worddiff_' + ucWD) + '</div>';
+        }
       } else if (game === 'drawguess') {
         optionsEl.style.display = 'block';
         var dgCats = [['animal',_t('cat_animal')],['food',_t('cat_food')],['daily',_t('cat_daily')],['action',_t('cat_action')],['place',_t('cat_place')],['idiom',_t('cat_idiom')],['movie',_t('cat_movie')],['internet',_t('cat_internet')]];
@@ -1416,7 +1459,7 @@
       else if (state && state.currentPlayer >= 0) st.textContent = _t('opponent_turn');
       else if (state) st.textContent = _t('realtime_race');
       // These renderers draw their own whose-turn header; the generic line would be wrong for them.
-      if (game === 'sanguo' || game === 'werewolf') st.style.display = 'none';
+      if (game === 'sanguo' || game === 'werewolf' || game === 'undercover') st.style.display = 'none';
     }
   }
 
@@ -1567,11 +1610,31 @@
     if (state.winner !== null && state.winner !== undefined) showResult(state.winner);
   }
 
+  // 卧底结算：胜负阵营 + 词卡 + 玩家 | 身份 | 结果（表格样式沿用跑得快的 pdk-score）
+  function ucResultTable(winner) {
+    var roles = state.roles || [];
+    var outRound = {};
+    (state.log || []).forEach(function(e) { if (e.k === 'exile') outRound[e.p] = e.round; });
+    function card(cls, label, word) {
+      return '<div class="res-card ' + cls + '"><span>' + label + '</span><b>' + (word ? esc(word) : _t('uc_no_word')) + '</b></div>';
+    }
+    var h = '<div class="res-camp">' + _t(winner === -2 ? 'uc_win_civilian' : 'uc_win_undercover') + '</div>' +
+      '<div class="res-cards">' + card('civ', _t('uc_card_civ'), state.civWord) + card('uc', _t('uc_card_uc'), state.ucWord) +
+      (roles.indexOf('blank') >= 0 ? card('blank', _t('uc_card_blank'), '') : '') + '</div>';
+    h += '<div class="pdk-score-wrap"><table class="pdk-score"><thead><tr><th class="pdk-name">' + _t('uc_tbl_player') + '</th><th>' + _t('uc_tbl_role') + '</th><th>' + _t('uc_tbl_result') + '</th></tr></thead><tbody>';
+    roles.forEach(function(r, i) {
+      var nm = i === playerIndex ? _t('you') : window.getPlayerName(i);
+      var res = outRound[i] ? _t('uc_res_out_round').replace('%s', outRound[i]) : _t('uc_res_alive');
+      h += '<tr' + (i === playerIndex ? ' class="me"' : '') + '><td class="pdk-name">' + esc(nm) + '</td><td><span class="res-tag ' + r + '">' + _t('uc_role_' + r) + '</span></td><td>' + res + '</td></tr>';
+    });
+    return h + '</tbody></table></div>';
+  }
+
   function showResult(winner) {
     if (game === 'mahjong-sichuan' || game === 'mahjong-cantonese') return;
     const overlay = el.overlay;
     const resultEl = el.resultText;
-    let txt, sub, isWin = false;
+    let txt, sub, isWin = false, subHtml = '';
     if (game === 'oldmaid' && state && typeof state.loser === 'number' && state.loser >= 0) {
       // oldmaid reports winner -1 plus the loser (the Joker holder); everyone else wins
       isWin = state.loser !== playerIndex;
@@ -1617,6 +1680,13 @@
       isWin = winner === -2 ? wolfSide : !wolfSide;
       txt = isWin ? _t('you_win') : _t('you_lose');
       sub = _t(winner === -2 ? 'ww_win_wolf' : 'ww_win_good');
+    } else if (game === 'undercover' && state && state.roles) {
+      // -2 civilians win, -3 undercover side (undercover + blank) wins
+      var myRole = state.roles[playerIndex];
+      var ucSide = myRole === 'undercover' || myRole === 'blank';
+      isWin = winner === -2 ? !ucSide : ucSide;
+      txt = isWin ? _t('you_win') : _t('you_lose');
+      subHtml = ucResultTable(winner);
     } else {
       isWin = (winner === playerIndex);
       txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';
@@ -1634,7 +1704,7 @@
     }
     resultEl.textContent = txt;
     resultEl.classList.toggle('win-text', isWin);
-    el.resultSub.textContent = sub;
+    if (subHtml) el.resultSub.innerHTML = subHtml; else el.resultSub.textContent = sub;
     overlay.style.display = 'flex';
     var st = el.status;
     st.classList.remove('my-turn');

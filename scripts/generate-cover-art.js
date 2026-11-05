@@ -46,6 +46,7 @@ const covers = [
   { id: 'battleship', palette: ['#e8eef4', '#7cafc2', '#2a6f8a', '#142a35'], motif: 'battleship' },
   { id: '2048', palette: ['#f5f1e8', '#d9cbb0', '#edc22e', '#2a2418'], motif: '2048' },
   { id: 'sudoku', palette: ['#f2f0ea', '#c9d4de', '#6d8fb0', '#182231'], motif: 'sudoku' },
+  { id: 'undercover', palette: ['#eeeaf3', '#c5bcd6', '#6a4f93', '#1c1626'], motif: 'undercover' },
   { id: 'mahjong-sichuan', palette: ['#f4efe7', '#c7d0c6', '#2f7a55', '#14231a'], motif: 'mahjong' },
 ];
 
@@ -373,6 +374,19 @@ function motifSvg(cover) {
         <circle cx="1260" cy="700" r="6" fill="#f3ead2" opacity="0.6"/>
         <circle cx="560" cy="620" r="5" fill="#f3ead2" opacity="0.5"/>
         <path d="M520 860 L700 610 L760 700 L860 540 L1000 760 L1080 660 L1240 860 Z" fill="${accent}" opacity="0.9"/>
+      `;
+    case 'undercover':
+      return `
+        <rect x="440" y="150" width="900" height="720" rx="48" fill="${dark}"/>
+        <circle cx="650" cy="560" r="105" fill="#f3ead2" opacity="0.92"/>
+        <path d="M520 800 Q650 640 780 800 Z" fill="#f3ead2" opacity="0.92"/>
+        <circle cx="890" cy="560" r="105" fill="#f3ead2" opacity="0.92"/>
+        <path d="M760 800 Q890 640 1020 800 Z" fill="#f3ead2" opacity="0.92"/>
+        <circle cx="1130" cy="560" r="105" fill="${accent}"/>
+        <path d="M1000 800 Q1130 640 1260 800 Z" fill="${accent}"/>
+        <text x="1130" y="600" text-anchor="middle" font-size="140" font-weight="700" fill="#f3ead2">?</text>
+        <rect x="560" y="260" width="320" height="110" rx="40" fill="${accent}" opacity="0.75"/>
+        <rect x="940" y="230" width="260" height="90" rx="36" fill="#f3ead2" opacity="0.35"/>
       `;
     case 'sanguo':
       return `
