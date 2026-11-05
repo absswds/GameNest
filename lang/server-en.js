@@ -369,4 +369,14 @@ module.exports = {
   'g_bad_move': 'Invalid move',
   'rv_must_play_if_possible': 'You have a legal move and cannot pass',
   'uno_no_challenge_pending': 'There is no +4 to challenge',
+  // Run Fast (pdk_)
+  'pdk_invalid_format': 'Invalid format',
+  'pdk_must_lead': 'You must lead this round',
+  'pdk_must_beat': 'You can beat the last play, so you cannot pass',
+  'pdk_card_not_in_hand': 'Card not in hand',
+  'pdk_invalid_play': 'Invalid card combination',
+  'pdk_doesnt_beat': 'Does not beat the previous play',
+  'pdk_first_must_have_s3': 'The opening play must include the 3 of Spades (the lowest card when nobody holds it)',
+  'pdk_must_play_highest_single': 'The next player has one card left: play your highest single',
+  'pdk_click_next_round': 'Click Next Round to continue',
 };

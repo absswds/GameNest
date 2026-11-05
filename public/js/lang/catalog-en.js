@@ -309,4 +309,13 @@
       tags: ['Hidden roles', 'Deduction'],
     },
   };
+  window.__LANG.en.catalog.paodekuai = {
+    name: 'Run Fast',
+    subtitle: 'Sixteen cards, first one out wins',
+    description: 'A 3-player climbing game: bombs pay out on the spot, and AI seats can fill the table.',
+    players: '2-3 players',
+    duration: '~10 min',
+    category: 'Cards & Tiles',
+    tags: ['Climbing', '3 players'],
+  };
 })();

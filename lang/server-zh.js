@@ -369,4 +369,14 @@ module.exports = {
   'g_bad_move': '无效的出招',
   'rv_must_play_if_possible': '有可下的位置，不能跳过',
   'uno_no_challenge_pending': '当前没有可质疑的+4',
+  // 跑得快 (pdk_)
+  'pdk_invalid_format': '出牌格式无效',
+  'pdk_must_lead': '本轮由你先出牌',
+  'pdk_must_beat': '你有牌可以管上，不能过牌',
+  'pdk_card_not_in_hand': '手牌中没有这张牌',
+  'pdk_invalid_play': '牌型不合法',
+  'pdk_doesnt_beat': '压不过上家的牌',
+  'pdk_first_must_have_s3': '首次出牌必须包含黑桃3（无人持有时为最小的牌）',
+  'pdk_must_play_highest_single': '下家只剩一张牌，单张必须出最大的',
+  'pdk_click_next_round': '请点击「下一局」继续',
 };

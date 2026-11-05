@@ -32,7 +32,7 @@
     'reversi', 'gomoku', 'chess', 'connect4', 'checkers', 'chinesechess', 'go9', 'hearts', 'battleship',
     'tictactoe', 'numberbomb', 'twentyfour', 'uno', 'doudizhu', 'bigtwo', 'texas', 'liarsbar',
     'exploding-kittens', 'flightchess', 'mahjong-sichuan', 'mahjong-cantonese',
-    'monopoly', 'werewolf', 'sanguo', 'rummikub', 'davinci', '2048', 'snakebattle', 'sudoku', 'sheeptile'
+    'monopoly', 'werewolf', 'sanguo', 'rummikub', 'davinci', '2048', 'snakebattle', 'sudoku', 'sheeptile', 'paodekuai'
   ];
 
   // ---- Game name lookup ----
@@ -1182,6 +1182,58 @@
               _t('mj_rule_minFan') + ': ' + (roomOptions.mj_minFan ? tf('mj_fan_n', roomOptions.mj_minFan) : _t('mj_fan_chicken')) +
             '</div>' : '');
         }
+      } else if (game === 'paodekuai') {
+        optionsEl.style.display = 'block';
+        var pdkMustBeat = roomOptions.mustBeat !== false && roomOptions.mustBeat !== 'false';
+        var pdkRounds = [1, 3, 5, 8].indexOf(Number(roomOptions.rounds)) >= 0 ? Number(roomOptions.rounds) : 3;
+        var pdkTurnTime = [0, 15, 20, 30].indexOf(Number(roomOptions.turnTime)) >= 0 ? Number(roomOptions.turnTime) : 20;
+        var pdkDiff = roomOptions.difficulty || 'normal';
+        if (isHost) {
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
+              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
+                _t('pdk_must_beat_opt') + ': <select onchange="window._setGameOption(\'mustBeat\', this.value === \'true\')" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
+                  '<option value="true"' + (pdkMustBeat ? ' selected' : '') + '>' + _t('pdk_must_beat_on') + '</option>' +
+                  '<option value="false"' + (!pdkMustBeat ? ' selected' : '') + '>' + _t('pdk_must_beat_off') + '</option>' +
+                '</select>' +
+              '</label>' +
+              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
+                _t('pdk_rounds_opt') + ': <select onchange="window._setGameOption(\'rounds\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
+                  '<option value="1"' + (pdkRounds === 1 ? ' selected' : '') + '>' + tf('pdk_rounds_n', 1) + '</option>' +
+                  '<option value="3"' + (pdkRounds === 3 ? ' selected' : '') + '>' + tf('pdk_rounds_n', 3) + '</option>' +
+                  '<option value="5"' + (pdkRounds === 5 ? ' selected' : '') + '>' + tf('pdk_rounds_n', 5) + '</option>' +
+                  '<option value="8"' + (pdkRounds === 8 ? ' selected' : '') + '>' + tf('pdk_rounds_n', 8) + '</option>' +
+                '</select>' +
+              '</label>' +
+              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
+                _t('pdk_turn_time_opt') + ': <select onchange="window._setGameOption(\'turnTime\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
+                  '<option value="0"' + (pdkTurnTime === 0 ? ' selected' : '') + '>' + _t('pdk_turn_time_off') + '</option>' +
+                  '<option value="15"' + (pdkTurnTime === 15 ? ' selected' : '') + '>' + tf('pdk_turn_time_n', 15) + '</option>' +
+                  '<option value="20"' + (pdkTurnTime === 20 ? ' selected' : '') + '>' + tf('pdk_turn_time_n', 20) + '</option>' +
+                  '<option value="30"' + (pdkTurnTime === 30 ? ' selected' : '') + '>' + tf('pdk_turn_time_n', 30) + '</option>' +
+                '</select>' +
+              '</label>' +
+              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
+                _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
+                  '<option value="easy"' + (pdkDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
+                  '<option value="normal"' + (pdkDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
+                  '<option value="hard"' + (pdkDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
+                '</select>' +
+              '</label>' +
+            '</div>';
+        } else {
+          var pdkDiffLabel = pdkDiff === 'easy' ? _t('difficulty_easy') : pdkDiff === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
+          var pdkTimeLabel = pdkTurnTime === 0 ? _t('pdk_turn_time_off') : tf('pdk_turn_time_n', pdkTurnTime);
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+            '<div style="font-size:13px;color:var(--text-muted)">' +
+              _t('pdk_must_beat_opt') + ': ' + (pdkMustBeat ? _t('pdk_must_beat_on') : _t('pdk_must_beat_off')) + ' · ' +
+              _t('pdk_rounds_opt') + ': ' + tf('pdk_rounds_n', pdkRounds) + ' · ' +
+              _t('pdk_turn_time_opt') + ': ' + pdkTimeLabel + ' · ' +
+              _t('difficulty_label') + ': ' + pdkDiffLabel +
+            '</div>';
+        }
       } else if (isHost && gameInfo.supportsAI && window._gamesWithDifficulty.indexOf(game) >= 0) {
         // AI difficulty selector only for games whose bots actually read it
         optionsEl.style.display = 'block';
@@ -1567,11 +1619,30 @@
     if (state.winner !== null && state.winner !== undefined) showResult(state.winner);
   }
 
+  // 跑得快结算：名次 | 玩家 | 每局得分 | 总分，按总分降序，你自己那行高亮
+  function pdkScoreTable() {
+    var cum = state.cumulativeScore;
+    if (!Array.isArray(cum)) return '';
+    var rounds = Array.isArray(state.roundHistory) ? state.roundHistory : [];
+    var order = cum.map(function(_, i) { return i; }).sort(function(a, b) { return cum[b] - cum[a] || a - b; });
+    function num(v) { v = v || 0; return '<td class="pdk-num ' + (v < 0 ? 'neg' : v > 0 ? 'pos' : '') + '">' + (v > 0 ? '+' + v : v) + '</td>'; }
+    var h = '<div class="pdk-score-wrap"><table class="pdk-score"><thead><tr><th>' + _t('pdk_tbl_rank') + '</th><th class="pdk-name">' + _t('pdk_tbl_player') + '</th>';
+    rounds.forEach(function(rh) { h += '<th class="pdk-num">' + esc(_t('pdk_result_round').replace('%s', rh.round)) + '</th>'; });
+    h += '<th class="pdk-num">' + _t('pdk_tbl_total') + '</th></tr></thead><tbody>';
+    order.forEach(function(i, rank) {
+      var nm = i === playerIndex ? _t('you') : window.getPlayerName(i);
+      h += '<tr' + (i === playerIndex ? ' class="me"' : '') + '><td>' + (rank === 0 ? '🏆' : rank + 1) + '</td><td class="pdk-name">' + esc(nm) + '</td>';
+      rounds.forEach(function(rh) { h += num((rh.scores || [])[i]); });
+      h += num(cum[i]).replace('class="pdk-num', 'class="pdk-num pdk-total') + '</tr>';
+    });
+    return h + '</tbody></table></div>';
+  }
+
   function showResult(winner) {
     if (game === 'mahjong-sichuan' || game === 'mahjong-cantonese') return;
     const overlay = el.overlay;
     const resultEl = el.resultText;
-    let txt, sub, isWin = false;
+    let txt, sub, isWin = false, subHtml = '';
     if (game === 'oldmaid' && state && typeof state.loser === 'number' && state.loser >= 0) {
       // oldmaid reports winner -1 plus the loser (the Joker holder); everyone else wins
       isWin = state.loser !== playerIndex;
@@ -1617,6 +1688,10 @@
       isWin = winner === -2 ? wolfSide : !wolfSide;
       txt = isWin ? _t('you_win') : _t('you_lose');
       sub = _t(winner === -2 ? 'ww_win_wolf' : 'ww_win_good');
+    } else if (game === 'paodekuai' && state) {
+      isWin = (winner === playerIndex);
+      txt = isWin ? _t('you_win') : _t('you_lose');
+      subHtml = pdkScoreTable();
     } else {
       isWin = (winner === playerIndex);
       txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';
@@ -1634,7 +1709,7 @@
     }
     resultEl.textContent = txt;
     resultEl.classList.toggle('win-text', isWin);
-    el.resultSub.textContent = sub;
+    if (subHtml) el.resultSub.innerHTML = subHtml; else el.resultSub.textContent = sub;
     overlay.style.display = 'flex';
     var st = el.status;
     st.classList.remove('my-turn');
