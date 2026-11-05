@@ -12,12 +12,12 @@ function startGame(n = 3, opts = {}) {
 }
 
 describe('quizrace question bank', () => {
-  it('contains at least 200 valid bilingual questions across all categories', () => {
+  it('contains at least 550 valid bilingual questions across all categories', () => {
     assert.ok(Array.isArray(QUESTIONS));
-    assert.ok(QUESTIONS.length >= 200, `expected >=200 questions, got ${QUESTIONS.length}`);
+    assert.ok(QUESTIONS.length >= 550, `expected >=550 questions, got ${QUESTIONS.length}`);
 
     const seenIds = new Set();
-    const validCats = new Set(['general', 'geography', 'science', 'history', 'nature', 'sports', 'culture']);
+    const validCats = new Set(['general', 'geography', 'science', 'history', 'nature', 'sports', 'culture', 'food', 'idiom', 'life', 'cncult', 'anime', 'mental']);
 
     for (const q of QUESTIONS) {
       assert.ok(q.id && !seenIds.has(q.id), `duplicate or missing id: ${q.id}`);
@@ -28,7 +28,17 @@ describe('quizrace question bank', () => {
       assert.ok(q.en && typeof q.en.q === 'string' && q.en.q.length > 0);
       assert.ok(Array.isArray(q.en.opts) && q.en.opts.length === 4);
       assert.ok(Number.isInteger(q.answer) && q.answer >= 0 && q.answer <= 3);
+      assert.ok([1, 2, 3].includes(q.diff), `question ${q.id} needs diff 1|2|3`);
+      assert.equal(new Set(q.zh.opts).size, 4, `duplicate zh options in ${q.id}`);
+      assert.ok(!/'/.test(q.en.q + q.en.opts.join('')), `apostrophe in English text of ${q.id}`);
     }
+  });
+
+  it('has roughly 4:4:2 easy/normal/hard questions', () => {
+    const n = [0, 0, 0, 0];
+    for (const q of QUESTIONS) n[q.diff]++;
+    const total = QUESTIONS.length;
+    assert.ok(n[1] / total > 0.3 && n[2] / total > 0.3 && n[3] / total > 0.12 && n[3] / total < 0.3, JSON.stringify(n));
   });
 });
 
@@ -49,6 +59,25 @@ describe('quizrace start and room options', () => {
     for (const item of s._deck) {
       assert.equal(item.cat, 'science');
       assert.equal(qr.getCorrectAnswer({ questionId: item.id, question: item }), item.answer);
+    }
+  });
+
+  it('questionDiff picks questions of that level first and passes diff to the state', () => {
+    for (const [name, level] of [['easy', 1], ['normal', 2], ['hard', 3]]) {
+      const s = startGame(2, { questionCount: 20, questionDiff: name });
+      assert.equal(s.questionDiff, name);
+      for (const item of s._deck) assert.equal(item.diff, level, `${name} deck should only hold diff ${level}`);
+      assert.equal(s.question.diff, level);
+    }
+    const mixed = startGame(2, { questionCount: 40 });
+    assert.equal(mixed.questionDiff, 'mixed');
+    assert.ok(new Set(mixed._deck.map((d) => d.diff)).size > 1, 'mixed deck should hold several levels');
+  });
+
+  it('new categories can be chosen', () => {
+    for (const cat of ['food', 'idiom', 'life', 'cncult', 'anime', 'mental']) {
+      const s = startGame(2, { questionCount: 10, category: cat });
+      for (const item of s._deck) assert.equal(item.cat, cat);
     }
   });
 
@@ -168,10 +197,35 @@ describe('quizrace playerView privacy', () => {
     assert.equal(v1Reveal.answer, s.answer);
     assert.equal(v1Reveal.choices[0], p0Pick);
   });
+
+  // Streak, score, correct count and ranking change the moment someone answers; sending
+  // them before the reveal showed "streak" early and told everyone who got it right.
+  it('keeps streaks, scores and ranking at question-start values until the reveal', () => {
+    const s = startGame(3);
+    s.streaks = [2, 2, 0];
+    qr.onTimeout(s); qr.onTimeout(s);           // reveal -> next question, snapshot taken here
+    s.streaks[0] = 2; s.streaks[1] = 2;
+    const before = qr.playerView(s, 0);
+    qr.handleMove({ answer: s.answer }, s, 0);              // right
+    qr.handleMove({ answer: (s.answer + 1) % 4 }, s, 1);    // wrong
+    assert.equal(s.phase, 'question');
+    for (const p of [0, 1, 2]) {
+      const v = qr.playerView(s, p);
+      assert.deepEqual(v.streaks, before.streaks, 'streaks seat ' + p);
+      assert.deepEqual(v.scores, before.scores, 'scores seat ' + p);
+      assert.deepEqual(v.correctCounts, before.correctCounts, 'correctCounts seat ' + p);
+      assert.deepEqual(v.ranking, before.ranking, 'ranking seat ' + p);
+    }
+    qr.onTimeout(s);
+    const after = qr.playerView(s, 2);
+    assert.equal(after.streaks[0], 3);
+    assert.equal(after.streaks[1], 0);
+    assert.ok(after.scores[0] > before.scores[0]);
+  });
 });
 
 describe('quizrace bots', () => {
-  it('works on playerView without mutating state, delays 2-8s before answering, and finishes a full game', () => {
+  it('works on playerView without mutating state, waits before answering, and finishes a full game', () => {
     const s = startGame(3, { questionCount: 10, timePerQuestion: 15, difficulty: 'hard' });
     const bots = [0, 1, 2].map((i) => botMod.createBot(i));
 
@@ -180,14 +234,14 @@ describe('quizrace bots', () => {
     const snap = JSON.stringify(view0);
     const firstTry = bots[0].getMove(view0, 0);
     assert.equal(JSON.stringify(view0), snap, 'bot must not mutate playerView');
-    assert.equal(firstTry.answer, undefined, 'bot should wait for 2-8s delay before answering');
+    assert.equal(firstTry.answer, undefined, 'bot should wait before answering before answering');
 
     // Play out the full 10-question game with bots
     let steps = 0;
     while (s.winner === null && steps++ < 500) {
       if (s.phase === 'question') {
-        // Simulate 8.5s elapsed so all bots' 2-8s delays have passed
-        s.questionStartedAt = Date.now() - 8500;
+        // Simulate 9.5s elapsed so all bots' 2-9s delays have passed
+        s.questionStartedAt = Date.now() - 9500;
         const pending = qr.getPendingActors(s);
         if (!pending.length) {
           qr.onTimeout(s);
@@ -214,5 +268,47 @@ describe('quizrace bots', () => {
     assert.equal(s.ranking.length, 3);
     assert.ok(s.ranking[0].score >= s.ranking[1].score);
     assert.ok(s.ranking[1].score >= s.ranking[2].score);
+  });
+});
+
+describe('quizrace bot tiers', () => {
+  function run(tier, diffName, n) {
+    let right = 0;
+    let delays = 0;
+    for (let i = 0; i < n; i++) {
+      const s = startGame(2, { questionCount: 10, timePerQuestion: 30, difficulty: tier, questionDiff: diffName });
+      const bot = botMod.createBot(0);
+      // fake clock: poll every 250ms of game time until the bot answers
+      const realNow = Date.now;
+      let clock = 1000000;
+      Date.now = () => clock;
+      s.questionStartedAt = clock;
+      let t = 0;
+      let move = {};
+      try {
+        while (t <= 29000) {
+          move = bot.getMove(s, 0);
+          if (move.answer !== undefined) break;
+          t += 250;
+          clock += 250;
+        }
+      } finally {
+        Date.now = realNow;
+      }
+      assert.ok(move.answer !== undefined, 'bot must answer within the time limit');
+      delays += t;
+      if (move.answer === s.answer) right++;
+    }
+    return { acc: right / n, delay: delays / n };
+  }
+
+  it('higher tiers answer more accurately and faster, and harder questions lower accuracy', () => {
+    const easy = run('easy', 'normal', 400);
+    const hard = run('hard', 'normal', 400);
+    assert.ok(hard.acc > easy.acc + 0.08, `hard ${hard.acc} vs easy ${easy.acc}`);
+    assert.ok(hard.delay < easy.delay, `hard ${hard.delay}ms vs easy ${easy.delay}ms`);
+    const hardOnEasyQ = run('hard', 'easy', 150);
+    const hardOnHardQ = run('hard', 'hard', 150);
+    assert.ok(hardOnEasyQ.acc > hardOnHardQ.acc, 'accuracy falls with question difficulty');
   });
 });

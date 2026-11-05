@@ -1487,4 +1487,15 @@ const QUESTIONS = [
   },
 ];
 
-module.exports = QUESTIONS;
+// Difficulty (1 easy, 2 normal, 3 hard) of the original questions lives in a separate table;
+// the newer categories carry their own diff field.
+const DIFF_MAP = require('./quizrace-diff-map');
+for (const q of QUESTIONS) q.diff = DIFF_MAP[q.id] || 2;
+
+module.exports = QUESTIONS.concat(
+  require('./quizrace-q-a'),
+  require('./quizrace-q-b'),
+  require('./quizrace-q-c'),
+  require('./quizrace-q-d'),
+  require('./quizrace-mental')
+);

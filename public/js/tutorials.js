@@ -415,7 +415,7 @@
       { h: '答题流程', p: '每道题每位玩家只能提交一次答案，锁定后不可更改。当所有玩家都作答完毕或倒计时结束时，进入 3 秒公布阶段，揭晓正确答案、所有人的选择与本题得分，随后自动进入下一题。' },
       { h: '计分与连对', p: '答错或超时得 0 分；答对得分为 500 + 四舍五入(500 × 剩余时间比例)，越快作答分数越高（最高 1000 分）。从连续第 3 题答对起，每题额外获得 +100 连对奖励；一旦答错或超时，连对清零。' },
       { h: '双倍积分', p: '每局的最后 3 道题为「双倍积分」回合，基础与时间分翻倍（连对奖励仍为 +100），是逆转局势的关键。' },
-      { h: '房间设置', p: '房主可以设置题目数量（10/15/20 题）、每题限时（10/15/20 秒）、题库分类（全部、综合常识、世界地理、自然科学、人文历史、动植物与自然、体育竞技、艺术与文化）以及电脑难度。' },
+      { h: '房间设置', p: '房主可以设置题目数量（10/15/20 题）、每题限时（10/15/20 秒）、题库分类（全部、综合常识、世界地理、自然科学、人文历史、动植物与自然、体育竞技、艺术与文化、美食、成语俗语、生活常识、中国文化、动漫影视、心算）、题目难度（混合、简单、普通、困难，每题都标了难度，选一档就只出这一档的题）以及电脑难度。电脑难度越高，答对的概率越高、反应越快，对难题的把握也比低难度的电脑强得多。' },
     ]
   };
 
@@ -833,7 +833,7 @@
       { h: 'Question Flow', p: 'Everyone sees the same question and four options at once. Each player can lock in one answer per question. When all players have answered or the timer expires, a 3-second reveal shows the correct option, everyone choices and points earned before advancing automatically.' },
       { h: 'Scoring and Streaks', p: 'A wrong or missed answer scores 0. A correct answer scores 500 + round(500 x remaining time fraction), up to 1000 points for an instant answer. Starting from your 3rd consecutive correct answer, you also earn a +100 streak bonus on each correct answer until you miss.' },
       { h: 'Double Points', p: 'The last 3 questions of every match award double base and speed points, giving trailing players a chance to make a comeback.' },
-      { h: 'Room Settings', p: 'The host can choose the question count (10, 15 or 20), seconds per question (10, 15 or 20), trivia category (All, General, Geography, Science, History, Nature, Sports or Culture) and bot difficulty.' },
+      { h: 'Room Settings', p: 'The host can choose the question count (10, 15 or 20), seconds per question (10, 15 or 20), trivia category (All, General, Geography, Science, History, Nature, Sports, Culture, Food, Idioms, Daily Life, Chinese Culture, Anime and Film or Mental Math), question level (Mixed, Easy, Normal or Hard; every question is rated, and a level only draws questions of that rating) and bot difficulty. Stronger bots answer correctly more often, answer faster when they know the answer, and cope with hard questions far better than weak bots.' },
     ]
   };
 

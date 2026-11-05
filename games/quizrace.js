@@ -2,7 +2,9 @@
 
 const QUESTIONS = require('./quizrace-questions');
 
-const CATEGORIES = ['all', 'general', 'geography', 'science', 'history', 'nature', 'sports', 'culture'];
+const CATEGORIES = ['all', 'general', 'geography', 'science', 'history', 'nature', 'sports', 'culture', 'food', 'idiom', 'life', 'cncult', 'anime', 'mental'];
+const QUESTION_DIFFS = ['mixed', 'easy', 'normal', 'hard'];
+const DIFF_LEVEL = { easy: 1, normal: 2, hard: 3 };
 const QUESTION_COUNTS = [10, 15, 20];
 const QUESTION_TIMES = [10, 15, 20];
 const REVEAL_SECONDS = 3;
@@ -16,6 +18,7 @@ exports.name = 'quizrace';
 exports.minPlayers = 1;
 exports.maxPlayers = 8;
 exports.CATEGORIES = CATEGORIES;
+exports.QUESTION_DIFFS = QUESTION_DIFFS;
 exports.QUESTION_COUNTS = QUESTION_COUNTS;
 exports.QUESTION_TIMES = QUESTION_TIMES;
 exports.REVEAL_SECONDS = REVEAL_SECONDS;
@@ -81,6 +84,7 @@ function startQuestion(state, index) {
   state.question = {
     id: item.id,
     cat: item.cat,
+    diff: item.diff,
     zh: { q: item.zh.q, opts: item.zh.opts.slice() },
     en: { q: item.en.q, opts: item.en.opts.slice() },
   };
@@ -93,6 +97,14 @@ function startQuestion(state, index) {
   state.answerTimesMs = Array(n).fill(null);
   state.roundPoints = Array(n).fill(0);
   state.streakBonuses = Array(n).fill(0);
+  // Standings as they were when the question opened. handleMove updates the live
+  // arrays the moment someone answers, so playerView shows these until the reveal.
+  state._atQuestionStart = {
+    streaks: (state.streaks || []).slice(),
+    scores: (state.scores || []).slice(),
+    correctCounts: (state.correctCounts || []).slice(),
+    ranking: computeRanking(state),
+  };
 }
 
 function enterRevealPhase(state) {
@@ -169,15 +181,29 @@ exports.initGame = (state, playerCount) => {
   const rawCat = typeof opts.category === 'string' ? opts.category.trim().toLowerCase() : 'all';
   const category = CATEGORIES.includes(rawCat) ? rawCat : 'all';
 
+  const rawQd = typeof opts.questionDiff === 'string' ? opts.questionDiff.trim().toLowerCase() : 'mixed';
+  const questionDiff = QUESTION_DIFFS.includes(rawQd) ? rawQd : 'mixed';
+
   let pool = category === 'all' ? QUESTIONS : QUESTIONS.filter((q) => q.cat === category);
   if (pool.length < totalQuestions) pool = QUESTIONS;
-
-  const picked = shuffle(pool).slice(0, totalQuestions);
+  let picked;
+  if (questionDiff === 'mixed') {
+    picked = shuffle(pool).slice(0, totalQuestions);
+  } else {
+    // Only the chosen level; if the pool is too small, fill with the closest levels.
+    const want = DIFF_LEVEL[questionDiff];
+    const near = (q) => Math.abs((q.diff || 2) - want);
+    const exact = shuffle(pool.filter((q) => near(q) === 0));
+    const rest = shuffle(pool.filter((q) => near(q) !== 0)).sort((a, b) => near(a) - near(b));
+    picked = exact.concat(rest).slice(0, totalQuestions);
+    picked = shuffle(picked);
+  }
   const deck = picked.map((q) => {
     const perm = shuffle([0, 1, 2, 3]);
     return {
       id: q.id,
       cat: q.cat,
+      diff: q.diff,
       zh: {
         q: q.zh.q,
         opts: perm.map((idx) => q.zh.opts[idx]),
@@ -192,6 +218,7 @@ exports.initGame = (state, playerCount) => {
 
   state.playerCount = n;
   state.category = category;
+  state.questionDiff = questionDiff;
   state.totalQuestions = totalQuestions;
   state.questionCount = totalQuestions;
   state.timePerQuestion = timePerQuestion;
@@ -369,10 +396,14 @@ exports.playerView = (state, playerIndex) => {
     ? state.streakBonuses.map((b) => (isQuestion ? 0 : b))
     : [];
 
+  // Until the reveal, standings stay as they were when the question opened
+  const frozen = isQuestion && state._atQuestionStart ? state._atQuestionStart : null;
+
   const questionCopy = state.question
     ? {
         id: state.question.id,
         cat: state.question.cat,
+        diff: state.question.diff,
         zh: {
           q: state.question.zh ? state.question.zh.q : '',
           opts: state.question.zh && Array.isArray(state.question.zh.opts) ? state.question.zh.opts.slice() : [],
@@ -410,13 +441,13 @@ exports.playerView = (state, playerIndex) => {
     answerTimesMs,
     roundPoints,
     streakBonuses,
-    scores: Array.isArray(state.scores) ? state.scores.slice() : [],
-    streaks: Array.isArray(state.streaks) ? state.streaks.slice() : [],
-    correctCounts: Array.isArray(state.correctCounts) ? state.correctCounts.slice() : [],
+    scores: frozen ? frozen.scores.slice() : Array.isArray(state.scores) ? state.scores.slice() : [],
+    streaks: frozen ? frozen.streaks.slice() : Array.isArray(state.streaks) ? state.streaks.slice() : [],
+    correctCounts: frozen ? frozen.correctCounts.slice() : Array.isArray(state.correctCounts) ? state.correctCounts.slice() : [],
     answeredCounts: Array.isArray(state.answeredCounts) ? state.answeredCounts.slice() : [],
     totalAnswerTimeMs: Array.isArray(state.totalAnswerTimeMs) ? state.totalAnswerTimeMs.slice() : [],
     avgTimeMs: Array.isArray(state.avgTimeMs) ? state.avgTimeMs.slice() : [],
-    ranking: Array.isArray(state.ranking) ? state.ranking.map((r) => ({ ...r })) : [],
+    ranking: (frozen ? frozen.ranking : Array.isArray(state.ranking) ? state.ranking : []).map((r) => ({ ...r })),
     winner: state.winner ?? null,
     _options: state._options ? { ...state._options } : undefined,
   };

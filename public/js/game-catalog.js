@@ -462,7 +462,7 @@
     tags: ['答题', '竞速'],
     supportsAI: true,
     maxPlayers: 8,
-    cover: '/assets/game-covers/quizrace.svg',
+    cover: '/assets/game-covers/quizrace.webp',
   };
   var catalog = zhCatalog;
 

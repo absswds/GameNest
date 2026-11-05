@@ -38,5 +38,5 @@ module.exports = {
   truthdare: 'Move {action:"draw",kind:"truth"|"dare"|"random"}.',
   werewolf: 'Moves by {type}: chat {type:"chat",text}; night wolf/seer {type:"act"?,target:seat|-1}; witch {save:bool,poison:seat|-1}; sheriff {type:"run",run:bool}; vote {target:seat|-1}; hunter/badge {target}. Phase-driven; exact type names are in games/werewolf.js (state.phase, state.ask-like fields). Use suggest_move.',
   sanguo: 'Phase driven by state.ask (to === my seat). play: {type:"use",cardId,targets:[seats]} | {type:"skill",skill,cardIds,targets} | {type:"end"}; respond: {type:"use",cardId} or {type:"pass"}; discard: {type:"discard",cardIds}. Use suggest_move for legal shapes.',
-  quizrace: 'Simultaneous 4-choice trivia race. During state.phase === "question", send {answer:0|1|2|3} (option index 0-3, once per question). Ex: {"answer":2}.',
+  quizrace: 'Simultaneous 4-choice trivia race. During state.phase === "question", send {answer:0|1|2|3} (option index 0-3, once per question). Ex: {"answer":2}. Each state.question has cat and diff (1 easy, 2 normal, 3 hard); the room option questionDiff (mixed|easy|normal|hard) limits which diff is drawn.',
 };
