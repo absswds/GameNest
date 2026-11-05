@@ -318,4 +318,13 @@
     category: '派对同乐',
     tags: ['身份', '推理', '词汇'],
   };
+  window.__LANG.zh.catalog.paodekuai = {
+    name: '跑得快',
+    subtitle: '十六张手牌，先出完者胜',
+    description: '三人跑牌游戏，炸弹即时收分，带 AI 也能随时开局。',
+    players: '2-3人',
+    duration: '约10分钟',
+    category: '牌桌竞技',
+    tags: ['跑牌', '三人局'],
+  };
 })();

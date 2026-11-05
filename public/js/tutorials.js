@@ -419,6 +419,17 @@
       { h: '机器人怎么玩', p: '机器人发言是从词库里自己词的预设描述中挑一句，不会回应你说了什么。它也听不懂人说话：当面说模式下，真人说的话它听不到，只能根据其他机器人的发言和投票做判断，真人在它眼里没有线索；打字模式下，它只拿你打的字和词库里的描述比对有多少相同的字词，听不懂比喻、反话和换种说法。简单：直接说一句具体描述，投票完全随机。普通：第一轮说得含糊些，之后越来越具体，投给发言与自己词的描述重合最少的人。困难：先说得含糊，每轮更具体，同时比对自己词和近义词两边的描述，发现多数人的描述更像另一个词就当自己是卧底，改说含糊的话混在人群里，并投给看起来不合群的人。' },
     ]
   };
+  TUTORIALS_ZH.paodekuai = {
+    sections: [
+      { h: '游戏目标', p: '跑得快是 2-3 人的跑牌游戏。每人 16 张牌，谁先把手牌出完，谁就赢下本局。牌组共 48 张：去掉大小王、红桃 2、梅花 2、方块 2 和黑桃 A，只保留黑桃 2。点数大小为 3<4<…<K<A<2。' },
+      { h: '先手', p: '第一局由持有黑桃 3 的玩家先出，而且第一手牌必须包含黑桃 3（两人局若黑桃 3 不在任何人手里，则由最小那张牌的持有者先出，并且必须带上它）。之后每局由上一局的赢家先出。' },
+      { h: '牌型', p: '单张；对子；连对（2 对及以上，如 3344）；三带二（三张加任意两张）；飞机（2 组及以上连续三张，每组各带两张）；顺子（5 张及以上连续，2 不能参与顺子）；炸弹（四张相同）。最后一手牌时，三张可以只带一张或不带，飞机也可以少带。' },
+      { h: '出牌与跟牌', p: '轮流出牌。跟牌必须是相同牌型、相同张数且点数更大；炸弹可以压任何非炸弹的牌，炸弹之间比点数。最后一手牌少带牌时，可以压同类型的完整牌。其他两家都不要时，最后出牌的人重新领出。' },
+      { h: '必须管上', p: '房间默认开启「有牌必须管」：只要你手里有能管上桌面的牌，就不能选择过牌。下家只剩 1 张牌时，你出单张（领出或跟牌）必须出手里最大的那一张。房主可以关闭「有牌必须管」。' },
+      { h: '计分', p: '一局先出完的人获胜，其他每个玩家按剩余牌数每张 1 分付给赢家；如果某个输家整局一张牌都没出过（被关牌），则按两倍计算。每打出一个炸弹，立刻从其他每位玩家那里各得 10 分。多局累计总分，总分最高者赢得整场比赛，房间可选 1/3/5/8 局。' },
+      { h: '限时与提示', p: '房间可设置每手限时 15/20/30 秒或不限时。超时会自动过牌；如果不能过牌，则自动打出最小的合法牌。点击手牌选中，「提示」按钮会依次给出可出的牌，点「出牌」打出，「不要」过牌。' },
+    ]
+  };
 
   var TUTORIALS_EN = {
     tictactoe: {
@@ -836,6 +847,17 @@
       { h: 'Winning', p: 'Civilians win when all Undercovers and the Blank are eliminated. The Undercover side wins if 3 or fewer players remain alive with an Undercover or Blank still in the game.' },
       { h: 'Settings and Tips', p: 'The host can choose speech mode, speech timer (30, 45 or 60s), undercover count (auto, 1 or 2), and Blank mode. Word level (Mixed, Easy, Normal or Hard) controls how close the two words are. Bots are supported with adjustable difficulty: see the next section for how bots play.' },
       { h: 'How Bots Play', p: 'A bot picks a line from the preset descriptions of its own word in the word bank and never reacts to what you said. It cannot understand people either: in face-to-face mode it hears nothing a human says and judges only from the other bots speeches and votes, so a human gives it no clues; in text chat mode it only counts how many characters or words your text shares with the word bank descriptions, so metaphors, sarcasm and rephrasing go over its head. Easy: states a specific description at once and votes completely at random. Normal: vague in round 1, then more specific, and votes for whoever overlaps least with its own word descriptions. Hard: starts vague and gets more specific, compares speeches against both its own word and the neighbouring word, and if most speeches fit the other word it assumes it is the undercover, speaks vaguely to blend in and votes for whoever looks out of step.' },
+    ]
+  };
+  TUTORIALS_EN.paodekuai = {
+    sections: [
+      { h: 'Goal', p: 'Run Fast is a climbing game for 2 to 3 players. Everyone gets 16 cards and the first player to empty their hand wins the round. The deck has 48 cards: no jokers, no 2 of hearts, clubs or diamonds, and no ace of spades (the 2 of spades stays). Ranks run 3 < 4 < ... < K < A < 2.' },
+      { h: 'Who leads', p: 'In the first round the holder of the 3 of spades leads and the opening play must include it (with 2 players, if nobody holds it, the holder of the lowest card leads with that card). After that the winner of the previous round leads.' },
+      { h: 'Patterns', p: 'Single; pair; consecutive pairs (2 or more pairs, like 3344); triple with two (three cards plus any two); airplane (2 or more consecutive triples, each with two cards); straight (5 or more in a row, the 2 cannot be in a straight); bomb (four of a kind). On your last play a triple may carry one card or none, and an airplane may carry fewer cards.' },
+      { h: 'Playing and following', p: 'Play in turn. To follow you must play the same pattern with the same number of cards and a higher rank. A bomb beats any non-bomb, and bombs compare by rank. A short last play may follow a full play of the same shape. When everyone else passes, the last player to play leads again.' },
+      { h: 'Must beat', p: 'By default you may not pass when you hold a play that beats the table. When the next player has exactly one card left, a single you lead or follow with must be your highest card. The host can turn off must-beat in the room settings.' },
+      { h: 'Scoring', p: 'The first to empty their hand wins the round. Every other player pays the winner 1 point per card left in hand, doubled if they never played a card that round. Each bomb you play immediately earns 10 points from every other player. Scores add up over the rounds (1, 3, 5 or 8 in the room settings) and the highest total wins the match.' },
+      { h: 'Timer and controls', p: 'The room can limit each turn to 15, 20 or 30 seconds, or have no limit. On timeout you pass automatically, or if passing is not allowed the smallest legal play is made. Tap cards to select them, press Hint to cycle through legal plays, Play to play and Pass to pass.' },
     ]
   };
 
