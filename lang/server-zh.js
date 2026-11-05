@@ -390,4 +390,9 @@ module.exports = {
   'pdk_first_must_have_s3': '首次出牌必须包含黑桃3（无人持有时为最小的牌）',
   'pdk_must_play_highest_single': '下家只剩一张牌，单张必须出最大的',
   'pdk_click_next_round': '请点击「下一局」继续',
+  'qr_not_now': '当前不在答题阶段',
+  'qr_reveal_wait': '正在公布答案，请等待下一题',
+  'qr_invalid_player': '无效的玩家座位',
+  'qr_invalid_option': '请选择有效的选项（A–D）',
+  'qr_already_answered': '本题你已经作答过了',
 };

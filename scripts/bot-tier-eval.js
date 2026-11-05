@@ -120,6 +120,7 @@ const G = {
   snakebattle: { n: 2, kind: 'realtime', cap: 4000, metric: (s, i) => s.snakes[i].score },
   sudoku: { n: 2, kind: 'realtime', cap: 3000, metric: (s, i) => s.counts[i] },
   sheeptile: { n: 2, kind: 'phase', cap: 20000, metric: (s, i) => s.players[i].score },
+  quizrace: { n: 2, kind: 'phase', cap: 20000, opts: { questionCount: 20, timePerQuestion: 15 }, metric: (s, i) => s.scores[i] },
 };
 const SKIPPED = {};
 

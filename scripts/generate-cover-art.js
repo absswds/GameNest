@@ -47,6 +47,7 @@ const covers = [
   { id: '2048', palette: ['#f5f1e8', '#d9cbb0', '#edc22e', '#2a2418'], motif: '2048' },
   { id: 'sudoku', palette: ['#f2f0ea', '#c9d4de', '#6d8fb0', '#182231'], motif: 'sudoku' },
   { id: 'undercover', palette: ['#eeeaf3', '#c5bcd6', '#6a4f93', '#1c1626'], motif: 'undercover' },
+  { id: 'quizrace', palette: ['#eef4f2', '#bcd7d0', '#1f8a78', '#12231f'], motif: 'quizrace' },
   { id: 'mahjong-sichuan', palette: ['#f4efe7', '#c7d0c6', '#2f7a55', '#14231a'], motif: 'mahjong' },
 ];
 
@@ -448,6 +449,19 @@ function motifSvg(cover) {
         ${circle(1110, 385, 22, dark, 0.45)}
         ${circle(1270, 500, 22, '#c62828', 0.7)}
         ${circle(1190, 615, 22, dark, 0.5)}
+      `;
+    case 'quizrace':
+      return `
+        <rect x="440" y="150" width="900" height="720" rx="48" fill="${dark}"/>
+        <rect x="520" y="210" width="740" height="230" rx="32" fill="#f3ead2" opacity="0.92"/>
+        <text x="890" y="390" text-anchor="middle" font-size="200" font-weight="bold" fill="${accent}">?</text>
+        <rect x="520" y="490" width="350" height="110" rx="28" fill="#f3ead2" opacity="0.3"/>
+        <rect x="910" y="490" width="350" height="110" rx="28" fill="${accent}"/>
+        <rect x="520" y="630" width="350" height="110" rx="28" fill="#f3ead2" opacity="0.3"/>
+        <rect x="910" y="630" width="350" height="110" rx="28" fill="#f3ead2" opacity="0.3"/>
+        <path d="M1000 545 L1040 585 L1120 505" fill="none" stroke="#f3ead2" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="520" y="780" width="740" height="26" rx="13" fill="#f3ead2" opacity="0.25"/>
+        <rect x="520" y="780" width="470" height="26" rx="13" fill="${accent}"/>
       `;
     case 'mahjong':
       return `

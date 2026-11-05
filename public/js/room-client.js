@@ -32,7 +32,7 @@
     'reversi', 'gomoku', 'chess', 'connect4', 'checkers', 'chinesechess', 'go9', 'hearts', 'battleship',
     'tictactoe', 'numberbomb', 'twentyfour', 'uno', 'doudizhu', 'bigtwo', 'texas', 'liarsbar',
     'exploding-kittens', 'flightchess', 'mahjong-sichuan', 'mahjong-cantonese',
-    'monopoly', 'werewolf', 'sanguo', 'rummikub', 'davinci', '2048', 'snakebattle', 'sudoku', 'sheeptile', 'undercover', 'paodekuai'
+    'monopoly', 'werewolf', 'sanguo', 'rummikub', 'davinci', '2048', 'snakebattle', 'sudoku', 'sheeptile', 'undercover', 'quizrace', 'paodekuai'
   ];
 
   // ---- Game name lookup ----
@@ -42,7 +42,7 @@
   }
 
   // Games that can be started and played solo (no AI / opponent needed).
-  const SOLO_GAMES = ['2048', 'sudoku', 'minesweeper', 'numberbomb', 'twentyfour', 'suikabattle', 'drawguess'];
+  const SOLO_GAMES = ['2048', 'sudoku', 'minesweeper', 'numberbomb', 'twentyfour', 'suikabattle', 'drawguess', 'quizrace'];
 
   let roomOptions = {};
   let match = null; // best-of-N score for board games, from the server
@@ -1277,6 +1277,49 @@
               _t('difficulty_label') + ': ' + pdkDiffLabel +
             '</div>';
         }
+      } else if (game === 'quizrace') {
+        optionsEl.style.display = 'block';
+        var qrCount = [10, 15, 20].indexOf(Number(roomOptions.questionCount)) >= 0 ? Number(roomOptions.questionCount) : 10;
+        var qrTime = [10, 15, 20].indexOf(Number(roomOptions.timePerQuestion)) >= 0 ? Number(roomOptions.timePerQuestion) : 15;
+        var qrCat = roomOptions.category || 'all';
+        var qrDiff = roomOptions.difficulty || 'normal';
+        var qrCats = ['all', 'general', 'geography', 'science', 'history', 'nature', 'sports', 'culture', 'food', 'idiom', 'life', 'cncult', 'anime', 'mental'];
+        var qrQD = ['mixed', 'easy', 'normal', 'hard'].indexOf(roomOptions.questionDiff) >= 0 ? roomOptions.questionDiff : 'mixed';
+        var qrSelStyle = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
+        if (isHost) {
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_question_count') + ' <select onchange="window._setGameOption(\'questionCount\', parseInt(this.value))" style="' + qrSelStyle + '">' +
+                [10, 15, 20].map(function(n) { return '<option value="' + n + '"' + (qrCount === n ? ' selected' : '') + '>' + n + _t('qr_opt_questions_unit') + '</option>'; }).join('') +
+              '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_time_per_question') + ' <select onchange="window._setGameOption(\'timePerQuestion\', parseInt(this.value))" style="' + qrSelStyle + '">' +
+                [10, 15, 20].map(function(s) { return '<option value="' + s + '"' + (qrTime === s ? ' selected' : '') + '>' + s + _t('qr_opt_seconds_unit') + '</option>'; }).join('') +
+              '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_category') + ' <select onchange="window._setGameOption(\'category\', this.value)" style="' + qrSelStyle + '">' +
+                qrCats.map(function(c) { return '<option value="' + c + '"' + (qrCat === c ? ' selected' : '') + '>' + _t('qr_cat_' + c) + '</option>'; }).join('') +
+              '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_qdiff') + ' <select onchange="window._setGameOption(\'questionDiff\', this.value)" style="' + qrSelStyle + '">' +
+                ['mixed', 'easy', 'normal', 'hard'].map(function(d) { return '<option value="' + d + '"' + (qrQD === d ? ' selected' : '') + '>' + _t('qr_qdiff_' + d) + '</option>'; }).join('') +
+              '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="' + qrSelStyle + '">' +
+                '<option value="easy"' + (qrDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
+                '<option value="normal"' + (qrDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
+                '<option value="hard"' + (qrDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
+              '</select></label>' +
+            '</div>';
+        } else {
+          var qrDiffLbl = qrDiff === 'easy' ? _t('difficulty_easy') : qrDiff === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+            '<div style="font-size:13px;color:var(--text-muted)">' +
+              _t('qr_opt_question_count') + ' ' + qrCount + _t('qr_opt_questions_unit') + ' · ' +
+              _t('qr_opt_time_per_question') + ' ' + qrTime + _t('qr_opt_seconds_unit') + ' · ' +
+              _t('qr_opt_category') + ' ' + _t('qr_cat_' + qrCat) + ' · ' +
+              _t('qr_opt_qdiff') + ' ' + _t('qr_qdiff_' + qrQD) + ' · ' +
+              _t('difficulty_label') + ': ' + qrDiffLbl +
+            '</div>';
+        }
       } else if (isHost && gameInfo.supportsAI && window._gamesWithDifficulty.indexOf(game) >= 0) {
         // AI difficulty selector only for games whose bots actually read it
         optionsEl.style.display = 'block';
@@ -1511,7 +1554,7 @@
       else if (state && state.currentPlayer >= 0) st.textContent = _t('opponent_turn');
       else if (state) st.textContent = _t('realtime_race');
       // These renderers draw their own whose-turn header; the generic line would be wrong for them.
-      if (game === 'sanguo' || game === 'werewolf' || game === 'undercover') st.style.display = 'none';
+      if (game === 'sanguo' || game === 'werewolf' || game === 'undercover' || game === 'quizrace') st.style.display = 'none';
     }
   }
 
@@ -1701,6 +1744,18 @@
     return h + '</tbody></table></div>';
   }
 
+  // 快问快答结算：名次 | 玩家 | 总分 | 答对 | 平均用时（表格样式沿用跑得快的 pdk-score）
+  function qrResultTable() {
+    var total = state.totalQuestions || 10;
+    var h = '<div class="pdk-score-wrap"><table class="pdk-score"><thead><tr><th>' + _t('qr_tbl_rank') + '</th><th class="pdk-name">' + _t('qr_tbl_player') + '</th><th class="pdk-num">' + _t('qr_tbl_score') + '</th><th class="pdk-num">' + _t('qr_tbl_correct') + '</th><th class="pdk-num">' + _t('qr_tbl_avg') + '</th></tr></thead><tbody>';
+    state.ranking.forEach(function(r, idx) {
+      var nm = r.player === playerIndex ? _t('you') : window.getPlayerName(r.player);
+      var avg = r.avgTimeMs ? (r.avgTimeMs / 1000).toFixed(1) + 's' : '—';
+      h += '<tr' + (r.player === playerIndex ? ' class="me"' : '') + '><td>' + (idx === 0 ? '🏆' : idx + 1) + '</td><td class="pdk-name">' + esc(nm) + '</td><td class="pdk-num pdk-total">' + r.score + '</td><td class="pdk-num">' + (r.correctCount || 0) + '/' + total + '</td><td class="pdk-num">' + avg + '</td></tr>';
+    });
+    return h + '</tbody></table></div>';
+  }
+
   function showResult(winner) {
     if (game === 'mahjong-sichuan' || game === 'mahjong-cantonese') return;
     const overlay = el.overlay;
@@ -1762,6 +1817,10 @@
       isWin = (winner === playerIndex);
       txt = isWin ? _t('you_win') : _t('you_lose');
       subHtml = pdkScoreTable();
+    } else if (game === 'quizrace' && state && Array.isArray(state.ranking)) {
+      isWin = (winner === playerIndex);
+      txt = isWin ? _t('you_win') : _t('you_lose');
+      subHtml = qrResultTable();
     } else {
       isWin = (winner === playerIndex);
       txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';

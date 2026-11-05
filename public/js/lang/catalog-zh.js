@@ -308,6 +308,15 @@
       category: '派对同乐',
       tags: ['身份', '推理'],
     },
+    quizrace: {
+      name: '快问快答',
+      subtitle: '手速与脑力的限时抢答赛',
+      description: '全员同时作答四选一百科题，答得越快得分越高，最后三题双倍积分！',
+      players: '1-8人',
+      duration: '约5分钟',
+      category: '派对同乐',
+      tags: ['答题', '竞速'],
+    },
   };
   window.__LANG.zh.catalog.undercover = {
     name: '谁是卧底',

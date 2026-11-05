@@ -308,6 +308,15 @@
       category: 'Party',
       tags: ['Hidden roles', 'Deduction'],
     },
+    quizrace: {
+      name: 'Quick Quiz',
+      subtitle: 'Fast-paced 4-choice trivia race',
+      description: 'Everyone answers 4-choice trivia questions simultaneously. Faster answers score more, and the last 3 questions award double points!',
+      players: '1-8 Players',
+      duration: '~5 min',
+      category: 'Party',
+      tags: ['Trivia', 'Speed'],
+    },
   };
   window.__LANG.en.catalog.undercover = {
     name: 'Who Is the Undercover',

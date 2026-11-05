@@ -390,4 +390,9 @@ module.exports = {
   'pdk_first_must_have_s3': 'The opening play must include the 3 of Spades (the lowest card when nobody holds it)',
   'pdk_must_play_highest_single': 'The next player has one card left: play your highest single',
   'pdk_click_next_round': 'Click Next Round to continue',
+  'qr_not_now': 'Cannot answer right now',
+  'qr_reveal_wait': 'Revealing answer, wait for the next question',
+  'qr_invalid_player': 'Invalid player seat',
+  'qr_invalid_option': 'Please choose a valid option (0-3)',
+  'qr_already_answered': 'You have already answered this question',
 };
