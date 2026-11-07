@@ -471,7 +471,7 @@
           var cpObj = (window.gamePlayers || [])[checkedSide];
           var who = checkedSide === playerIndex ? _t('mp_you') : (cpObj ? cpObj.name : _t('xq_waiting'));
           if (window.Motion && window.Motion.announce) {
-            window.Motion.announce(_t('xq_check'), { icon: '帥', sub: _tf('xq_in_check', who), tone: 'warn' });
+            window.Motion.announce(_t('xq_check'), { icon: PIECE_NAMES.K[checkedSide], sub: _tf('xq_in_check', who), tone: 'warn' });
           }
           var king = window.findKingCell(state.board, checkedSide);
           if (king) checkRing = { row: king.row, col: king.col, start: performance.now() };
