@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
 const WebSocket = require('ws');
 
-const PORT = 3189;
+const PORT = 3194;
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function startServer() {

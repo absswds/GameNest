@@ -29,6 +29,7 @@
 
   // Snapshot of previous board for detecting opponent moves
   var prevBoard = null;
+  var prevMoveLen = null, checkRing = null, ringRaf = null;
 
   // ---- Drawing helpers ----
 
@@ -313,6 +314,17 @@
       }
     }
 
+    // === Check ring ===
+    if (checkRing) {
+      var ringOn = window.drawCheckRing(ctx, { x: margin + checkRing.col * cs, y: margin + checkRing.row * cs, r: cs, start: checkRing.start }, now);
+      if (!ringOn) {
+        checkRing = null;
+      } else if (!ringRaf && !animState.running && !(window.Motion && window.Motion.reduced())) {
+        // one loop at a time: render/resize/clicks also call drawFrame while the ring pulses
+        ringRaf = requestAnimationFrame(function(t) { ringRaf = null; drawFrame(t); });
+      }
+    }
+
     // === Status bar ===
     var sy = margin + boardH + cs * 0.5 + 20;
     ctx.fillStyle = '#3a3028'; ctx.font = 'bold 16px system-ui,-apple-system,sans-serif'; ctx.textAlign = 'center';
@@ -341,6 +353,9 @@
       stopAnimLoop();
       selRow = -1; selCol = -1;
       prevBoard = null;
+      prevMoveLen = null;
+      checkRing = null;
+      if (ringRaf) { cancelAnimationFrame(ringRaf); ringRaf = null; }
 
       var resize = function() {
         // 9×10 board: size from whichever of width/height runs out first; margin leaves room for edge pieces
@@ -445,6 +460,24 @@
       if (!canvas || !state || !state.board) return;
 
       // Detect opponent's move (piece moved without our animation trigger)
+      var mh = state.moveHistory || [];
+      if (prevMoveLen === null || mh.length < prevMoveLen) {
+        prevMoveLen = mh.length;
+      } else if (mh.length > prevMoveLen) {
+        prevMoveLen = mh.length;
+        var lastMv = mh[mh.length - 1];
+        if (state.winner == null && lastMv && lastMv.check) {
+          var checkedSide = state.currentPlayer;
+          var cpObj = (window.gamePlayers || [])[checkedSide];
+          var who = checkedSide === playerIndex ? _t('mp_you') : (cpObj ? cpObj.name : _t('xq_waiting'));
+          if (window.Motion && window.Motion.announce) {
+            window.Motion.announce(_t('xq_check'), { icon: '帥', sub: _tf('xq_in_check', who), tone: 'warn' });
+          }
+          var king = window.findKingCell(state.board, checkedSide);
+          if (king) checkRing = { row: king.row, col: king.col, start: performance.now() };
+        }
+      }
+
       if (!animState.running && prevBoard && selRow === -1 && selCol === -1) {
         var move = detectMove(prevBoard, state.board);
         if (move) {

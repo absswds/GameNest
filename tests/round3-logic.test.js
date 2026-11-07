@@ -40,19 +40,16 @@ test('bigtwo: same five-card type still compares by rank then suit', () => {
   assert.equal(bigtwo.canBeat(play(...SFLUSH), play('3s', '4s', '5s', '6s', '7s')), false);
 });
 
-test('bigtwo: 2 may still be used in a straight', () => {
-  assert.equal(play('Js', 'Qh', 'Kd', 'Ac', '2s').type, 'straight');
+test('bigtwo: A-2-3-4-5 is the lowest straight, and J-Q-K-A-2 is not a straight', () => {
+  const low = play('As', '2h', '3d', '4c', '5s');
+  assert.equal(low.type, 'straight');
+  assert.equal(bigtwo.canBeat(play(...STRAIGHT), low), true);
+  assert.equal(play('Js', 'Qh', 'Kd', 'Ac', '2s'), null);
 });
 
-test('bigtwo: a straight longer than 5 is only beaten by a same-length straight', () => {
-  const six = play('3s', '4h', '5d', '6c', '7s', '8h');
-  assert.equal(six.type, 'straight');
-  assert.equal(bigtwo.canBeat(play(...SFLUSH), six), false);
-  assert.equal(bigtwo.canBeat(play(...FULL), six), false);
-  assert.equal(bigtwo.canBeat(play('9s', '10h', 'Jd', 'Qc', 'Ks', 'Ah'), six), true);
-  // and a 6-straight cannot beat a five-card hand
-  assert.equal(bigtwo.canBeat(six, play(...STRAIGHT)), false);
-  assert.equal(bigtwo.canBeat(six, play(...FLUSH)), false);
+test('bigtwo: only 1, 2, 3 or 5 cards are valid plays', () => {
+  assert.equal(play('3s', '4h', '5d', '6c', '7s', '8h'), null);
+  assert.equal(play('3s', '3h', '3d', '3c'), null);
 });
 
 test('bigtwo: five-card hands do not beat singles, pairs or triples', () => {
@@ -62,7 +59,7 @@ test('bigtwo: five-card hands do not beat singles, pairs or triples', () => {
 
 test('bigtwo bot: answers a straight with a flush or higher, and a flush with a full house', () => {
   const mk = (ids, last) => {
-    const state = { hands: [cards(...ids), []], lastPlay: { play: play(...last), player: 1, cards: cards(...last) }, lastPlayPlayer: 1 };
+    const state = { hands: [cards(...ids), []], lastPlay: { play: play(...last), player: 1, cards: cards(...last) }, lastPlayPlayer: 1, _opened: true };
     return bigtwoBot.createBot(0).getMove(state);
   };
   const mv1 = mk(['4h', '6h', '9h', 'Qh', 'Ah', '3c'], STRAIGHT);

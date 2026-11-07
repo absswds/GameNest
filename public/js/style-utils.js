@@ -27,4 +27,31 @@
     var h = window.innerHeight - Math.max(floor, Math.min(top, 320)) - 24;
     return { w: w, h: h };
   };
+
+  // Pulsing red ring around a checked king, shared by the chess and chinesechess canvases.
+  // ring = { x, y, r, start } in canvas pixels. Returns false once the 1.2 s pulse is over.
+  window.drawCheckRing = function(ctx, ring, now) {
+    var elapsed = (now || performance.now()) - ring.start;
+    if (elapsed >= 1200) return false;
+    var pulse = 0.5 + 0.5 * Math.sin((elapsed / 200) * Math.PI);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(220, 38, 38, ' + (0.45 + 0.5 * pulse) + ')';
+    ctx.lineWidth = 3 + 2 * pulse;
+    ctx.beginPath();
+    ctx.arc(ring.x, ring.y, ring.r * (0.42 + 0.08 * pulse), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return true;
+  };
+
+  // Find the king of `side` on a board of { type, side } cells, or null.
+  window.findKingCell = function(board, side) {
+    for (var r = 0; r < board.length; r++) {
+      for (var c = 0; c < (board[r] || []).length; c++) {
+        var p = board[r][c];
+        if (p && p.type === 'K' && p.side === side) return { row: r, col: c };
+      }
+    }
+    return null;
+  };
 })();

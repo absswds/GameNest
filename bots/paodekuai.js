@@ -7,7 +7,10 @@ const P = require('../public/js/paodekuai-patterns');
 const { botName } = require('./lib/bot-name');
 const { pickFor } = require('./lib/difficulty');
 
-// Provisional: uncalibrated
+// Calibrated 2026-11-07 (bot-tier-eval paodekuai --n=300 --dup, 3 seats, 1 round): hard beats random
+// 75% (n=40), hard vs easy 70.0%, normal vs easy 67.3%, hard vs normal 57.3%. The game is luck-driven,
+// so the tiers sit close together; the sweep put easy at about random strength and the current
+// values already give the ordering hard > normal > easy, so they were kept.
 const PICK = {
   temp: { easy: 60, normal: 15 },
   maxLoss: { easy: 250, normal: 40 },

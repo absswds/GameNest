@@ -88,7 +88,7 @@ test('lang: keys added this round exist in both zh and en', () => {
   const zh = load('zh'), en = load('en');
   const keys = ['nb_out_of_range', 'nb_dir_high', 'nb_dir_low', 'nb_log_hit', 'nb_log_range', 'nb_log_forced',
     'om_log_draw', 'om_log_empty', 'om_log_pair', 'om_log_open_pair', 'ms_flag_mode', 'ms_solo_lost',
-    'uno_stack_hint', 'sudoku_pick_cell', 'need_all_ready', 'need_more_players', 'pvp_only_hint',
+    'uno_stack_hint', 'sudoku_pick_cell', 'need_more_players', 'pvp_only_hint',
     'toast_cell_taken', 'toast_illegal_move', 'toast_already_shot', 'tf_click_next', 'view_board'];
   for (const k of keys) {
     assert.ok(zh[k], 'zh missing ' + k);

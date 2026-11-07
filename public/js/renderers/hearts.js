@@ -98,6 +98,7 @@
   var container = null;
   var selectedCards = [];
   var prevState = null;
+  var prevTrickKey = null, prevScores = null;
   var shownTrick = {};
 
   function escHtml(str) {
@@ -158,6 +159,43 @@
       selectedCards = [];
     }
     prevState = s;
+
+    var lt = s.lastTrick;
+    var trickKey = (lt && lt.length === 4) ? lt.map(function(t) { return t.card.id; }).join(',') : '';
+    var curScores = s.scores || [0, 0, 0, 0];
+    var isNewGame = prevScores && s.round === 1 && s.trickCount === 0 && curScores.every(function(v) { return v === 0; }) && prevScores.some(function(v) { return v > 0; });
+    if (prevScores === null || isNewGame) {
+      prevTrickKey = trickKey;
+      prevScores = curScores.slice();
+    } else {
+      var plus26 = 0, shooter = -1;
+      for (var si = 0; si < 4; si++) {
+        var d = (curScores[si] || 0) - (prevScores[si] || 0);
+        if (d === 26) plus26++;
+        else if (d === 0) shooter = si;
+      }
+      var shotMoon = (plus26 === 3 && shooter >= 0);
+      if (shotMoon && window.Motion && window.Motion.announce) {
+        var moonWho = shooter === myIdx ? window._t('mp_you') : playerName(shooter);
+        window.Motion.announce(window._tf('ht_ann_moon', moonWho), { icon: '🌙', tone: 'warn' });
+      } else if (trickKey && trickKey !== prevTrickKey) {
+        var hasQs = lt.some(function(t) { return t.card.id === 'Qs' || (t.card.suit === 's' && t.card.rank === 'Q'); });
+        if (hasQs && window.Motion && window.Motion.announce) {
+          var rankOrder = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+          var leadSuit = lt[0].card.suit;
+          var best = lt[0];
+          for (var ti = 1; ti < lt.length; ti++) {
+            if (lt[ti].card.suit === leadSuit && rankOrder.indexOf(lt[ti].card.rank) > rankOrder.indexOf(best.card.rank)) {
+              best = lt[ti];
+            }
+          }
+          var qsWho = best.player === myIdx ? window._t('mp_you') : playerName(best.player);
+          window.Motion.announce(window._tf('ht_ann_qs', qsWho), { icon: '♠️', tone: 'loss' });
+        }
+      }
+      prevTrickKey = trickKey;
+      prevScores = curScores.slice();
+    }
 
     var html = '<div class="ht-wrap">';
 
@@ -327,6 +365,8 @@
     container = containerEl;
     selectedCards = [];
     prevState = null;
+    prevTrickKey = null;
+    prevScores = null;
     injectStyles();
   }
 

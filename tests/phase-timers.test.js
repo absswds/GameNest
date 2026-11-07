@@ -137,7 +137,7 @@ test('drawguess stage: 0 means unlimited, and gameover clears the deadline', () 
   dg.onTimeout(st); // playing -> round_result (5s)
   assert.equal(st.phase, 'round_result');
   assert.ok(st.stepDeadline > 0);
-  st.round = st._playerCount;
+  st.round = st.totalRounds;
   dg.onTimeout(st);
   assert.equal(st.phase, 'gameover');
   assert.equal(st.stepDeadline, 0);

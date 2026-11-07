@@ -359,6 +359,7 @@ exports.handleMove = (data, state, playerIndex) => {
   // Check if enemy has no legal moves → checkmate or stalemate
   const enemyMoves = getLegalMoves(state.board, enemy);
   const gaveCheck = isInCheck(state.board, enemy);
+  state.moveHistory[state.moveHistory.length - 1].check = gaveCheck;
   state._plies.push({ key, mover: playerIndex, check: gaveCheck });
   if (enemyMoves.length === 0) {
     // Checkmate and stalemate both lose for the side to move in Chinese chess

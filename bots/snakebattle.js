@@ -11,7 +11,8 @@ const VECTORS = {
 
 exports.name = 'snakebattle';
 
-// Provisional values; will be set by scripts/bot-tier-eval.js --calibrate
+// Checked 2026-11-06 (bot-tier-eval snakebattle --dup --n=100): hard>easy 92.0%, normal>easy 83.5%, hard>normal 79.0%, all above the
+// 65% bar, so these values stay. (--calibrate's fitted value, easy = normal at T=4.19, would merge two tiers.)
 const PICK = { temp: { easy: 30, normal: 6 }, maxLoss: { easy: 300, normal: 40 } };
 
 function cellKey(cell) {

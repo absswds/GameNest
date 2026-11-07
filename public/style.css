@@ -3434,3 +3434,14 @@ body.lobby-page {
 .res-tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--border); color: var(--text-muted); }
 .res-tag.undercover { background: var(--ge-red); color: #fff; }
 .res-tag.blank { background: #7c5cbf; color: #fff; }
+
+.count-chips {
+  align-items: center;
+}
+
+.count-chips-label {
+  font-size: 13px;
+  font-weight: 650;
+  color: #615b52;
+  margin-right: 2px;
+}

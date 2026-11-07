@@ -5,8 +5,10 @@ exports.name = 'uno';
 
 const COLORS = ['red', 'blue', 'green', 'yellow'];
 
-// Provisional values; will be set by scripts/bot-tier-eval.js --calibrate
-const PICK = { temp: { easy: 40, normal: 12 }, maxLoss: { easy: 150, normal: 45 } };
+// Calibrated 2026-11-06 (bot-tier-eval uno --dup --n=2000, 4 seats): UNO is luck-driven (hard vs random only 66.7%), so the
+// three tiers span ~65%: hard>easy 65.3%, hard>normal 57.9%, normal>easy 57.6%. easy is effectively random play.
+// The old values (easy T=40) played almost as well as hard (52%), and an earlier n=60 run showing hard 31.7% vs normal was noise (n=600: 50.3%).
+const PICK = { temp: { easy: 1000, normal: 100 }, maxLoss: { easy: 100000, normal: 400 } };
 
 // Remember which colours each opponent could not match (they had to draw) -- public info only.
 function createMemory() {

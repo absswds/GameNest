@@ -78,11 +78,21 @@ test('answers must use the same number of cards', () => {
 
 test('bad move payloads are rejected without throwing', () => {
   const s = midGame([['3d', '4d'], ['5d', '6d'], ['7d', '8d']]);
-  for (const data of [null, undefined, 'x', 5, {}, { cards: 'x' }, { cards: ['3d', '3d'] }]) {
+  for (const data of [null, undefined, 'x', 5, {}, { foo: 1 }, { cards: 'x' }, { cards: ['3d', '3d'] }]) {
     assert.equal(typeof bt.handleMove(data, s, 0), 'string', JSON.stringify(data));
   }
   assert.equal(bt.handleMove({ cards: ['9s'] }, s, 0), 'bt_card_not_in_hand');
   assert.deepEqual(s.hands[0].map((c) => c.id), ['3d', '4d']);
+});
+
+test('server bot fallback: leads a legal single when it must lead, passes otherwise', () => {
+  const { applyBotFallback } = require('../games/lib/bot-fallback');
+  const s = midGame([['3d', '4d'], ['5d', '6d'], ['7d', '8d']]);
+  assert.equal(applyBotFallback(bt, s, 0), null);
+  assert.deepEqual(s.hands[0].map((c) => c.id), ['4d']);
+  assert.equal(applyBotFallback(bt, s, 1), null); // a play is on the table: passes
+  assert.equal(s.currentPlayer, 2);
+  assert.deepEqual(s.hands[1].map((c) => c.id), ['5d', '6d']);
 });
 
 test('{pass:true} passes like {cards:[]}', () => {

@@ -553,6 +553,9 @@
     return Object.assign({ id }, entry);
   }
 
+  // Games that can be started and played solo (no AI / opponent needed). Read by the lobby player filter and room-client.js.
+  window.SOLO_GAMES = ['2048', 'sudoku', 'minesweeper', 'numberbomb', 'twentyfour', 'suikabattle', 'drawguess', 'quizrace'];
+
   window.gameCatalog = {
     byId: function(id) {
       return withId(id);

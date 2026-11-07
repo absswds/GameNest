@@ -31,6 +31,7 @@
 
   window.gameRenderers.set('doudizhu', {
     init: function(container) {
+      _prevDdzState = null;
       if (!document.getElementById('ddz-styles')) {
         var st = document.createElement('style');
         st.id = 'ddz-styles';
@@ -66,7 +67,33 @@
           showToast(passerName + _t('ddz_player_passed'));
         }
       }
-      _prevDdzState = { phase: s.phase, currentPlayer: currentPlayer, lastPlay: JSON.stringify(s.lastPlay) };
+      var curLpKey = JSON.stringify(s.lastPlay);
+      if (_prevDdzState && curLpKey !== _prevDdzState.lastPlay && s.lastPlay && s.lastPlay.play) {
+        var pType = s.lastPlay.play.type;
+        if (pType === 'bomb' || pType === 'rocket') {
+          var lpPlayer = s.lastPlay.player;
+          var lpWho = lpPlayer === playerIndex ? _t('ddz_you') : ((window.gamePlayers && window.gamePlayers[lpPlayer]) ? window.gamePlayers[lpPlayer].name : (_t('ddz_player_fallback') + ' ' + (lpPlayer + 1)));
+          if (window.Motion && window.Motion.announce) {
+            if (pType === 'rocket') {
+              window.Motion.announce(_t('ddz_ann_rocket'), { icon: '🚀', sub: lpWho, tone: 'warn' });
+            } else {
+              window.Motion.announce(_tf('ddz_ann_bomb', s.gameMultiplier || 1), { icon: '💣', sub: lpWho, tone: 'warn' });
+            }
+          }
+          var wrapEl = document.getElementById('ddzWrap') || container;
+          if (wrapEl && wrapEl.animate && !(window.Motion && window.Motion.reduced())) {
+            wrapEl.animate([
+              { transform: 'translateX(0)' },
+              { transform: 'translateX(-6px)' },
+              { transform: 'translateX(6px)' },
+              { transform: 'translateX(-6px)' },
+              { transform: 'translateX(6px)' },
+              { transform: 'translateX(0)' }
+            ], { duration: 300, easing: 'ease-in-out' });
+          }
+        }
+      }
+      _prevDdzState = { phase: s.phase, currentPlayer: currentPlayer, lastPlay: curLpKey };
 
       this.renderOpponents(s, playerIndex, currentPlayer);
       this.renderPlayArea(s, playerIndex);

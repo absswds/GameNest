@@ -80,8 +80,9 @@ test('bigtwo: a same-suit straight is a straight flush and is detected as such',
 test('bigtwo: bots finish whole games and the server fallback is a legal move', () => {
   for (let i = 0; i < 5; i++) assert.notEqual(runBots('bigtwo', 4).winner, null);
   const g = require('../games/bigtwo');
+  const { applyBotFallback } = require('../games/lib/bot-fallback');
   const s = g.createState(); s._playerCount = 4; s._options = {}; g.initGame(s, 4);
-  assert.equal(g.handleMove({}, s, s.currentPlayer), null);
+  assert.equal(applyBotFallback(g, s, s.currentPlayer), null);
 });
 
 // ---------- doudizhu ----------

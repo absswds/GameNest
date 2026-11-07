@@ -4,11 +4,13 @@
 
   var selectedCards = [];
   var _lastHandLen = 0;
+  var _prevFiredShots = null;
   var SUIT_SYMBOL = { s: '♠', h: '♥', c: '♣', d: '♦' };
   var SUIT_COLOR = { s: '#1a1a1a', h: '#e74c3c', c: '#1a1a1a', d: '#e74c3c' };
 
   window.gameRenderers.set('liarsbar', {
     init: function(container) {
+      _prevFiredShots = null;
       container.innerHTML =
         '<div id="lbWrap" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
           '<div id="lbPlayers" style="display:flex;justify-content:space-around;gap:8px;flex-wrap:wrap;"></div>' +
@@ -24,6 +26,39 @@
 
     render: function(state, container, playerIndex, winner) {
       if (!state) return;
+      var fs = state.firedShots || [];
+      var isNewLb = _prevFiredShots && (_prevFiredShots.length !== fs.length || (fs.every(function(v) { return v === 0; }) && _prevFiredShots.some(function(v) { return v > 0; })));
+      if (_prevFiredShots === null || isNewLb) {
+        _prevFiredShots = fs.slice();
+      } else {
+        for (var si = 0; si < fs.length; si++) {
+          if (fs[si] > (_prevFiredShots[si] || 0)) {
+            var lbWho = si === playerIndex ? _t('mp_you') : (window.getPlayerName ? window.getPlayerName(si) : (_t('lb_player_fallback') + (si + 1)));
+            var isDead = state.alive && !state.alive[si];
+            if (window.Motion && window.Motion.announce) {
+              if (isDead) {
+                window.Motion.announce(_tf('lb_ann_eliminated', lbWho), { icon: '🔫', tone: 'loss' });
+              } else {
+                window.Motion.announce(_tf('lb_ann_survived', lbWho), { icon: '🔫', tone: 'info' });
+              }
+            }
+            if (isDead) {
+              var lbWrap = document.getElementById('lbWrap') || container;
+              if (lbWrap && lbWrap.animate && !(window.Motion && window.Motion.reduced())) {
+                lbWrap.animate([
+                  { transform: 'translateX(0)' },
+                  { transform: 'translateX(-6px)' },
+                  { transform: 'translateX(6px)' },
+                  { transform: 'translateX(-6px)' },
+                  { transform: 'translateX(6px)' },
+                  { transform: 'translateX(0)' }
+                ], { duration: 300, easing: 'ease-in-out' });
+              }
+            }
+          }
+        }
+        _prevFiredShots = fs.slice();
+      }
       this.renderPlayers(state, playerIndex, winner);
       this.renderTheme(state);
       this.renderPile(state, playerIndex);

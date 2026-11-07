@@ -11,6 +11,7 @@
   var _sel = {};               // selected tile ids (across all boxes + hand)
   var _manipInit = false;      // whether boxes have been seeded for this manipulate session
   var _sortByNum = false;      // hand sort mode: false = colour then number (server order), true = number first
+  var _prevBroken = null;
 
   // Client-side set validity (mirrors games/rummikub.js) for live colour feedback
   function clientValidSet(tiles) {
@@ -99,6 +100,7 @@
   window.gameRenderers.set('rummikub', {
     init: function(container) {
       injectStylesOnce('rkStyles', STYLES);
+      _prevBroken = null;
       selectedTiles = {};
       _targetSet = null;
       _boxes = [];
@@ -168,6 +170,21 @@ if (ids.length === 0) { showToast(_t('rk_select_tiles_first')); return; }
     render: function(state, container, playerIndex, winner) {
       if (!state || !state.hands || state.hands.length === 0) return;
       window.rkLastState = { s: state, i: playerIndex };
+      var hb = state.hasBroken || [];
+      var isNewRk = _prevBroken && (_prevBroken.length !== hb.length || (hb.every(function(b) { return !b; }) && _prevBroken.some(Boolean)));
+      if (_prevBroken === null || isNewRk) {
+        _prevBroken = hb.slice();
+      } else {
+        if (state.requireBreak !== false) {
+          for (var bi = 0; bi < hb.length; bi++) {
+            if (hb[bi] && !_prevBroken[bi] && window.Motion && window.Motion.announce) {
+              var brkWho = bi === playerIndex ? _t('mp_you') : (window.getPlayerName ? window.getPlayerName(bi) : (_t('rk_player_prefix') + ' ' + (bi + 1)));
+              window.Motion.announce(_tf('rk_ann_break', brkWho), { icon: '🧊', tone: 'gain' });
+            }
+          }
+        }
+        _prevBroken = hb.slice();
+      }
       renderOpponents(state, playerIndex);
       if (state.phase === 'manipulate' && state.currentPlayer === playerIndex) {
         renderManipulate(state, playerIndex);

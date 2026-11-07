@@ -356,6 +356,7 @@
     }
     // remember what was already shown, so only fresh changes animate
     prevAlive = S.alive.slice();
+    seenLog = (S.log || []).length;
     prevDone = {};
     var pend = S.phase === 'vote' ? S.votes : S.phase === 'sheriff_sign' ? S.runs : S.phase === 'discuss' ? S.ready : null;
     if (pend) Object.keys(pend).forEach(function(k) { prevDone[k] = true; });
@@ -601,6 +602,21 @@
         phaseTotal = S.phaseSec || (S.deadline ? Math.max(1, (S.deadline - Date.now()) / 1000) : 0);
       }
       if (targets().indexOf(sel) < 0) sel = -1;
+      if (mode) {
+        var curLog = S.log || [];
+        if (curLog.length < seenLog) {
+          seenLog = curLog.length;
+        } else if (curLog.length > seenLog) {
+          for (var li = seenLog; li < curLog.length; li++) {
+            var le = curLog[li];
+            if (le && le.t === 'deaths' && window.Motion && window.Motion.announce) {
+              var died = le.list || [];
+              var sub = died.length ? tf('ww_dawn_deaths', died.map(function(i) { return pname(i) || seat(i); }).join('、')) : t('ww_dawn_peace');
+              window.Motion.announce(t('ww_phase_dawn'), { icon: '🌅', sub: sub, tone: died.length ? 'loss' : 'gain' });
+            }
+          }
+        }
+      }
       if (!mode) {
         // first frame: don't replay old chat/log entries or deaths as "new"
         seenChat = (S.chat || []).length;

@@ -2,6 +2,7 @@
 (function() {
   var _lastHoleKey = '';
   var _lastCommunityCount = 0;
+  var _prevAllIn = null, _prevHandNo = null;
   window.gameRenderers = window.gameRenderers || new Map();
 
   // Smallest legal raise target; mirrors games/texas.js handleMove 'raise'
@@ -11,6 +12,8 @@
 
   window.gameRenderers.set('texas', {
     init: function(container) {
+      _prevAllIn = null;
+      _prevHandNo = null;
       container.innerHTML =
         '<div id="txWrap" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
           '<div id="txOpponents" style="display:flex;justify-content:space-around;gap:8px;flex-wrap:wrap;"></div>' +
@@ -34,6 +37,19 @@
     render: function(state, container, playerIndex, winner) {
       if (!state) return;
       var s = state;
+      var curAllIn = s.allIn || [];
+      if (_prevAllIn === null || s.handNumber !== _prevHandNo || _prevAllIn.length !== curAllIn.length) {
+        _prevAllIn = curAllIn.slice();
+        _prevHandNo = s.handNumber;
+      } else {
+        for (var ai = 0; ai < curAllIn.length; ai++) {
+          if (curAllIn[ai] && !_prevAllIn[ai] && window.Motion && window.Motion.announce) {
+            var aiWho = ai === playerIndex ? _t('mp_you') : (window.getPlayerName ? window.getPlayerName(ai) : (_t('tx_player') + (ai + 1)));
+            window.Motion.announce(_tf('tx_ann_all_in', aiWho), { icon: '🔥', tone: 'warn' });
+          }
+        }
+        _prevAllIn = curAllIn.slice();
+      }
       this.renderOpponents(s, playerIndex);
       this.renderCommunity(s);
       this.renderHoleCards(s, playerIndex, winner);

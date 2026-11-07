@@ -4,8 +4,9 @@ const { pickFor, isHard } = require('./lib/difficulty');
 
 exports.name = 'numberbomb';
 
-// Provisional values; will be set by scripts/bot-tier-eval.js --calibrate
-const PICK = { temp: { easy: 80, normal: 15 }, maxLoss: { easy: 400, normal: 30 } };
+// Calibrated 2026-11-06 (bot-tier-eval numberbomb --dup --n=2000, 4 seats): the bomb is random, hard vs random is only ~65%.
+// hard>easy 62.9%, hard>normal 66.1%, normal>easy 54.9%. easy is effectively random; normal guesses near the middle of the range.
+const PICK = { temp: { easy: 1000, normal: 6 }, maxLoss: { easy: 100000, normal: 25 } };
 
 // The bomb is uniform in [low, high], so a guess g in a range of m numbers kills with probability 1/m and
 // otherwise hands the next player a range of g-1 or m-g numbers. Whoever is left with one number dies, so the

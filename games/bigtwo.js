@@ -237,6 +237,15 @@ exports.initGame = function(state, playerCount) {
   state.currentPlayer = state.hands.findIndex(h => h.some(c => c.id === '3d'));
 };
 
+// Server bot fallback (used before the generic {pass:true} / {}): passing is illegal when leading,
+// so lead the lowest legal single instead; otherwise pass.
+exports.botFallback = (state, playerIndex) => {
+  const mustLead = !state.lastPlay || state.lastPlayPlayer === playerIndex;
+  if (!mustLead) return { pass: true };
+  const lead = (state.hands[playerIndex] || []).find(c => !checkPlay(state, playerIndex, [c]).error);
+  return lead ? { cards: [lead.id] } : null;
+};
+
 exports.handleMove = (data, state, playerIndex) => {
   if (state.winner !== null) return 'g_game_over';
   if (playerIndex !== state.currentPlayer) return 'g_not_your_turn';

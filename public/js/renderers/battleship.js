@@ -16,6 +16,7 @@
   var placePreview = null;
   var viewMode = 'both'; // 'single' (phone) | 'both'
   var prevMyBoard = null;
+  var prevShotKey = null, hasRenderedShot = false;
 
   var animState = {
     running: false,
@@ -498,6 +499,9 @@
       canvas.style.touchAction = 'none';
       container.appendChild(canvas);
       ctx = canvas.getContext('2d');
+      prevMyBoard = null;
+      prevShotKey = null;
+      hasRenderedShot = false;
 
       function resize() {
         var dpr = window.devicePixelRatio || 1;
@@ -625,6 +629,28 @@
       window._bsPI = playerIndex;
 
       if (!canvas || !state) return;
+
+      var lsr = state.lastShotResult;
+      var sKey = lsr ? (lsr.player + ':' + lsr.r + ':' + lsr.c + ':' + lsr.result) : '';
+      if (state.phase === 'placing') {
+        hasRenderedShot = true;
+        prevShotKey = '';
+      } else if (!hasRenderedShot) {
+        hasRenderedShot = true;
+        prevShotKey = sKey;
+      } else if (sKey && sKey !== prevShotKey) {
+        prevShotKey = sKey;
+        if (lsr.result === 'sunk' && window.Motion && window.Motion.announce) {
+          if (lsr.player === playerIndex) {
+            var oppIdx = 1 - playerIndex;
+            var oppObj = (window.gamePlayers || [])[oppIdx];
+            var oppName = oppObj ? oppObj.name : (window.getPlayerName ? window.getPlayerName(oppIdx) : window._t('ch_waiting'));
+            window.Motion.announce(window._tf('bs_ann_sank', oppName), { icon: '💥', tone: 'gain' });
+          } else {
+            window.Motion.announce(window._t('bs_ann_sunk_yours'), { icon: '💥', tone: 'loss' });
+          }
+        }
+      }
 
       // Opponent just fired at my fleet -> play the splash/explosion on my board too
       var incoming = null;

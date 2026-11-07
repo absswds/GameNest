@@ -33,6 +33,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { Worker, isMainThread, parentPort } = require('worker_threads');
+const { applyBotFallback } = require('../games/lib/bot-fallback');
 const {
   logit,
   sigmoid,
@@ -104,6 +105,7 @@ const G = {
   uno: { n: 4 },
   doudizhu: { n: 3, opts: { totalRounds: 1 }, control: true },
   bigtwo: { n: 4 },
+  paodekuai: { n: 3, opts: { rounds: 1 } },
   texas: { n: 4, kind: 'texas', hands: 30 },
   liarsbar: { n: 4 },
   'exploding-kittens': { n: 4 },
@@ -227,8 +229,7 @@ function tryMove(ctx, seat) {
   }
   if (err) {
     bump(ctx.errs, err);
-    try { err = g.handleMove({ pass: true }, s, seat); } catch (e) { err = 'pass_exception'; }
-    if (err) { try { err = g.handleMove({}, s, seat); } catch (e) { err = 'empty_exception'; } }
+    err = applyBotFallback(g, s, seat);
   }
   return err || null;
 }

@@ -34,6 +34,7 @@
   var DANGER_Y = 60; // overflow line
   var bestType = 0; // biggest fruit reached this game, for the merge chain
   var SIDE_W = 230; // side panel width on wide screens
+  var prevWatermelons = null;
 
   function snapshotKey() {
     var roomId = sessionStorage.getItem('roomId') || 'local';
@@ -454,6 +455,7 @@
     init: function (container) {
       container.innerHTML = '';
       bestType = 0;
+      prevWatermelons = null;
       window._beforeLeaveRoom = saveSnapshot;
       window._beforeGameRestart = clearSnapshot;
       window.injectStylesOnce('suika-styles', CSS);
@@ -520,6 +522,22 @@
     render: function (st, container, pi, winner) {
       state = st;
       playerIndex = pi;
+      var wm = (st && Array.isArray(st.watermelons)) ? st.watermelons : null;
+      if (wm) {
+        var isNewSk = prevWatermelons && (prevWatermelons.length !== wm.length || (wm.every(function(v) { return v === 0; }) && prevWatermelons.some(function(v) { return v > 0; })));
+        if (prevWatermelons === null || isNewSk) {
+          prevWatermelons = wm.slice();
+        } else {
+          var skPlayers = window._players || window.gamePlayers || [];
+          for (var wi = 0; wi < wm.length; wi++) {
+            if (wm[wi] > (prevWatermelons[wi] || 0) && window.Motion && window.Motion.announce) {
+              var wmWho = wi === pi ? _t('sk_side_you') : (skPlayers[wi] ? skPlayers[wi].name : (window.getPlayerName ? window.getPlayerName(wi) : (_t('sk_player') + (wi + 1))));
+              window.Motion.announce(_tf('sk_ann_watermelon', wmWho), { icon: '🍉', tone: 'gain' });
+            }
+          }
+          prevWatermelons = wm.slice();
+        }
+      }
 
       if (!initialized) return;
       var restored = restoreSnapshot();

@@ -16,6 +16,7 @@
   };
 
   var prevBoard = null;
+  var prevMoveLen = null, prevPassCount = null;
 
   function drawCell(r, c, x, y, size) {
     ctx.strokeStyle = 'rgba(0,0,0,0.12)';
@@ -288,6 +289,8 @@
       canvas.style.cssText = 'width:100%;display:block;border-radius:16px;touch-action:manipulation;';
       container.appendChild(canvas);
       ctx = canvas.getContext('2d');
+      prevMoveLen = null;
+      prevPassCount = null;
 
       stopAnimLoop();
       prevBoard = null;
@@ -357,6 +360,29 @@
     render: function(state, container, playerIndex, winner) {
       window._rvState = state;
       if (!canvas || !state || !state.board) return;
+
+      var mh = state.moveHistory || [];
+      var pc = state.passCount || 0;
+      if (prevMoveLen === null || (mh.length === 0 && pc === 0 && (prevMoveLen > 0 || prevPassCount > 0))) {
+        prevMoveLen = mh.length;
+        prevPassCount = pc;
+      } else {
+        var skipped = -1;
+        if (state.winner == null) {
+          if (pc > prevPassCount) {
+            skipped = 1 - state.currentPlayer;
+          } else if (mh.length > prevMoveLen && mh[mh.length - 1] && mh[mh.length - 1].player === state.currentPlayer) {
+            skipped = 1 - state.currentPlayer;
+          }
+        }
+        prevMoveLen = mh.length;
+        prevPassCount = pc;
+        if (skipped >= 0 && window.Motion && window.Motion.announce) {
+          var pObj = (window.gamePlayers || [])[skipped];
+          var who = skipped === playerIndex ? window._t('mp_you') : (pObj ? pObj.name : window._t('ch_waiting'));
+          window.Motion.announce(window._tf('rv_ann_pass', who), { icon: '⏭️', tone: 'info' });
+        }
+      }
 
       var newSize = state.boardSize || 8;
       if (COLS !== newSize) {

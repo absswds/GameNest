@@ -17,6 +17,7 @@ exports.createState = () => ({
   eliminated: [],
   drops: [],     // fruits dropped per player (a merge needs two fruits, so merges <= drops)
   merges: [],    // merges reported per player
+  watermelons: [], // watermelons created per player
   winner: null,
   _playerCount: 0,
 });
@@ -29,6 +30,7 @@ exports.initGame = (state, playerCount) => {
   state.eliminated = [];
   state.drops = [];
   state.merges = [];
+  state.watermelons = [];
   for (let i = 0; i < playerCount; i++) {
     state.scores.push(0);
     state.current.push(randFruit());
@@ -36,6 +38,7 @@ exports.initGame = (state, playerCount) => {
     state.eliminated.push(false);
     state.drops.push(0);
     state.merges.push(0);
+    state.watermelons.push(0);
   }
   state.phase = 'playing';
   state.winner = null;
@@ -61,6 +64,7 @@ exports.handleMove = (data, state, playerIndex) => {
     if (state.merges[playerIndex] >= state.drops[playerIndex]) return 'g_unknown_action';
     state.merges[playerIndex]++;
     state.scores[playerIndex] += POINTS[data.fruitType];
+    if (data.fruitType === POINTS.length - 1) state.watermelons[playerIndex] = (state.watermelons[playerIndex] || 0) + 1;
     return null;
   }
 

@@ -198,7 +198,7 @@ test('BigTwo: hard bot opens with a pair only if it holds the diamond 3', () => 
     const s = bt.createState();
     s._options = { difficulty: 'hard' };
     bt.initGame(s, 2);
-    s.hands = [h.slice(), [mk('6', 's')]];
+    s.hands = [h.slice(), [mk('6', 's'), mk('7', 's')]]; // two cards: the one-card single rule stays off
     s.currentPlayer = 0;
     s._opened = false;
     const m = bot.getMove(s);

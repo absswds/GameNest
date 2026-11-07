@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const matchLib = require('./games/lib/match');
+const { applyBotFallback } = require('./games/lib/bot-fallback');
 // Two-player board games that support a best-of-N match (room option `bestOf`)
 const MATCH_GAMES = ['chess', 'checkers', 'reversi', 'go9', 'gomoku', 'chinesechess'];
 const startupLogPath = path.join(__dirname, 'android-startup.log');
@@ -928,10 +929,7 @@ function schedulePhaseGame(room, gameMod) {
         }
         if (err) {
           console.error('[game=' + room.game + ' actor=' + idx + ' room=' + room._roomId + '] Bot error:', err, '- passing');
-          try { err = gameMod.handleMove({ pass: true }, state, idx); } catch (e) { err = 'pass_exception'; }
-          if (err) {
-            try { err = gameMod.handleMove({}, state, idx); } catch (e) { err = 'empty_exception'; }
-          }
+          err = applyBotFallback(gameMod, state, idx);
           if (err) {
             room._phaseBotStuck = room._phaseBotStuck || new Map();
             room._phaseBotStuck.set(stuckKey, Date.now() + 15000);
@@ -1020,9 +1018,7 @@ function scheduleBotMove(room) {
       if (err) {
         // Never let a bad bot move stall the game: fall back to drawing / passing
         console.error(tag + ' Bot error:', err, '— falling back to pass/draw');
-        try { err = gameMod.handleMove({ pass: true }, room.state, cp); } catch (e) { err = 'pass_exception'; }
-        // last resort: empty move (most games draw + advance)
-        if (err) { try { err = gameMod.handleMove({}, room.state, cp); } catch (e) { err = 'empty_exception'; } }
+        err = applyBotFallback(gameMod, room.state, cp);
         if (err) console.error(tag + ' Bot fallback failed:', err, '— retrying in 15s');
       }
       room._botStuck = err ? { cp, state } : null;

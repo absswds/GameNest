@@ -16,6 +16,7 @@ function baseState(hand, overrides) {
     direction: 1,
     drawStack: 0,
     unoCalled: [true, true],
+    _options: { difficulty: 'hard' }, // these tests check the scoring order, which only hard follows every time
   }, overrides || {});
 }
 

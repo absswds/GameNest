@@ -88,6 +88,7 @@
         <div class="browser-tools">
           <input class="browser-search" id="gameSearch" type="search" placeholder="搜索游戏名、标签、类型">
           <div class="category-chips" id="categoryChips"></div>
+          <div class="category-chips count-chips" id="countChips"></div>
         </div>
       </div>
       <div class="browse-grid" id="gameGrid"></div>
@@ -116,6 +117,7 @@
 let selectedGame = 'monopoly';
 let activeCategory = (typeof _t === 'function' ? _t('all_categories') : '\u5168\u90e8');
 let searchText = '';
+let activeCount = 0; // 0 = any; 6 means 6 or more
 
 // ?wifi= comes from the Android app; remember it so it survives leaving and returning to the lobby
 const __isMobileData = (function () {
@@ -239,6 +241,12 @@ function matches(game) {
   ].join(' ').toLowerCase();
   const allLabel = (typeof _t === 'function' ? _t('all_categories') : '\u5168\u90e8');
   if (activeCategory !== allLabel && game.category !== activeCategory) return false;
+  if (activeCount) {
+    const nums = (game.players || '').match(/\d+/g) || [];
+    const lo = nums.length ? +nums[0] : 1, hi = nums.length ? +nums[nums.length - 1] : 99;
+    const solo = activeCount === 1 && (window.SOLO_GAMES || []).indexOf(game.id) >= 0;
+    if (!solo && (activeCount >= 6 ? hi < 6 : (activeCount < lo || activeCount > hi))) return false;
+  }
   if (!searchText) return true;
   return haystack.indexOf(searchText) >= 0 || haystack.indexOf(searchText.replace(/\s+/g, '')) >= 0;
 }
@@ -270,6 +278,22 @@ function renderCategories() {
   });
 }
 
+function renderCountChips() {
+  const root = document.getElementById('countChips');
+  if (!root) return;
+  const label = _t('players_filter');
+  root.innerHTML = '<span class="count-chips-label">' + escapeHtml(label) + '</span>' + [0, 1, 2, 3, 4, 5, 6].map(function(n) {
+    const text = n === 0 ? _t('players_any') : n === 6 ? _t('players_n_plus').replace('%s', n) : _t('players_n').replace('%s', n);
+    return '<button class="category-chip' + (n === activeCount ? ' selected' : '') + '" data-count="' + n + '">' + escapeHtml(text) + '</button>';
+  }).join('');
+  root.querySelectorAll('.category-chip').forEach(function(chip) {
+    chip.addEventListener('click', function() {
+      activeCount = +this.dataset.count;
+      renderCatalog();
+    });
+  });
+}
+
 function renderCatalog() {
   const countEl = document.getElementById('gameCount');
   if (countEl) countEl.textContent = catalog.length;
@@ -280,6 +304,7 @@ function renderCatalog() {
   bindSelection('.featured-card');
   bindSelection('.browse-card');
   renderCategories();
+  renderCountChips();
 }
 
 function toast(msg) {
@@ -307,6 +332,7 @@ function renderLastGame() {
     selectedGame = id;
     activeCategory = (typeof _t === 'function' ? _t('all_categories') : '全部');
     searchText = '';
+    activeCount = 0;
     document.getElementById('gameSearch').value = '';
     renderCatalog();
     updateQuickCreate();
@@ -597,6 +623,7 @@ if (sessionStorage.getItem('_returnFromGame')) {
   if (sectionHeadings.length > 0) sectionHeadings[0].textContent = _t('browse_title');
   var catChips = document.querySelectorAll('#categoryChips .category-chip');
   if (catChips.length > 0) catChips[0].textContent = _t('all_categories');
+  if (typeof renderCountChips === 'function') renderCountChips();
   el = document.querySelector('.panel-heading');
   if (el) el.textContent = _t('join_room');
 })();

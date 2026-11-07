@@ -24,7 +24,7 @@ module.exports = {
 
   uno: 'Play {cardId,chosenColor?} (chosenColor for wild: "red"|"yellow"|"green"|"blue"). Draw: {} with no cardId (see state). Call uno: {uno:true} with the play. Answer a +4 aimed at you (state.pendingChallenge.target): {challengeResponse:"accept"|"challenge"}.',
   oldmaid: 'Move {cardIndex} index of the card to draw from the previous player\'s hand.',
-  bigtwo: 'Move {cards:[cardId,...]} to play (1, 2, 3 or 5 cards); {cards:[]} or {pass:true} to pass. Card ids from your hand in state.',
+  bigtwo: 'Move {cards:[cardId,...]} to play (1, 2, 3 or 5 cards); {cards:[]} or {pass:true} to pass. Five-card hands rank straight < flush < full house < four+one < straight flush. Card ids from your hand in state.',
   doudizhu: 'Bid: {call:true} / {pass:true}; rob: {rob:true} / {passRob:true}; play: {cards:[ids]} ; pass: {pass:true}; end: {action:"continue_vote",vote:"yes"|"no"} or {action:"next_round"}. Follow state.phase.',
   hearts: 'Pass phase: {cards:[3 ids]}; play: {card:cardId}. Follow state.phase.',
   texas: 'Move {action:"fold"|"check"|"call"|"raise"|"all_in", amount?}. Ex: {"action":"raise","amount":40}.',

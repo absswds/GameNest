@@ -41,8 +41,8 @@
       || { name: id, icon: '?', maxPlayers: 4, supportsAI: true };
   }
 
-  // Games that can be started and played solo (no AI / opponent needed).
-  const SOLO_GAMES = ['2048', 'sudoku', 'minesweeper', 'numberbomb', 'twentyfour', 'suikabattle', 'drawguess', 'quizrace'];
+  // Games that can be started and played solo (defined in game-catalog.js).
+  const SOLO_GAMES = window.SOLO_GAMES || [];
   // Games that need more than 2 players to start (mirrors the server-side minPlayers)
   const MIN_PLAYERS = { bigtwo: 3 };
 
@@ -1453,7 +1453,7 @@
         const canStart = allReady && totalPlayers >= minPlayers;
         startBtn.disabled = !canStart;
         startBtn.classList.toggle('disabled', !canStart);
-        setInlineHint(startBtn, 'startHint', canStart ? '' : allReady ? _t('need_more_players').replace('%s', minPlayers) : _t('need_all_ready'));
+        setInlineHint(startBtn, 'startHint', canStart || !allReady ? '' : _t('need_more_players').replace('%s', minPlayers)); // the status line below already says "waiting for everyone to be ready"
       } else {
         setInlineHint(startBtn, 'startHint', '');
       }
@@ -1570,7 +1570,7 @@
     if (!state || state.winner == null) {
       const st = el.status;
       st.classList.remove('my-turn');
-      if (players.length < 2) st.textContent = _t('waiting_players');
+      if (players.length < 2) st.textContent = SOLO_GAMES.indexOf(game) >= 0 ? '' : _t('waiting_players');
       else if (state && state.currentPlayer === playerIndex) {
         st.textContent = _t('your_turn');
         st.classList.add('my-turn');
