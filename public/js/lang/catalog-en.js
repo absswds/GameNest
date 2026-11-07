@@ -248,8 +248,8 @@
     sheeptile: {
       name: 'Sheep Tile',
       subtitle: 'Match three, clear the pile',
-      description: 'Layered tile-matching. Clear the board before your opponent does.',
-      players: '2-6 Players',
+      description: 'Layered tile-matching. Clear it solo, or before your opponents do.',
+      players: '1-6 Players',
       duration: '~10 min',
       category: 'Puzzle',
       tags: ['Match', 'Stacking'],

@@ -81,7 +81,7 @@
         { h: '牌堆与发牌', p: '牌堆包含爆炸猫 6 张、拆除 4 张，以及攻击、跳过、洗牌、偷牌、索取各 4 张、预知 5 张，人数越多这些功能牌按 ceil(人数/2) 倍增加。每人先发 4 张牌，再各补 1 张拆除。人数 - 1 张爆炸猫放入牌堆，剩余的拆除牌也洗进牌堆。5-6 人时有人没有拆除牌。' },
         { h: '回合流程', p: '你的回合可以先打出任意张功能牌，然后必须抽一张牌结束回合。点「抽牌」直接结束出牌阶段并抽牌。' },
         { h: '功能牌', p: '跳过：结束本回合且不抽牌；若你欠着额外回合，只消耗其中一个。攻击：结束回合不抽牌，指定一名玩家（不指定默认下家），该玩家要多打一个回合，多次攻击会叠加。预知：偷看牌堆顶 3 张，只有你自己能看到。洗牌：打乱牌堆。偷牌与索取：效果相同，从你指定的活着的玩家手中随机抽走一张牌，之后直接进入抽牌阶段，不能再出牌。' },
-        { h: '爆炸与拆除', p: '抽到爆炸猫时，若手中有拆除牌则自动使用，你选择把爆炸猫放回牌堆的位置，0 为最底部，最大值为最顶部，不选则随机放置。没有拆除牌就淘汰，手牌弃掉。单独打出拆除牌没有任何效果。' },
+        { h: '爆炸与拆除', p: '抽到爆炸猫时，若手中有拆除牌则自动使用，然后由你决定把爆炸猫放回牌堆哪里：最上面（下一张就是它）、第 2 张、第 3 张、牌底或随机，别人看不到你的选择。没有拆除牌就淘汰，手牌弃掉。单独打出拆除牌没有任何效果。' },
         { h: '胜负', p: '场上只剩一名玩家时，该玩家获胜。牌堆被抽空时会提示牌堆为空。' },
         { h: '提示', p: '用预知牌判断下一张是否爆炸，再决定抽牌还是跳过或攻击。拆除牌留给自己，不要浪费。人数多时留意谁手里有拆除，可以用偷牌削弱对手。' },
       ]
@@ -523,7 +523,7 @@
         { h: 'Deck and deal', p: 'The deck has 6 exploding kittens, 4 defuses, 4 each of attack, skip, shuffle, steal and favor, and 5 see-the-future. The action cards are multiplied by ceil(players / 2). Each player gets 4 cards plus 1 defuse. Players minus 1 kittens go into the deck, and any leftover defuses are shuffled in. With 5-6 players some players start without a defuse.' },
         { h: 'Turn flow', p: 'On your turn you may play any number of action cards, then you must draw a card to end the turn. The draw button skips straight to drawing.' },
         { h: 'Action cards', p: 'Skip ends your turn without drawing, and if you owe extra turns it only uses up one of them. Attack ends your turn without drawing and sends an extra turn to a chosen player (the next player by default), and multiple attacks stack. See the Future shows the top 3 cards to you only. Shuffle shuffles the deck. Steal and Favor work identically: take a random card from a living player you choose, then you go straight to drawing and cannot play more cards.' },
-        { h: 'Kittens and defuses', p: 'When you draw a kitten and hold a defuse, it is used automatically and you choose where the kitten goes back into the deck, where 0 is the bottom and the highest position is the top. If you do not choose, the position is random. Without a defuse you are eliminated and your hand is discarded. Playing a defuse by itself does nothing.' },
+        { h: 'Kittens and defuses', p: 'When you draw a kitten and hold a defuse, it is used automatically and you choose where the kitten goes back into the deck: on top (the next card drawn), 2nd, 3rd, at the bottom, or at random. Nobody else sees your choice. Without a defuse you are eliminated and your hand is discarded. Playing a defuse by itself does nothing.' },
         { h: 'Winning', p: 'When only one player remains alive, that player wins. If the deck runs out you will be told the deck is empty.' },
         { h: 'Tips', p: 'Use See the Future to check whether the next card is a kitten, then decide to draw, skip or attack. Keep your defuse for yourself. In bigger games steal from players who might hold a defuse.' },
       ]

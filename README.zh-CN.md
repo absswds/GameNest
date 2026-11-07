@@ -1,6 +1,6 @@
 # GameNest
 
-> 没网也能和朋友一起玩的 34 款局域网游戏：棋牌、麻将、聚会、益智、实时对战。一台手机或电脑开服（开热点就行），其他人扫码用浏览器加入，不用流量，不用装 App。
+> 没网也能和朋友一起玩的 37 款局域网游戏：棋牌、麻将、聚会、益智、实时对战。一台手机或电脑开服（开热点就行），其他人扫码用浏览器加入，不用流量，不用装 App。
 
 **[🚀 在线试玩](https://gamenest-4kww.onrender.com) — 无需安装，打开即玩。**
 
@@ -9,7 +9,7 @@
 [![Android APK](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml/badge.svg)](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-43853d.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-lightgrey.svg)](https://expressjs.com/)
-[![Games](https://img.shields.io/badge/Games-34-blue.svg)](#game-catalog)
+[![Games](https://img.shields.io/badge/Games-37-blue.svg)](#game-catalog)
 [![No account](https://img.shields.io/badge/Account-Not_Required-green.svg)](#highlights)
 [![Offline](https://img.shields.io/badge/Network-LAN/Offline-orange.svg)](#highlights)
 [![Android](https://img.shields.io/badge/Host-Android_✓-brightgreen.svg)](#android-host)
@@ -28,7 +28,7 @@ GameNest 是一个轻量开源的局域网桌游房间，适合家庭娱乐、�
 
 - **断网也能玩**：飞机、高铁、露营、地下室都行。一台手机开热点或者连同一个 WiFi，全程不需要互联网。
 - **只要一台装了它的设备**：Android 手机、Windows 电脑（独立 exe）或任何能跑 Node.js 的机器都能当主机。其他人扫二维码、输房间号，或者直接点大厅里的局域网房间列表，用浏览器就能进，不用安装。
-- **34 款游戏**：棋盘、扑克、麻将、派对、推理、身份阵营、脑力竞速和实时对战都有，2 人到一大群人都能玩。
+- **37 款游戏**：棋盘、扑克、麻将、派对、推理、身份阵营、脑力竞速和实时对战都有，一个人到一大群人都能玩。
 - **人不够就加 AI**：大多数回合制游戏都有电脑玩家，分简单 / 普通 / 困难三档，一个人也能练手。
 - **掉线能回来**：断线、锁屏或误关页面后，可以从大厅的返回卡片回到原座位继续；名字和头像也会记住。
 - **隐藏信息是真隐藏**：手牌、身份等私密信息只发给本人，旁边的人抓包也看不到。

@@ -1794,6 +1794,9 @@
     } else if (game === 'minesweeper' && winner === -2) {
       // solo run ended on a mine
       txt = _t('you_lose'); sub = _t('ms_solo_lost');
+    } else if (game === 'sheeptile' && winner === -2) {
+      // solo run filled the slot
+      txt = _t('you_lose'); sub = _t('st_solo_lost');
     } else if (game === 'doudizhu' && state) {
       // Doudizhu uses team-based winner sentinels
       if (winner === -2) {
@@ -1867,7 +1870,7 @@
     var st = el.status;
     st.classList.remove('my-turn');
     // The overlay already says win / draw: keep the top line from repeating it
-    st.textContent = (isWin || winner === -1) ? _t('game_over') : (game === 'minesweeper' && winner === -2) ? _t('ms_solo_lost') : _t('opponent_wins');
+    st.textContent = (isWin || winner === -1) ? _t('game_over') : (game === 'minesweeper' && winner === -2) ? _t('ms_solo_lost') : (game === 'sheeptile' && winner === -2) ? _t('st_solo_lost') : _t('opponent_wins');
 
     // Reset the overlay buttons to their defaults for this fresh result screen.
     // (A previous game's _updateOverlayForNewGame may have changed them.)

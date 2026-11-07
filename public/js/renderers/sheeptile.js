@@ -506,7 +506,7 @@
       if (statusEl) {
         if (winner !== null && winner !== undefined) {
           var wn = (window._players && window._players[winner]) ? window._players[winner].name : _t('st_player') + ' ' + (winner + 1);
-          statusEl.textContent = winner === pi ? _t('st_you_win') : wn + ' ' + _t('st_other_wins');
+          statusEl.textContent = winner === -2 ? _t('st_solo_lost') : winner === pi ? _t('st_you_win') : wn + ' ' + _t('st_other_wins');
         } else if (me().eliminated) {
           statusEl.textContent = _t('st_spectating');
         } else { statusEl.textContent = ''; }

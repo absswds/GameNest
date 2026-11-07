@@ -56,6 +56,7 @@
   var lastDiscardKey = null;
   var lastHandSignature = null;
   var lastHandLen = 0;
+  var drawTracker = window.Motion ? Motion.handTracker() : null;
   var lastChallengeKey = null; // detects when a challenge resolves, to toast the result
 
   var STYLES = '' +
@@ -166,6 +167,7 @@
     init: function(container) {
       // Inject styles once
       injectStylesOnce('unoRendererStyles', STYLES);
+      if (drawTracker) drawTracker.reset();
 
       container.innerHTML = '' +
         '<div class="uno-table">' +
@@ -269,6 +271,7 @@
       renderDrawPile(deck, drawStack);
       renderHand(hands[playerIndex] || [], discard, currentColor, isMyTurn, drewCard, drawStack);
       renderButtons(hands[playerIndex] || [], drawStack, isMyTurn, unoCalled[playerIndex]);
+      announceDrawn(hands[playerIndex] || []);
       renderChallenge(state, playerIndex);
       lastDiscardKey = discardKey;
       lastHandSignature = handSignature;
@@ -358,6 +361,23 @@
       (drawStack > 0 ? '<div class="uno-draw-stack">+' + drawStack + '</div>' : '');
   }
 
+  // Popup with the faces of the cards that just arrived, then a glow on them in the hand
+  function announceDrawn(hand) {
+    if (!drawTracker) return;
+    var fresh = drawTracker.diff(hand.map(function(c) { return c.id; }));
+    if (fresh.length) {
+      var w = fresh.length > 4 ? 44 : 64;
+      var faces = '';
+      hand.forEach(function(c) {
+        if (fresh.indexOf(c.id) < 0) return;
+        faces += '<div class="uno-card" style="--cw:' + w + 'px;width:' + w + 'px;height:' + Math.round(w * 1.5) + 'px;cursor:default">' + cardFace(c) + '</div>';
+      });
+      Motion.showDrawn(fresh.length > 1 ? tf('drew_cards_n', fresh.length) : t('drew_cards'), faces,
+        fresh.map(function(id) { return 'uno:' + id; }));
+    }
+    Motion.refreshGlow(document.getElementById('unoHand'));
+  }
+
   function renderHand(hand, discard, currentColor, isMyTurn, drewCard, drawStack) {
     var el = document.getElementById('unoHand');
     if (!el) return;
@@ -373,7 +393,7 @@
       // Off-turn the whole hand is dimmed; on your turn only the unplayable cards are
       var stateCls = isMyTurn ? (playable ? ' playable' : ' not-playable') : ' not-playable';
       var newCardCls = drewCard && i === hand.length - 1 ? ' new-card' : '';
-      html += '<div class="uno-card' + stateCls + newCardCls + '" data-card-id="' + c.id + '">' + cardFace(c) + '</div>';
+      html += '<div class="uno-card' + stateCls + newCardCls + '" data-card-id="' + c.id + '" data-mo-key="uno:' + c.id + '">' + cardFace(c) + '</div>';
     }
     el.innerHTML = html;
 

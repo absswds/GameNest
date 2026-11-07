@@ -1,3 +1,5 @@
+/* 霞鹜文楷按 unicode-range 切片，页面用到哪些字才下载哪几片（scripts/split-font.py 生成） */
+@import url('assets/fonts/lxgw-wenkai/font.css');
 /* 内嵌字体：离线也能加载，全部为 OFL 1.1 开源许可，见 assets/fonts/OFL.txt */
 @font-face {
   font-family: 'Ma Shan Zheng';
@@ -5,14 +7,6 @@
   font-weight: 400;
   font-display: swap;
   src: url('assets/fonts/ma-shan-zheng.woff2') format('woff2');
-}
-/* 霞鹜文楷：字体单一 500 字重，注册为 400-700 范围，加粗由浏览器合成 */
-@font-face {
-  font-family: 'LXGW WenKai';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('assets/fonts/lxgw-wenkai.woff2') format('woff2');
 }
 /* Nunito（界面西文字母）*/
 @font-face {
@@ -2624,6 +2618,13 @@ body.lobby-page {
 .lobby-page .hero-panels {
   padding: 24px;
   align-content: center;
+}
+
+/* Wide layout: the resume banner opens the right column, right under the absolute 中/EN button */
+@media (min-width: 1101px) {
+  .lobby-page #resumeSection {
+    margin-top: 40px;
+  }
 }
 
 .lobby-page .hero-panel {

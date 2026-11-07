@@ -248,8 +248,8 @@
     sheeptile: {
       name: '羊了个羊',
       subtitle: '三消堆叠，清盘才赢',
-      description: '层叠三消，和对手比拼清盘速度。',
-      players: '2-6人',
+      description: '层叠三消，一个人闯关，或和对手比拼清盘速度。',
+      players: '1-6人',
       duration: '约10分钟',
       category: '脑力闯关',
       tags: ['消除', '堆叠'],

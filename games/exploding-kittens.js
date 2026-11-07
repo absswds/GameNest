@@ -48,7 +48,7 @@ exports.createState = () => ({
   alive: [],          // per-player: bool
   extraTurns: [],     // per-player: remaining extra turns
   futureCards: null,  // result of See the Future (visible only to current player)
-  phase: 'play',      // 'play' | 'draw' | 'over'
+  phase: 'play',      // 'play' | 'draw' | 'place' (put a defused kitten back) | 'over'
   peekedCards: null,  // cards seen by current player via Future
   lastSteal: null,    // { stealer, victim, cardType } — shown as notification then cleared
   lastAction: null,   // { player, type, seq, target? } — public play/explosion log
@@ -110,6 +110,27 @@ function nextAlive(state, fromIdx) {
   return fromIdx;
 }
 
+// A draw ends one turn: an attacked player who still owes turns keeps playing
+function endDrawTurn(state, playerIndex) {
+  if (state.extraTurns[playerIndex] > 0) state.extraTurns[playerIndex]--;
+  else state.currentPlayer = nextAlive(state, playerIndex);
+}
+
+// Reinsert the defused kitten. position: 'top' | 'bottom' | 'random' or a depth n
+// (0 = the next card drawn, 1 = the second, ...). The deck is drawn from its end.
+// Anything else (a bot fallback {}, a missing value) means random.
+function placeBomb(state, position) {
+  const card = state.pendingBomb || { type: 'explode', id: 'explode-x' };
+  state.pendingBomb = null;
+  const len = state.deck.length;
+  let depth;
+  if (position === 'top') depth = 0;
+  else if (position === 'bottom') depth = len;
+  else if (Number.isInteger(position) && position >= 0) depth = Math.min(position, len);
+  else depth = Math.floor(Math.random() * (len + 1));
+  state.deck.splice(len - depth, 0, card);
+}
+
 function aliveCount(state) {
   return state.alive.filter(a => a).length;
 }
@@ -126,29 +147,39 @@ exports.handleMove = (data, state, playerIndex) => {
   // "Draw" straight from the play phase: skip playing and end the turn in one click
   if (state.phase === 'play' && data && data.draw && !cardId) state.phase = 'draw';
 
+  // ---- PLACE phase: put the defused kitten back where the player chooses ----
+  if (state.phase === 'place') {
+    placeBomb(state, data && data.position);
+    state.phase = 'play';
+    endDrawTurn(state, playerIndex);
+    return null;
+  }
+
   // ---- DRAW phase ----
   if (state.phase === 'draw') {
     // Must draw a card
     if (state.deck.length === 0) return 'ek_deck_empty';
     const card = state.deck.pop();
+    state.peekedCards = null;
+    state.lastSteal = null;
     if (card.type === 'explode') {
       // Check for defuse
       const defuseIdx = hand.findIndex(c => c.type === 'defuse');
       if (defuseIdx >= 0) {
-        // Defuse! Remove defuse, place explode back secretly
+        // Defuse! The player then chooses where the kitten goes back (phase 'place')
         hand.splice(defuseIdx, 1);
         state.discard.push({ type: 'defuse', id: 'defuse-used' });
-        // Let player choose where to put explode back
-        if (state.deck.length === 0) {
-          state.deck.push(card); // only position available
-        } else if (data.position !== undefined) {
-          state.deck.splice(Math.min(data.position, state.deck.length), 0, card);
-        } else {
-          state.deck.splice(Math.floor(Math.random() * (state.deck.length + 1)), 0, card);
-        }
-        state.peekedCards = null;
         // Public: player used a defuse to survive
         setAction(state, playerIndex, 'defuse', { defused: true });
+        state.pendingBomb = card;
+        if (state.deck.length === 0) { // only one place it can go
+          placeBomb(state, 'top');
+          state.phase = 'play';
+          endDrawTurn(state, playerIndex);
+          return null;
+        }
+        state.phase = 'place';
+        return null;
       } else {
         // BOOM! Eliminated
         state.alive[playerIndex] = false;
@@ -163,7 +194,6 @@ exports.handleMove = (data, state, playerIndex) => {
         }
         state.currentPlayer = nextAlive(state, playerIndex);
         state.phase = 'play';
-        state.peekedCards = null;
         state.extraTurns = Array(state.alive.length).fill(0);
         return null;
       }
@@ -174,16 +204,7 @@ exports.handleMove = (data, state, playerIndex) => {
     }
 
     state.phase = 'play';
-    state.peekedCards = null;
-    state.lastSteal = null;
-
-    // Check extra turns
-    if (state.extraTurns[playerIndex] > 0) {
-      state.extraTurns[playerIndex]--;
-      state.phase = 'play';
-    } else {
-      state.currentPlayer = nextAlive(state, playerIndex);
-    }
+    endDrawTurn(state, playerIndex);
     return null;
   }
 

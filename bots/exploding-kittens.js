@@ -7,6 +7,8 @@ exports.name = 'exploding-kittens';
 exports.createBot = (playerIndex) => ({
   name: botName(playerIndex, 'zh'),
   getMove(state) {
+    // Put the defused kitten back: hard plants it on top for the next player, others hide it at random
+    if (state.phase === 'place') return { position: getDifficulty(state) === 'hard' ? 'top' : 'random' };
     const hand = state.hands[playerIndex];
     if (!hand || hand.length === 0) return {};
 

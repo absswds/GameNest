@@ -1480,6 +1480,8 @@ wss.on('connection', (ws) => {
       }
 
       compactSeats(currentRoom); // seats must be 0..n-1 for initGame
+      // return_to_room clears the state; a start from the waiting room needs a fresh one
+      if (!currentRoom.state) currentRoom.state = gameMod.createState();
       currentRoom.phase = 'playing';
       applyRuntimeState(currentRoom, totalPlayers);
       // 麻将首局随机坐庄：不让房主默认当庄先摸牌先出牌

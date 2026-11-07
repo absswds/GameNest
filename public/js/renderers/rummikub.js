@@ -101,6 +101,7 @@
     init: function(container) {
       injectStylesOnce('rkStyles', STYLES);
       _prevBroken = null;
+      if (drawTracker) drawTracker.reset();
       selectedTiles = {};
       _targetSet = null;
       _boxes = [];
@@ -196,8 +197,34 @@ if (ids.length === 0) { showToast(_t('rk_select_tiles_first')); return; }
         renderActions(state, playerIndex);
       }
       renderStatus(state, playerIndex);
+      announceDrawn(state, playerIndex);
     }
   });
+
+  // Popup with the tiles that just came from the pool, then a glow on them in the hand.
+  // Tiles that move between the hand and the table (taking a failed meld back) are not "drawn":
+  // the tracker follows every tile this player can see, so only tiles new to the whole view count.
+  var drawTracker = window.Motion ? Motion.handTracker() : null;
+  function collectIds(x, out) {
+    if (Array.isArray(x)) x.forEach(function(v) { collectIds(v, out); });
+    else if (x && typeof x === 'object') {
+      if (x.id !== undefined && (x.num !== undefined || x.wild)) out.push(x.id);
+      else if (Array.isArray(x.tiles)) collectIds(x.tiles, out);
+    }
+    return out;
+  }
+  function announceDrawn(state, selfIdx) {
+    if (!drawTracker) return;
+    var hand = state.hands[selfIdx] || [];
+    var fresh = drawTracker.diff(collectIds([hand, state.table, state.workspace], []));
+    var tiles = hand.filter(function(c) { return fresh.indexOf(c.id) >= 0; });
+    if (tiles.length) {
+      Motion.showDrawn(_t('drew_cards'), tiles.map(function(c) {
+        return tileHTML(c, false).replace('class="rk-tile ', 'style="--tw:46px;--th:64px;--tf:28px;cursor:default" class="rk-tile ');
+      }).join(''), tiles.map(function(c) { return 'rk:' + c.id; }));
+    }
+    Motion.refreshGlow(document.getElementById('rkHand'));
+  }
 
   // ---- MANIPULATE MODE (box-based: each set is its own box; move tiles by select→target) ----
   function seedBoxes(state, selfIdx) {
@@ -396,7 +423,7 @@ if (ids.length === 0) { showToast(_t('rk_select_tiles_first')); return; }
   function tileHTML(tile, isSelected) {
     var cls = tile.wild ? 'rk-tile-joker' : (COLOR_CSS[tile.color] || '');
     if (isSelected) cls += ' selected';
-    return '<div class="rk-tile ' + cls + '" data-id="' + tile.id + '">' +
+    return '<div class="rk-tile ' + cls + '" data-id="' + tile.id + '" data-mo-key="rk:' + tile.id + '">' +
       '<div class="rk-num">' + (tile.wild ? '★' : tile.num) + '</div></div>';
   }
 

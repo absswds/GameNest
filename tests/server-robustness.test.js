@@ -130,3 +130,39 @@ test('return_to_room mid-game is host-only; game_move after return is refused', 
     srv.kill();
   }
 });
+
+test('after return_to_room the host can start a new game from the waiting room', async () => {
+  const srv = await startServer();
+  try {
+    const host = client();
+    await host.open;
+    host.send({ type: 'create_room', data: { game: 'tictactoe', lang: 'en' } });
+    await delay(150);
+    const roomId = (host.last.room_created || {}).roomId;
+    const guest = client();
+    await guest.open;
+    guest.send({ type: 'join_room', data: { roomId } });
+    await delay(150);
+    host.send({ type: 'player_ready' });
+    guest.send({ type: 'player_ready' });
+    await delay(100);
+    host.send({ type: 'start_game' });
+    await delay(200);
+    host.send({ type: 'return_to_room' });
+    await delay(150);
+
+    host.send({ type: 'player_ready' });
+    guest.send({ type: 'player_ready' });
+    await delay(100);
+    const before = host.msgs.length;
+    host.send({ type: 'start_game' });
+    await delay(200);
+    const after = host.msgs.slice(before);
+    assert.deepEqual(after.filter(m => m.type === 'error'), [], 'no error on the second start');
+    assert.ok(after.some(m => m.type === 'game_started'), 'second game starts');
+    host.ws.close();
+    guest.ws.close();
+  } finally {
+    srv.kill();
+  }
+});

@@ -5,6 +5,26 @@
   var STYLE_ID = 'undercover-renderer-style';
   var wordVisible = true;
   var tickTimer = null;
+  // Log length at the last render; null until the first render after init (no replay on join/reconnect)
+  var logSeen = null;
+
+  // A centre card for every vote result, so a tie (PK) or a round with nobody out is not mistaken for an exile
+  function announceVotes(state) {
+    var log = state.log || [];
+    var from = logSeen;
+    logSeen = log.length;
+    if (from === null || !window.Motion || log.length <= from) return;
+    for (var i = Math.max(from, 0); i < log.length; i++) {
+      var e = log[i];
+      if (e.k === 'exile') {
+        Motion.announce(t('uc_ann_exile', pName(e.p)), { icon: '🗳️', tone: 'loss', sub: t('uc_ann_role', roleName(e.role)) });
+      } else if (e.k === 'tie_pk') {
+        Motion.announce(t('uc_ann_tie'), { icon: '⚖️', tone: 'warn', sub: (e.list || []).map(pName).join('、') });
+      } else if (e.k === 'no_exile') {
+        Motion.announce(t('uc_ann_no_exile'), { icon: '🤝', tone: 'info' });
+      }
+    }
+  }
 
   var ROLE_COLORS = {
     civilian: '#5b9bd5',
@@ -355,6 +375,7 @@
     html += '</div>';
 
     main.innerHTML = html;
+    announceVotes(state);
 
     // Bind eye button
     var eyeBtn = main.querySelector('#ucEyeBtn');
@@ -404,6 +425,7 @@
     init: function (container) {
       if (container) container._ucShell = false;
       wordVisible = true;
+      logSeen = null;
     },
     render: function (state, container, playerIndex) {
       renderUndercover(container, state, playerIndex, function (data) {

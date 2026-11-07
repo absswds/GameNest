@@ -19,6 +19,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -42,6 +43,24 @@ class MainActivity : AppCompatActivity() {
 
     /** True while a game requested landscape + hidden system bars (see WebAppBridge). */
     private var immersive = false
+
+    // Android 16 + targetSdk 36 no longer calls onBackPressed(): back goes through this callback.
+    // Enabled only on the room/game page, where back acts like the page's own "back to lobby" button
+    // (seat kept 5 min, lobby shows the resume banner). In the lobby it is off, so back exits the
+    // app with the system's predictive back animation.
+    private val backToLobby = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            binding.webview.evaluateJavascript(
+                "(function(){ if (window.doLeaveRoom) { window.doLeaveRoom(); return 'left'; } return 'none'; })()"
+            ) { result ->
+                if (result?.trim('"') != "left") binding.webview.loadUrl(SERVER_URL)
+            }
+        }
+    }
+
+    private fun updateBackCallback(url: String?) {
+        backToLobby.isEnabled = url?.substringBefore('?')?.endsWith("/game.html") == true
+    }
 
     companion object {
         private const val TAG = "LocalGames"
@@ -86,6 +105,7 @@ class MainActivity : AppCompatActivity() {
         binding.splash.visibility = View.VISIBLE
 
         configureWebView()
+        onBackPressedDispatcher.addCallback(this, backToLobby)
         registerNetworkCallback()
 
         // 1. Extract nodejs-project from assets to internal storage
@@ -152,8 +172,14 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
 
+            override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
+                super.doUpdateVisitedHistory(view, url, isReload)
+                updateBackCallback(url)
+            }
+
             override fun onPageFinished(view: WebView, url: String?) {
                 super.onPageFinished(view, url)
+                updateBackCallback(url)
                 view.evaluateJavascript("(function(){ return localStorage.getItem('lang') || 'zh'; })()") { result ->
                     val lang = result?.trim('"') ?: "zh"
                     if (lang != currentLang) {
@@ -400,15 +426,6 @@ class MainActivity : AppCompatActivity() {
                 else -> 2
             }
         }?.second
-    }
-
-    @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
-    override fun onBackPressed() {
-        if (binding.webview.canGoBack()) {
-            binding.webview.goBack()
-        } else {
-            super.onBackPressed()
-        }
     }
 
     // --- Asset Copying ---

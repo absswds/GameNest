@@ -360,7 +360,10 @@ tool('suggest_move', 'Run the project built-in bot on my current view to propose
   try { botMod = require(path.join(ROOT, 'bots', S.game)); } catch (e) { return { move: null, reason: 'no bot for ' + S.game }; }
   try {
     const bot = botMod.createBot(S.mySeat);
-    const move = bot.getMove(toBotState(S.game, JSON.parse(JSON.stringify(S.state)), S.mySeat), S.mySeat);
+    const view = toBotState(S.game, JSON.parse(JSON.stringify(S.state)), S.mySeat);
+    let move = bot.getMove(view, S.mySeat);
+    // Timed bots (quizrace) return {} while "thinking"; a few back-to-back calls make them answer now
+    for (let i = 0; i < 4 && move && typeof move === 'object' && !Object.keys(move).length; i++) move = bot.getMove(view, S.mySeat);
     return { move: move === undefined ? null : move, seq: S.seq };
   } catch (e) { return { move: null, reason: 'bot failed: ' + e.message }; }
 });

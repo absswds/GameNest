@@ -92,7 +92,7 @@
     var colorCls = isJoker ? 'joker' : ((card.suit === 'h' || card.suit === 'd') ? 'red' : 'black');
     var rankDisplay = RANK_DISPLAY[card.rank] || card.rank;
     var cls = 'om-card' + (isJoker ? ' joker' : '') + (isDrawn ? ' drawn' : '');
-    return '<div class="' + cls + '">' +
+    return '<div class="' + cls + '"' + (card.id ? ' data-mo-key="om:' + esc(card.id) + '"' : '') + '>' +
       '<div class="corner"><span>' + rankDisplay + '</span><span style="font-size:8px;color:' + (SUIT_COLORS[card.suit] || '#1a1a1a') + '">' + suitSym + '</span></div>' +
       '<span class="rank" style="color:' + (isJoker ? '#e74c3c' : (SUIT_COLORS[card.suit] || '#1a1a1a')) + '">' + rankDisplay + '</span>' +
       (!isJoker ? '<span class="suit" style="color:' + (SUIT_COLORS[card.suit] || '#1a1a1a') + '">' + suitSym + '</span>' : '') +
@@ -112,9 +112,27 @@
     return _tf(msg.kind === 'open_pair' ? 'om_log_open_pair' : 'om_log_pair', who, msg.rank, msg.rank);
   }
 
+  // Popup with the card you just drew, then a glow on it in the hand (it is gone if it made a pair).
+  // drawSeen: key of the last draw already shown; undefined until the first render after init.
+  var drawSeen;
+  function announceDrawn(state, me) {
+    var ld = state.lastDraw;
+    var key = ld && ld.to === me && ld.card ? (state.messages || []).length + ':' + ld.card.id : null;
+    var first = drawSeen === undefined;
+    if (key && key !== drawSeen && !first && window.Motion) {
+      var mine = state.hands[me] || [];
+      var kept = mine.some(function(c) { return c.id === ld.card.id; });
+      Motion.showDrawn(_t('drew_cards'), renderCard(ld.card, false), kept ? ['om:' + ld.card.id] : [],
+        kept ? '' : _t('om_drawn_paired'));
+    }
+    drawSeen = key;
+    if (window.Motion) Motion.refreshGlow(document.getElementById('omHand'));
+  }
+
   window.gameRenderers.set('oldmaid', {
     init: function(container) {
       injectStylesOnce('omStyles', STYLES);
+      drawSeen = undefined;
       container.innerHTML = '' +
         '<div class="om-wrap">' +
           '<div class="om-others" id="omOthers"></div>' +
@@ -242,6 +260,7 @@
         }
         handEl.innerHTML = handHtml || '<div class="om-empty-hint">' + _t('om_hand_empty') + '</div>';
       }
+      announceDrawn(state, playerIndex);
     }
   });
 

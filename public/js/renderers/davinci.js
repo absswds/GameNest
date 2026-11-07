@@ -84,6 +84,7 @@
 
     playersArea.innerHTML = '';
     var inPenalty = (state.phase === 'penalty' && state.penaltyPlayer === playerIndex);
+    var revNow = {}, revNew = [], lgr = state.lastGuessResult;
 
     for (var p = 0; p < state.tiles.length; p++) {
       (function(pIdx) {
@@ -152,6 +153,12 @@
               });
             }
 
+            if (isRev && tile.id !== undefined) {
+              var rk = pIdx + ':' + tile.id;
+              revNow[rk] = true;
+              if (_revSeen && !_revSeen[rk]) _flips[rk] = { t: performance.now(), own: !(lgr && lgr.correct && lgr.targetPlayer === pIdx) };
+              if (_flips[rk]) revNew.push({ el: tileEl, f: _flips[rk] });
+            }
             row.appendChild(tileEl);
           })(t);
         }
@@ -169,6 +176,33 @@
         playersArea.appendChild(section);
       })(p);
     }
+    _revSeen = revNow;
+    flipRevealed(revNew);
+  }
+
+  // A tile whose number was just revealed flips over and flashes: green when someone guessed it,
+  // red when the guesser had to reveal their own tile after a miss.
+  // _revSeen: revealed tile keys at the last render; null until the first render after init.
+  // The board is rebuilt on every broadcast, so a flip is keyed by tile and resumed where it was.
+  var _revSeen = null, _flips = {}, FLIP_MS = 1500;
+  function flipRevealed(list) {
+    var now = performance.now();
+    Object.keys(_flips).forEach(function(k) { if (now - _flips[k].t > FLIP_MS) delete _flips[k]; });
+    list.forEach(function(r) {
+      var el = r.el;
+      if (typeof el.animate !== 'function' || now - r.f.t > FLIP_MS) return;
+      var c = r.f.own ? 'rgba(192,57,43,.9)' : 'rgba(63,155,104,.95)';
+      var anim;
+      if (window.Motion && Motion.reduced()) {
+        anim = el.animate([{ boxShadow: '0 0 0 3px ' + c }, { boxShadow: '0 0 0 3px ' + c }], { duration: FLIP_MS });
+      } else anim = el.animate([
+        { transform: 'perspective(400px) rotateY(90deg) scale(1.15)', boxShadow: '0 0 0 0 ' + c, easing: 'cubic-bezier(.2,.8,.2,1)' },
+        { transform: 'perspective(400px) rotateY(0) scale(1.25)', boxShadow: '0 0 0 4px ' + c + ', 0 0 18px 6px ' + c, offset: 0.35 },
+        { transform: 'scale(1.25)', boxShadow: '0 0 0 4px ' + c + ', 0 0 18px 6px ' + c, offset: 0.7, easing: 'ease-in' },
+        { transform: 'none', boxShadow: '0 0 0 0 ' + c }
+      ], { duration: FLIP_MS });
+      anim.currentTime = now - r.f.t;
+    });
   }
 
   function buildDrawnTile(state, playerIndex) {
@@ -185,9 +219,25 @@
       var dt = state.drawnTile;
       drawnContent.className = 'dv-tile ' + tileClass(dt);
       drawnContent.innerHTML = tileLabel(dt);
+      drawnContent.setAttribute('data-mo-key', 'dv:' + dt.id);
     } else {
       drawnDiv.style.display = 'none';
     }
+    announceDrawn(showDrawn ? state.drawnTile.id : null, showDrawn ? state.drawnTile : null);
+  }
+
+  // Popup with the tile you just drew, then a glow on it in the "drawn" slot.
+  // drawSeen: id of the drawn tile already shown; undefined until the first render after init.
+  var drawSeen;
+  function announceDrawn(id, tile) {
+    if (!window.Motion) return;
+    if (id && id !== drawSeen && drawSeen !== undefined) {
+      Motion.showDrawn(_t('drew_cards'),
+        '<div class="dv-tile ' + tileClass(tile) + '" style="width:46px;height:64px;">' + tileLabel(tile) + '</div>',
+        ['dv:' + id]);
+    }
+    drawSeen = id;
+    Motion.refreshGlow(document.getElementById('dvDrawn'));
   }
 
   function buildPenaltyMsg(state, playerIndex) {
@@ -406,6 +456,9 @@
       _selTileIdx = -1;
       _selNum = 0;
       _selJoker = false;
+      drawSeen = undefined;
+      _revSeen = null;
+      _flips = {};
       addStyles();
 
       container.innerHTML =

@@ -131,7 +131,7 @@ const __isMobileData = (function () {
 const __allGames = window.gameCatalog.list();
 const __allFeatured = window.gameCatalog.featured();
 // Offline: show games with bots or a solo mode; werewolf bots can't really talk, so it's hidden.
-const __SOLO_GAMES = new Set(['minesweeper', 'suikabattle']);
+const __SOLO_GAMES = new Set(window.SOLO_GAMES || []);
 const __OFFLINE_HIDDEN = new Set(['werewolf']);
 function playable(g) {
   if (!__isMobileData) return true;
@@ -383,6 +383,12 @@ function joinRoom(code) {
   code = (code || '').trim().toUpperCase();
   if (!code) {
     toast(typeof _t === 'function' ? _t('room_code_empty') : '\u8bf7\u8f93\u5165\u623f\u95f4\u53f7');
+    return;
+  }
+  // Already seated in this room (resume banner): go back to that seat instead of taking a new one
+  var saved = GNSession.get();
+  if (saved && saved.roomId === code && saved.resumeToken) {
+    location.href = '/game.html';
     return;
   }
   const ws = new WebSocket(getSocketURL());

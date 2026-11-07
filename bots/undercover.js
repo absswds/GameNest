@@ -33,7 +33,9 @@ const PICK = { temp: { normal: 70 }, maxLoss: { normal: 150 } };
 
 function tokenize(text) {
   if (!text || typeof text !== 'string') return [];
-  const clean = text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').trim();
+  // Explicit ranges, not \p{L}: the Android build's Node has no full ICU and rejects \p{...} at load time
+  const clean = text.toLowerCase()
+    .replace(/[^a-z0-9À-ɏͰ-ӿ぀-ヿ㐀-鿿가-힯豈-﫿\s]/g, ' ').trim();
   if (!clean) return [];
   // If spaces exist (English), split by whitespace; otherwise (Chinese) use character bigrams + chars
   if (clean.includes(' ')) {

@@ -1,6 +1,6 @@
 # GameNest
 
-> 34 LAN games you can play with friends without internet: board, card, mahjong, party, puzzle, and real-time. One phone or PC hosts (a hotspot is enough), everyone else scans a QR code and plays in the browser. No data plan, no app install.
+> 37 LAN games you can play with friends without internet: board, card, mahjong, party, puzzle, and real-time. One phone or PC hosts (a hotspot is enough), everyone else scans a QR code and plays in the browser. No data plan, no app install.
 
 **[🚀 Live Demo](https://gamenest-4kww.onrender.com) — try it without installing.**
 
@@ -9,7 +9,7 @@
 [![Android APK](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml/badge.svg)](https://github.com/absswds/GameNest/actions/workflows/android-apk.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-43853d.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-lightgrey.svg)](https://expressjs.com/)
-[![Games](https://img.shields.io/badge/Games-34-blue.svg)](#game-catalog)
+[![Games](https://img.shields.io/badge/Games-37-blue.svg)](#game-catalog)
 [![No account](https://img.shields.io/badge/Account-Not_Required-green.svg)](#highlights)
 [![Offline](https://img.shields.io/badge/Network-LAN/Offline-orange.svg)](#highlights)
 [![Android](https://img.shields.io/badge/Host-Android_✓-brightgreen.svg)](#android-host)
@@ -28,7 +28,7 @@ Since then it has become our go-to for dorm nights, parties, family evenings, an
 
 - **Works offline**: planes, trains, campsites, basements. One phone hotspot or one shared WiFi is enough; no internet is needed at any point.
 - **Only the host installs anything**: an Android phone, a Windows PC (standalone exe), or any machine with Node.js can host. Everyone else scans a QR code, types a room code or taps the room in the lobby's LAN room list, and plays in the browser.
-- **34 games**: board games, poker, mahjong, party games, deduction, social deduction, puzzle races, and real-time battles, for 2 players up to a whole group.
+- **37 games**: board games, poker, mahjong, party games, deduction, social deduction, puzzle races, and real-time battles, from solo play up to a whole group.
 - **Bots fill empty seats**: most turn-based games have AI players with Easy / Normal / Hard levels, so you can also practise alone.
 - **Reconnect and resume**: drop out, lock your phone or close the page by accident and the lobby's resume card puts you back in your seat; your name and avatar are remembered too.
 - **Hidden info stays hidden**: hands and roles are only sent to their owner, so nobody can peek at the network traffic.

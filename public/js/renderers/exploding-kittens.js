@@ -47,6 +47,10 @@
     '@media (prefers-reduced-motion:reduce){.ek-ring{display:none;}.ek-shake{animation:none;}}' +
     '.ek-fslot{display:flex;flex-direction:column;align-items:center;gap:3px;}' +
     '.ek-fnum{font-size:11px;font-weight:800;color:var(--text-muted);}' +
+    '.ek-owe{display:inline-block;margin-top:4px;padding:2px 8px;border-radius:999px;background:#b8552b;color:#fff;font-size:11px;font-weight:800;}' +
+    '.ek-owe-me{text-align:center;}.ek-owe-me .ek-owe{font-size:13px;padding:4px 12px;}' +
+    '.ek-place-opts{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}' +
+    '.ek-place-sub{font-size:13px;color:var(--text-muted);margin:-8px 0 12px;}' +
     '.ek-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}' +
     '.ek-btn-favor{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}' +
     '.ek-status{text-align:center;font-size:14px;color:var(--text-muted);min-height:20px;}' +
@@ -108,6 +112,8 @@
   window.gameRenderers.set('exploding-kittens', {
     init: function(container) {
       injectStylesOnce('ekStyles', STYLES);
+      if (drawTracker) drawTracker.reset();
+      _attackSeen = undefined;
       container.innerHTML =
         '<div class="ek-game">' +
           '<div class="ek-opponents" id="ekOpps"></div>' +
@@ -117,6 +123,7 @@
             '<div class="ek-pile ek-discard" id="ekDiscard"><span id="ekDiscardCount">0</span><div class="label">' + _t('ek_discard') + '</div></div>' +
           '</div>' +
           '<div class="ek-future" id="ekFuture" style="display:none"></div>' +
+          '<div class="ek-owe-me" id="ekOweMe"></div>' +
           '<div class="ek-hand-wrap" id="ekHandWrap"><div class="ek-hand" id="ekHand"></div></div>' +
           '<div id="ekScrollHint" style="display:none;text-align:center;font-size:11px;color:var(--text-muted);padding:2px 0;">' + _t('ek_scroll_hint') + '</div>' +
           '<div id="ekStealMsg" style="text-align:center;font-size:13px;font-weight:600;min-height:20px;padding:2px 0;"></div>' +
@@ -125,6 +132,7 @@
           '</div>' +
           '<div class="ek-status" id="ekStatus"></div>' +
           '<div class="ek-target-picker" id="ekTargetPicker" style="display:none"></div>' +
+          '<div class="ek-target-picker" id="ekPlacePicker" style="display:none"></div>' +
         '</div>';
 
       document.getElementById('ekDrawBtn').addEventListener('click', function() {
@@ -139,6 +147,9 @@
       renderCenter(state);
       renderFuture(state, playerIndex);
       renderHand(state, playerIndex);
+      announceDrawn(state, playerIndex);
+      announceAttack(state, playerIndex);
+      renderPlacePicker(state, playerIndex);
       renderActions(state, playerIndex);
       renderStatus(state, playerIndex);
       renderActionLog(state, playerIndex);
@@ -147,6 +158,24 @@
   });
 
   var _lastAnimSeq = -1;
+  var drawTracker = window.Motion ? Motion.handTracker() : null;
+
+  // Popup with the cards that just arrived (drawn, or taken with a steal/favor), then a glow in the hand.
+  // A drawn exploding kitten has its own explosion effect, so it gets no popup.
+  function announceDrawn(state, selfIdx) {
+    if (!drawTracker) return;
+    var hand = state.hands[selfIdx] || [];
+    var fresh = drawTracker.diff(hand.map(function(c) { return c.id; }));
+    var cards = hand.filter(function(c) { return fresh.indexOf(c.id) >= 0 && c.type !== 'explode'; });
+    if (cards.length) {
+      var la = state.lastAction;
+      var drew = la && la.type === 'draw' && la.player === selfIdx;
+      Motion.showDrawn(_t(drew ? 'drew_cards' : 'got_cards'),
+        cards.map(function(c) { return cardHtml(c, 'ek-card', ''); }).join(''),
+        cards.map(function(c) { return 'ek:' + c.id; }));
+    }
+    Motion.refreshGlow(document.getElementById('ekHand'));
+  }
 
   function renderActionLog(state, selfIdx) {
     var el = document.getElementById('ekActionLog');
@@ -213,9 +242,64 @@
       var dead = !state.alive[i] ? ' dead' : '';
       html += '<div class="ek-opp' + active + dead + '">' +
         '<div class="name">' + (window.getPlayerName ? window.getPlayerName(i) : (_t('ek_player_fallback') + (i + 1))) + (dead ? _t('ek_dead_indicator') : '') + '</div>' +
-        '<div class="count">' + count + '</div><div style="font-size:11px;color:var(--text-muted)">' + _t('ek_cards_count') + '</div></div>';
+        '<div class="count">' + count + '</div><div style="font-size:11px;color:var(--text-muted)">' + _t('ek_cards_count') + '</div>' +
+        (owed(state, i) > 1 ? '<div class="ek-owe">' + _tf('ek_owe_n', owed(state, i)) + '</div>' : '') + '</div>';
     }
     el.innerHTML = html;
+    var me = document.getElementById('ekOweMe');
+    if (me) {
+      var n = owed(state, selfIdx);
+      me.innerHTML = n > 1 ? '<span class="ek-owe">' + _tf('ek_owe_you_n', n) + '</span>' : '';
+    }
+  }
+
+  // How many draws a player still has to make before the turn passes on (an attack adds one)
+  function owed(state, i) {
+    if (state.winner !== null || i !== state.currentPlayer || !state.alive[i]) return 0;
+    return ((state.extraTurns && state.extraTurns[i]) || 0) + 1;
+  }
+
+  // Centre card for every attack: who passed the turns to whom, and how many draws that is now
+  var _attackSeen;
+  function announceAttack(state, selfIdx) {
+    var la = state.lastAction;
+    var key = la && la.type === 'attack' ? la.seq : null;
+    var prev = _attackSeen;
+    _attackSeen = key;
+    if (prev === undefined || key === null || key === prev || !window.Motion) return;
+    var name = function(i) { return i === selfIdx ? _t('ek_you') : (window.getPlayerName ? window.getPlayerName(i) : (_t('ek_player_fallback') + (i + 1))); };
+    var n = owed(state, la.target);
+    Motion.announce(_tf('ek_ann_attack', name(la.player), name(la.target)), {
+      icon: '⚡', tone: la.target === selfIdx ? 'warn' : 'info',
+      sub: n > 1 ? _tf(la.target === selfIdx ? 'ek_owe_you_n' : 'ek_owe_n', n) : ''
+    });
+  }
+
+  // After a defuse the player chooses where the kitten goes back into the deck
+  var PLACE_OPTS = [[0, 'ek_place_top'], [1, 'ek_place_2nd'], [2, 'ek_place_3rd'], ['bottom', 'ek_place_bottom'], ['random', 'ek_place_random']];
+  function renderPlacePicker(state, selfIdx) {
+    var el = document.getElementById('ekPlacePicker');
+    if (!el) return;
+    var mine = state.phase === 'place' && state.currentPlayer === selfIdx && state.winner === null;
+    if (!mine) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    if (el.style.display !== 'none') return; // already open; keep it as it is
+    var len = state.deck ? state.deck.length : 0;
+    var html = '<div class="ek-picker-card"><div class="ek-picker-title">' + _t('ek_place_title') + '</div>' +
+      '<div class="ek-place-sub">' + _tf('ek_place_sub', len) + '</div><div class="ek-place-opts">';
+    PLACE_OPTS.forEach(function(o) {
+      if (typeof o[0] === 'number' && o[0] >= len) return; // the deck is not that deep
+      html += '<button class="btn ' + (o[0] === 'random' ? 'btn-primary' : 'btn-outline') + ' btn-sm" data-pos="' + o[0] + '">' + _t(o[1]) + '</button>';
+    });
+    html += '</div></div>';
+    el.innerHTML = html;
+    el.style.display = 'flex';
+    el.querySelectorAll('[data-pos]').forEach(function(b) {
+      b.addEventListener('click', function() {
+        var v = b.getAttribute('data-pos');
+        el.style.display = 'none';
+        window.makeGameMove({ position: /^\d+$/.test(v) ? parseInt(v, 10) : v });
+      });
+    });
   }
 
   function renderCenter(state) {
@@ -250,7 +334,7 @@
     var html = '';
     for (var i = 0; i < hand.length; i++) {
       var c = hand[i];
-      html += cardHtml(c, 'ek-card', ' data-id="' + c.id + '"');
+      html += cardHtml(c, 'ek-card', ' data-id="' + c.id + '" data-mo-key="ek:' + c.id + '"');
     }
     el.innerHTML = html;
 
@@ -320,6 +404,9 @@
       el.textContent = state.winner === selfIdx ? _t('ek_you_win') : '💀 ' + (window.getPlayerName ? window.getPlayerName(state.winner) : (_t('ek_player_fallback') + (state.winner + 1))) + _t('ek_player_wins');
     } else if (!state.alive[selfIdx]) {
       el.textContent = _t('ek_you_eliminated');
+    } else if (state.phase === 'place') {
+      el.textContent = state.currentPlayer === selfIdx ? _t('ek_place_title')
+        : _tf('ek_placing', window.getPlayerName ? window.getPlayerName(state.currentPlayer) : (_t('ek_player_fallback') + (state.currentPlayer + 1)));
     } else if (state.currentPlayer === selfIdx) {
       el.textContent = state.phase === 'play' ? _t('ek_play_or_skip') : _t('ek_please_draw');
     } else {

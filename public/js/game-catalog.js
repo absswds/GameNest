@@ -361,8 +361,8 @@
       name: '羊了个羊',
       icon: 'Y',
       subtitle: '三消堆叠，清盘才赢',
-      description: '层叠三消，和对手比拼清盘速度。',
-      players: '2-6人',
+      description: '层叠三消，一个人闯关，或和对手比拼清盘速度。',
+      players: '1-6人',
       duration: '约10分钟',
       category: '脑力闯关',
       tags: ['消除', '堆叠'],
@@ -554,7 +554,7 @@
   }
 
   // Games that can be started and played solo (no AI / opponent needed). Read by the lobby player filter and room-client.js.
-  window.SOLO_GAMES = ['2048', 'sudoku', 'minesweeper', 'numberbomb', 'twentyfour', 'suikabattle', 'drawguess', 'quizrace'];
+  window.SOLO_GAMES = ['2048', 'sudoku', 'minesweeper', 'sheeptile', 'numberbomb', 'twentyfour', 'suikabattle', 'drawguess', 'quizrace'];
 
   window.gameCatalog = {
     byId: function(id) {

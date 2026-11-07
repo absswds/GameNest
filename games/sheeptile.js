@@ -2,6 +2,7 @@
 // 共享布局几何 + per-player 进度。第1关送分热身，第2关高难。剥洋葱算法保证可解。
 exports.name = 'sheeptile';
 exports.maxPlayers = 6;
+exports.minPlayers = 1;
 
 const SLOT_SIZE = 7;
 const EMOJI_COUNT = 14; // 渲染器图案池上限
@@ -301,6 +302,9 @@ function settle(state) {
   for (let i = 0; i < state._playerCount; i++) if (!state.players[i].eliminated) alive.push(i);
   if (state._playerCount > 1 && alive.length === 1) {
     state.winner = alive[0];
+    state.phase = 'gameover';
+  } else if (alive.length === 0 && state._playerCount === 1) {
+    state.winner = -2; // 单人爆槽：失败
     state.phase = 'gameover';
   } else if (alive.length === 0) {
     // 全部爆槽：得分最高者胜
