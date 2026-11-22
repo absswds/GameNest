@@ -59,7 +59,7 @@
 
     <section class="lb-hero-section" id="heroSection" aria-label="本周新游戏">
       <div class="lb-hero-track" id="heroTrack"></div>
-      <div class="lb-hero-dots" id="heroDots" style="display:none"></div>
+      <div class="lb-hero-dots" id="heroDots"></div>
     </section>
 
     <section class="lb-join-section" id="joinPanel">
@@ -92,7 +92,7 @@
         <h2 id="allGamesHeading">全部游戏</h2>
         <span class="lb-sec-count num" id="gameCount"></span>
       </div>
-      <div class="lb-grid" id="gameGrid"></div>
+      <div class="lb-grid" id="gameGrid" data-boot="1"></div>
       <p class="lb-empty" id="emptyState" style="display:none">没有找到匹配的游戏，换个关键词试试。</p>
     </section>
 
@@ -257,12 +257,16 @@ function renderHero() {
   });
 
   if (dots) {
+    var syncHeroDots = function() {
+      var needsDots = dots.children.length > 1 && track.scrollWidth > track.clientWidth + 1;
+      dots.style.display = needsDots ? '' : 'none';
+    };
     if (games.length > 1) {
-      dots.style.display = '';
       var slideTpl = typeof _t === 'function' ? _t('hero_slide_n') : '查看第 %s 个新游戏';
       dots.innerHTML = games.map(function(g, i) {
         return '<button type="button" class="lb-hero-dot' + (i === 0 ? ' active' : '') + '" data-index="' + i + '" aria-label="' + escapeHtml(slideTpl.replace('%s', i + 1)) + '"></button>';
       }).join('');
+      syncHeroDots();
       dots.querySelectorAll('.lb-hero-dot').forEach(function(dot) {
         dot.addEventListener('click', function() {
           var idx = +this.dataset.index;
@@ -297,6 +301,12 @@ function renderHero() {
             });
           });
         }, { passive: true });
+        if (!track._dotsObserved) {
+          track._dotsObserved = true;
+          var onResize = function() { syncHeroDots(); };
+          if (typeof ResizeObserver === 'function') new ResizeObserver(onResize).observe(track);
+          else window.addEventListener('resize', onResize);
+        }
       }
     } else {
       dots.style.display = 'none';
@@ -517,6 +527,7 @@ function renderCatalog(opts) {
     countEl.textContent = tpl.replace('%s', filtered.length);
   }
   const grid = document.getElementById('gameGrid');
+  grid.removeAttribute('data-boot');
   grid.innerHTML = filtered.map(buildBrowseCard).join('');
   document.getElementById('emptyState').style.display = filtered.length ? 'none' : '';
   wireCoverImages(grid);

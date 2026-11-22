@@ -1936,11 +1936,20 @@ body.lobby-page .wifi-note {
   display: none;
 }
 
-.lb-hero-card {
-  position: relative;
+.lb-hero-card,
+.lb-hero-track:empty::before {
   flex: 0 0 100%;
   width: 100%;
   aspect-ratio: 16 / 10;
+}
+
+.lb-hero-track:empty::before {
+  content: '';
+  display: block;
+}
+
+.lb-hero-card {
+  position: relative;
   display: block;
   border: 0;
   padding: 0;
@@ -2052,6 +2061,7 @@ body.lobby-page .wifi-note {
   justify-content: center;
   align-items: center;
   gap: 6px;
+  min-height: 6px;
   margin-top: 10px;
 }
 
@@ -2307,6 +2317,7 @@ body.lobby-page .wifi-note {
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
+  min-height: 48px;
   padding: 2px 0;
   min-width: 0;
 }
@@ -2403,6 +2414,10 @@ body.lobby-page .wifi-note {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.lb-grid[data-boot] {
+  min-height: 100dvh;
 }
 
 .lb-card {
@@ -2635,10 +2650,6 @@ body.lobby-page .toast {
     gap: 20px;
   }
 
-  .lb-hero-card {
-    max-height: 360px;
-  }
-
   .lb-chips {
     flex-wrap: wrap;
     overflow: visible;
@@ -2654,6 +2665,29 @@ body.lobby-page .toast {
   .lb-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
+  }
+}
+
+@media (min-width: 600px), (orientation: landscape) and (max-height: 540px) {
+  .lb-hero-card,
+  .lb-hero-track:empty::before {
+    flex: 0 0 calc(50% - 6px);
+    width: calc(50% - 6px);
+  }
+
+  .lb-hero-dots:empty {
+    display: none;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+  .lb-hero-card,
+  .lb-hero-track:empty::before {
+    max-height: 55vh;
+  }
+
+  .lb-hero-cap {
+    padding: 12px 16px;
   }
 }
 
@@ -2707,30 +2741,24 @@ body.lobby-page .toast {
 
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
-  .lobby-page.entrance-anim {
-    animation: none;
+  body.lobby-page,
+  body.lobby-page *,
+  body.lobby-page *::before,
+  body.lobby-page *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
   }
 
-  .lb-top,
-  .lb-top-bg,
-  .lb-top-actions,
-  .lb-search-wrap,
-  .lb-hero-dot,
-  .lb-chip,
-  .lb-card,
-  .lb-hero-card,
-  .lb-check,
-  .lb-icon-btn,
-  .lb-resume-btn,
-  .lb-join-btn,
-  body.lobby-page .quick-create-btn {
-    transition: opacity 0.01ms linear;
+  .lobby-page.entrance-anim {
+    animation: none;
   }
 
   .lb-hero-img,
   .lb-card-img {
     transform: none;
-    transition: opacity 0.01ms linear;
   }
 
   .lb-hero-img.is-loaded,
