@@ -397,4 +397,12 @@ module.exports = {
   'qr_invalid_player': 'Invalid player seat',
   'qr_invalid_option': 'Please choose a valid option (0-3)',
   'qr_already_answered': 'You have already answered this question',
+  // Liars Dice
+  'ld_invalid_action': 'Invalid action',
+  'ld_wrong_phase': 'Cannot do that in the current phase',
+  'ld_reveal_wait': 'Revealing dice, please wait for the next round',
+  'ld_nothing_to_challenge': 'No current bid to challenge',
+  'ld_invalid_bid': 'Invalid bid quantity or die face',
+  'ld_bid_too_low': 'Bid must raise the quantity or pick a higher face at the same quantity',
+  'ld_player_out': 'You have no dice left and are out of the game',
 };

@@ -108,6 +108,7 @@ const G = {
   paodekuai: { n: 3, opts: { rounds: 1 } },
   texas: { n: 4, kind: 'texas', hands: 30 },
   liarsbar: { n: 4 },
+  liarsdice: { n: 4 },
   'exploding-kittens': { n: 4 },
   oldmaid: { n: 4 },
   flightchess: { n: 4 },

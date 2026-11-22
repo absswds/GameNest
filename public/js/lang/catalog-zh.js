@@ -336,4 +336,13 @@
     category: '牌桌竞技',
     tags: ['跑牌', '三人局'],
   };
+  window.__LANG.zh.catalog.liarsdice = {
+    name: '大话骰',
+    subtitle: '盲猜加码，谁在吹牛一目了然',
+    description: '暗摇五颗骰子轮流叫数加注或当场开骰，猜错扣一颗骰子，留到最后者获胜！',
+    players: '2-6人',
+    duration: '约10分钟',
+    category: '派对同乐',
+    tags: ['吹牛', '派对'],
+  };
 })();

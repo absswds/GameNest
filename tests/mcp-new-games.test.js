@@ -30,6 +30,7 @@ const GAMES = [
   { game: 'undercover', bots: 4, guide: /speech/i },
   { game: 'paodekuai', bots: 2, guide: /cards/ },
   { game: 'quizrace', bots: 1, guide: /answer/, options: { questionCount: 10, timePerQuestion: 10 } },
+  { game: 'liarsdice', bots: 2, guide: /bid/i },
 ];
 
 for (const g of GAMES) {

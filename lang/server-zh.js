@@ -397,4 +397,12 @@ module.exports = {
   'qr_invalid_player': '无效的玩家座位',
   'qr_invalid_option': '请选择有效的选项（A–D）',
   'qr_already_answered': '本题你已经作答过了',
+  // 大话骰
+  'ld_invalid_action': '无效的操作',
+  'ld_wrong_phase': '当前阶段无法执行此操作',
+  'ld_reveal_wait': '正在开骰结算，请等待下一轮',
+  'ld_nothing_to_challenge': '当前还没有叫骰，无法开骰',
+  'ld_invalid_bid': '无效的叫骰数量或点数',
+  'ld_bid_too_low': '叫骰必须高于当前叫数或同数更高点数',
+  'ld_player_out': '你已失去所有骰子，本局已淘汰',
 };

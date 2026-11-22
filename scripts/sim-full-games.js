@@ -80,6 +80,7 @@ const CONFIG = {
   gomoku: { sizes: [2] },
   hearts: { sizes: [4] },
   liarsbar: { sizes: [4, 3] },
+  liarsdice: { sizes: [4, 2] },
   'mahjong-cantonese': { sizes: [4, 2] },
   'mahjong-sichuan': { sizes: [4, 2] },
   minesweeper: { sizes: [2, 1], humans: 'all' },

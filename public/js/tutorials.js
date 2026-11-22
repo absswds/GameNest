@@ -442,6 +442,15 @@
       { h: '房间设置', p: '房主可以设置题目数量（10/15/20 题）、每题限时（10/15/20 秒）、题库分类（全部、综合常识、世界地理、自然科学、人文历史、动植物与自然、体育竞技、艺术与文化、美食、成语俗语、生活常识、中国文化、动漫影视、心算）、题目难度（混合、简单、普通、困难，每题都标了难度，选一档就只出这一档的题）以及电脑难度。电脑难度越高，答对的概率越高、反应越快，对难题的把握也比低难度的电脑强得多。' },
     ]
   };
+  TUTORIALS_ZH.liarsdice = {
+    sections: [
+      { h: '游戏目标', p: '大话骰支持 2 至 6 名玩家。每位玩家开局拥有若干颗隐藏骰子，每轮重摇后只能看自己的骰子。轮流猜测全场所有骰子的合计数量或质疑上一手的叫数，失去所有骰子的玩家淘汰，最后留存的一人获胜。' },
+      { h: '叫骰与大小顺序', p: '点数大小顺序为 2 < 3 < 4 < 5 < 6 < 1。轮到你时可以加注叫骰：要么增加数量（任意点数），要么保持数量不变并选择更大的点数。' },
+      { h: '1点万能规则', p: '当开启「1点万能」时，开骰结算中所有的 1 点都可以当作你叫的点数来计数。但如果这一轮中有人直接叫了 1 点，则本轮剩余时间内 1 点不再万能，只算作 1 点本身。' },
+      { h: '开骰与结算', p: '当你认为上一家的叫数不可能达到时，可以点击「开」进行质疑。全场亮骰统计符合条件的总颗数：如果实际颗数大于或等于叫数，挑战者失去 1 颗骰子；如果不足叫数，叫骰者失去 1 颗骰子。下一轮由扣骰者（若已淘汰则由其下家）先手。' },
+      { h: '房间设置', p: '房主可以设置初始骰子数（3/4/5 颗）、是否开启 1 点万能、每手限时（不限时/15/20/30 秒）以及电脑难度。开骰结果会展示 5 秒，点击「继续」可立即开始下一轮。' },
+    ]
+  };
 
   var TUTORIALS_EN = {
     tictactoe: {
@@ -882,6 +891,15 @@
       { h: 'Scoring and Streaks', p: 'A wrong or missed answer scores 0. A correct answer scores 500 + round(500 x remaining time fraction), up to 1000 points for an instant answer. Starting from your 3rd consecutive correct answer, you also earn a +100 streak bonus on each correct answer until you miss.' },
       { h: 'Double Points', p: 'The last 3 questions of every match award double base and speed points, giving trailing players a chance to make a comeback.' },
       { h: 'Room Settings', p: 'The host can choose the question count (10, 15 or 20), seconds per question (10, 15 or 20), trivia category (All, General, Geography, Science, History, Nature, Sports, Culture, Food, Idioms, Daily Life, Chinese Culture, Anime and Film or Mental Math), question level (Mixed, Easy, Normal or Hard; every question is rated, and a level only draws questions of that rating) and bot difficulty. Stronger bots answer correctly more often, answer faster when they know the answer, and cope with hard questions far better than weak bots.' },
+    ]
+  };
+  TUTORIALS_EN.liarsdice = {
+    sections: [
+      { h: 'Goal', p: 'Liars Dice supports 2 to 6 players. Everyone rolls hidden dice at the start of each round and sees only their own roll. Take turns raising the table bid on how many dice of a face exist across all players, or challenge the last bid. Lose all your dice and you are out; the last player with dice wins.' },
+      { h: 'Bidding Order', p: 'Face strength runs 2 < 3 < 4 < 5 < 6 < 1. On your turn, raise by increasing the quantity (with any face) or keeping the quantity and picking a higher-ranked face.' },
+      { h: 'Ones Wild Rule', p: 'When Ones Wild is enabled, 1s count as any bid face during a challenge. However, if any player bids face 1 during a round, 1s stop being wild for the rest of that round.' },
+      { h: 'Challenging and Reveal', p: 'If you doubt the current bid, press Challenge to reveal every die on the table. If the matching count meets or exceeds the bid quantity, the challenger loses one die; otherwise the bidder loses one die. The loser starts the next round, or the next clockwise active player if eliminated.' },
+      { h: 'Room Settings', p: 'The host can configure starting dice (3, 4 or 5), Ones Wild on or off, turn timer (no limit, 15, 20 or 30 seconds) and bot difficulty. After a challenge, the reveal screen lasts 5 seconds or until any player taps Continue.' },
     ]
   };
 

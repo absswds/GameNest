@@ -336,4 +336,13 @@
     category: 'Cards & Tiles',
     tags: ['Climbing', '3 players'],
   };
+  window.__LANG.en.catalog.liarsdice = {
+    name: 'Liars Dice',
+    subtitle: 'Bid on hidden dice and call out bluffs',
+    description: 'Roll concealed dice, raise the table bid or challenge a bluff, and keep at least one die to win.',
+    players: '2-6 players',
+    duration: '~10 min',
+    category: 'Party',
+    tags: ['Bluffing', 'Party'],
+  };
 })();
