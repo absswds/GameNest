@@ -109,6 +109,7 @@ const G = {
   blackjack: { n: 4, kind: 'phase', opts: { rounds: 5 }, metric: (s, i) => s.chips[i] },
   texas: { n: 4, kind: 'texas', hands: 30 },
   liarsbar: { n: 4 },
+  liarsdice: { n: 4 },
   'exploding-kittens': { n: 4 },
   oldmaid: { n: 4 },
   flightchess: { n: 4 },

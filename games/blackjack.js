@@ -334,7 +334,7 @@ function settleRound(state) {
 }
 
 function initGame(state, playerCount) {
-  const opts = state.options || {};
+  const opts = state._options || {};
   const decks = Number(opts.decks);
   state.decks = DECK_CHOICES.includes(decks) ? decks : DEFAULT_DECKS;
 

@@ -32,7 +32,7 @@
     'reversi', 'gomoku', 'chess', 'connect4', 'checkers', 'chinesechess', 'go9', 'hearts', 'battleship',
     'tictactoe', 'numberbomb', 'twentyfour', 'uno', 'doudizhu', 'bigtwo', 'texas', 'liarsbar',
     'exploding-kittens', 'flightchess', 'mahjong-sichuan', 'mahjong-cantonese',
-    'monopoly', 'werewolf', 'sanguo', 'rummikub', 'davinci', '2048', 'snakebattle', 'sudoku', 'sheeptile', 'undercover', 'quizrace', 'paodekuai', 'blackjack'
+    'monopoly', 'werewolf', 'sanguo', 'rummikub', 'davinci', '2048', 'snakebattle', 'sudoku', 'sheeptile', 'undercover', 'quizrace', 'paodekuai', 'blackjack', 'liarsdice'
   ];
 
   // ---- Game name lookup ----
@@ -1301,6 +1301,57 @@
               _t('difficulty_label') + ': ' + pdkDiffLabel +
             '</div>';
         }
+      } else if (game === 'liarsdice') {
+        optionsEl.style.display = 'block';
+        var ldStartDice = [3, 4, 5].indexOf(Number(roomOptions.startDice)) >= 0 ? Number(roomOptions.startDice) : 5;
+        var ldOnesWild = roomOptions.onesWild !== false && roomOptions.onesWild !== 'false';
+        var ldTurnTime = [0, 15, 20, 30].indexOf(Number(roomOptions.turnTime)) >= 0 ? Number(roomOptions.turnTime) : 20;
+        var ldDiff = roomOptions.difficulty || 'normal';
+        if (isHost) {
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
+              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
+                _t('ld_start_dice_opt') + ': <select onchange="window._setGameOption(\'startDice\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
+                  '<option value="3"' + (ldStartDice === 3 ? ' selected' : '') + '>' + tf('ld_start_dice_n', 3) + '</option>' +
+                  '<option value="4"' + (ldStartDice === 4 ? ' selected' : '') + '>' + tf('ld_start_dice_n', 4) + '</option>' +
+                  '<option value="5"' + (ldStartDice === 5 ? ' selected' : '') + '>' + tf('ld_start_dice_n', 5) + '</option>' +
+                '</select>' +
+              '</label>' +
+              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
+                _t('ld_ones_wild_opt') + ': <select onchange="window._setGameOption(\'onesWild\', this.value === \'true\')" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
+                  '<option value="true"' + (ldOnesWild ? ' selected' : '') + '>' + _t('ld_ones_wild_yes') + '</option>' +
+                  '<option value="false"' + (!ldOnesWild ? ' selected' : '') + '>' + _t('ld_ones_wild_no') + '</option>' +
+                '</select>' +
+              '</label>' +
+              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
+                _t('ld_turn_time_opt') + ': <select onchange="window._setGameOption(\'turnTime\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
+                  '<option value="0"' + (ldTurnTime === 0 ? ' selected' : '') + '>' + _t('ld_turn_time_off') + '</option>' +
+                  '<option value="15"' + (ldTurnTime === 15 ? ' selected' : '') + '>' + tf('ld_turn_time_n', 15) + '</option>' +
+                  '<option value="20"' + (ldTurnTime === 20 ? ' selected' : '') + '>' + tf('ld_turn_time_n', 20) + '</option>' +
+                  '<option value="30"' + (ldTurnTime === 30 ? ' selected' : '') + '>' + tf('ld_turn_time_n', 30) + '</option>' +
+                '</select>' +
+              '</label>' +
+              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
+                _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
+                  '<option value="easy"' + (ldDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
+                  '<option value="normal"' + (ldDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
+                  '<option value="hard"' + (ldDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
+                '</select>' +
+              '</label>' +
+            '</div>';
+        } else {
+          var ldDiffLabel = ldDiff === 'easy' ? _t('difficulty_easy') : ldDiff === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
+          var ldTimeLabel = ldTurnTime === 0 ? _t('ld_turn_time_off') : tf('ld_turn_time_n', ldTurnTime);
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+            '<div style="font-size:13px;color:var(--text-muted)">' +
+              _t('ld_start_dice_opt') + ': ' + tf('ld_start_dice_n', ldStartDice) + ' · ' +
+              _t('ld_ones_wild_opt') + ': ' + (ldOnesWild ? _t('ld_ones_wild_yes') : _t('ld_ones_wild_no')) + ' · ' +
+              _t('ld_turn_time_opt') + ': ' + ldTimeLabel + ' · ' +
+              _t('difficulty_label') + ': ' + ldDiffLabel +
+            '</div>';
+        }
       } else if (game === 'quizrace') {
         optionsEl.style.display = 'block';
         var qrCount = [10, 15, 20].indexOf(Number(roomOptions.questionCount)) >= 0 ? Number(roomOptions.questionCount) : 10;
@@ -1617,7 +1668,7 @@
       else if (state && state.currentPlayer >= 0) st.textContent = _t('opponent_turn');
       else if (state) st.textContent = _t('realtime_race');
       // These renderers draw their own whose-turn header; the generic line would be wrong for them.
-      if (game === 'sanguo' || game === 'werewolf' || game === 'undercover' || game === 'quizrace' || game === 'blackjack') st.style.display = 'none';
+      if (game === 'sanguo' || game === 'werewolf' || game === 'undercover' || game === 'quizrace' || game === 'blackjack' || game === 'liarsdice') st.style.display = 'none';
     }
   }
 
@@ -1835,6 +1886,16 @@
     return h + '</tbody></table></div>';
   }
 
+  function ldResultTable() {
+    var counts = (state && state.diceCounts) || [];
+    var h = '<div class="pdk-score-wrap"><table class="pdk-score"><thead><tr><th class="pdk-name">' + _t('ld_res_player') + '</th><th class="pdk-num">' + _t('ld_res_dice') + '</th></tr></thead><tbody>';
+    counts.forEach(function(c, i) {
+      var nm = i === playerIndex ? _t('you') : window.getPlayerName(i);
+      h += '<tr' + (i === playerIndex ? ' class="me"' : '') + '><td class="pdk-name">' + esc(nm) + (i === state.winner ? ' 🏆' : '') + '</td><td class="pdk-num' + (c > 0 ? ' pdk-total' : '') + '">' + c + '</td></tr>';
+    });
+    return h + '</tbody></table></div>';
+  }
+
   function showResult(winner) {
     if (game === 'mahjong-sichuan' || game === 'mahjong-cantonese') return;
     const overlay = el.overlay;
@@ -1907,6 +1968,10 @@
       isWin = (winner === playerIndex);
       txt = isWin ? _t('you_win') : _t('you_lose');
       subHtml = bjResultTable();
+    } else if (game === 'liarsdice' && state) {
+      isWin = (winner === playerIndex);
+      txt = isWin ? _t('you_win') : _t('you_lose');
+      subHtml = ldResultTable();
     } else {
       isWin = (winner === playerIndex);
       txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';

@@ -505,6 +505,19 @@
     supportsAI: true,
     maxPlayers: 6,
   };
+  zhCatalog.liarsdice = {
+    name: '大话骰',
+    icon: '🎲',
+    subtitle: '盲猜加码，谁在吹牛一目了然',
+    description: '暗摇五颗骰子轮流叫数加注或当场开骰，猜错扣一颗骰子，留到最后者获胜！',
+    players: '2-6人',
+    duration: '约10分钟',
+    category: '派对同乐',
+    tags: ['吹牛', '派对'],
+    supportsAI: true,
+    maxPlayers: 6,
+    cover: '/assets/game-covers/liarsdice.webp',
+  };
   var catalog = zhCatalog;
 
   Object.keys(catalog).forEach(function(id) {
@@ -548,7 +561,7 @@
     'sanguo',
     'snakebattle',
     'battleship',
-    'undercover', 'paodekuai', 'quizrace', 'blackjack'
+    'undercover', 'paodekuai', 'quizrace', 'blackjack', 'liarsdice'
   ];
 
   function getLangPack() {

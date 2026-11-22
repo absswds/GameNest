@@ -451,6 +451,15 @@
       { h: '庄家规则与赔率', p: '所有玩家行动完毕后，庄家翻开暗牌：点数小于 17 点必须要牌，达到 17 点及以上（含软 17，即 A+6=7/17）必须停牌。结算时：玩家爆牌直接输掉赌注；自然黑杰克赢庄家按 3:2 赔付（向下取整，若庄家也是黑杰克则平局退回本金）；普通获胜按 1:1 赔付，点数相同为平局（Push）退还本金。牌靴剩余不足 25% 时自动重新洗牌。' },
     ]
   };
+  TUTORIALS_ZH.liarsdice = {
+    sections: [
+      { h: '游戏目标', p: '大话骰支持 2 至 6 名玩家。每位玩家开局拥有若干颗隐藏骰子，每轮重摇后只能看自己的骰子。轮流猜测全场所有骰子的合计数量或质疑上一手的叫数，失去所有骰子的玩家淘汰，最后留存的一人获胜。' },
+      { h: '叫骰与大小顺序', p: '点数大小顺序为 2 < 3 < 4 < 5 < 6 < 1。轮到你时可以加注叫骰：要么增加数量（任意点数），要么保持数量不变并选择更大的点数。' },
+      { h: '1点万能规则', p: '当开启「1点万能」时，开骰结算中所有的 1 点都可以当作你叫的点数来计数。但如果这一轮中有人直接叫了 1 点，则本轮剩余时间内 1 点不再万能，只算作 1 点本身。' },
+      { h: '开骰与结算', p: '当你认为上一家的叫数不可能达到时，可以点击「开」进行质疑。全场亮骰统计符合条件的总颗数：如果实际颗数大于或等于叫数，挑战者失去 1 颗骰子；如果不足叫数，叫骰者失去 1 颗骰子。下一轮由扣骰者（若已淘汰则由其下家）先手。' },
+      { h: '房间设置', p: '房主可以设置初始骰子数（3/4/5 颗）、是否开启 1 点万能、每手限时（不限时/15/20/30 秒）以及电脑难度。开骰结果会展示 5 秒，点击「继续」可立即开始下一轮。' },
+    ]
+  };
 
   var TUTORIALS_EN = {
     tictactoe: {
@@ -900,6 +909,15 @@
       { h: 'Betting and Dealing', p: 'Each round starts with a 20-second simultaneous betting phase: pick 10, 25, 50, 100, 200 or All-in (timeout bets 10 automatically). Every active player receives two face-up cards, and the dealer receives one up-card and one face-down hole card. If the dealer up-card is an Ace or 10-value and the dealer has a natural Blackjack, the hole card is revealed and the round settles immediately.' },
       { h: 'Player Actions', p: 'Players act in seat order: Hit to draw a card (going over 21 busts and ends your turn), Stand to keep your total, or Double on your first two cards (if you have enough chips) to double your bet, draw exactly one card and stand. There is no split, insurance or surrender.' },
       { h: 'Dealer and Payouts', p: 'Once all players finish, the dealer reveals the hole card, draws until reaching at least 17, and stands on soft 17. Natural Blackjack pays 3:2 rounded down (or pushes against a dealer Blackjack). Winning hands pay 1:1, ties push and return your bet, and busted hands lose immediately. The multi-deck shoe (1, 2 or 4 decks) reshuffles when fewer than 25% of its cards remain.' },
+    ]
+  };
+  TUTORIALS_EN.liarsdice = {
+    sections: [
+      { h: 'Goal', p: 'Liars Dice supports 2 to 6 players. Everyone rolls hidden dice at the start of each round and sees only their own roll. Take turns raising the table bid on how many dice of a face exist across all players, or challenge the last bid. Lose all your dice and you are out; the last player with dice wins.' },
+      { h: 'Bidding Order', p: 'Face strength runs 2 < 3 < 4 < 5 < 6 < 1. On your turn, raise by increasing the quantity (with any face) or keeping the quantity and picking a higher-ranked face.' },
+      { h: 'Ones Wild Rule', p: 'When Ones Wild is enabled, 1s count as any bid face during a challenge. However, if any player bids face 1 during a round, 1s stop being wild for the rest of that round.' },
+      { h: 'Challenging and Reveal', p: 'If you doubt the current bid, press Challenge to reveal every die on the table. If the matching count meets or exceeds the bid quantity, the challenger loses one die; otherwise the bidder loses one die. The loser starts the next round, or the next clockwise active player if eliminated.' },
+      { h: 'Room Settings', p: 'The host can configure starting dice (3, 4 or 5), Ones Wild on or off, turn timer (no limit, 15, 20 or 30 seconds) and bot difficulty. After a challenge, the reveal screen lasts 5 seconds or until any player taps Continue.' },
     ]
   };
 

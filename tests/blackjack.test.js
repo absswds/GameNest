@@ -11,6 +11,17 @@ function card(rank, suit = 's') {
   return { rank, suit, id: rank + suit };
 }
 
+describe('Blackjack — room options', () => {
+  it('reads room options from state._options like the server sets them', () => {
+    const s = bj.createState();
+    s._options = { decks: 4, rounds: 5, turnTime: 30 };
+    bj.initGame(s, 2);
+    assert.equal(s.decks, 4);
+    assert.equal(s.totalRounds, 5);
+    assert.equal(s.shoeTotal, 208);
+  });
+});
+
 describe('Blackjack — hand totals and soft aces', () => {
   it('computes hard, soft, bust, and natural blackjack totals', () => {
     // Natural blackjack (A + K = 21, 2 cards)
@@ -303,7 +314,7 @@ describe('Blackjack — bot safety and full game simulation', () => {
       const s = bj.createState();
       const diff = diffs[positionsChecked % diffs.length];
       s.options = { decks: 2, rounds: 5, turnTime: 20, difficulty: diff };
-      s._options = s.options;
+      s._options = s._options || s.options;
       bj.initGame(s, n);
 
       let safety = 0;
@@ -352,7 +363,7 @@ describe('Blackjack — bot safety and full game simulation', () => {
     for (const playerCount of [1, 4]) {
       const s = bj.createState();
       s.options = { decks: 2, rounds: 5, turnTime: 20, difficulty: 'hard' };
-      s._options = s.options;
+      s._options = s._options || s.options;
       bj.initGame(s, playerCount);
 
       let steps = 0;

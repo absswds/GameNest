@@ -48,6 +48,8 @@ const covers = [
   { id: 'sudoku', palette: ['#f2f0ea', '#c9d4de', '#6d8fb0', '#182231'], motif: 'sudoku' },
   { id: 'undercover', palette: ['#eeeaf3', '#c5bcd6', '#6a4f93', '#1c1626'], motif: 'undercover' },
   { id: 'quizrace', palette: ['#eef4f2', '#bcd7d0', '#1f8a78', '#12231f'], motif: 'quizrace' },
+  { id: 'blackjack', palette: ['#eef2ec', '#c3d6c4', '#2f6b4a', '#13201a'], motif: 'blackjack' },
+  { id: 'liarsdice', palette: ['#f6eee6', '#e2c0a4', '#b5452f', '#22130e'], motif: 'liarsdice' },
   { id: 'mahjong-sichuan', palette: ['#f4efe7', '#c7d0c6', '#2f7a55', '#14231a'], motif: 'mahjong' },
 ];
 
@@ -191,6 +193,26 @@ function motifSvg(cover) {
         <circle cx="1260" cy="560" r="95" stroke="${dark}" stroke-width="28" fill="none"/>
         <circle cx="1125" cy="760" r="95" stroke="#fff7ef" stroke-width="28" fill="none"/>
         ${block(1280, 285, 90, 140, 18, '#fff8ef')}
+      `;
+    case 'blackjack':
+      return `
+        ${block(1010, 300, 190, 270, 26, '#fff8ef')}
+        ${block(1150, 340, 190, 270, 26, '#fff8ef')}
+        <text x="1080" y="400" font-size="96" font-weight="700" fill="${dark}">A</text>
+        <text x="1220" y="440" font-size="96" font-weight="700" fill="${accent}">K</text>
+        ${circle(1090, 720, 80, accent)}
+        <circle cx="1090" cy="720" r="58" stroke="#fff8ef" stroke-width="14" fill="none" stroke-dasharray="22 16"/>
+        ${circle(1270, 740, 80, dark)}
+        <circle cx="1270" cy="740" r="58" stroke="#fff8ef" stroke-width="14" fill="none" stroke-dasharray="22 16"/>
+      `;
+    case 'liarsdice':
+      return `
+        ${block(1000, 300, 170, 170, 32, '#fff8ef')}
+        ${circle(1045, 345, 16, dark)}${circle(1125, 425, 16, dark)}${circle(1085, 385, 16, dark)}
+        ${block(1200, 360, 170, 170, 32, '#fff8ef')}
+        ${circle(1245, 405, 16, accent)}${circle(1325, 405, 16, accent)}${circle(1245, 485, 16, accent)}${circle(1325, 485, 16, accent)}
+        ${block(1040, 600, 300, 230, 60, dark)}
+        ${block(1080, 570, 220, 60, 30, accent, 0.85)}
       `;
     case 'liarsbar':
       return `
