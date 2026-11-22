@@ -1755,6 +1755,16 @@ body.lobby-page .lb-icon-btn.lang-switch {
   outline: none;
 }
 
+/* The pill is clipped by clip-path, so the generic outward focus outline shows only as two side bars.
+   Draw the focus ring inside the pill instead. */
+body.lobby-page .lb-search-input:focus-visible {
+  outline: none;
+}
+
+.lb-search-wrap:focus-within {
+  box-shadow: inset 0 0 0 2px var(--lb-accent), var(--lb-shadow);
+}
+
 .lb-search-input::placeholder {
   color: var(--lb-text-3);
 }
