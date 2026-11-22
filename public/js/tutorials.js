@@ -442,6 +442,15 @@
       { h: '房间设置', p: '房主可以设置题目数量（10/15/20 题）、每题限时（10/15/20 秒）、题库分类（全部、综合常识、世界地理、自然科学、人文历史、动植物与自然、体育竞技、艺术与文化、美食、成语俗语、生活常识、中国文化、动漫影视、心算）、题目难度（混合、简单、普通、困难，每题都标了难度，选一档就只出这一档的题）以及电脑难度。电脑难度越高，答对的概率越高、反应越快，对难题的把握也比低难度的电脑强得多。' },
     ]
   };
+  TUTORIALS_ZH.blackjack = {
+    sections: [
+      { h: '目标', p: '二十一点支持 1～6 人同时对战系统庄家。每位玩家开局拥有 1000 筹码，在设定的局数（5/10/15 局）结束后，筹码最多的玩家获胜；若其他玩家全部破产，最后持有筹码的玩家直接获胜。' },
+      { h: '点数计算', p: '2～10 按牌面点数计算，J/Q/K 均算 10 点，A 可算 1 点或 11 点（不爆牌时优先算 11 点，称为「软牌」，如 A+6 显示为 7/17）。起手两张牌直接凑成 21 点（一张 A 加一张 10 点牌）称为「自然黑杰克」（Blackjack）。' },
+      { h: '下注与发牌', p: '每局开始先进入 20 秒同时下注阶段，可选择 10/25/50/100/200 或全下（超时自动下最小注 10）。随后每位下注玩家发两张明牌，庄家发一张明牌和一张暗牌。若庄家明牌为 A 或 10 点牌且凑成自然黑杰克，立即翻开暗牌并直接结算。' },
+      { h: '玩家行动', p: '按座位顺序轮流操作：①要牌（Hit）：再摸一张牌，超过 21 点即爆牌（Bust）并结束本回合；②停牌（Stand）：保持当前点数；③加倍（Double）：仅限起手两张牌且剩余筹码足够时可用，注码翻倍并只摸一张牌后自动停牌。本规则不含分牌、保险与投降。' },
+      { h: '庄家规则与赔率', p: '所有玩家行动完毕后，庄家翻开暗牌：点数小于 17 点必须要牌，达到 17 点及以上（含软 17，即 A+6=7/17）必须停牌。结算时：玩家爆牌直接输掉赌注；自然黑杰克赢庄家按 3:2 赔付（向下取整，若庄家也是黑杰克则平局退回本金）；普通获胜按 1:1 赔付，点数相同为平局（Push）退还本金。牌靴剩余不足 25% 时自动重新洗牌。' },
+    ]
+  };
 
   var TUTORIALS_EN = {
     tictactoe: {
@@ -882,6 +891,15 @@
       { h: 'Scoring and Streaks', p: 'A wrong or missed answer scores 0. A correct answer scores 500 + round(500 x remaining time fraction), up to 1000 points for an instant answer. Starting from your 3rd consecutive correct answer, you also earn a +100 streak bonus on each correct answer until you miss.' },
       { h: 'Double Points', p: 'The last 3 questions of every match award double base and speed points, giving trailing players a chance to make a comeback.' },
       { h: 'Room Settings', p: 'The host can choose the question count (10, 15 or 20), seconds per question (10, 15 or 20), trivia category (All, General, Geography, Science, History, Nature, Sports, Culture, Food, Idioms, Daily Life, Chinese Culture, Anime and Film or Mental Math), question level (Mixed, Easy, Normal or Hard; every question is rated, and a level only draws questions of that rating) and bot difficulty. Stronger bots answer correctly more often, answer faster when they know the answer, and cope with hard questions far better than weak bots.' },
+    ]
+  };
+  TUTORIALS_EN.blackjack = {
+    sections: [
+      { h: 'Goal', p: 'Blackjack is a casino card game for 1 to 6 players against the house dealer. Everyone starts with 1000 chips. After the chosen number of rounds (5, 10 or 15), the player with the most chips wins, or the last player with chips wins early if everyone else goes broke.' },
+      { h: 'Card Values', p: 'Cards 2 through 10 count at face value, J/Q/K count 10, and Aces count 1 or 11. A hand with an Ace counted as 11 is a soft hand (shown as 7/17). An Ace plus a 10-point card on the initial two-card deal is a natural Blackjack.' },
+      { h: 'Betting and Dealing', p: 'Each round starts with a 20-second simultaneous betting phase: pick 10, 25, 50, 100, 200 or All-in (timeout bets 10 automatically). Every active player receives two face-up cards, and the dealer receives one up-card and one face-down hole card. If the dealer up-card is an Ace or 10-value and the dealer has a natural Blackjack, the hole card is revealed and the round settles immediately.' },
+      { h: 'Player Actions', p: 'Players act in seat order: Hit to draw a card (going over 21 busts and ends your turn), Stand to keep your total, or Double on your first two cards (if you have enough chips) to double your bet, draw exactly one card and stand. There is no split, insurance or surrender.' },
+      { h: 'Dealer and Payouts', p: 'Once all players finish, the dealer reveals the hole card, draws until reaching at least 17, and stands on soft 17. Natural Blackjack pays 3:2 rounded down (or pushes against a dealer Blackjack). Winning hands pay 1:1, ties push and return your bet, and busted hands lose immediately. The multi-deck shoe (1, 2 or 4 decks) reshuffles when fewer than 25% of its cards remain.' },
     ]
   };
 

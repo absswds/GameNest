@@ -32,7 +32,7 @@
     'reversi', 'gomoku', 'chess', 'connect4', 'checkers', 'chinesechess', 'go9', 'hearts', 'battleship',
     'tictactoe', 'numberbomb', 'twentyfour', 'uno', 'doudizhu', 'bigtwo', 'texas', 'liarsbar',
     'exploding-kittens', 'flightchess', 'mahjong-sichuan', 'mahjong-cantonese',
-    'monopoly', 'werewolf', 'sanguo', 'rummikub', 'davinci', '2048', 'snakebattle', 'sudoku', 'sheeptile', 'undercover', 'quizrace', 'paodekuai'
+    'monopoly', 'werewolf', 'sanguo', 'rummikub', 'davinci', '2048', 'snakebattle', 'sudoku', 'sheeptile', 'undercover', 'quizrace', 'paodekuai', 'blackjack'
   ];
 
   // ---- Game name lookup ----
@@ -1344,6 +1344,45 @@
               _t('difficulty_label') + ': ' + qrDiffLbl +
             '</div>';
         }
+      } else if (game === 'blackjack') {
+        optionsEl.style.display = 'block';
+        var bjDecks = [1, 2, 4].indexOf(Number(roomOptions.decks)) >= 0 ? Number(roomOptions.decks) : 2;
+        var bjRounds = [5, 10, 15].indexOf(Number(roomOptions.rounds)) >= 0 ? Number(roomOptions.rounds) : 10;
+        var bjTime = [0, 15, 20, 30].indexOf(Number(roomOptions.turnTime)) >= 0 ? Number(roomOptions.turnTime) : 20;
+        var bjDiff = roomOptions.difficulty || 'normal';
+        var bjSelStyle = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
+        if (isHost) {
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('bj_opt_decks') + ' <select onchange="window._setGameOption(\'decks\', parseInt(this.value))" style="' + bjSelStyle + '">' +
+                [1, 2, 4].map(function(d) { return '<option value="' + d + '"' + (bjDecks === d ? ' selected' : '') + '>' + d + _t('bj_decks_unit') + '</option>'; }).join('') +
+              '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('bj_opt_rounds') + ' <select onchange="window._setGameOption(\'rounds\', parseInt(this.value))" style="' + bjSelStyle + '">' +
+                [5, 10, 15].map(function(r) { return '<option value="' + r + '"' + (bjRounds === r ? ' selected' : '') + '>' + r + _t('bj_rounds_unit') + '</option>'; }).join('') +
+              '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('bj_opt_time') + ' <select onchange="window._setGameOption(\'turnTime\', parseInt(this.value))" style="' + bjSelStyle + '">' +
+                '<option value="0"' + (bjTime === 0 ? ' selected' : '') + '>' + _t('pdk_turn_time_off') + '</option>' +
+                [15, 20, 30].map(function(s) { return '<option value="' + s + '"' + (bjTime === s ? ' selected' : '') + '>' + tf('pdk_turn_time_n', s) + '</option>'; }).join('') +
+              '</select></label>' +
+              '<label style="display:flex;align-items:center;gap:6px;">' + _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="' + bjSelStyle + '">' +
+                '<option value="easy"' + (bjDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
+                '<option value="normal"' + (bjDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
+                '<option value="hard"' + (bjDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
+              '</select></label>' +
+            '</div>';
+        } else {
+          var bjDiffLbl = bjDiff === 'easy' ? _t('difficulty_easy') : bjDiff === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
+          var bjTimeLbl = bjTime === 0 ? _t('pdk_turn_time_off') : tf('pdk_turn_time_n', bjTime);
+          optionsEl.innerHTML =
+            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
+            '<div style="font-size:13px;color:var(--text-muted)">' +
+              _t('bj_opt_decks') + ' ' + bjDecks + _t('bj_decks_unit') + ' · ' +
+              _t('bj_opt_rounds') + ' ' + bjRounds + _t('bj_rounds_unit') + ' · ' +
+              _t('bj_opt_time') + ' ' + bjTimeLbl + ' · ' +
+              _t('difficulty_label') + ': ' + bjDiffLbl +
+            '</div>';
+        }
       } else if (isHost && gameInfo.supportsAI && window._gamesWithDifficulty.indexOf(game) >= 0) {
         // AI difficulty selector only for games whose bots actually read it
         optionsEl.style.display = 'block';
@@ -1578,7 +1617,7 @@
       else if (state && state.currentPlayer >= 0) st.textContent = _t('opponent_turn');
       else if (state) st.textContent = _t('realtime_race');
       // These renderers draw their own whose-turn header; the generic line would be wrong for them.
-      if (game === 'sanguo' || game === 'werewolf' || game === 'undercover' || game === 'quizrace') st.style.display = 'none';
+      if (game === 'sanguo' || game === 'werewolf' || game === 'undercover' || game === 'quizrace' || game === 'blackjack') st.style.display = 'none';
     }
   }
 
@@ -1780,6 +1819,22 @@
     return h + '</tbody></table></div>';
   }
 
+  // 二十一点结算：排名 | 玩家 | 最终筹码 | 净胜筹码（沿用 pdk-score 样式）
+  function bjResultTable() {
+    var chips = Array.isArray(state.chips) ? state.chips : [];
+    var order = chips.map(function(_, i) { return i; }).sort(function(a, b) { return (chips[b] || 0) - (chips[a] || 0) || a - b; });
+    var h = '<div class="pdk-score-wrap"><table class="pdk-score"><thead><tr><th>' + _t('bj_tbl_rank') + '</th><th class="pdk-name">' + _t('bj_tbl_player') + '</th><th class="pdk-num">' + _t('bj_tbl_chips') + '</th><th class="pdk-num">' + _t('bj_tbl_net') + '</th></tr></thead><tbody>';
+    order.forEach(function(i, rank) {
+      var nm = i === playerIndex ? _t('you') : window.getPlayerName(i);
+      var c = chips[i] || 0;
+      var net = c - 1000;
+      var netCls = net < 0 ? 'neg' : net > 0 ? 'pos' : '';
+      var netStr = net > 0 ? '+$' + net : (net < 0 ? '-$' + Math.abs(net) : '±$0');
+      h += '<tr' + (i === playerIndex ? ' class="me"' : '') + '><td>' + (rank === 0 ? '🏆' : rank + 1) + '</td><td class="pdk-name">' + esc(nm) + '</td><td class="pdk-num pdk-total">$' + c + '</td><td class="pdk-num ' + netCls + '">' + netStr + '</td></tr>';
+    });
+    return h + '</tbody></table></div>';
+  }
+
   function showResult(winner) {
     if (game === 'mahjong-sichuan' || game === 'mahjong-cantonese') return;
     const overlay = el.overlay;
@@ -1848,6 +1903,10 @@
       isWin = (winner === playerIndex);
       txt = isWin ? _t('you_win') : _t('you_lose');
       subHtml = qrResultTable();
+    } else if (game === 'blackjack' && state && Array.isArray(state.chips)) {
+      isWin = (winner === playerIndex);
+      txt = isWin ? _t('you_win') : _t('you_lose');
+      subHtml = bjResultTable();
     } else {
       isWin = (winner === playerIndex);
       txt = isWin ? _t('you_win') : _t('you_lose'); sub = '';

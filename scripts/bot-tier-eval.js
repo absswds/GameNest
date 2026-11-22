@@ -106,6 +106,7 @@ const G = {
   doudizhu: { n: 3, opts: { totalRounds: 1 }, control: true },
   bigtwo: { n: 4 },
   paodekuai: { n: 3, opts: { rounds: 1 } },
+  blackjack: { n: 4, kind: 'phase', opts: { rounds: 5 }, metric: (s, i) => s.chips[i] },
   texas: { n: 4, kind: 'texas', hands: 30 },
   liarsbar: { n: 4 },
   'exploding-kittens': { n: 4 },

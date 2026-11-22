@@ -397,4 +397,12 @@ module.exports = {
   'qr_invalid_player': 'Invalid player seat',
   'qr_invalid_option': 'Please choose a valid option (0-3)',
   'qr_already_answered': 'You have already answered this question',
+  // Blackjack (bj_)
+  'bj_wrong_phase': 'Cannot do that in the current phase',
+  'bj_out_of_chips': 'You have no chips left',
+  'bj_already_bet': 'You have already placed a bet this round',
+  'bj_invalid_bet': 'Invalid bet amount',
+  'bj_not_enough_chips': 'Not enough chips',
+  'bj_cannot_double': 'You can only double down on your first two cards',
+  'bj_invalid_action': 'Invalid action',
 };

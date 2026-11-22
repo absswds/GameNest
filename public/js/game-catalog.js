@@ -491,6 +491,20 @@
     maxPlayers: 8,
     cover: '/assets/game-covers/quizrace.webp',
   };
+
+  zhCatalog.blackjack = {
+    name: '二十一点',
+    icon: '🃏',
+    subtitle: '迎战庄家，逼近 21 点',
+    description: '经典赌场纸牌对战，支持单人挑战庄家或多人同台比拼筹码。',
+    players: '1-6人',
+    duration: '约10分钟',
+    category: '牌桌竞技',
+    tags: ['筹码', '博弈', '21点'],
+    featured: false,
+    supportsAI: true,
+    maxPlayers: 6,
+  };
   var catalog = zhCatalog;
 
   Object.keys(catalog).forEach(function(id) {
@@ -534,7 +548,7 @@
     'sanguo',
     'snakebattle',
     'battleship',
-    'undercover', 'paodekuai', 'quizrace'
+    'undercover', 'paodekuai', 'quizrace', 'blackjack'
   ];
 
   function getLangPack() {
@@ -554,7 +568,7 @@
   }
 
   // Games that can be started and played solo (no AI / opponent needed). Read by the lobby player filter and room-client.js.
-  window.SOLO_GAMES = ['2048', 'sudoku', 'minesweeper', 'sheeptile', 'numberbomb', 'twentyfour', 'suikabattle', 'drawguess', 'quizrace'];
+  window.SOLO_GAMES = ['2048', 'sudoku', 'minesweeper', 'sheeptile', 'numberbomb', 'twentyfour', 'suikabattle', 'drawguess', 'quizrace', 'blackjack'];
 
   window.gameCatalog = {
     byId: function(id) {

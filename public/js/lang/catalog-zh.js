@@ -336,4 +336,13 @@
     category: '牌桌竞技',
     tags: ['跑牌', '三人局'],
   };
+  window.__LANG.zh.catalog.blackjack = {
+    name: '二十一点',
+    subtitle: '迎战庄家，逼近 21 点',
+    description: '经典赌场纸牌对战，支持单人挑战庄家或多人同台比拼筹码。',
+    players: '1-6人',
+    duration: '约10分钟',
+    category: '牌桌竞技',
+    tags: ['筹码', '博弈', '21点'],
+  };
 })();
