@@ -397,4 +397,12 @@ module.exports = {
   'qr_invalid_player': '无效的玩家座位',
   'qr_invalid_option': '请选择有效的选项（A–D）',
   'qr_already_answered': '本题你已经作答过了',
+  // 二十一点 (bj_)
+  'bj_wrong_phase': '当前阶段不能进行该操作',
+  'bj_out_of_chips': '你已经没有筹码了',
+  'bj_already_bet': '本局你已经下过注了',
+  'bj_invalid_bet': '无效的下注金额',
+  'bj_not_enough_chips': '筹码不足',
+  'bj_cannot_double': '只能在起手两张牌时加倍',
+  'bj_invalid_action': '无效的操作',
 };

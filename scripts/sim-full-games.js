@@ -65,6 +65,7 @@ const CONFIG = {
   '2048': { sizes: [1, 2] },
   battleship: { sizes: [2] },
   bigtwo: { sizes: [4, 3] },
+  blackjack: { sizes: [4, 1], options: [{ rounds: 5 }] },
   checkers: { sizes: [2] },
   chess: { sizes: [2] },
   chinesechess: { sizes: [2] },

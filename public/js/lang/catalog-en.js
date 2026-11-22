@@ -336,4 +336,13 @@
     category: 'Cards & Tiles',
     tags: ['Climbing', '3 players'],
   };
+  window.__LANG.en.catalog.blackjack = {
+    name: 'Blackjack',
+    subtitle: 'Beat the dealer without going over 21',
+    description: 'Classic casino table game for 1-6 players with simultaneous betting, double down, and 3:2 natural blackjack.',
+    players: '1-6 players',
+    duration: '~10 min',
+    category: 'Cards & Tiles',
+    tags: ['Chips', 'Betting', '21'],
+  };
 })();
