@@ -84,13 +84,16 @@
 
     <section class="lb-filters" aria-label="游戏筛选">
       <div class="lb-chips lb-cat-chips" id="categoryChips" role="tablist"></div>
-      <div class="lb-chips lb-count-chips" id="countChips"></div>
     </section>
 
     <section class="lb-browse" aria-labelledby="allGamesHeading">
       <div class="lb-sec">
         <h2 id="allGamesHeading">全部游戏</h2>
         <span class="lb-sec-count num" id="gameCount"></span>
+        <div class="lb-count-wrap">
+          <div class="lb-count-seg" id="countChips" role="group" aria-label="人数"></div>
+          <span class="lb-count-unit" id="countUnit">人</span>
+        </div>
       </div>
       <div class="lb-grid" id="gameGrid" data-boot="1"></div>
       <p class="lb-empty" id="emptyState" style="display:none">没有找到匹配的游戏，换个关键词试试。</p>
@@ -393,7 +396,7 @@ function selectOrCreate(gameId) {
   if (wasSelected) createRoom();
 }
 
-// C1: elastic indicator pill sliding between category chips
+// C1: elastic indicator underline sliding between category tabs
 var catIndControl = (function() {
   var list = document.getElementById('categoryChips');
   if (!list) return { place: function() {}, moveTo: function() {} };
@@ -401,18 +404,14 @@ var catIndControl = (function() {
   function readPos() {
     return {
       x: parseFloat(list.style.getPropertyValue('--x')) || 0,
-      y: parseFloat(list.style.getPropertyValue('--y')) || 0,
-      w: parseFloat(list.style.getPropertyValue('--w')) || 0,
-      h: parseFloat(list.style.getPropertyValue('--h')) || 0
+      w: parseFloat(list.style.getPropertyValue('--w')) || 0
     };
   }
 
   function place(btn) {
     if (!btn) return;
     list.style.setProperty('--x', btn.offsetLeft + 'px');
-    list.style.setProperty('--y', btn.offsetTop + 'px');
     list.style.setProperty('--w', btn.offsetWidth + 'px');
-    list.style.setProperty('--h', btn.offsetHeight + 'px');
   }
 
   function current() {
@@ -421,21 +420,14 @@ var catIndControl = (function() {
 
   function stretchMove(ind, from, to) {
     if (!ind || reduceMotion.matches) return;
-    if (from.w <= 0 || (from.x === to.x && from.y === to.y && from.w === to.w)) return;
-    if (Math.abs(from.y - to.y) > 2) {
-      ind.animate([
-        { transform: 'translate(' + from.x + 'px, ' + from.y + 'px)', width: from.w + 'px', height: from.h + 'px' },
-        { transform: 'translate(' + to.x + 'px, ' + to.y + 'px)', width: to.w + 'px', height: to.h + 'px' }
-      ], { duration: 240, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
-      return;
-    }
+    if (from.w <= 0 || (from.x === to.x && from.w === to.w)) return;
     var right = to.x > from.x, lead = 0.9, trail = 0.15;
     var L = from.x + (to.x - from.x) * (right ? trail : lead);
     var R = from.x + from.w + (to.x + to.w - from.x - from.w) * (right ? lead : trail);
     ind.animate([
-      { transform: 'translate(' + from.x + 'px, ' + from.y + 'px)', width: from.w + 'px', height: from.h + 'px' },
-      { transform: 'translate(' + L + 'px, ' + to.y + 'px)', width: Math.max(0, R - L) + 'px', height: to.h + 'px', offset: 0.4 },
-      { transform: 'translate(' + to.x + 'px, ' + to.y + 'px)', width: to.w + 'px', height: to.h + 'px' }
+      { transform: 'translateX(' + from.x + 'px)', width: from.w + 'px' },
+      { transform: 'translateX(' + L + 'px)', width: Math.max(0, R - L) + 'px', offset: 0.4 },
+      { transform: 'translateX(' + to.x + 'px)', width: to.w + 'px' }
     ], { duration: 360, easing: 'cubic-bezier(0.33, 1, 0.68, 1)' });
   }
 
@@ -501,10 +493,18 @@ function syncCategorySelection(animate) {
 function renderCountChips() {
   const root = document.getElementById('countChips');
   if (!root) return;
+  if (typeof _t === 'function') {
+    root.setAttribute('aria-label', _t('players_filter'));
+  }
+  const unitEl = document.getElementById('countUnit');
+  if (unitEl && typeof _t === 'function') {
+    unitEl.textContent = _t('players_unit');
+  }
   root.innerHTML = [0, 1, 2, 3, 4, 5, 6].map(function(n) {
-    const text = n === 0 ? _t('players_any') : n === 6 ? _t('players_n_plus').replace('%s', n) : _t('players_n').replace('%s', n);
+    const aria = n === 0 ? _t('players_any') : n === 6 ? _t('players_n_plus').replace('%s', n) : _t('players_n').replace('%s', n);
+    const label = n === 0 ? _t('players_any') : n === 6 ? '6+' : String(n);
     const on = n === activeCount;
-    return '<button type="button" class="lb-chip lb-count-chip' + (on ? ' selected' : '') + '" data-count="' + n + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + escapeHtml(text) + '</button>';
+    return '<button type="button" class="lb-count-chip' + (on ? ' selected' : '') + '" data-count="' + n + '" aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + escapeHtml(aria) + '">' + escapeHtml(label) + '</button>';
   }).join('');
   root.querySelectorAll('.lb-count-chip').forEach(function(chip) {
     chip.addEventListener('click', function() {

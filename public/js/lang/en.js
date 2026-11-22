@@ -457,6 +457,7 @@
     'players_any': 'Any',
     'players_n': '%s',
     'players_n_plus': '%s+',
+    'players_unit': 'players',
     'wifi_note': 'Make sure all devices are on the same WiFi or hotspot.',
     'mobile_data_only_msg': 'You\'re on mobile data. Multiplayer is unavailable. Please connect to Wi-Fi or a hotspot.',
     'mobile_data_lobby_title': 'Offline Solo Mode',

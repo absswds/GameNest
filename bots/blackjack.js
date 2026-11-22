@@ -4,10 +4,12 @@
 const { handValue, cardPointValue, BET_CHOICES } = require('../games/blackjack');
 const { pickFor } = require('./lib/difficulty');
 
+// Blackjack is too luck-driven to separate tiers (bot-tier-eval --calibrate 2026-11-22: hard
+// beats a random bettor only 52.5%), so these values only make easy bet and draw more carelessly.
 const PICK = {
   temp: { easy: 60, normal: 15 },
   maxLoss: { easy: 250, normal: 40 }
-}; // Provisional
+};
 
 function chooseBetMove(state, me) {
   const chips = (state.chips && state.chips[me]) || 0;

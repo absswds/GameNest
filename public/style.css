@@ -2302,10 +2302,8 @@ body.lobby-page .wifi-note {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Filter Chips (C1 sliding category indicator pill + player count row) */
+/* Filter Tabs (C1 sliding category underline) */
 .lb-filters {
-  display: grid;
-  gap: 8px;
   min-width: 0;
 }
 
@@ -2313,77 +2311,68 @@ body.lobby-page .wifi-note {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 20px;
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
-  min-height: 48px;
-  padding: 2px 0;
+  min-height: 44px;
+  padding: 0;
   min-width: 0;
+  box-shadow: inset 0 -1px 0 var(--lb-border);
 }
 
 .lb-chips::-webkit-scrollbar {
   display: none;
 }
 
-.lb-chip {
+.lb-cat-chip {
   position: relative;
   z-index: 2;
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
   min-height: 44px;
-  padding: 0 15px;
+  padding: 10px 4px;
   border: 0;
-  border-radius: var(--lb-radius-chip);
-  background: var(--lb-surface);
-  box-shadow: var(--lb-chip-ring);
-  color: var(--lb-text);
-  font-size: 13px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--lb-text-2);
+  font-size: 15px;
   font-weight: 600;
+  line-height: 24px;
   font-family: inherit;
   white-space: nowrap;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition:
-    color 140ms var(--lb-ease-out),
-    background var(--lb-dur-fast) var(--lb-ease-out),
-    transform var(--lb-dur-press) var(--lb-ease-out);
+  transition: color 140ms var(--lb-ease-out);
 }
 
-.lb-chip:active {
-  transform: scale(0.96);
+.lb-cat-chip:focus-visible,
+.lb-count-chip:focus-visible {
+  outline-offset: -2px;
 }
 
 .lb-chip-ind {
   position: absolute;
-  top: 0;
+  top: auto;
+  bottom: 0;
   left: 0;
-  z-index: 1;
+  z-index: 3;
   width: var(--w, 0px);
-  height: var(--h, 44px);
-  border-radius: var(--lb-radius-chip);
+  height: 3px;
+  border-radius: 3px;
   background: var(--lb-accent);
   pointer-events: none;
-  transform: translate(var(--x, 0px), var(--y, 0px));
+  transform: translateX(var(--x, 0px));
 }
 
 .lb-cat-chip.selected {
-  background: transparent;
-  box-shadow: none;
-  color: var(--lb-on-accent);
-  transition: color 140ms var(--lb-ease-out) 60ms;
+  color: var(--lb-text);
+  font-weight: 700;
 }
 
-.lb-count-chip {
-  color: var(--lb-text-2);
-}
-
-.lb-count-chip.selected {
-  background: var(--lb-accent);
-  box-shadow: none;
-  color: var(--lb-on-accent);
-}
-
-/* Section Header & Cover Grid */
+/* Section Header, Player-Count Segmented Control & Cover Grid */
 .lb-browse {
   min-width: 0;
 }
@@ -2391,8 +2380,8 @@ body.lobby-page .wifi-note {
 .lb-sec {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 10px 8px;
   margin-bottom: 12px;
 }
 
@@ -2408,6 +2397,92 @@ body.lobby-page .wifi-note {
   font-size: 13px;
   font-weight: 600;
   color: var(--lb-text-2);
+}
+
+.lb-count-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  align-self: center;
+  min-width: 0;
+}
+
+.lb-count-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  min-height: 38px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--lb-surface);
+  box-shadow: var(--lb-chip-ring);
+}
+
+.lb-count-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  min-width: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lb-text-2);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color var(--lb-dur-fast) var(--lb-ease-out),
+    background var(--lb-dur-fast) var(--lb-ease-out);
+}
+
+.lb-count-chip.selected {
+  background: var(--lb-accent);
+  color: var(--lb-on-accent);
+  font-weight: 700;
+}
+
+.lb-count-unit {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lb-text-2);
+  white-space: nowrap;
+}
+
+/* Reserve the filled width so the right-aligned control does not slide when renderCountChips() fills it. */
+@media (min-width: 600px) {
+  .lb-count-seg {
+    min-width: 266px;
+  }
+}
+
+@media (max-width: 599px) {
+  .lb-count-wrap {
+    flex: 1 0 100%;
+    margin-left: 0;
+  }
+
+  .lb-count-seg {
+    display: flex;
+    width: 100%;
+  }
+
+  .lb-count-chip {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 4px;
+  }
+
+  .lb-count-unit {
+    display: none;
+  }
 }
 
 .lb-grid {
@@ -2650,11 +2725,6 @@ body.lobby-page .toast {
     gap: 20px;
   }
 
-  .lb-chips {
-    flex-wrap: wrap;
-    overflow: visible;
-  }
-
   .lb-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
@@ -2711,7 +2781,11 @@ body.lobby-page .toast {
     transform: translateY(-2px);
   }
 
-  .lb-chip:not(.selected):hover,
+  .lb-cat-chip:not(.selected):hover,
+  .lb-count-chip:not(.selected):hover {
+    color: var(--lb-text);
+  }
+
   .lb-last-chip:hover {
     background: var(--lb-surface-2);
   }

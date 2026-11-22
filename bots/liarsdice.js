@@ -1,7 +1,8 @@
 const { pickFor } = require('./lib/difficulty');
 
-// Provisional: tune after running scripts/bot-tier-eval.js
-const PICK = { normalTemp: 4, easyLoss: 18, easyK: 3.0 };
+// Calibrated 2026-11-22 with scripts/bot-tier-eval.js liarsdice --calibrate --dup:
+// hard beats temp 13 about 68% and temp 45 about 98% of 40 games.
+const PICK = { temp: { easy: 45, normal: 13 }, lossK: { easy: 4, normal: 4 } };
 
 const FACE_ORDER = [2, 3, 4, 5, 6, 1];
 

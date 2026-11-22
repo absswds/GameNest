@@ -457,6 +457,7 @@
     'players_any': '不限',
     'players_n': '%s人',
     'players_n_plus': '%s人以上',
+    'players_unit': '人',
     'wifi_note': '确保所有设备连接到同一个 Wi-Fi 或手机热点。',
     'mobile_data_only_msg': '当前使用流量上网，联机功能不可用。请连接 Wi-Fi 或手机热点。',
     'mobile_data_lobby_title': '离线单机模式',
