@@ -8,14 +8,14 @@ test('resume room banner keeps game name and room id after i18n refresh', () => 
   const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
   assert.ok(/function renderResumeBanner\(\)/.test(html), 'resume banner renderer should exist');
   assert.ok(
-    /renderResumeBanner\(\);[\s\S]*\/\/ Title tag/.test(html),
+    /renderLastGame\(\);[\s\S]*renderResumeBanner\(\);[\s\S]*renderLastGame\(\);[\s\S]*<\/script>/.test(html),
     'i18n refresh should rerender saved game and room details instead of overwriting them'
   );
 });
 
 test('resume room banner does not contain mojibake text', () => {
   const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
-  const match = html.match(/<section class="hero-panel" id="resumeSection"[\s\S]*?<\/section>/);
+  const match = html.match(/<section class="lb-resume-wrap" id="resumeSection"[\s\S]*?<\/section>/);
   assert.ok(match, 'resumeSection should exist');
   assert.equal(/[馃鈿鉁]/.test(match[0]), false, 'resume banner should avoid mojibake glyphs');
 });
@@ -43,12 +43,12 @@ test('seat swap ready state logic does not toggle both seats', () => {
 
 test('lobby resume banner keeps the primary button compact', () => {
   const css = fs.readFileSync(path.join(root, 'public', 'style.css'), 'utf8');
-  const start = css.indexOf('.lobby-page .room-banner {');
-  const end = css.indexOf('.lobby-page .wifi-note {', start);
-  assert.ok(start >= 0 && end > start, 'lobby room banner block should exist');
+  const start = css.indexOf('.lb-resume {');
+  const end = css.indexOf('.lb-resume-btn:active', start);
+  assert.ok(start >= 0 && end > start, 'lobby resume banner block should exist');
   const block = css.slice(start, end);
-  assert.ok(/grid-template-columns:\s*auto minmax\(0,\s*1fr\) auto;/.test(block));
-  assert.ok(/\.lobby-page \.room-banner-btn\s*\{[\s\S]*width:\s*auto;/.test(block));
+  assert.ok(/\.lb-resume-body\s*\{[^}]*flex:\s*1;[^}]*min-width:\s*0;/.test(block));
+  assert.ok(/\.lb-resume-btn\s*\{[^}]*flex-shrink:\s*0;[^}]*white-space:\s*nowrap;/.test(block));
 });
 
 test('truthdare catalog entry uses a real cover image', () => {
