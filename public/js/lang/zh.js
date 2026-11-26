@@ -1695,6 +1695,14 @@
     'bj_tbl_chips': '最终筹码',
     'bj_tbl_net': '净胜筹码',
 
+    // ---- UI Components (v2.4) ----
+    'ui_half_pot': '1/2 底池',
+    'ui_pot': '底池',
+    'ui_menu': '菜单',
+    'ui_sheet_close': '关闭',
+    'ui_sound_on': '音效：开',
+    'ui_sound_off': '音效：关',
+
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'zh';
   window._t = function(key) {

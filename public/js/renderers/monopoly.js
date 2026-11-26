@@ -763,19 +763,37 @@
     var bodyContainer = document.createElement('div');
     box.appendChild(bodyContainer);
 
+    var offerSlider = null, requestSlider = null;
+
     function renderTradeColumns() {
       bodyContainer.innerHTML = '';
+      offerSlider = null;
+      requestSlider = null;
       var targetIdx = parseInt(select.value, 10);
       var grid = document.createElement('div');
-      grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:14px;';
+      grid.className = 'mono-trade-grid';
 
       // Left Column: You Offer
       var leftCol = document.createElement('div');
       leftCol.style.cssText = 'border:1px solid #e0d5c1;border-radius:8px;padding:10px;background:#fcf9f2;';
-      leftCol.innerHTML = '<div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#8B5A2B;">' + _t('mp_trade_my_offer') + '</div>' +
-                          '<div style="margin-bottom:8px;"><label style="font-size:12px;">' + _t('mp_trade_cash') + ': $</label>' +
-                          '<input id="trade-offer-cash" type="number" min="0" max="' + (st.cash[pi] || 0) + '" value="0" style="width:70px;padding:2px 4px;border:1px solid #ccc;border-radius:4px;font-size:12px;" /></div>' +
-                          '<div style="font-size:12px;font-weight:600;margin-bottom:4px;">' + _t('mp_trade_props') + ':</div>';
+      leftCol.innerHTML = '<div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#8B5A2B;">' + _t('mp_trade_my_offer') + '</div>';
+      var offerCashWrap = document.createElement('div');
+      offerCashWrap.style.marginBottom = '8px';
+      if (window.GNUI && window.GNUI.sliderSteps) {
+        offerSlider = window.GNUI.sliderSteps({
+          label: _t('mp_trade_cash'),
+          min: 0,
+          max: Math.max(0, st.cash[pi] || 0),
+          step: 50,
+          value: 0
+        });
+        offerCashWrap.appendChild(offerSlider);
+      }
+      leftCol.appendChild(offerCashWrap);
+      var leftPropsLbl = document.createElement('div');
+      leftPropsLbl.style.cssText = 'font-size:12px;font-weight:600;margin-bottom:4px;';
+      leftPropsLbl.textContent = _t('mp_trade_props') + ':';
+      leftCol.appendChild(leftPropsLbl);
       var leftProps = document.createElement('div');
       leftProps.style.cssText = 'display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto;font-size:12px;';
 
@@ -800,10 +818,24 @@
       // Right Column: You Request
       var rightCol = document.createElement('div');
       rightCol.style.cssText = 'border:1px solid #e0d5c1;border-radius:8px;padding:10px;background:#fcf9f2;';
-      rightCol.innerHTML = '<div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#2980b9;">' + _t('mp_trade_target_offer') + '</div>' +
-                           '<div style="margin-bottom:8px;"><label style="font-size:12px;">' + _t('mp_trade_cash') + ': $</label>' +
-                           '<input id="trade-request-cash" type="number" min="0" max="' + (st.cash[targetIdx] || 0) + '" value="0" style="width:70px;padding:2px 4px;border:1px solid #ccc;border-radius:4px;font-size:12px;" /></div>' +
-                           '<div style="font-size:12px;font-weight:600;margin-bottom:4px;">' + _t('mp_trade_props') + ':</div>';
+      rightCol.innerHTML = '<div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#2980b9;">' + _t('mp_trade_target_offer') + '</div>';
+      var requestCashWrap = document.createElement('div');
+      requestCashWrap.style.marginBottom = '8px';
+      if (window.GNUI && window.GNUI.sliderSteps) {
+        requestSlider = window.GNUI.sliderSteps({
+          label: _t('mp_trade_cash'),
+          min: 0,
+          max: Math.max(0, st.cash[targetIdx] || 0),
+          step: 50,
+          value: 0
+        });
+        requestCashWrap.appendChild(requestSlider);
+      }
+      rightCol.appendChild(requestCashWrap);
+      var rightPropsLbl = document.createElement('div');
+      rightPropsLbl.style.cssText = 'font-size:12px;font-weight:600;margin-bottom:4px;';
+      rightPropsLbl.textContent = _t('mp_trade_props') + ':';
+      rightCol.appendChild(rightPropsLbl);
       var rightProps = document.createElement('div');
       rightProps.style.cssText = 'display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto;font-size:12px;';
 
@@ -835,8 +867,8 @@
     footer.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;margin-top:8px;';
     addBtn(footer, _t('mp_trade_send'), 'btn-primary', function() {
       var targetIdx = parseInt(select.value, 10);
-      var offerCash = parseInt(document.getElementById('trade-offer-cash').value, 10) || 0;
-      var requestCash = parseInt(document.getElementById('trade-request-cash').value, 10) || 0;
+      var offerCash = offerSlider ? offerSlider.getValue() : 0;
+      var requestCash = requestSlider ? requestSlider.getValue() : 0;
 
       var offerProps = [];
       document.querySelectorAll('.trade-offer-prop:checked').forEach(function(el) {

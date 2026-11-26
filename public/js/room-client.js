@@ -2,7 +2,7 @@
 (function() {
   const el = {};
   function cacheElements() {
-    ['notifyBar','status','overlay','boardArea','waitingRoom','waitingSlots','waitingStatus','playerBar','resultOverlay','resultText','resultSub','gameStage','gameActions','profileEdit','emojiRow','avatarDrawer','readyBtn','startGameBtn','addBotBtn','gameOptions','seatSwapModal','seatSwapGrid','seatSwapHint','nameInput','avatarEmoji','qrImage','qrRoomCode','roomBadge','muteBtn','shareLinkBtn'].forEach(function(id) {
+    ['notifyBar','status','overlay','boardArea','waitingRoom','waitingSlots','waitingStatus','playerBar','resultOverlay','resultText','resultSub','gameStage','gameActions','profileEdit','emojiRow','avatarDrawer','readyBtn','startGameBtn','addBotBtn','gameOptions','seatSwapModal','seatSwapGrid','seatSwapHint','nameInput','avatarEmoji','qrImage','qrRoomCode','roomBadge','muteBtn','gameMenuBtn','shareLinkBtn'].forEach(function(id) {
       el[id] = document.getElementById(id);
     });
   }
@@ -224,6 +224,7 @@
     }
     var restartBtns = document.querySelectorAll('#gameActions .btn-outline');
     if (restartBtns.length > 0) restartBtns[0].textContent = _t('restart');
+    if (el.gameMenuBtn) el.gameMenuBtn.setAttribute('aria-label', _t('ui_menu'));
     document.title = gameInfo ? (gameInfo.name || 'GameNest') : 'GameNest';
   }
   i18nStatic();
@@ -519,6 +520,66 @@
     });
   }
 
+  var gameMenuSheet = null;
+  if (el.gameMenuBtn && window.GNUI && window.GNUI.sheet) {
+    gameMenuSheet = window.GNUI.sheet({
+      id: 'gameMenuSheet',
+      title: _t('ui_menu'),
+      onOpen: function(sheet) {
+        var menu = document.createElement('div');
+        menu.className = 'ui-sheet-menu';
+
+        function addItem(label, onClick, isDanger) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'ui-sheet-item' + (isDanger ? ' is-danger' : '');
+          btn.textContent = label;
+          btn.addEventListener('click', function() {
+            onClick(btn);
+          });
+          menu.appendChild(btn);
+          return btn;
+        }
+
+        addItem(_t('view_rules'), function() {
+          sheet.close();
+          var g = (window._effectiveGameKey ? window._effectiveGameKey() : null) || game;
+          if (typeof showGameTutorial === 'function') showGameTutorial(g);
+        });
+
+        addItem(muted ? _t('ui_sound_off') : _t('ui_sound_on'), function(btn) {
+          muted = !muted;
+          try { localStorage.setItem('gn_muted', muted ? '1' : '0'); } catch (e) {}
+          renderMuteBtn();
+          btn.textContent = muted ? _t('ui_sound_off') : _t('ui_sound_on');
+        });
+
+        if (roomPhase === 'playing') {
+          addItem(_t('restart'), function() {
+            sheet.close();
+            window.doRestart();
+          });
+          if (isHost) {
+            addItem(_t('return_to_room'), function() {
+              sheet.close();
+              window.doReturnToRoom();
+            });
+          }
+        }
+
+        addItem(_t('back_to_lobby'), function() {
+          sheet.close();
+          window.doLeaveRoom();
+        }, true);
+
+        sheet.setContent(menu);
+      }
+    });
+    el.gameMenuBtn.addEventListener('click', function() {
+      gameMenuSheet.open();
+    });
+  }
+
   // AudioContext starts suspended: create/resume it inside a user gesture.
   let audioCtx = null;
   document.addEventListener('pointerdown', function() {
@@ -656,6 +717,33 @@
     el.status.style.display = 'none';
     el.gameActions.style.display = 'none';
     el.overlay.style.display = 'none';
+  }
+
+  function optSegRow(label, key, options, currentVal) {
+    var cleanLabel = String(label || '').replace(/[:：]\s*$/, '');
+    var row = document.createElement('div');
+    row.className = 'ui-opt-row';
+    var lbl = document.createElement('div');
+    lbl.className = 'ui-opt-label';
+    lbl.textContent = cleanLabel;
+    row.appendChild(lbl);
+    if (window.GNUI && window.GNUI.segmented) {
+      row.appendChild(window.GNUI.segmented({
+        label: cleanLabel,
+        options: options,
+        value: currentVal,
+        onChange: function(v) { window._setGameOption(key, v); }
+      }));
+    }
+    return row;
+  }
+
+  function difficultyOpts() {
+    return [
+      { value: 'easy', label: _t('difficulty_easy') },
+      { value: 'normal', label: _t('difficulty_normal') },
+      { value: 'hard', label: _t('difficulty_hard') }
+    ];
   }
 
   // ---- Waiting Room ----
@@ -822,26 +910,13 @@
         optionsEl.style.display = 'block';
         var rt = roomOptions.roundTime || 0;
         var mr = roomOptions.maxRounds || 5;
-        var opts = '';
-        [0, 30, 60, 90, 120].forEach(function(t) {
-          opts += '<option value="' + t + '"' + (rt === t ? ' selected' : '') + '>' + (t === 0 ? _t('unlimited') : t + _t('seconds')) + '</option>';
-        });
-        var mrOpts = '';
-        [3, 5, 7, 10].forEach(function(n) {
-          mrOpts += '<option value="' + n + '"' + (mr === n ? ' selected' : '') + '>' + n + _t('rounds') + '</option>';
-        });
-        optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-          '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;margin-bottom:6px;">' +
-            _t('round_time_label') + ': <select id="optRoundTime" onchange="window._setGameOption(\'roundTime\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-              opts +
-            '</select>' +
-          '</label>' +
-          '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">' +
-            _t('rc_win_rounds_label') + ' <select id="optMaxRounds" onchange="window._setGameOption(\'maxRounds\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-              mrOpts +
-            '</select>' +
-          '</label>';
+        optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+        optionsEl.appendChild(optSegRow(_t('round_time_label'), 'roundTime', [0, 30, 60, 90, 120].map(function(t) {
+          return { value: t, label: t === 0 ? _t('unlimited') : t + _t('seconds') };
+        }), rt));
+        optionsEl.appendChild(optSegRow(_t('rc_win_rounds_label'), 'maxRounds', [3, 5, 7, 10].map(function(n) {
+          return { value: n, label: n + _t('rounds') };
+        }), mr));
       } else if (game === 'twentyfour') {
         optionsEl.style.display = 'block';
         var rt2 = roomOptions.roundTime || 0;
@@ -883,55 +958,26 @@
         optionsEl.style.display = 'block';
         var bm = roomOptions.bidMode || 'rob';
         var fc = roomOptions.firstCaller || 'random';
-        var pt = roomOptions.playTimeLimit || 20;
-        var tr = roomOptions.totalRounds || 3;
+        var pt = Number(roomOptions.playTimeLimit) || 20;
+        var tr = Number(roomOptions.totalRounds) || 3;
         if (isHost) {
           var timeOpts = [10, 20, 60, 300];
           var roundOpts = [3, 6, 9, 12];
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">' + _t('game_settings') + '</div>' +
-            // Row 1: 叫地主方式
-            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;margin-bottom:10px;font-size:13px;">' +
-              '<div style="font-weight:600;padding-top:4px;">' + _t('ddz_bid_mode') + '</div>' +
-              '<div style="display:flex;gap:16px;">' +
-                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
-                  '<input type="radio" name="ddzBidMode" value="rob"' + (bm === 'rob' ? ' checked' : '') + ' onchange="window._setGameOption(\'bidMode\',this.value)">' + _t('ddz_bid_mode_rob') + '</label>' +
-                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
-                  '<input type="radio" name="ddzBidMode" value="score"' + (bm === 'score' ? ' checked' : '') + ' onchange="window._setGameOption(\'bidMode\',this.value)">' + _t('ddz_bid_mode_score') + '</label>' +
-              '</div>' +
-            '</div>' +
-            // Row 2: 先叫规则
-            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;margin-bottom:10px;font-size:13px;">' +
-              '<div style="font-weight:600;padding-top:4px;">' + _t('ddz_first_caller') + '</div>' +
-              '<div style="display:flex;gap:16px;">' +
-                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
-                  '<input type="radio" name="ddzFirstCaller" value="random"' + (fc === 'random' ? ' checked' : '') + ' onchange="window._setGameOption(\'firstCaller\',this.value)">' + _t('ddz_first_caller_random') + '</label>' +
-                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
-                  '<input type="radio" name="ddzFirstCaller" value="winner"' + (fc === 'winner' ? ' checked' : '') + ' onchange="window._setGameOption(\'firstCaller\',this.value)">' + _t('ddz_first_caller_winner') + '</label>' +
-              '</div>' +
-            '</div>' +
-            // Row 4: 出牌时长
-            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;margin-bottom:10px;font-size:13px;">' +
-              '<div style="font-weight:600;padding-top:4px;">' + _t('ddz_play_time') + '</div>' +
-              '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-                timeOpts.map(function(t) {
-                  return '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;">' +
-                    '<input type="radio" name="ddzPlayTime" value="' + t + '"' + (pt === t ? ' checked' : '') + ' onchange="window._setGameOption(\'playTimeLimit\',' + t + ')">' +
-                    _t('ddz_play_time_' + t) + '</label>';
-                }).join('') +
-              '</div>' +
-            '</div>' +
-            // Row 5: 总局数
-            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;font-size:13px;">' +
-              '<div style="font-weight:600;padding-top:4px;">' + _t('ddz_total_rounds') + '</div>' +
-              '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-                roundOpts.map(function(n) {
-                  return '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;">' +
-                    '<input type="radio" name="ddzTotalRounds" value="' + n + '"' + (tr === n ? ' checked' : '') + ' onchange="window._setGameOption(\'totalRounds\',' + n + ')">' +
-                    _t('ddz_total_rounds_' + n) + '</label>';
-                }).join('') +
-              '</div>' +
-            '</div>';
+          optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+          optionsEl.appendChild(optSegRow(_t('ddz_bid_mode'), 'bidMode', [
+            { value: 'rob', label: _t('ddz_bid_mode_rob') },
+            { value: 'score', label: _t('ddz_bid_mode_score') }
+          ], bm));
+          optionsEl.appendChild(optSegRow(_t('ddz_first_caller'), 'firstCaller', [
+            { value: 'random', label: _t('ddz_first_caller_random') },
+            { value: 'winner', label: _t('ddz_first_caller_winner') }
+          ], fc));
+          optionsEl.appendChild(optSegRow(_t('ddz_play_time'), 'playTimeLimit', timeOpts.map(function(t) {
+            return { value: t, label: _t('ddz_play_time_' + t) };
+          }), pt));
+          optionsEl.appendChild(optSegRow(_t('ddz_total_rounds'), 'totalRounds', roundOpts.map(function(n) {
+            return { value: n, label: _t('ddz_total_rounds_' + n) };
+          }), tr));
         } else {
           var timeLabel = _t('ddz_play_time_' + pt) || (pt + _t('seconds'));
           var roundsLabel = _t('ddz_total_rounds_' + tr) || (tr + _t('rounds'));
@@ -945,21 +991,13 @@
         }
       } else if (game === 'monopoly') {
         optionsEl.style.display = 'block';
-        var rl = roomOptions.roundLimit !== undefined ? roomOptions.roundLimit : 50;
+        var rl = roomOptions.roundLimit !== undefined ? Number(roomOptions.roundLimit) : 50;
         var rlLabel = function(v) { return v === 0 ? _t('mono_round_limit_0') : v + _t('mono_round_limit_n'); };
         if (isHost) {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">' + _t('game_settings') + '</div>' +
-            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;font-size:13px;">' +
-              '<div style="font-weight:600;padding-top:4px;">' + _t('mono_round_limit') + '</div>' +
-              '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-                [30, 50, 80, 0].map(function(v) {
-                  return '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;">' +
-                    '<input type="radio" name="monoRoundLimit" value="' + v + '"' + (rl === v ? ' checked' : '') + ' onchange="window._setGameOption(\'roundLimit\',' + v + ')">' +
-                    rlLabel(v) + '</label>';
-                }).join('') +
-              '</div>' +
-            '</div>';
+          optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+          optionsEl.appendChild(optSegRow(_t('mono_round_limit'), 'roundLimit', [30, 50, 80, 0].map(function(v) {
+            return { value: v, label: rlLabel(v) };
+          }), rl));
         } else {
           optionsEl.innerHTML =
             '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
@@ -1029,20 +1067,22 @@
         var wwHead = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
         var wwHint = '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.5;">' + _t('ww_setup_hint') + '</div>';
         if (isHost) {
-          var wwSel = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
-          var wwOpts = '';
-          [30, 60, 90, 120, 180].forEach(function(v) { wwOpts += '<option value="' + v + '"' + (wwSpeech === v ? ' selected' : '') + '>' + v + _t('seconds') + '</option>'; });
-          var wwDisOpts = '';
-          [0, 60, 120, 180].forEach(function(v) { wwDisOpts += '<option value="' + v + '"' + (wwDiscuss === v ? ' selected' : '') + '>' + wwDiscussLabel(v) + '</option>'; });
-          optionsEl.innerHTML = wwHead +
-            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('ww_talk_mode') + ' <select onchange="window._setGameOption(\'talkMode\', this.value)" style="' + wwSel + '">' +
-                '<option value="face"' + (wwTalk === 'face' ? ' selected' : '') + '>' + _t('ww_talk_face') + '</option><option value="chat"' + (wwTalk === 'chat' ? ' selected' : '') + '>' + _t('ww_talk_chat') + '</option></select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('ww_discuss_time') + ' <select onchange="window._setGameOption(\'discussTime\', parseInt(this.value))" style="' + wwSel + '">' + wwDisOpts + '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('ww_speech_time') + ' <select onchange="window._setGameOption(\'speechTime\', parseInt(this.value))" style="' + wwSel + '">' + wwOpts + '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('ww_sheriff_opt') + ' <select onchange="window._setGameOption(\'sheriff\', this.value === \'1\')" style="' + wwSel + '">' +
-                '<option value="1"' + (wwSheriff ? ' selected' : '') + '>' + _t('ww_on') + '</option><option value="0"' + (wwSheriff ? '' : ' selected') + '>' + _t('ww_off') + '</option></select></label>' +
-            '</div>' + wwHint;
+          optionsEl.innerHTML = wwHead;
+          optionsEl.appendChild(optSegRow(_t('ww_talk_mode'), 'talkMode', [
+            { value: 'face', label: _t('ww_talk_face') },
+            { value: 'chat', label: _t('ww_talk_chat') }
+          ], wwTalk));
+          optionsEl.appendChild(optSegRow(_t('ww_discuss_time'), 'discussTime', [0, 60, 120, 180].map(function(v) {
+            return { value: v, label: wwDiscussLabel(v) };
+          }), wwDiscuss));
+          optionsEl.appendChild(optSegRow(_t('ww_speech_time'), 'speechTime', [30, 60, 90, 120, 180].map(function(v) {
+            return { value: v, label: v + _t('seconds') };
+          }), wwSpeech));
+          optionsEl.appendChild(optSegRow(_t('ww_sheriff_opt'), 'sheriff', [
+            { value: true, label: _t('ww_on') },
+            { value: false, label: _t('ww_off') }
+          ], wwSheriff));
+          optionsEl.insertAdjacentHTML('beforeend', wwHint);
         } else {
           optionsEl.innerHTML = wwHead + '<div style="font-size:13px;color:var(--text-muted)">' + _t('ww_talk_mode') + ': ' + _t(wwTalk === 'chat' ? 'ww_talk_chat' : 'ww_talk_face') +
             ' · ' + _t('ww_discuss_time') + ': ' + wwDiscussLabel(wwDiscuss) + ' · ' + _t('ww_speech_time') + ': ' + wwSpeech + _t('seconds') +
@@ -1053,39 +1093,37 @@
         var ucTalk = roomOptions.talkMode === 'chat' ? 'chat' : 'face';
         var ucTime = [30, 45, 60].indexOf(Number(roomOptions.speechTime)) >= 0 ? Number(roomOptions.speechTime) : 45;
         var ucCount = (roomOptions.ucCount === 1 || roomOptions.ucCount === '1') ? '1' : (roomOptions.ucCount === 2 || roomOptions.ucCount === '2') ? '2' : 'auto';
+        var ucCountVal = ucCount === '1' ? 1 : ucCount === '2' ? 2 : 'auto';
         var ucBlank = !!roomOptions.blank;
         var ucDiff = roomOptions.difficulty || 'normal';
         var ucWD = ['mixed', 'easy', 'normal', 'hard'].indexOf(roomOptions.wordDiff) >= 0 ? roomOptions.wordDiff : 'mixed';
         var ucHead = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
         if (isHost) {
-          var ucSel = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
-          optionsEl.innerHTML = ucHead +
-            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('uc_opt_talk_label') + ' <select onchange="window._setGameOption(\'talkMode\', this.value)" style="' + ucSel + '">' +
-                '<option value="face"' + (ucTalk === 'face' ? ' selected' : '') + '>' + _t('uc_opt_talk_face') + '</option>' +
-                '<option value="chat"' + (ucTalk === 'chat' ? ' selected' : '') + '>' + _t('uc_opt_talk_chat') + '</option>' +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('uc_opt_time_label') + ' <select onchange="window._setGameOption(\'speechTime\', parseInt(this.value))" style="' + ucSel + '">' +
-                '<option value="30"' + (ucTime === 30 ? ' selected' : '') + '>' + _t('uc_opt_time_30') + '</option>' +
-                '<option value="45"' + (ucTime === 45 ? ' selected' : '') + '>' + _t('uc_opt_time_45') + '</option>' +
-                '<option value="60"' + (ucTime === 60 ? ' selected' : '') + '>' + _t('uc_opt_time_60') + '</option>' +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('uc_opt_count_label') + ' <select onchange="window._setGameOption(\'ucCount\', this.value === \'auto\' ? \'auto\' : parseInt(this.value))" style="' + ucSel + '">' +
-                '<option value="auto"' + (ucCount === 'auto' ? ' selected' : '') + '>' + _t('uc_opt_count_auto') + '</option>' +
-                '<option value="1"' + (ucCount === '1' ? ' selected' : '') + '>' + _t('uc_opt_count_1') + '</option>' +
-                '<option value="2"' + (ucCount === '2' ? ' selected' : '') + '>' + _t('uc_opt_count_2') + '</option>' +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox"' + (ucBlank ? ' checked' : '') + ' onchange="window._setGameOption(\'blank\', this.checked)">' + _t('uc_opt_blank_label') + '</label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('uc_opt_worddiff_label') + ' <select onchange="window._setGameOption(\'wordDiff\', this.value)" style="' + ucSel + '">' +
-                ['mixed', 'easy', 'normal', 'hard'].map(function(d) { return '<option value="' + d + '"' + (ucWD === d ? ' selected' : '') + '>' + _t('uc_worddiff_' + d) + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('difficulty_label') + ' <select onchange="window._setGameOption(\'difficulty\', this.value)" style="' + ucSel + '">' +
-                '<option value="easy"' + (ucDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
-                '<option value="normal"' + (ucDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
-                '<option value="hard"' + (ucDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
-              '</select></label>' +
-              '<div style="flex-basis:100%;font-size:12px;color:var(--text-muted)">' + _t('uc_bot_hint') + '</div>' +
-            '</div>';
+          optionsEl.innerHTML = ucHead;
+          optionsEl.appendChild(optSegRow(_t('uc_opt_talk_label'), 'talkMode', [
+            { value: 'face', label: _t('uc_opt_talk_face') },
+            { value: 'chat', label: _t('uc_opt_talk_chat') }
+          ], ucTalk));
+          optionsEl.appendChild(optSegRow(_t('uc_opt_time_label'), 'speechTime', [
+            { value: 30, label: _t('uc_opt_time_30') },
+            { value: 45, label: _t('uc_opt_time_45') },
+            { value: 60, label: _t('uc_opt_time_60') }
+          ], ucTime));
+          optionsEl.appendChild(optSegRow(_t('uc_opt_count_label'), 'ucCount', [
+            { value: 'auto', label: _t('uc_opt_count_auto') },
+            { value: 1, label: _t('uc_opt_count_1') },
+            { value: 2, label: _t('uc_opt_count_2') }
+          ], ucCountVal));
+          optionsEl.insertAdjacentHTML('beforeend',
+            '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;margin:10px 0;"><input type="checkbox"' + (ucBlank ? ' checked' : '') + ' onchange="window._setGameOption(\'blank\', this.checked)">' + _t('uc_opt_blank_label') + '</label>'
+          );
+          optionsEl.appendChild(optSegRow(_t('uc_opt_worddiff_label'), 'wordDiff', ['mixed', 'easy', 'normal', 'hard'].map(function(d) {
+            return { value: d, label: _t('uc_worddiff_' + d) };
+          }), ucWD));
+          optionsEl.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), ucDiff));
+          optionsEl.insertAdjacentHTML('beforeend',
+            '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">' + _t('uc_bot_hint') + '</div>'
+          );
         } else {
           var ucCountLabel = ucCount === '1' ? _t('uc_opt_count_1') : ucCount === '2' ? _t('uc_opt_count_2') : _t('uc_opt_count_auto');
           optionsEl.innerHTML = ucHead + '<div style="font-size:13px;color:var(--text-muted)">' +
@@ -1109,28 +1147,37 @@
             catHtml += '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;margin:2px 8px 2px 0;">' +
               '<input type="checkbox" class="dg-cat" value="' + c[0] + '"' + (on ? ' checked' : '') + ' onchange="window._dgCollectCats()">' + c[1] + '</label>';
           });
-          var selStyle = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
-          function dgSel(id, key, values, labels, cur) {
-            var h = '<select id="' + id + '" onchange="window._setGameOption(\'' + key + '\', parseInt(this.value))" style="' + selStyle + '">';
-            values.forEach(function(v, i) { h += '<option value="' + v + '"' + (cur === v ? ' selected' : '') + '>' + labels[i] + '</option>'; });
-            return h + '</select>';
-          }
           var customVal = (roomOptions.customWords || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
           function _dgTimeLbl(v) { return v === 0 ? _t('unlimited') : v + _t('seconds'); }
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-            '<div style="font-size:13px;margin-bottom:8px;">' + _t('mode_label') + ' <select onchange="window._setGameOption(\'mode\', this.value)" style="' + selStyle + '"><option value="stage"' + (dgMode === 'stage' ? ' selected' : '') + '>' + _t('mode_stage') + '</option><option value="whisper"' + (dgMode === 'whisper' ? ' selected' : '') + '>' + _t('mode_whisper') + '</option></select></div>' +
-            '<div style="font-size:13px;margin-bottom:6px;">' + _t('word_categories') + ':<br>' + catHtml + '</div>' +
-            '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:14px;margin-bottom:6px;">' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('draw_time_label') + ' ' + dgSel('optDgDraw', 'drawTime', [45,60,90,120,0], [_dgTimeLbl(45),_dgTimeLbl(60),_dgTimeLbl(90),_dgTimeLbl(120),_dgTimeLbl(0)], dgDraw) + '</label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('guess_time_label') + ' ' + dgSel('optDgGuess', 'guessTime', [30,45,60,90,0], [_dgTimeLbl(30),_dgTimeLbl(45),_dgTimeLbl(60),_dgTimeLbl(90),_dgTimeLbl(0)], dgGuess) + '</label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('word_count_label') + ' ' + dgSel('optDgChoices', 'wordChoices', [1,2,3,5], [_t('label_1choice'),_t('label_2choices'),_t('label_3choices'),_t('label_5choices')], dgChoices) + '</label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('dg_rounds_label') + ' ' + dgSel('optDgRounds', 'rounds', [0,1,2,3,4], [0,1,2,3,4].map(_dgRoundsLbl), dgRounds) + '</label>' +
-            '</div>' +
-            '<div style="font-size:13px;">' + _t('custom_words_label') + ':<br>' +
+          optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+          optionsEl.appendChild(optSegRow(_t('mode_label'), 'mode', [
+            { value: 'stage', label: _t('mode_stage') },
+            { value: 'whisper', label: _t('mode_whisper') }
+          ], dgMode));
+          optionsEl.insertAdjacentHTML('beforeend',
+            '<div style="font-size:13px;margin:10px 0 8px;">' + _t('word_categories') + ':<br>' + catHtml + '</div>'
+          );
+          optionsEl.appendChild(optSegRow(_t('draw_time_label'), 'drawTime', [45, 60, 90, 120, 0].map(function(v) {
+            return { value: v, label: _dgTimeLbl(v) };
+          }), dgDraw));
+          optionsEl.appendChild(optSegRow(_t('guess_time_label'), 'guessTime', [30, 45, 60, 90, 0].map(function(v) {
+            return { value: v, label: _dgTimeLbl(v) };
+          }), dgGuess));
+          optionsEl.appendChild(optSegRow(_t('word_count_label'), 'wordChoices', [
+            { value: 1, label: _t('label_1choice') },
+            { value: 2, label: _t('label_2choices') },
+            { value: 3, label: _t('label_3choices') },
+            { value: 5, label: _t('label_5choices') }
+          ], dgChoices));
+          optionsEl.appendChild(optSegRow(_t('dg_rounds_label'), 'rounds', [0, 1, 2, 3, 4].map(function(v) {
+            return { value: v, label: _dgRoundsLbl(v) };
+          }), dgRounds));
+          optionsEl.insertAdjacentHTML('beforeend',
+            '<div style="font-size:13px;margin-top:10px;">' + _t('custom_words_label') + ':<br>' +
               '<textarea id="optDgCustom" rows="2" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="' + _t('custom_words_placeholder') + '">' + customVal + '</textarea>' +
               '<button class="btn" style="margin-top:4px;padding:4px 14px;font-size:13px;" onclick="window._setGameOption(\'customWords\', document.getElementById(\'optDgCustom\').value)">' + _t('save_custom_words') + '</button>' +
-            '</div>';
+            '</div>'
+          );
         } else {
           var catNames = dgCats.filter(function(c){ return selCats.indexOf(c[0]) >= 0; }).map(function(c){ return c[1]; }).join('、');
           var customCount = (roomOptions.customWords || '').split(/[,，\n\s]+/).filter(function(w){ return w.trim(); }).length;
@@ -1144,24 +1191,13 @@
         optionsEl.style.display = 'block';
         var bs = roomOptions.boardSize || 8;
         var rvDiff = roomOptions.difficulty || 'normal';
-        optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-          '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
-            '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-              _t('ec_board_size') + ': <select onchange="window._setGameOption(\'boardSize\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                '<option value="8"' + (bs === 8 ? ' selected' : '') + '>8×8</option>' +
-                '<option value="10"' + (bs === 10 ? ' selected' : '') + '>10×10</option>' +
-                '<option value="12"' + (bs === 12 ? ' selected' : '') + '>12×12</option>' +
-              '</select>' +
-            '</label>' +
-            '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-              _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                '<option value="easy"' + (rvDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
-                '<option value="normal"' + (rvDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
-                '<option value="hard"' + (rvDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
-              '</select>' +
-            '</label>' +
-          '</div>';
+        optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+        optionsEl.appendChild(optSegRow(_t('ec_board_size'), 'boardSize', [
+          { value: 8, label: '8×8' },
+          { value: 10, label: '10×10' },
+          { value: 12, label: '12×12' }
+        ], bs));
+        optionsEl.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), rvDiff));
       } else if (game === 'reversi') {
         optionsEl.style.display = 'block';
         var bs2 = roomOptions.boardSize || 8;
@@ -1186,45 +1222,44 @@
             '</label>' + descHtml;
         }
         if (isHost) {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-            '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;margin-bottom:10px;">' +
-              _t('mahjong_mode') + ': <select onchange="window._setGameOption(\'mahjongMode\', this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                '<option value="sichuan"' + (mjMode === 'sichuan' ? ' selected' : '') + '>' + _t('mahjong_mode_sichuan') + '</option>' +
-                '<option value="cantonese"' + (mjMode === 'cantonese' ? ' selected' : '') + '>' + _t('mahjong_mode_cantonese') + '</option>' +
-              '</select>' +
-            '</label>' +
-            (mjMode === 'sichuan' ? '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;">' +
-              '<div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted);">' + _t('mj_rules_title') + '</div>' +
-              mjToggle('mj_bloodBattle', 'mj_rule_bloodBattle') +
-              mjToggle('mj_multiWinner', 'mj_rule_multiWinner') +
-              mjToggle('mj_rain', 'mj_rule_rain') +
-              mjToggle('mj_checkFlowerPig', 'mj_rule_checkFlowerPig') +
-              mjToggle('mj_checkBigCall', 'mj_rule_checkBigCall') +
-              mjToggle('mj_lastFourAutoWin', 'mj_rule_lastFourAutoWin') +
-              mjToggle('mj_swapThree', 'mj_rule_swapThree') +
-            '</div>' : mjMode === 'cantonese' ? '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;">' +
+          optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+          optionsEl.appendChild(optSegRow(_t('mahjong_mode'), 'mahjongMode', [
+            { value: 'sichuan', label: _t('mahjong_mode_sichuan') },
+            { value: 'cantonese', label: _t('mahjong_mode_cantonese') }
+          ], mjMode));
+          if (mjMode === 'sichuan') {
+            optionsEl.insertAdjacentHTML('beforeend',
+              '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px;">' +
+                '<div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted);">' + _t('mj_rules_title') + '</div>' +
+                mjToggle('mj_bloodBattle', 'mj_rule_bloodBattle') +
+                mjToggle('mj_multiWinner', 'mj_rule_multiWinner') +
+                mjToggle('mj_rain', 'mj_rule_rain') +
+                mjToggle('mj_checkFlowerPig', 'mj_rule_checkFlowerPig') +
+                mjToggle('mj_checkBigCall', 'mj_rule_checkBigCall') +
+                mjToggle('mj_lastFourAutoWin', 'mj_rule_lastFourAutoWin') +
+                mjToggle('mj_swapThree', 'mj_rule_swapThree') +
+              '</div>'
+            );
+          } else if (mjMode === 'cantonese') {
+            var mjCant = document.createElement('div');
+            mjCant.style.cssText = 'border-top:1px solid var(--border);padding-top:8px;margin-top:8px;';
+            mjCant.innerHTML =
               '<div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted);">' + _t('mj_rules_cantonese') + '</div>' +
               mjToggle('mj_buyTiles', 'mj_rule_buyTiles') +
-              mjToggle('mj_wildcard', 'mj_rule_wildcard') +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;margin-bottom:6px;">' +
-                _t('mj_rule_maxFan') + ': ' +
-                '<select onchange="window._setGameOption(\'mj_maxFan\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:13px;">' +
-                  '<option value="0"' + (roomOptions.mj_maxFan === 0 || !roomOptions.mj_maxFan ? ' selected' : '') + '>' + _t('mj_fan_nolimit') + '</option>' +
-                  '<option value="3"' + (roomOptions.mj_maxFan === 3 ? ' selected' : '') + '>' + tf('mj_fan_n', 3) + '</option>' +
-                  '<option value="4"' + (roomOptions.mj_maxFan === 4 ? ' selected' : '') + '>' + tf('mj_fan_n', 4) + '</option>' +
-                  '<option value="5"' + (roomOptions.mj_maxFan === 5 ? ' selected' : '') + '>' + tf('mj_fan_n', 5) + '</option>' +
-                '</select>' +
-              '</label>' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;margin-bottom:6px;">' +
-                _t('mj_rule_minFan') + ': ' +
-                '<select onchange="window._setGameOption(\'mj_minFan\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:13px;">' +
-                  '<option value="0"' + (roomOptions.mj_minFan === 0 || !roomOptions.mj_minFan ? ' selected' : '') + '>' + _t('mj_fan_chicken') + '</option>' +
-                  '<option value="1"' + (roomOptions.mj_minFan === 1 ? ' selected' : '') + '>' + tf('mj_fan_n', 1) + '</option>' +
-                  '<option value="3"' + (roomOptions.mj_minFan === 3 ? ' selected' : '') + '>' + tf('mj_fan_n', 3) + '</option>' +
-                '</select>' +
-              '</label>' +
-            '</div>' : '');
+              mjToggle('mj_wildcard', 'mj_rule_wildcard');
+            mjCant.appendChild(optSegRow(_t('mj_rule_maxFan'), 'mj_maxFan', [
+              { value: 0, label: _t('mj_fan_nolimit') },
+              { value: 3, label: tf('mj_fan_n', 3) },
+              { value: 4, label: tf('mj_fan_n', 4) },
+              { value: 5, label: tf('mj_fan_n', 5) }
+            ], Number(roomOptions.mj_maxFan) || 0));
+            mjCant.appendChild(optSegRow(_t('mj_rule_minFan'), 'mj_minFan', [
+              { value: 0, label: _t('mj_fan_chicken') },
+              { value: 1, label: tf('mj_fan_n', 1) },
+              { value: 3, label: tf('mj_fan_n', 3) }
+            ], Number(roomOptions.mj_minFan) || 0));
+            optionsEl.appendChild(mjCant);
+          }
         } else {
           var onOff = function(k) { return (roomOptions[k] === true || roomOptions[k] === 'true') ? '✓' : '—'; };
           var maxFanLabel = function(v) { return v ? tf('mj_fan_n', v) : _t('mj_fan_nolimit'); };
@@ -1256,39 +1291,21 @@
         var pdkTurnTime = [0, 15, 20, 30].indexOf(Number(roomOptions.turnTime)) >= 0 ? Number(roomOptions.turnTime) : 20;
         var pdkDiff = roomOptions.difficulty || 'normal';
         if (isHost) {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('pdk_must_beat_opt') + ': <select onchange="window._setGameOption(\'mustBeat\', this.value === \'true\')" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="true"' + (pdkMustBeat ? ' selected' : '') + '>' + _t('pdk_must_beat_on') + '</option>' +
-                  '<option value="false"' + (!pdkMustBeat ? ' selected' : '') + '>' + _t('pdk_must_beat_off') + '</option>' +
-                '</select>' +
-              '</label>' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('pdk_rounds_opt') + ': <select onchange="window._setGameOption(\'rounds\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="1"' + (pdkRounds === 1 ? ' selected' : '') + '>' + tf('pdk_rounds_n', 1) + '</option>' +
-                  '<option value="3"' + (pdkRounds === 3 ? ' selected' : '') + '>' + tf('pdk_rounds_n', 3) + '</option>' +
-                  '<option value="5"' + (pdkRounds === 5 ? ' selected' : '') + '>' + tf('pdk_rounds_n', 5) + '</option>' +
-                  '<option value="8"' + (pdkRounds === 8 ? ' selected' : '') + '>' + tf('pdk_rounds_n', 8) + '</option>' +
-                '</select>' +
-              '</label>' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('pdk_turn_time_opt') + ': <select onchange="window._setGameOption(\'turnTime\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="0"' + (pdkTurnTime === 0 ? ' selected' : '') + '>' + _t('pdk_turn_time_off') + '</option>' +
-                  '<option value="15"' + (pdkTurnTime === 15 ? ' selected' : '') + '>' + tf('pdk_turn_time_n', 15) + '</option>' +
-                  '<option value="20"' + (pdkTurnTime === 20 ? ' selected' : '') + '>' + tf('pdk_turn_time_n', 20) + '</option>' +
-                  '<option value="30"' + (pdkTurnTime === 30 ? ' selected' : '') + '>' + tf('pdk_turn_time_n', 30) + '</option>' +
-                '</select>' +
-              '</label>' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="easy"' + (pdkDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
-                  '<option value="normal"' + (pdkDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
-                  '<option value="hard"' + (pdkDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
-                '</select>' +
-              '</label>' +
-            '</div>';
+          optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+          optionsEl.appendChild(optSegRow(_t('pdk_must_beat_opt'), 'mustBeat', [
+            { value: true, label: _t('pdk_must_beat_on') },
+            { value: false, label: _t('pdk_must_beat_off') }
+          ], pdkMustBeat));
+          optionsEl.appendChild(optSegRow(_t('pdk_rounds_opt'), 'rounds', [1, 3, 5, 8].map(function(n) {
+            return { value: n, label: tf('pdk_rounds_n', n) };
+          }), pdkRounds));
+          optionsEl.appendChild(optSegRow(_t('pdk_turn_time_opt'), 'turnTime', [
+            { value: 0, label: _t('pdk_turn_time_off') },
+            { value: 15, label: tf('pdk_turn_time_n', 15) },
+            { value: 20, label: tf('pdk_turn_time_n', 20) },
+            { value: 30, label: tf('pdk_turn_time_n', 30) }
+          ], pdkTurnTime));
+          optionsEl.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), pdkDiff));
         } else {
           var pdkDiffLabel = pdkDiff === 'easy' ? _t('difficulty_easy') : pdkDiff === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
           var pdkTimeLabel = pdkTurnTime === 0 ? _t('pdk_turn_time_off') : tf('pdk_turn_time_n', pdkTurnTime);
@@ -1308,38 +1325,21 @@
         var ldTurnTime = [0, 15, 20, 30].indexOf(Number(roomOptions.turnTime)) >= 0 ? Number(roomOptions.turnTime) : 20;
         var ldDiff = roomOptions.difficulty || 'normal';
         if (isHost) {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('ld_start_dice_opt') + ': <select onchange="window._setGameOption(\'startDice\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="3"' + (ldStartDice === 3 ? ' selected' : '') + '>' + tf('ld_start_dice_n', 3) + '</option>' +
-                  '<option value="4"' + (ldStartDice === 4 ? ' selected' : '') + '>' + tf('ld_start_dice_n', 4) + '</option>' +
-                  '<option value="5"' + (ldStartDice === 5 ? ' selected' : '') + '>' + tf('ld_start_dice_n', 5) + '</option>' +
-                '</select>' +
-              '</label>' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('ld_ones_wild_opt') + ': <select onchange="window._setGameOption(\'onesWild\', this.value === \'true\')" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="true"' + (ldOnesWild ? ' selected' : '') + '>' + _t('ld_ones_wild_yes') + '</option>' +
-                  '<option value="false"' + (!ldOnesWild ? ' selected' : '') + '>' + _t('ld_ones_wild_no') + '</option>' +
-                '</select>' +
-              '</label>' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('ld_turn_time_opt') + ': <select onchange="window._setGameOption(\'turnTime\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="0"' + (ldTurnTime === 0 ? ' selected' : '') + '>' + _t('ld_turn_time_off') + '</option>' +
-                  '<option value="15"' + (ldTurnTime === 15 ? ' selected' : '') + '>' + tf('ld_turn_time_n', 15) + '</option>' +
-                  '<option value="20"' + (ldTurnTime === 20 ? ' selected' : '') + '>' + tf('ld_turn_time_n', 20) + '</option>' +
-                  '<option value="30"' + (ldTurnTime === 30 ? ' selected' : '') + '>' + tf('ld_turn_time_n', 30) + '</option>' +
-                '</select>' +
-              '</label>' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="easy"' + (ldDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
-                  '<option value="normal"' + (ldDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
-                  '<option value="hard"' + (ldDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
-                '</select>' +
-              '</label>' +
-            '</div>';
+          optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+          optionsEl.appendChild(optSegRow(_t('ld_start_dice_opt'), 'startDice', [3, 4, 5].map(function(n) {
+            return { value: n, label: tf('ld_start_dice_n', n) };
+          }), ldStartDice));
+          optionsEl.appendChild(optSegRow(_t('ld_ones_wild_opt'), 'onesWild', [
+            { value: true, label: _t('ld_ones_wild_yes') },
+            { value: false, label: _t('ld_ones_wild_no') }
+          ], ldOnesWild));
+          optionsEl.appendChild(optSegRow(_t('ld_turn_time_opt'), 'turnTime', [
+            { value: 0, label: _t('ld_turn_time_off') },
+            { value: 15, label: tf('ld_turn_time_n', 15) },
+            { value: 20, label: tf('ld_turn_time_n', 20) },
+            { value: 30, label: tf('ld_turn_time_n', 30) }
+          ], ldTurnTime));
+          optionsEl.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), ldDiff));
         } else {
           var ldDiffLabel = ldDiff === 'easy' ? _t('difficulty_easy') : ldDiff === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
           var ldTimeLabel = ldTurnTime === 0 ? _t('ld_turn_time_off') : tf('ld_turn_time_n', ldTurnTime);
@@ -1360,29 +1360,27 @@
         var qrDiff = roomOptions.difficulty || 'normal';
         var qrCats = ['all', 'general', 'geography', 'science', 'history', 'nature', 'sports', 'culture', 'food', 'idiom', 'life', 'cncult', 'anime', 'mental'];
         var qrQD = ['mixed', 'easy', 'normal', 'hard'].indexOf(roomOptions.questionDiff) >= 0 ? roomOptions.questionDiff : 'mixed';
-        var qrSelStyle = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
+        var qrSelStyle = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:14px;min-height:44px;max-width:100%;';
         if (isHost) {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_question_count') + ' <select onchange="window._setGameOption(\'questionCount\', parseInt(this.value))" style="' + qrSelStyle + '">' +
-                [10, 15, 20].map(function(n) { return '<option value="' + n + '"' + (qrCount === n ? ' selected' : '') + '>' + n + _t('qr_opt_questions_unit') + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_time_per_question') + ' <select onchange="window._setGameOption(\'timePerQuestion\', parseInt(this.value))" style="' + qrSelStyle + '">' +
-                [10, 15, 20].map(function(s) { return '<option value="' + s + '"' + (qrTime === s ? ' selected' : '') + '>' + s + _t('qr_opt_seconds_unit') + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_category') + ' <select onchange="window._setGameOption(\'category\', this.value)" style="' + qrSelStyle + '">' +
+          optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+          optionsEl.appendChild(optSegRow(_t('qr_opt_question_count'), 'questionCount', [10, 15, 20].map(function(n) {
+            return { value: n, label: n + _t('qr_opt_questions_unit') };
+          }), qrCount));
+          optionsEl.appendChild(optSegRow(_t('qr_opt_time_per_question'), 'timePerQuestion', [10, 15, 20].map(function(s) {
+            return { value: s, label: s + _t('qr_opt_seconds_unit') };
+          }), qrTime));
+          optionsEl.insertAdjacentHTML('beforeend',
+            '<div class="ui-opt-row">' +
+              '<label class="ui-opt-label" for="optQrCategory">' + _t('qr_opt_category').replace(/[:：]\s*$/, '') + '</label>' +
+              '<select id="optQrCategory" onchange="window._setGameOption(\'category\', this.value)" style="' + qrSelStyle + '">' +
                 qrCats.map(function(c) { return '<option value="' + c + '"' + (qrCat === c ? ' selected' : '') + '>' + _t('qr_cat_' + c) + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_qdiff') + ' <select onchange="window._setGameOption(\'questionDiff\', this.value)" style="' + qrSelStyle + '">' +
-                ['mixed', 'easy', 'normal', 'hard'].map(function(d) { return '<option value="' + d + '"' + (qrQD === d ? ' selected' : '') + '>' + _t('qr_qdiff_' + d) + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="' + qrSelStyle + '">' +
-                '<option value="easy"' + (qrDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
-                '<option value="normal"' + (qrDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
-                '<option value="hard"' + (qrDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
-              '</select></label>' +
-            '</div>';
+              '</select>' +
+            '</div>'
+          );
+          optionsEl.appendChild(optSegRow(_t('qr_opt_qdiff'), 'questionDiff', ['mixed', 'easy', 'normal', 'hard'].map(function(d) {
+            return { value: d, label: _t('qr_qdiff_' + d) };
+          }), qrQD));
+          optionsEl.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), qrDiff));
         } else {
           var qrDiffLbl = qrDiff === 'easy' ? _t('difficulty_easy') : qrDiff === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
           optionsEl.innerHTML =
@@ -1401,27 +1399,21 @@
         var bjRounds = [5, 10, 15].indexOf(Number(roomOptions.rounds)) >= 0 ? Number(roomOptions.rounds) : 10;
         var bjTime = [0, 15, 20, 30].indexOf(Number(roomOptions.turnTime)) >= 0 ? Number(roomOptions.turnTime) : 20;
         var bjDiff = roomOptions.difficulty || 'normal';
-        var bjSelStyle = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
         if (isHost) {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('bj_opt_decks') + ' <select onchange="window._setGameOption(\'decks\', parseInt(this.value))" style="' + bjSelStyle + '">' +
-                [1, 2, 4].map(function(d) { return '<option value="' + d + '"' + (bjDecks === d ? ' selected' : '') + '>' + d + _t('bj_decks_unit') + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('bj_opt_rounds') + ' <select onchange="window._setGameOption(\'rounds\', parseInt(this.value))" style="' + bjSelStyle + '">' +
-                [5, 10, 15].map(function(r) { return '<option value="' + r + '"' + (bjRounds === r ? ' selected' : '') + '>' + r + _t('bj_rounds_unit') + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('bj_opt_time') + ' <select onchange="window._setGameOption(\'turnTime\', parseInt(this.value))" style="' + bjSelStyle + '">' +
-                '<option value="0"' + (bjTime === 0 ? ' selected' : '') + '>' + _t('pdk_turn_time_off') + '</option>' +
-                [15, 20, 30].map(function(s) { return '<option value="' + s + '"' + (bjTime === s ? ' selected' : '') + '>' + tf('pdk_turn_time_n', s) + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="' + bjSelStyle + '">' +
-                '<option value="easy"' + (bjDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
-                '<option value="normal"' + (bjDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
-                '<option value="hard"' + (bjDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
-              '</select></label>' +
-            '</div>';
+          optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+          optionsEl.appendChild(optSegRow(_t('bj_opt_decks'), 'decks', [1, 2, 4].map(function(d) {
+            return { value: d, label: d + _t('bj_decks_unit') };
+          }), bjDecks));
+          optionsEl.appendChild(optSegRow(_t('bj_opt_rounds'), 'rounds', [5, 10, 15].map(function(r) {
+            return { value: r, label: r + _t('bj_rounds_unit') };
+          }), bjRounds));
+          optionsEl.appendChild(optSegRow(_t('bj_opt_time'), 'turnTime', [
+            { value: 0, label: _t('pdk_turn_time_off') },
+            { value: 15, label: tf('pdk_turn_time_n', 15) },
+            { value: 20, label: tf('pdk_turn_time_n', 20) },
+            { value: 30, label: tf('pdk_turn_time_n', 30) }
+          ], bjTime));
+          optionsEl.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), bjDiff));
         } else {
           var bjDiffLbl = bjDiff === 'easy' ? _t('difficulty_easy') : bjDiff === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
           var bjTimeLbl = bjTime === 0 ? _t('pdk_turn_time_off') : tf('pdk_turn_time_n', bjTime);
@@ -1438,15 +1430,8 @@
         // AI difficulty selector only for games whose bots actually read it
         optionsEl.style.display = 'block';
         var curDiff = roomOptions.difficulty || 'normal';
-        optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-          '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">' +
-            _t('difficulty_label') + ': <select id="optDifficulty" onchange="window._setGameOption(\'difficulty\', this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-              '<option value="easy"' + (curDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
-              '<option value="normal"' + (curDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
-              '<option value="hard"' + (curDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
-            '</select>' +
-          '</label>';
+        optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
+        optionsEl.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), curDiff));
       } else if (!isHost && gameInfo.supportsAI && window._gamesWithDifficulty.indexOf(game) >= 0) {
         // Non-host: show difficulty summary
         optionsEl.style.display = 'block';
@@ -1465,15 +1450,17 @@
           optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
           optionsEl.style.display = 'block';
         }
-        var boHtml;
         if (isHost) {
-          boHtml = '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' + _t('best_of_label') + ': <select onchange="window._setGameOption(\'bestOf\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">';
-          [1, 3, 5].forEach(function(n) { boHtml += '<option value="' + n + '"' + (bo === n ? ' selected' : '') + '>' + _t('best_of_' + n) + '</option>'; });
-          boHtml += '</select></label>';
+          var boRow = optSegRow(_t('best_of_label'), 'bestOf', [1, 3, 5].map(function(n) {
+            return { value: n, label: _t('best_of_' + n) };
+          }), bo);
+          boRow.style.marginTop = '10px';
+          optionsEl.appendChild(boRow);
         } else {
-          boHtml = '<span style="font-size:13px;color:var(--text-muted)">' + _t('best_of_label') + ': ' + _t('best_of_' + bo) + '</span>';
+          optionsEl.insertAdjacentHTML('beforeend',
+            '<div style="margin-top:8px;font-size:14px;"><span style="font-size:13px;color:var(--text-muted)">' + _t('best_of_label') + ': ' + _t('best_of_' + bo) + '</span></div>'
+          );
         }
-        optionsEl.insertAdjacentHTML('beforeend', '<div style="margin-top:8px;font-size:14px;">' + boHtml + '</div>');
       }
 
       // 房间隐私设置（所有游戏通用，仅在等候室阶段显示）
@@ -1483,24 +1470,35 @@
           optionsEl.style.display = 'block';
         }
         var isPriv = !!roomOptions.isPrivate;
-        var privHtml = '';
         if (isHost) {
-          privHtml =
-            '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);">' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">' +
-                '<input type="checkbox" id="optIsPrivate" ' + (isPriv ? 'checked' : '') + ' onchange="window._setPrivate(this.checked)">' +
-                '<span>' + _t('private_room_checkbox') + '</span>' +
-              '</label>' +
-              '<div style="font-size:12px;color:var(--text-muted);margin-left:22px;margin-top:2px;">' + _t('private_room_hint') + '</div>' +
+          var privWrap = document.createElement('div');
+          privWrap.className = 'ui-switch-wrap';
+          privWrap.innerHTML =
+            '<div class="ui-switch-row">' +
+              '<div class="ui-switch-copy">' +
+                '<label class="ui-switch-label" for="optIsPrivate">' + _t('private_room_checkbox') + '</label>' +
+                '<span class="ui-switch-hint">' + _t('private_room_hint') + '</span>' +
+              '</div>' +
+              '<button type="button" id="optIsPrivate" class="ui-switch' + (isPriv ? ' is-on' : '') + '" role="switch" aria-checked="' + (isPriv ? 'true' : 'false') + '">' +
+                '<span class="ui-switch-thumb" aria-hidden="true"></span>' +
+              '</button>' +
             '</div>';
+          var privBtn = privWrap.querySelector('#optIsPrivate');
+          if (privBtn) {
+            privBtn.addEventListener('click', function() {
+              var next = !roomOptions.isPrivate;
+              privBtn.setAttribute('aria-checked', next ? 'true' : 'false');
+              privBtn.classList.toggle('is-on', next);
+              window._setPrivate(next);
+            });
+          }
+          optionsEl.appendChild(privWrap);
         } else if (isPriv) {
-          privHtml =
+          optionsEl.insertAdjacentHTML('beforeend',
             '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);font-size:12px;color:var(--text-muted);">' +
               '🔒 ' + _t('private_room_notice') +
-            '</div>';
-        }
-        if (privHtml) {
-          optionsEl.insertAdjacentHTML('beforeend', privHtml);
+            '</div>'
+          );
         }
       }
     }

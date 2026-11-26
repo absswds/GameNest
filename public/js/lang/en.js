@@ -1695,6 +1695,14 @@
     'bj_tbl_chips': 'Final Chips',
     'bj_tbl_net': 'Net Gain',
 
+    // ---- UI Components (v2.4) ----
+    'ui_half_pot': '1/2 Pot',
+    'ui_pot': 'Pot',
+    'ui_menu': 'Menu',
+    'ui_sheet_close': 'Close',
+    'ui_sound_on': 'Sound: On',
+    'ui_sound_off': 'Sound: Off',
+
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'en';
   // _t function only needed in zh.js; en.js expects zh.js to have defined it
