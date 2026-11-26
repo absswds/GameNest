@@ -214,6 +214,20 @@ class MainActivity : AppCompatActivity() {
                 applyImmersive(on)
             }
         }
+
+        /** Called by public/js/theme.js whenever the page's light/dark theme is applied. */
+        @JavascriptInterface
+        fun setTheme(dark: Boolean) {
+            runOnUiThread { applyBarTheme(dark) }
+        }
+    }
+
+    /** Recolours the LAN-URL bar, the strip behind the system status bar and its icons. */
+    private fun applyBarTheme(dark: Boolean) {
+        binding.statusBar.setBackgroundColor(if (dark) 0xFF1A1B1E.toInt() else 0xFFFFFFFF.toInt())
+        binding.statusBar.setTextColor(if (dark) 0xFFE8E8EA.toInt() else 0xFF1A1A1A.toInt())
+        binding.root.setBackgroundColor(if (dark) 0xFF0F1012.toInt() else 0xFFF4F4F2.toInt())
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = !dark
     }
 
     /**

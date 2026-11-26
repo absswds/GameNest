@@ -1965,7 +1965,19 @@ body.lobby-page .wifi-note {
 }
 
 .lb-hero-card.selected {
-  box-shadow: 0 0 0 2px var(--lb-accent), var(--lb-shadow);
+  box-shadow: var(--lb-shadow);
+}
+
+/* The track scrolls sideways, so it clips anything drawn outside the card:
+   draw the selection ring inside, on top of the cover. */
+.lb-hero-card.selected::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 3px var(--lb-accent);
+  pointer-events: none;
+  z-index: 3;
 }
 
 .lb-hero-card:active {

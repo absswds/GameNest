@@ -37,6 +37,10 @@
     var theme = resolve(pref);
     document.documentElement.dataset.theme = theme;
     setThemeColor(theme);
+    // Android app: recolour the native LAN-URL bar above the WebView.
+    try {
+      if (root.GameNestNative && root.GameNestNative.setTheme) root.GameNestNative.setTheme(theme === 'dark');
+    } catch (e) {}
     try {
       root.dispatchEvent(new CustomEvent('gnthemechange', { detail: { theme: theme, preference: pref } }));
     } catch (e) {}
