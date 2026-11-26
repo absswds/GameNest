@@ -518,6 +518,19 @@
     maxPlayers: 6,
     cover: '/assets/game-covers/liarsdice.webp',
   };
+  zhCatalog.pool = {
+    name: '台球',
+    icon: '🎱',
+    subtitle: '8球对决，瞄准拉杆一杆清台',
+    description: '经典美式8球双人对战，真实物理反弹与走位，支持人机对练。',
+    players: '2人',
+    duration: '约10分钟',
+    category: '运动竞技',
+    tags: ['台球', '物理', '双人'],
+    featured: false,
+    supportsAI: true,
+    maxPlayers: 2,
+  };
   var catalog = zhCatalog;
 
   Object.keys(catalog).forEach(function(id) {
@@ -561,7 +574,7 @@
     'sanguo',
     'snakebattle',
     'battleship',
-    'undercover', 'paodekuai', 'quizrace', 'blackjack', 'liarsdice'
+    'undercover', 'paodekuai', 'quizrace', 'blackjack', 'liarsdice', 'pool'
   ];
 
   function getLangPack() {

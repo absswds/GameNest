@@ -410,6 +410,15 @@
         { h: '电脑与技巧', p: '可添加电脑并选择难度。布阵时别总靠边或排成整齐的一排；射击时命中后沿相邻四个方向探索，每艘船至少 2 格，隔格搜索更高效。' },
       ]
     },
+    pool: {
+      sections: [
+        { h: '目标', p: '经典美式 8 球双人对战。1～7 号为全色球（Solids），9～15 号为花色球（Stripes），8 号为黑八。先打完自己花色全部球，再将 8 号球合法打入袋中即可获胜。' },
+        { h: '操作', p: '在球台拖动调整瞄准方向并观察辅助线；也可按住母球向后拉杆并松手击球，或使用下方力度条微调后点击「击球」。自由球阶段点击或拖动球台摆放母球。' },
+        { h: '开球与自由球局', p: '1 号位开球，开球后桌面保持自由球局（未分配花色）；若开球干净打进 8 号球不判负，8 号球放回置球点并由开球方继续。非开球回合首次干净打进目标球后，正式分配双方花色。' },
+        { h: '犯规与手中球', p: '母球落袋（洗袋）、未击中任何球、或先击中非本方目标球（未清空本方花色前先碰 8 号球）均属犯规，对手获得全桌面任意位置的「手中球」。' },
+        { h: '胜负', p: '清空本方花色后干净打进 8 号球获胜；若提前误进 8 号球，或打进 8 号球的同时犯规，立即判负。达到 150 杆上限时按场上剩余本方球更少者胜。' },
+      ]
+    },
   };
 
   TUTORIALS_ZH.undercover = {
@@ -868,6 +877,15 @@
         { h: 'Sinking', p: 'When you sink a ship, its type and full outline are revealed to you, which helps you plan against the remaining ships.' },
         { h: 'Winning', p: 'The first to sink all 5 enemy ships wins; there are no draws. Enemy ship positions are shown after the game.' },
         { h: 'Bots and Tips', p: 'You can add a bot and choose its difficulty. Do not always hug the edges or line ships up; when you score a hit, probe the four neighbors, and search on a checkerboard pattern since every ship is at least 2 cells long.' },
+      ]
+    },
+    pool: {
+      sections: [
+        { h: 'Goal', p: 'Two-player 8-ball billiards. Balls 1 to 7 are Solids, 9 to 15 are Stripes, and 8 is the black 8-ball. Clear every ball of your assigned group, then legally pocket the 8-ball to win.' },
+        { h: 'Controls', p: 'Drag anywhere on the table to aim with the guide line, or pull back directly from the cue ball and release to shoot. You can also adjust the power bar below and tap Shoot. During ball-in-hand, tap or drag on the table to place the cue ball.' },
+        { h: 'Break and Open Table', p: 'Seat 1 breaks. The table stays open after the break; potting the 8-ball cleanly on the break respots the 8-ball on the foot spot and keeps the turn. The first clean pot on a non-break shot assigns Solids and Stripes.' },
+        { h: 'Fouls and Ball-in-Hand', p: 'Scratching the cue ball, hitting no ball, or hitting an opponent ball or early 8-ball first is a foul. The opponent receives ball-in-hand anywhere on the table.' },
+        { h: 'Winning and Losing', p: 'Potting the 8-ball cleanly after clearing your group wins immediately. Potting the 8-ball early or committing a foul while potting the 8-ball loses immediately. If 150 turns pass, fewer remaining balls wins.' },
       ]
     },
   };

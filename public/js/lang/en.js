@@ -1705,6 +1705,27 @@
     'ui_done': 'Done',
     'ui_private_short': 'Private',
 
+    // ---- Pool (pool_) ----
+    'pool_open_table': 'Open Table',
+    'pool_solids': 'Solids (1-7)',
+    'pool_stripes': 'Stripes (9-15)',
+    'pool_on_eight': 'On 8-Ball',
+    'pool_your_turn': 'Your Shot',
+    'pool_opp_turn': 'Opponent Thinking...',
+    'pool_place_cue': 'Place Cue Ball',
+    'pool_opp_place_cue': 'Opponent Placing Cue Ball...',
+    'pool_shoot': 'Shoot',
+    'pool_power': 'Power',
+    'pool_aim_hint': 'Drag table to aim, or pull back from cue ball to shoot',
+    'pool_place_hint': 'Tap or drag table to place cue ball',
+    'pool_confirm_place': 'Confirm Place',
+    'pool_foul_scratch': 'Foul: Cue ball scratched (Ball in hand)',
+    'pool_foul_no_hit': 'Foul: No ball hit (Ball in hand)',
+    'pool_foul_wrong_ball': 'Foul: Wrong ball hit first (Ball in hand)',
+    'pool_foul_early_eight': 'Early 8-ball potted — Game over!',
+    'pool_respot_eight': '8-ball on break — 8-ball respotted',
+    'pool_break_shot': 'Break Shot!',
+
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'en';
   // _t function only needed in zh.js; en.js expects zh.js to have defined it

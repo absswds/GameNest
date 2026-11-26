@@ -110,6 +110,7 @@ const G = {
   texas: { n: 4, kind: 'texas', hands: 30 },
   liarsbar: { n: 4 },
   liarsdice: { n: 4 },
+  pool: { n: 2, cap: 400 },
   'exploding-kittens': { n: 4 },
   oldmaid: { n: 4 },
   flightchess: { n: 4 },
