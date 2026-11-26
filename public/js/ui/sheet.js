@@ -30,7 +30,7 @@
     var titleId = 'uiSheetTitle-' + sheetSeq;
 
     var backdrop = document.createElement('div');
-    backdrop.className = 'ui-sheet-backdrop';
+    backdrop.className = 'ui-sheet-backdrop' + (opts.desktopDialog ? ' ui-sheet-responsive' : '');
     backdrop.hidden = true;
     if (opts.id) backdrop.id = opts.id;
 
@@ -111,6 +111,10 @@
       }
     }
 
+    function isCenteredDialog() {
+      return !!(opts.desktopDialog && window.matchMedia && window.matchMedia('(min-width: 768px)').matches);
+    }
+
     function open() {
       if (destroyed) return;
       if (!backdrop.hidden && !isClosing) return;
@@ -131,6 +135,9 @@
         var ease = getEase();
         if (isReducedMotion()) {
           activeAnims.push(backdrop.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: ease }));
+        } else if (isCenteredDialog()) {
+          activeAnims.push(backdrop.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: ease }));
+          activeAnims.push(sheetEl.animate([{ opacity: 0, transform: 'scale(0.96)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 220, easing: ease }));
         } else {
           activeAnims.push(backdrop.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: ease }));
           activeAnims.push(sheetEl.animate([{ transform: 'translateY(100%)' }, { transform: 'translateY(0)' }], { duration: 260, easing: ease }));
@@ -172,6 +179,11 @@
           var fadeOut = backdrop.animate([{ opacity: currentOpacity }, { opacity: 0 }], { duration: 120, easing: ease, fill: 'forwards' });
           activeAnims.push(fadeOut);
           fadeOut.onfinish = finishClose;
+        } else if (isCenteredDialog()) {
+          var dlgBgAnim = backdrop.animate([{ opacity: currentOpacity }, { opacity: 0 }], { duration: 180, easing: ease, fill: 'forwards' });
+          var dlgAnim = sheetEl.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(0.96)' }], { duration: 180, easing: ease, fill: 'forwards' });
+          activeAnims.push(dlgBgAnim, dlgAnim);
+          dlgAnim.onfinish = finishClose;
         } else {
           var bgAnim = backdrop.animate([{ opacity: currentOpacity }, { opacity: 0 }], { duration: 200, easing: ease, fill: 'forwards' });
           var sheetAnim = sheetEl.animate([{ transform: currentTransform }, { transform: 'translateY(100%)' }], { duration: 200, easing: ease, fill: 'forwards' });
@@ -195,7 +207,7 @@
     var dragState = null;
 
     function startDrag(clientY, fromBody) {
-      if (!isOpen()) return;
+      if (!isOpen() || isCenteredDialog()) return;
       if (fromBody && bodyEl.scrollTop > 0) return;
       cancelAnims();
       dragState = { startY: clientY, dy: 0, active: false, fromBody: fromBody };

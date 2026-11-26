@@ -1702,6 +1702,8 @@
     'ui_sheet_close': 'Close',
     'ui_sound_on': 'Sound: On',
     'ui_sound_off': 'Sound: Off',
+    'ui_done': 'Done',
+    'ui_private_short': 'Private',
 
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'en';

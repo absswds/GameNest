@@ -1702,6 +1702,8 @@
     'ui_sheet_close': '关闭',
     'ui_sound_on': '音效：开',
     'ui_sound_off': '音效：关',
+    'ui_done': '完成',
+    'ui_private_short': '私密',
 
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'zh';
