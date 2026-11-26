@@ -413,4 +413,9 @@ module.exports = {
   'ld_invalid_bid': '无效的叫骰数量或点数',
   'ld_bid_too_low': '叫骰必须高于当前叫数或同数更高点数',
   'ld_player_out': '你已失去所有骰子，本局已淘汰',
+
+  // Pool (pool_)
+  'pool_wrong_phase': '当前阶段不能执行该操作',
+  'pool_invalid_shot': '击球角度或力度无效',
+  'pool_invalid_place': '母球摆放位置无效或与其他球重叠',
 };

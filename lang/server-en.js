@@ -413,4 +413,9 @@ module.exports = {
   'ld_invalid_bid': 'Invalid bid quantity or die face',
   'ld_bid_too_low': 'Bid must raise the quantity or pick a higher face at the same quantity',
   'ld_player_out': 'You have no dice left and are out of the game',
+
+  // Pool (pool_)
+  'pool_wrong_phase': 'Cannot perform that action in the current phase',
+  'pool_invalid_shot': 'Invalid shot angle or power',
+  'pool_invalid_place': 'Invalid cue ball placement or overlapping another ball',
 };
