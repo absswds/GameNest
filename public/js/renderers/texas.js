@@ -3,6 +3,7 @@
   var _lastHoleKey = '';
   var _lastCommunityCount = 0;
   var _prevAllIn = null, _prevHandNo = null;
+  var _raiseSlider = null;
   window.gameRenderers = window.gameRenderers || new Map();
 
   // Smallest legal raise target; mirrors games/texas.js handleMove 'raise'
@@ -14,6 +15,7 @@
     init: function(container) {
       _prevAllIn = null;
       _prevHandNo = null;
+      _raiseSlider = null;
       container.innerHTML =
         '<div id="txWrap" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:10px;font-family:inherit;">' +
           '<div id="txOpponents" style="display:flex;justify-content:space-around;gap:8px;flex-wrap:wrap;"></div>' +
@@ -26,9 +28,9 @@
           '<div id="txHoleCards" style="display:flex;gap:6px;justify-content:center;padding:8px 0;"></div>' +
           '<div id="txChips" style="text-align:center;font-size:14px;font-weight:600;"></div>' +
           '<div id="txActions" style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;"></div>' +
-          '<div id="txRaiseInput" style="display:none;text-align:center;gap:8px;">' +
-            '<input id="txRaiseAmount" type="number" style="width:100px;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:8px;font-size:14px;font-weight:600;" min="0">' +
-            '<button class="btn btn-sm btn-accent" onclick="window._txConfirmRaise()">' + _t('tx_confirm_raise') + '</button>' +
+          '<div id="txRaiseInput" style="display:none;flex-direction:column;align-items:stretch;gap:10px;width:100%;">' +
+            '<div id="txRaiseSlider"></div>' +
+            '<button id="txConfirmRaiseBtn" class="btn btn-sm btn-accent" style="min-height:44px;" onclick="window._txConfirmRaise()">' + _t('tx_confirm_raise') + '</button>' +
           '</div>' +
           '<div id="txShowdown" style="display:none;background:var(--bg);border-radius:var(--radius-sm);padding:12px;"></div>' +
         '</div>';
@@ -253,17 +255,44 @@
   window._txShowRaise = function() {
     var el = document.getElementById('txRaiseInput');
     if (el) el.style.display = 'flex';
-    var input = document.getElementById('txRaiseAmount');
-    if (input && window._txState) {
-      var minRaise = minRaiseTo(window._txState, window._txSelf);
-      input.min = minRaise;
-      input.value = minRaise;
+    var host = document.getElementById('txRaiseSlider');
+    var s = window._txState, idx = window._txSelf;
+    if (!host || !s) return;
+    var myChips = (s.chips && s.chips[idx]) || 0;
+    var myBet = (s.bets && s.bets[idx]) || 0;
+    var curBet = s.currentBet || 0;
+    var pot = s.pot || 0;
+    var min = minRaiseTo(s, idx);
+    var max = myBet + myChips;
+    var step = 10;
+    var callAmt = Math.max(0, curBet - myBet);
+    var halfPot = Math.min(max, Math.max(min, Math.round(curBet + (pot + callAmt) * 0.5)));
+    var fullPot = Math.min(max, Math.max(min, Math.round(curBet + pot + callAmt)));
+    var presets = [
+      { label: _t('ui_half_pot'), value: halfPot },
+      { label: _t('ui_pot'), value: fullPot },
+      { label: _t('tx_all_in'), value: max }
+    ];
+    var initVal = Math.min(max, min);
+    if (_raiseSlider && _raiseSlider.parentNode === host) {
+      _raiseSlider.setBounds({ min: min, max: max, step: step, value: initVal, presets: presets });
+    } else if (window.GNUI && window.GNUI.sliderSteps) {
+      host.innerHTML = '';
+      _raiseSlider = window.GNUI.sliderSteps({
+        id: 'txRaiseAmount',
+        label: _t('tx_raise'),
+        min: min,
+        max: max,
+        step: step,
+        value: initVal,
+        presets: presets
+      });
+      host.appendChild(_raiseSlider);
     }
   };
 
   window._txConfirmRaise = function() {
-    var input = document.getElementById('txRaiseAmount');
-    var amount = parseInt(input.value);
+    var amount = _raiseSlider ? _raiseSlider.getValue() : 0;
     if (isNaN(amount) || amount <= 0) { showToast(_t('tx_invalid_amount')); return; }
     window.makeGameMove({ action: 'raise', amount: amount });
     var el = document.getElementById('txRaiseInput');

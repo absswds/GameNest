@@ -2,7 +2,7 @@
 (function() {
   const el = {};
   function cacheElements() {
-    ['notifyBar','status','overlay','boardArea','waitingRoom','waitingSlots','waitingStatus','playerBar','resultOverlay','resultText','resultSub','gameStage','gameActions','profileEdit','emojiRow','avatarDrawer','readyBtn','startGameBtn','addBotBtn','gameOptions','seatSwapModal','seatSwapGrid','seatSwapHint','nameInput','avatarEmoji','qrImage','qrRoomCode','roomBadge','muteBtn','shareLinkBtn'].forEach(function(id) {
+    ['notifyBar','status','overlay','boardArea','waitingRoom','waitingSlots','waitingStatus','playerBar','resultOverlay','resultText','resultSub','gameStage','gameActions','profileEdit','emojiRow','avatarDrawer','readyBtn','startGameBtn','addBotBtn','gameOptions','seatSwapModal','seatSwapGrid','seatSwapHint','nameInput','avatarEmoji','qrImage','qrRoomCode','roomBadge','muteBtn','gameMenuBtn','shareLinkBtn'].forEach(function(id) {
       el[id] = document.getElementById(id);
     });
   }
@@ -224,6 +224,7 @@
     }
     var restartBtns = document.querySelectorAll('#gameActions .btn-outline');
     if (restartBtns.length > 0) restartBtns[0].textContent = _t('restart');
+    if (el.gameMenuBtn) el.gameMenuBtn.setAttribute('aria-label', _t('ui_menu'));
     document.title = gameInfo ? (gameInfo.name || 'GameNest') : 'GameNest';
   }
   i18nStatic();
@@ -519,6 +520,66 @@
     });
   }
 
+  var gameMenuSheet = null;
+  if (el.gameMenuBtn && window.GNUI && window.GNUI.sheet) {
+    gameMenuSheet = window.GNUI.sheet({
+      id: 'gameMenuSheet',
+      title: _t('ui_menu'),
+      onOpen: function(sheet) {
+        var menu = document.createElement('div');
+        menu.className = 'ui-sheet-menu';
+
+        function addItem(label, onClick, isDanger) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'ui-sheet-item' + (isDanger ? ' is-danger' : '');
+          btn.textContent = label;
+          btn.addEventListener('click', function() {
+            onClick(btn);
+          });
+          menu.appendChild(btn);
+          return btn;
+        }
+
+        addItem(_t('view_rules'), function() {
+          sheet.close();
+          var g = (window._effectiveGameKey ? window._effectiveGameKey() : null) || game;
+          if (typeof showGameTutorial === 'function') showGameTutorial(g);
+        });
+
+        addItem(muted ? _t('ui_sound_off') : _t('ui_sound_on'), function(btn) {
+          muted = !muted;
+          try { localStorage.setItem('gn_muted', muted ? '1' : '0'); } catch (e) {}
+          renderMuteBtn();
+          btn.textContent = muted ? _t('ui_sound_off') : _t('ui_sound_on');
+        });
+
+        if (roomPhase === 'playing') {
+          addItem(_t('restart'), function() {
+            sheet.close();
+            window.doRestart();
+          });
+          if (isHost) {
+            addItem(_t('return_to_room'), function() {
+              sheet.close();
+              window.doReturnToRoom();
+            });
+          }
+        }
+
+        addItem(_t('back_to_lobby'), function() {
+          sheet.close();
+          window.doLeaveRoom();
+        }, true);
+
+        sheet.setContent(menu);
+      }
+    });
+    el.gameMenuBtn.addEventListener('click', function() {
+      gameMenuSheet.open();
+    });
+  }
+
   // AudioContext starts suspended: create/resume it inside a user gesture.
   let audioCtx = null;
   document.addEventListener('pointerdown', function() {
@@ -658,6 +719,690 @@
     el.overlay.style.display = 'none';
   }
 
+  function optSegRow(label, key, options, currentVal) {
+    var cleanLabel = String(label || '').replace(/[:：]\s*$/, '');
+    var row = document.createElement('div');
+    row.className = 'ui-opt-row';
+    row.setAttribute('data-opt-key', key);
+    var lbl = document.createElement('div');
+    lbl.className = 'ui-opt-label';
+    lbl.textContent = cleanLabel;
+    row.appendChild(lbl);
+    if (window.GNUI && window.GNUI.segmented) {
+      row.appendChild(window.GNUI.segmented({
+        label: cleanLabel,
+        options: options,
+        value: currentVal,
+        onChange: function(v) { window._setGameOption(key, v); }
+      }));
+    }
+    return row;
+  }
+
+  function difficultyOpts() {
+    return [
+      { value: 'easy', label: _t('difficulty_easy') },
+      { value: 'normal', label: _t('difficulty_normal') },
+      { value: 'hard', label: _t('difficulty_hard') }
+    ];
+  }
+
+  function diffLabelText(d) {
+    return d === 'easy' ? _t('difficulty_easy') : d === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
+  }
+
+  var gameOptionsSheet = null;
+  function ensureGameOptionsSheet() {
+    if (gameOptionsSheet || !window.GNUI || !window.GNUI.sheet) return gameOptionsSheet;
+    gameOptionsSheet = window.GNUI.sheet({
+      id: 'gameOptionsSheet',
+      title: _t('game_settings'),
+      desktopDialog: true,
+      onOpen: function() {
+        syncGameOptionsSheet(true);
+      },
+      onClose: function() {
+        var btn = document.getElementById('optSummaryBtn');
+        if (btn && (!document.activeElement || document.activeElement === document.body)) {
+          try { btn.focus({ preventScroll: true }); } catch (e) { btn.focus(); }
+        }
+      }
+    });
+    return gameOptionsSheet;
+  }
+
+  function buildGameOptionsModel() {
+    var parts = [];
+    var builders = [];
+
+    if (game === 'twentyfour') {
+      var rt = roomOptions.roundTime || 0;
+      var mr = roomOptions.maxRounds || 5;
+      parts.push(rt === 0 ? _t('unlimited') : rt + _t('seconds'), mr + _t('rounds'));
+      builders.push(function(target) {
+        target.appendChild(optSegRow(_t('round_time_label'), 'roundTime', [0, 30, 60, 90, 120].map(function(t) {
+          return { value: t, label: t === 0 ? _t('unlimited') : t + _t('seconds') };
+        }), rt));
+        target.appendChild(optSegRow(_t('rc_win_rounds_label'), 'maxRounds', [3, 5, 7, 10].map(function(n) {
+          return { value: n, label: n + _t('rounds') };
+        }), mr));
+      });
+    } else if (game === 'rummikub') {
+      var breakOn = roomOptions.requireBreak !== false;
+      parts.push(_t('break_in_rule') + ': ' + (breakOn ? _t('break_on') : _t('break_off')));
+      builders.push(function(target) {
+        target.insertAdjacentHTML('beforeend',
+          '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;min-height:44px;">' +
+            '<input type="checkbox" id="optRequireBreak" ' + (breakOn ? 'checked' : '') + ' onchange="window._setGameOption(\'requireBreak\', this.checked)">' +
+            _t('require_break') +
+          '</label>'
+        );
+      });
+    } else if (game === 'bigtwo') {
+      var oneCardOn = roomOptions.oneCardRule !== false;
+      parts.push(_t('bt_one_card_rule_short') + ': ' + (oneCardOn ? _t('bt_rule_on') : _t('bt_rule_off')));
+      builders.push(function(target) {
+        target.insertAdjacentHTML('beforeend',
+          '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;min-height:44px;">' +
+            '<input type="checkbox" id="optOneCardRule" ' + (oneCardOn ? 'checked' : '') + ' onchange="window._setGameOption(\'oneCardRule\', this.checked)">' +
+            _t('bt_one_card_rule') +
+          '</label>'
+        );
+      });
+    } else if (game === 'doudizhu') {
+      var bm = roomOptions.bidMode || 'rob';
+      var fc = roomOptions.firstCaller || 'random';
+      var pt = Number(roomOptions.playTimeLimit) || 20;
+      var tr = Number(roomOptions.totalRounds) || 3;
+      parts.push(
+        bm === 'rob' ? _t('ddz_bid_mode_rob') : _t('ddz_bid_mode_score'),
+        fc === 'winner' ? _t('ddz_first_caller_winner') : _t('ddz_first_caller_random'),
+        _t('ddz_play_time_' + pt) || (pt + _t('seconds')),
+        _t('ddz_total_rounds_' + tr) || (tr + _t('rounds'))
+      );
+      builders.push(function(target) {
+        target.appendChild(optSegRow(_t('ddz_bid_mode'), 'bidMode', [
+          { value: 'rob', label: _t('ddz_bid_mode_rob') },
+          { value: 'score', label: _t('ddz_bid_mode_score') }
+        ], bm));
+        target.appendChild(optSegRow(_t('ddz_first_caller'), 'firstCaller', [
+          { value: 'random', label: _t('ddz_first_caller_random') },
+          { value: 'winner', label: _t('ddz_first_caller_winner') }
+        ], fc));
+        target.appendChild(optSegRow(_t('ddz_play_time'), 'playTimeLimit', [10, 20, 60, 300].map(function(t) {
+          return { value: t, label: _t('ddz_play_time_' + t) };
+        }), pt));
+        target.appendChild(optSegRow(_t('ddz_total_rounds'), 'totalRounds', [3, 6, 9, 12].map(function(n) {
+          return { value: n, label: _t('ddz_total_rounds_' + n) };
+        }), tr));
+      });
+    } else if (game === 'monopoly') {
+      var rl = roomOptions.roundLimit !== undefined ? Number(roomOptions.roundLimit) : 50;
+      var rlLabel = function(v) { return v === 0 ? _t('mono_round_limit_0') : v + _t('mono_round_limit_n'); };
+      parts.push(rlLabel(rl));
+      builders.push(function(target) {
+        target.appendChild(optSegRow(_t('mono_round_limit'), 'roundLimit', [30, 50, 80, 0].map(function(v) {
+          return { value: v, label: rlLabel(v) };
+        }), rl));
+      });
+    } else if (game === 'sheeptile') {
+      var sameBoard = roomOptions.sameBoard !== false;
+      parts.push(sameBoard ? _t('same_board') : _t('random_boards'));
+      builders.push(function(target) {
+        target.insertAdjacentHTML('beforeend',
+          '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;min-height:44px;">' +
+            '<input type="checkbox" id="optSameBoard" ' + (sameBoard ? 'checked' : '') + ' onchange="window._setGameOption(\'sameBoard\', this.checked)">' +
+            _t('same_board') +
+          '</label>' +
+          '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + _t('random_boards') + '</div>'
+        );
+      });
+    } else if (game === 'truthdare') {
+      var tdDecks = [
+        ['icebreaker', _t('deck_icebreaker')],
+        ['party', _t('deck_party')],
+        ['deep', _t('deck_deep')],
+        ['challenge', _t('deck_challenge')],
+        ['custom', _t('deck_custom')]
+      ];
+      var tdEnabled = Array.isArray(roomOptions.enabledDecks) && roomOptions.enabledDecks.length > 0
+        ? roomOptions.enabledDecks : ['icebreaker', 'party', 'deep', 'challenge'];
+      var tdTruths = escapeHtml(roomOptions.customTruths || '');
+      var tdDares = escapeHtml(roomOptions.customDares || '');
+      var tdNames = tdDecks.filter(function(d) { return tdEnabled.indexOf(d[0]) >= 0; }).map(function(d) { return d[1]; }).join('、');
+      var truthCount = (roomOptions.customTruths || '').split(/\r?\n|[;；]/).filter(function(x) { return x.trim(); }).length;
+      var dareCount = (roomOptions.customDares || '').split(/\r?\n|[;；]/).filter(function(x) { return x.trim(); }).length;
+      parts.push(tdNames || _t('deck_custom'));
+      if (truthCount + dareCount > 0) parts.push(_t('deck_custom') + ' ' + (truthCount + dareCount));
+      builders.push(function(target) {
+        var tdDeckHtml = '';
+        tdDecks.forEach(function(d) {
+          var checked = tdEnabled.indexOf(d[0]) >= 0;
+          tdDeckHtml += '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;margin:2px 10px 2px 0;">' +
+            '<input type="checkbox" class="td-deck" value="' + d[0] + '"' + (checked ? ' checked' : '') + ' onchange="window._tdCollectDecks()">' + d[1] + '</label>';
+        });
+        target.insertAdjacentHTML('beforeend',
+          '<div style="font-size:13px;margin-bottom:8px;">' + _t('enable_decks') + ':<br>' + tdDeckHtml + '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">' +
+            '<label>' + _t('custom_truths') + '<textarea id="optTdTruths" rows="3" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="' + _t('custom_truths_placeholder') + '">' + tdTruths + '</textarea></label>' +
+            '<label>' + _t('custom_dares') + '<textarea id="optTdDares" rows="3" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="' + _t('custom_dares_placeholder') + '">' + tdDares + '</textarea></label>' +
+          '</div>' +
+          '<button type="button" class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="window._tdSaveCustom()">' + _t('save_custom_decks') + '</button>' +
+          '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">' + _t('truthdare_rule_hint') + '</div>'
+        );
+      });
+    } else if (game === 'werewolf') {
+      var wwSpeech = roomOptions.speechTime || 60;
+      var wwSheriff = roomOptions.sheriff !== false;
+      var wwTalk = roomOptions.talkMode === 'chat' ? 'chat' : 'face';
+      var wwDiscuss = roomOptions.discussTime !== undefined ? roomOptions.discussTime : 60;
+      var wwDiscussLabel = function(v) { return v ? v + _t('seconds') : _t('ww_off'); };
+      parts.push(
+        _t(wwTalk === 'chat' ? 'ww_talk_chat' : 'ww_talk_face'),
+        _t('ww_discuss_time') + ' ' + wwDiscussLabel(wwDiscuss),
+        wwSpeech + _t('seconds'),
+        _t('ww_sheriff_opt') + ' ' + _t(wwSheriff ? 'ww_on' : 'ww_off')
+      );
+      builders.push(function(target) {
+        target.appendChild(optSegRow(_t('ww_talk_mode'), 'talkMode', [
+          { value: 'face', label: _t('ww_talk_face') },
+          { value: 'chat', label: _t('ww_talk_chat') }
+        ], wwTalk));
+        target.appendChild(optSegRow(_t('ww_discuss_time'), 'discussTime', [0, 60, 120, 180].map(function(v) {
+          return { value: v, label: wwDiscussLabel(v) };
+        }), wwDiscuss));
+        target.appendChild(optSegRow(_t('ww_speech_time'), 'speechTime', [30, 60, 90, 120, 180].map(function(v) {
+          return { value: v, label: v + _t('seconds') };
+        }), wwSpeech));
+        target.appendChild(optSegRow(_t('ww_sheriff_opt'), 'sheriff', [
+          { value: true, label: _t('ww_on') },
+          { value: false, label: _t('ww_off') }
+        ], wwSheriff));
+        target.insertAdjacentHTML('beforeend',
+          '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.5;">' + _t('ww_setup_hint') + '</div>'
+        );
+      });
+    } else if (game === 'undercover') {
+      var ucTalk = roomOptions.talkMode === 'chat' ? 'chat' : 'face';
+      var ucTime = [30, 45, 60].indexOf(Number(roomOptions.speechTime)) >= 0 ? Number(roomOptions.speechTime) : 45;
+      var ucCount = (roomOptions.ucCount === 1 || roomOptions.ucCount === '1') ? '1' : (roomOptions.ucCount === 2 || roomOptions.ucCount === '2') ? '2' : 'auto';
+      var ucCountVal = ucCount === '1' ? 1 : ucCount === '2' ? 2 : 'auto';
+      var ucCountLabel = ucCount === '1' ? _t('uc_opt_count_1') : ucCount === '2' ? _t('uc_opt_count_2') : _t('uc_opt_count_auto');
+      var ucBlank = !!roomOptions.blank;
+      var ucDiff = roomOptions.difficulty || 'normal';
+      var ucWD = ['mixed', 'easy', 'normal', 'hard'].indexOf(roomOptions.wordDiff) >= 0 ? roomOptions.wordDiff : 'mixed';
+      parts.push(_t(ucTalk === 'chat' ? 'uc_opt_talk_chat' : 'uc_opt_talk_face'), _t('uc_opt_time_' + ucTime), ucCountLabel);
+      if (ucBlank) parts.push(_t('uc_opt_blank_label'));
+      parts.push(_t('uc_worddiff_' + ucWD), diffLabelText(ucDiff));
+      builders.push(function(target) {
+        target.appendChild(optSegRow(_t('uc_opt_talk_label'), 'talkMode', [
+          { value: 'face', label: _t('uc_opt_talk_face') },
+          { value: 'chat', label: _t('uc_opt_talk_chat') }
+        ], ucTalk));
+        target.appendChild(optSegRow(_t('uc_opt_time_label'), 'speechTime', [
+          { value: 30, label: _t('uc_opt_time_30') },
+          { value: 45, label: _t('uc_opt_time_45') },
+          { value: 60, label: _t('uc_opt_time_60') }
+        ], ucTime));
+        target.appendChild(optSegRow(_t('uc_opt_count_label'), 'ucCount', [
+          { value: 'auto', label: _t('uc_opt_count_auto') },
+          { value: 1, label: _t('uc_opt_count_1') },
+          { value: 2, label: _t('uc_opt_count_2') }
+        ], ucCountVal));
+        target.insertAdjacentHTML('beforeend',
+          '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;margin:10px 0;"><input type="checkbox" id="optUcBlank"' + (ucBlank ? ' checked' : '') + ' onchange="window._setGameOption(\'blank\', this.checked)">' + _t('uc_opt_blank_label') + '</label>'
+        );
+        target.appendChild(optSegRow(_t('uc_opt_worddiff_label'), 'wordDiff', ['mixed', 'easy', 'normal', 'hard'].map(function(d) {
+          return { value: d, label: _t('uc_worddiff_' + d) };
+        }), ucWD));
+        target.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), ucDiff));
+        target.insertAdjacentHTML('beforeend',
+          '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">' + _t('uc_bot_hint') + '</div>'
+        );
+      });
+    } else if (game === 'drawguess') {
+      var dgCats = [['animal',_t('cat_animal')],['food',_t('cat_food')],['daily',_t('cat_daily')],['action',_t('cat_action')],['place',_t('cat_place')],['idiom',_t('cat_idiom')],['movie',_t('cat_movie')],['internet',_t('cat_internet')]];
+      var selCats = Array.isArray(roomOptions.categories) && roomOptions.categories.length > 0
+        ? roomOptions.categories : dgCats.map(function(c){ return c[0]; });
+      var dgDraw = roomOptions.drawTime !== undefined ? roomOptions.drawTime : 90;
+      var dgGuess = roomOptions.guessTime !== undefined ? roomOptions.guessTime : 45;
+      var dgChoices = roomOptions.wordChoices !== undefined ? roomOptions.wordChoices : 3;
+      var dgRounds = roomOptions.rounds !== undefined ? roomOptions.rounds : 0;
+      var dgMode = roomOptions.mode || 'stage';
+      function _dgRoundsLbl(v) { return v ? _t('dg_rounds_each') + v + _t('dg_rounds_times') : _t('dg_rounds_auto'); }
+      function _dgTimeLbl(v) { return v === 0 ? _t('unlimited') : v + _t('seconds'); }
+      parts.push(
+        dgMode === 'stage' ? _t('mode_stage') : _t('mode_whisper'),
+        _dgTimeLbl(dgDraw),
+        _dgTimeLbl(dgGuess),
+        dgChoices + _t('dg_choices_suffix'),
+        _dgRoundsLbl(dgRounds)
+      );
+      builders.push(function(target) {
+        var catHtml = '';
+        dgCats.forEach(function(c) {
+          var on = selCats.indexOf(c[0]) >= 0;
+          catHtml += '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;margin:2px 8px 2px 0;">' +
+            '<input type="checkbox" class="dg-cat" value="' + c[0] + '"' + (on ? ' checked' : '') + ' onchange="window._dgCollectCats()">' + c[1] + '</label>';
+        });
+        var customVal = (roomOptions.customWords || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        target.appendChild(optSegRow(_t('mode_label'), 'mode', [
+          { value: 'stage', label: _t('mode_stage') },
+          { value: 'whisper', label: _t('mode_whisper') }
+        ], dgMode));
+        target.insertAdjacentHTML('beforeend',
+          '<div style="font-size:13px;margin:10px 0 8px;">' + _t('word_categories') + ':<br>' + catHtml + '</div>'
+        );
+        target.appendChild(optSegRow(_t('draw_time_label'), 'drawTime', [45, 60, 90, 120, 0].map(function(v) {
+          return { value: v, label: _dgTimeLbl(v) };
+        }), dgDraw));
+        target.appendChild(optSegRow(_t('guess_time_label'), 'guessTime', [30, 45, 60, 90, 0].map(function(v) {
+          return { value: v, label: _dgTimeLbl(v) };
+        }), dgGuess));
+        target.appendChild(optSegRow(_t('word_count_label'), 'wordChoices', [
+          { value: 1, label: _t('label_1choice') },
+          { value: 2, label: _t('label_2choices') },
+          { value: 3, label: _t('label_3choices') },
+          { value: 5, label: _t('label_5choices') }
+        ], dgChoices));
+        target.appendChild(optSegRow(_t('dg_rounds_label'), 'rounds', [0, 1, 2, 3, 4].map(function(v) {
+          return { value: v, label: _dgRoundsLbl(v) };
+        }), dgRounds));
+        target.insertAdjacentHTML('beforeend',
+          '<div style="font-size:13px;margin-top:10px;">' + _t('custom_words_label') + ':<br>' +
+            '<textarea id="optDgCustom" rows="2" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="' + _t('custom_words_placeholder') + '">' + customVal + '</textarea>' +
+            '<button type="button" class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="window._setGameOption(\'customWords\', document.getElementById(\'optDgCustom\').value)">' + _t('save_custom_words') + '</button>' +
+          '</div>'
+        );
+      });
+    } else if (game === 'reversi') {
+      var bs = roomOptions.boardSize || 8;
+      var rvDiff = roomOptions.difficulty || 'normal';
+      parts.push(bs + '×' + bs, diffLabelText(rvDiff));
+      builders.push(function(target) {
+        target.appendChild(optSegRow(_t('ec_board_size'), 'boardSize', [
+          { value: 8, label: '8×8' },
+          { value: 10, label: '10×10' },
+          { value: 12, label: '12×12' }
+        ], bs));
+        target.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), rvDiff));
+      });
+    } else if (game === 'mahjong-sichuan') {
+      var mjMode = roomOptions.mahjongMode || 'sichuan';
+      var maxFanLabel = function(v) { return v ? tf('mj_fan_n', v) : _t('mj_fan_nolimit'); };
+      parts.push(mjMode === 'cantonese' ? _t('mahjong_mode_cantonese') : _t('mahjong_mode_sichuan'));
+      if (mjMode === 'cantonese') {
+        parts.push(maxFanLabel(roomOptions.mj_maxFan), roomOptions.mj_minFan ? tf('mj_fan_n', roomOptions.mj_minFan) : _t('mj_fan_chicken'));
+      }
+      function mjToggle(key, labelKey) {
+        var checked = roomOptions[key] === true || roomOptions[key] === 'true';
+        var desc = _t(labelKey + '_desc');
+        var descHtml = (desc && desc !== labelKey + '_desc')
+          ? '<div style="font-size:12px;color:var(--text-muted);margin:-2px 0 6px 24px;line-height:1.4;">' + desc + '</div>'
+          : '';
+        return '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;margin-bottom:6px;">' +
+          '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="window._setGameOption(\'' + key + '\', this.checked)" style="width:16px;height:16px;cursor:pointer;">' +
+          _t(labelKey) +
+          '</label>' + descHtml;
+      }
+      builders.push(function(target) {
+        target.appendChild(optSegRow(_t('mahjong_mode'), 'mahjongMode', [
+          { value: 'sichuan', label: _t('mahjong_mode_sichuan') },
+          { value: 'cantonese', label: _t('mahjong_mode_cantonese') }
+        ], mjMode));
+        if (mjMode === 'sichuan') {
+          target.insertAdjacentHTML('beforeend',
+            '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px;">' +
+              '<div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted);">' + _t('mj_rules_title') + '</div>' +
+              mjToggle('mj_bloodBattle', 'mj_rule_bloodBattle') +
+              mjToggle('mj_multiWinner', 'mj_rule_multiWinner') +
+              mjToggle('mj_rain', 'mj_rule_rain') +
+              mjToggle('mj_checkFlowerPig', 'mj_rule_checkFlowerPig') +
+              mjToggle('mj_checkBigCall', 'mj_rule_checkBigCall') +
+              mjToggle('mj_lastFourAutoWin', 'mj_rule_lastFourAutoWin') +
+              mjToggle('mj_swapThree', 'mj_rule_swapThree') +
+            '</div>'
+          );
+        } else if (mjMode === 'cantonese') {
+          var mjCant = document.createElement('div');
+          mjCant.style.cssText = 'border-top:1px solid var(--border);padding-top:8px;margin-top:8px;';
+          mjCant.innerHTML =
+            '<div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted);">' + _t('mj_rules_cantonese') + '</div>' +
+            mjToggle('mj_buyTiles', 'mj_rule_buyTiles') +
+            mjToggle('mj_wildcard', 'mj_rule_wildcard');
+          mjCant.appendChild(optSegRow(_t('mj_rule_maxFan'), 'mj_maxFan', [
+            { value: 0, label: _t('mj_fan_nolimit') },
+            { value: 3, label: tf('mj_fan_n', 3) },
+            { value: 4, label: tf('mj_fan_n', 4) },
+            { value: 5, label: tf('mj_fan_n', 5) }
+          ], Number(roomOptions.mj_maxFan) || 0));
+          mjCant.appendChild(optSegRow(_t('mj_rule_minFan'), 'mj_minFan', [
+            { value: 0, label: _t('mj_fan_chicken') },
+            { value: 1, label: tf('mj_fan_n', 1) },
+            { value: 3, label: tf('mj_fan_n', 3) }
+          ], Number(roomOptions.mj_minFan) || 0));
+          target.appendChild(mjCant);
+        }
+      });
+    } else if (game === 'paodekuai') {
+      var pdkMustBeat = roomOptions.mustBeat !== false && roomOptions.mustBeat !== 'false';
+      var pdkRounds = [1, 3, 5, 8].indexOf(Number(roomOptions.rounds)) >= 0 ? Number(roomOptions.rounds) : 3;
+      var pdkTurnTime = [0, 15, 20, 30].indexOf(Number(roomOptions.turnTime)) >= 0 ? Number(roomOptions.turnTime) : 20;
+      var pdkDiff = roomOptions.difficulty || 'normal';
+      var pdkTimeLabel = pdkTurnTime === 0 ? _t('pdk_turn_time_off') : tf('pdk_turn_time_n', pdkTurnTime);
+      parts.push(
+        pdkMustBeat ? _t('pdk_must_beat_on') : _t('pdk_must_beat_off'),
+        tf('pdk_rounds_n', pdkRounds),
+        pdkTimeLabel,
+        diffLabelText(pdkDiff)
+      );
+      builders.push(function(target) {
+        target.appendChild(optSegRow(_t('pdk_must_beat_opt'), 'mustBeat', [
+          { value: true, label: _t('pdk_must_beat_on') },
+          { value: false, label: _t('pdk_must_beat_off') }
+        ], pdkMustBeat));
+        target.appendChild(optSegRow(_t('pdk_rounds_opt'), 'rounds', [1, 3, 5, 8].map(function(n) {
+          return { value: n, label: tf('pdk_rounds_n', n) };
+        }), pdkRounds));
+        target.appendChild(optSegRow(_t('pdk_turn_time_opt'), 'turnTime', [
+          { value: 0, label: _t('pdk_turn_time_off') },
+          { value: 15, label: tf('pdk_turn_time_n', 15) },
+          { value: 20, label: tf('pdk_turn_time_n', 20) },
+          { value: 30, label: tf('pdk_turn_time_n', 30) }
+        ], pdkTurnTime));
+        target.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), pdkDiff));
+      });
+    } else if (game === 'liarsdice') {
+      var ldStartDice = [3, 4, 5].indexOf(Number(roomOptions.startDice)) >= 0 ? Number(roomOptions.startDice) : 5;
+      var ldOnesWild = roomOptions.onesWild !== false && roomOptions.onesWild !== 'false';
+      var ldTurnTime = [0, 15, 20, 30].indexOf(Number(roomOptions.turnTime)) >= 0 ? Number(roomOptions.turnTime) : 20;
+      var ldDiff = roomOptions.difficulty || 'normal';
+      var ldTimeLabel = ldTurnTime === 0 ? _t('ld_turn_time_off') : tf('ld_turn_time_n', ldTurnTime);
+      parts.push(
+        tf('ld_start_dice_n', ldStartDice),
+        _t('ld_ones_wild_opt') + ' ' + (ldOnesWild ? _t('ld_ones_wild_yes') : _t('ld_ones_wild_no')),
+        ldTimeLabel,
+        diffLabelText(ldDiff)
+      );
+      builders.push(function(target) {
+        target.appendChild(optSegRow(_t('ld_start_dice_opt'), 'startDice', [3, 4, 5].map(function(n) {
+          return { value: n, label: tf('ld_start_dice_n', n) };
+        }), ldStartDice));
+        target.appendChild(optSegRow(_t('ld_ones_wild_opt'), 'onesWild', [
+          { value: true, label: _t('ld_ones_wild_yes') },
+          { value: false, label: _t('ld_ones_wild_no') }
+        ], ldOnesWild));
+        target.appendChild(optSegRow(_t('ld_turn_time_opt'), 'turnTime', [
+          { value: 0, label: _t('ld_turn_time_off') },
+          { value: 15, label: tf('ld_turn_time_n', 15) },
+          { value: 20, label: tf('ld_turn_time_n', 20) },
+          { value: 30, label: tf('ld_turn_time_n', 30) }
+        ], ldTurnTime));
+        target.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), ldDiff));
+      });
+    } else if (game === 'quizrace') {
+      var qrCount = [10, 15, 20].indexOf(Number(roomOptions.questionCount)) >= 0 ? Number(roomOptions.questionCount) : 10;
+      var qrTime = [10, 15, 20].indexOf(Number(roomOptions.timePerQuestion)) >= 0 ? Number(roomOptions.timePerQuestion) : 15;
+      var qrCat = roomOptions.category || 'all';
+      var qrDiff = roomOptions.difficulty || 'normal';
+      var qrCats = ['all', 'general', 'geography', 'science', 'history', 'nature', 'sports', 'culture', 'food', 'idiom', 'life', 'cncult', 'anime', 'mental'];
+      var qrQD = ['mixed', 'easy', 'normal', 'hard'].indexOf(roomOptions.questionDiff) >= 0 ? roomOptions.questionDiff : 'mixed';
+      var qrSelStyle = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:14px;min-height:44px;max-width:100%;';
+      parts.push(
+        qrCount + _t('qr_opt_questions_unit'),
+        qrTime + _t('qr_opt_seconds_unit'),
+        _t('qr_cat_' + qrCat),
+        _t('qr_qdiff_' + qrQD),
+        diffLabelText(qrDiff)
+      );
+      builders.push(function(target) {
+        target.appendChild(optSegRow(_t('qr_opt_question_count'), 'questionCount', [10, 15, 20].map(function(n) {
+          return { value: n, label: n + _t('qr_opt_questions_unit') };
+        }), qrCount));
+        target.appendChild(optSegRow(_t('qr_opt_time_per_question'), 'timePerQuestion', [10, 15, 20].map(function(s) {
+          return { value: s, label: s + _t('qr_opt_seconds_unit') };
+        }), qrTime));
+        target.insertAdjacentHTML('beforeend',
+          '<div class="ui-opt-row">' +
+            '<label class="ui-opt-label" for="optQrCategory">' + _t('qr_opt_category').replace(/[:：]\s*$/, '') + '</label>' +
+            '<select id="optQrCategory" onchange="window._setGameOption(\'category\', this.value)" style="' + qrSelStyle + '">' +
+              qrCats.map(function(c) { return '<option value="' + c + '"' + (qrCat === c ? ' selected' : '') + '>' + _t('qr_cat_' + c) + '</option>'; }).join('') +
+            '</select>' +
+          '</div>'
+        );
+        target.appendChild(optSegRow(_t('qr_opt_qdiff'), 'questionDiff', ['mixed', 'easy', 'normal', 'hard'].map(function(d) {
+          return { value: d, label: _t('qr_qdiff_' + d) };
+        }), qrQD));
+        target.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), qrDiff));
+      });
+    } else if (game === 'blackjack') {
+      var bjDecks = [1, 2, 4].indexOf(Number(roomOptions.decks)) >= 0 ? Number(roomOptions.decks) : 2;
+      var bjRounds = [5, 10, 15].indexOf(Number(roomOptions.rounds)) >= 0 ? Number(roomOptions.rounds) : 10;
+      var bjTime = [0, 15, 20, 30].indexOf(Number(roomOptions.turnTime)) >= 0 ? Number(roomOptions.turnTime) : 20;
+      var bjDiff = roomOptions.difficulty || 'normal';
+      var bjTimeLbl = bjTime === 0 ? _t('pdk_turn_time_off') : tf('pdk_turn_time_n', bjTime);
+      parts.push(
+        bjDecks + _t('bj_decks_unit'),
+        bjRounds + _t('bj_rounds_unit'),
+        bjTimeLbl,
+        diffLabelText(bjDiff)
+      );
+      builders.push(function(target) {
+        target.appendChild(optSegRow(_t('bj_opt_decks'), 'decks', [1, 2, 4].map(function(d) {
+          return { value: d, label: d + _t('bj_decks_unit') };
+        }), bjDecks));
+        target.appendChild(optSegRow(_t('bj_opt_rounds'), 'rounds', [5, 10, 15].map(function(r) {
+          return { value: r, label: r + _t('bj_rounds_unit') };
+        }), bjRounds));
+        target.appendChild(optSegRow(_t('bj_opt_time'), 'turnTime', [
+          { value: 0, label: _t('pdk_turn_time_off') },
+          { value: 15, label: tf('pdk_turn_time_n', 15) },
+          { value: 20, label: tf('pdk_turn_time_n', 20) },
+          { value: 30, label: tf('pdk_turn_time_n', 30) }
+        ], bjTime));
+        target.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), bjDiff));
+      });
+    } else if (gameInfo.supportsAI && window._gamesWithDifficulty.indexOf(game) >= 0) {
+      var curDiff = roomOptions.difficulty || 'normal';
+      parts.push(diffLabelText(curDiff));
+      builders.push(function(target) {
+        target.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), curDiff));
+      });
+    }
+
+    if (SIDE_LAYOUT_GAMES.indexOf(game) !== -1) {
+      var bo = roomOptions.bestOf || 1;
+      parts.push(_t('best_of_' + bo));
+      builders.push(function(target) {
+        target.appendChild(optSegRow(_t('best_of_label'), 'bestOf', [1, 3, 5].map(function(n) {
+          return { value: n, label: _t('best_of_' + n) };
+        }), bo));
+      });
+    }
+
+    var hasOptions = builders.length > 0;
+    if (hasOptions && roomPhase !== 'playing') {
+      var isPriv = !!roomOptions.isPrivate;
+      if (isPriv) parts.push(_t('ui_private_short'));
+      builders.push(function(target) {
+        var privWrap = document.createElement('div');
+        privWrap.className = 'ui-switch-wrap';
+        privWrap.innerHTML =
+          '<div class="ui-switch-row">' +
+            '<div class="ui-switch-copy">' +
+              '<label class="ui-switch-label" for="optIsPrivate">' + _t('private_room_checkbox') + '</label>' +
+              '<span class="ui-switch-hint">' + _t('private_room_hint') + '</span>' +
+            '</div>' +
+            '<button type="button" id="optIsPrivate" class="ui-switch' + (isPriv ? ' is-on' : '') + '" role="switch" aria-checked="' + (isPriv ? 'true' : 'false') + '">' +
+              '<span class="ui-switch-thumb" aria-hidden="true"></span>' +
+            '</button>' +
+          '</div>';
+        var privBtn = privWrap.querySelector('#optIsPrivate');
+        if (privBtn) {
+          privBtn.addEventListener('click', function() {
+            var next = !roomOptions.isPrivate;
+            privBtn.setAttribute('aria-checked', next ? 'true' : 'false');
+            privBtn.classList.toggle('is-on', next);
+            window._setPrivate(next);
+          });
+        }
+        target.appendChild(privWrap);
+      });
+    }
+
+    return {
+      hasOptions: hasOptions,
+      summaryText: parts.filter(Boolean).join(' · '),
+      renderControls: function(target) {
+        builders.forEach(function(fn) { fn(target); });
+        var doneWrap = document.createElement('div');
+        doneWrap.className = 'ui-sheet-done-wrap';
+        var doneBtn = document.createElement('button');
+        doneBtn.type = 'button';
+        doneBtn.className = 'btn btn-accent btn-sm ui-sheet-done';
+        doneBtn.textContent = _t('ui_done');
+        doneBtn.addEventListener('click', function() {
+          if (gameOptionsSheet) gameOptionsSheet.close();
+        });
+        doneWrap.appendChild(doneBtn);
+        target.appendChild(doneWrap);
+      }
+    };
+  }
+
+  function syncGameOptionsSheet(skipFocusRestore, model) {
+    if (!gameOptionsSheet) return;
+    model = model || buildGameOptionsModel();
+    if (!model.hasOptions || !isHost) {
+      if (gameOptionsSheet.isOpen()) gameOptionsSheet.close();
+      return;
+    }
+
+    var active = document.activeElement;
+    var focusTarget = null;
+    var savedTextarea = null;
+    if (!skipFocusRestore && active && gameOptionsSheet.bodyEl.contains(active)) {
+      if (active.tagName === 'TEXTAREA' && active.id) {
+        savedTextarea = {
+          id: active.id,
+          value: active.value,
+          start: active.selectionStart,
+          end: active.selectionEnd
+        };
+      }
+      if (active.id) {
+        focusTarget = { id: active.id };
+      } else {
+        var seg = active.closest && active.closest('[data-opt-key]');
+        if (seg) {
+          var btns = Array.prototype.slice.call(seg.querySelectorAll('.ui-seg-btn'));
+          focusTarget = { optKey: seg.getAttribute('data-opt-key'), idx: btns.indexOf(active) };
+        } else if (active.classList && active.classList.contains('ui-sheet-done')) {
+          focusTarget = { cls: 'ui-sheet-done' };
+        }
+      }
+    }
+
+    var wrap = document.createElement('div');
+    model.renderControls(wrap);
+    gameOptionsSheet.setContent(wrap);
+
+    if (savedTextarea) {
+      var ta = gameOptionsSheet.bodyEl.querySelector('#' + savedTextarea.id);
+      if (ta) {
+        ta.value = savedTextarea.value;
+        try { ta.setSelectionRange(savedTextarea.start, savedTextarea.end); } catch (e) {}
+      }
+    }
+
+    if (focusTarget) {
+      var nextFocus = null;
+      if (focusTarget.id) {
+        nextFocus = gameOptionsSheet.bodyEl.querySelector('#' + focusTarget.id);
+      } else if (focusTarget.optKey) {
+        var nextSeg = gameOptionsSheet.bodyEl.querySelector('[data-opt-key="' + focusTarget.optKey + '"]');
+        if (nextSeg) {
+          var nextBtns = nextSeg.querySelectorAll('.ui-seg-btn');
+          nextFocus = nextBtns[focusTarget.idx] || nextSeg.querySelector('.ui-seg-btn.is-selected') || nextBtns[0];
+        }
+      } else if (focusTarget.cls) {
+        nextFocus = gameOptionsSheet.bodyEl.querySelector('.' + focusTarget.cls);
+      }
+      if (nextFocus && typeof nextFocus.focus === 'function') {
+        try { nextFocus.focus({ preventScroll: true }); } catch (e) { nextFocus.focus(); }
+      }
+    }
+  }
+
+  function renderGameOptions(syncOpenSheet) {
+    var optionsEl = el.gameOptions;
+    if (!optionsEl) return;
+    var model = buildGameOptionsModel();
+    if (!model.hasOptions) {
+      optionsEl.style.display = 'none';
+      optionsEl.innerHTML = '';
+      if (gameOptionsSheet && gameOptionsSheet.isOpen()) gameOptionsSheet.close();
+      return;
+    }
+
+    optionsEl.style.display = 'block';
+    optionsEl.style.padding = '0';
+    optionsEl.style.background = 'transparent';
+
+    if (isHost) {
+      var existingBtn = optionsEl.querySelector('#optSummaryBtn');
+      if (existingBtn) {
+        var lblEl = existingBtn.querySelector('.ui-opt-summary-label');
+        var valEl = existingBtn.querySelector('.ui-opt-summary-val');
+        if (lblEl) lblEl.textContent = _t('game_settings');
+        if (valEl) valEl.textContent = model.summaryText;
+      } else {
+        optionsEl.innerHTML = '';
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'optSummaryBtn';
+        btn.className = 'ui-opt-summary';
+        btn.innerHTML =
+          '<span class="ui-opt-summary-label"></span>' +
+          '<span class="ui-opt-summary-val"></span>' +
+          '<span class="ui-opt-summary-chev" aria-hidden="true">›</span>';
+        btn.querySelector('.ui-opt-summary-label').textContent = _t('game_settings');
+        btn.querySelector('.ui-opt-summary-val').textContent = model.summaryText;
+        btn.addEventListener('click', function() {
+          if (document.activeElement !== btn) {
+            try { btn.focus({ preventScroll: true }); } catch (e) { btn.focus(); }
+          }
+          var sheet = ensureGameOptionsSheet();
+          if (sheet) sheet.open();
+        });
+        optionsEl.appendChild(btn);
+      }
+      if (syncOpenSheet && gameOptionsSheet && gameOptionsSheet.isOpen()) {
+        syncGameOptionsSheet(false, model);
+      }
+    } else {
+      if (gameOptionsSheet && gameOptionsSheet.isOpen()) gameOptionsSheet.close();
+      var existingRow = optionsEl.querySelector('#optSummaryRow');
+      if (existingRow) {
+        var rLbl = existingRow.querySelector('.ui-opt-summary-label');
+        var rVal = existingRow.querySelector('.ui-opt-summary-val');
+        if (rLbl) rLbl.textContent = _t('game_settings');
+        if (rVal) rVal.textContent = model.summaryText;
+      } else {
+        optionsEl.innerHTML = '';
+        var row = document.createElement('div');
+        row.id = 'optSummaryRow';
+        row.className = 'ui-opt-summary is-readonly';
+        row.innerHTML =
+          '<span class="ui-opt-summary-label"></span>' +
+          '<span class="ui-opt-summary-val"></span>';
+        row.querySelector('.ui-opt-summary-label').textContent = _t('game_settings');
+        row.querySelector('.ui-opt-summary-val').textContent = model.summaryText;
+        optionsEl.appendChild(row);
+      }
+    }
+  }
+
   // ---- Waiting Room ----
   function updateWaitingRoom() {
     // 房主身份与 phase 无关，必须在 playing 早退之前算：
@@ -668,6 +1413,7 @@
     myReady = myInfo ? myInfo.ready : false;
 
     if (roomPhase === 'playing') {
+      if (gameOptionsSheet && gameOptionsSheet.isOpen()) gameOptionsSheet.close();
       updateSharedShell();
       showGame();
       updatePlayerBar();
@@ -814,696 +1560,8 @@
       });
     });
 
-    // ---- Game Options (host-only settings) ----
-    var optionsEl = el.gameOptions;
-    if (optionsEl) {
-      // Twentyfour: round time option
-      if (isHost && game === 'twentyfour') {
-        optionsEl.style.display = 'block';
-        var rt = roomOptions.roundTime || 0;
-        var mr = roomOptions.maxRounds || 5;
-        var opts = '';
-        [0, 30, 60, 90, 120].forEach(function(t) {
-          opts += '<option value="' + t + '"' + (rt === t ? ' selected' : '') + '>' + (t === 0 ? _t('unlimited') : t + _t('seconds')) + '</option>';
-        });
-        var mrOpts = '';
-        [3, 5, 7, 10].forEach(function(n) {
-          mrOpts += '<option value="' + n + '"' + (mr === n ? ' selected' : '') + '>' + n + _t('rounds') + '</option>';
-        });
-        optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-          '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;margin-bottom:6px;">' +
-            _t('round_time_label') + ': <select id="optRoundTime" onchange="window._setGameOption(\'roundTime\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-              opts +
-            '</select>' +
-          '</label>' +
-          '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">' +
-            _t('rc_win_rounds_label') + ' <select id="optMaxRounds" onchange="window._setGameOption(\'maxRounds\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-              mrOpts +
-            '</select>' +
-          '</label>';
-      } else if (game === 'twentyfour') {
-        optionsEl.style.display = 'block';
-        var rt2 = roomOptions.roundTime || 0;
-        var mr2 = roomOptions.maxRounds || 5;
-        optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-          '<div style="font-size:13px;color:var(--text-muted)">' + _t('round_time_label') + ': ' + (rt2 === 0 ? _t('unlimited') : rt2 + _t('seconds')) + ' ・ ' + _t('max_rounds_label') + ': ' + mr2 + _t('rounds') + '</div>';
-      } else if (isHost && game === 'rummikub') {
-        optionsEl.style.display = 'block';
-        var breakOn = roomOptions.requireBreak !== false; // default true
-        optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-          '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">' +
-            '<input type="checkbox" id="optRequireBreak" ' + (breakOn ? 'checked' : '') + ' onchange="window._setGameOption(\'requireBreak\', this.checked)">' +
-            _t('require_break') +
-          '</label>';
-      } else if (game === 'rummikub') {
-        optionsEl.style.display = 'block';
-        var breakOn2 = roomOptions.requireBreak !== false;
-        optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-          '<div style="font-size:13px;color:var(--text-muted)">' + _t('break_in_rule') + ': ' + (breakOn2 ? _t('break_on') : _t('break_off')) + '</div>';
-      } else if (isHost && game === 'bigtwo') {
-        optionsEl.style.display = 'block';
-        var oneCardOn = roomOptions.oneCardRule !== false; // default true
-        optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-          '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">' +
-            '<input type="checkbox" id="optOneCardRule" ' + (oneCardOn ? 'checked' : '') + ' onchange="window._setGameOption(\'oneCardRule\', this.checked)">' +
-            _t('bt_one_card_rule') +
-          '</label>';
-      } else if (game === 'bigtwo') {
-        optionsEl.style.display = 'block';
-        var oneCardOn2 = roomOptions.oneCardRule !== false;
-        optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-          '<div style="font-size:13px;color:var(--text-muted)">' + _t('bt_one_card_rule_short') + ': ' + (oneCardOn2 ? _t('bt_rule_on') : _t('bt_rule_off')) + '</div>';
-      } else if (game === 'doudizhu') {
-        optionsEl.style.display = 'block';
-        var bm = roomOptions.bidMode || 'rob';
-        var fc = roomOptions.firstCaller || 'random';
-        var pt = roomOptions.playTimeLimit || 20;
-        var tr = roomOptions.totalRounds || 3;
-        if (isHost) {
-          var timeOpts = [10, 20, 60, 300];
-          var roundOpts = [3, 6, 9, 12];
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">' + _t('game_settings') + '</div>' +
-            // Row 1: 叫地主方式
-            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;margin-bottom:10px;font-size:13px;">' +
-              '<div style="font-weight:600;padding-top:4px;">' + _t('ddz_bid_mode') + '</div>' +
-              '<div style="display:flex;gap:16px;">' +
-                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
-                  '<input type="radio" name="ddzBidMode" value="rob"' + (bm === 'rob' ? ' checked' : '') + ' onchange="window._setGameOption(\'bidMode\',this.value)">' + _t('ddz_bid_mode_rob') + '</label>' +
-                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
-                  '<input type="radio" name="ddzBidMode" value="score"' + (bm === 'score' ? ' checked' : '') + ' onchange="window._setGameOption(\'bidMode\',this.value)">' + _t('ddz_bid_mode_score') + '</label>' +
-              '</div>' +
-            '</div>' +
-            // Row 2: 先叫规则
-            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;margin-bottom:10px;font-size:13px;">' +
-              '<div style="font-weight:600;padding-top:4px;">' + _t('ddz_first_caller') + '</div>' +
-              '<div style="display:flex;gap:16px;">' +
-                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
-                  '<input type="radio" name="ddzFirstCaller" value="random"' + (fc === 'random' ? ' checked' : '') + ' onchange="window._setGameOption(\'firstCaller\',this.value)">' + _t('ddz_first_caller_random') + '</label>' +
-                '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">' +
-                  '<input type="radio" name="ddzFirstCaller" value="winner"' + (fc === 'winner' ? ' checked' : '') + ' onchange="window._setGameOption(\'firstCaller\',this.value)">' + _t('ddz_first_caller_winner') + '</label>' +
-              '</div>' +
-            '</div>' +
-            // Row 4: 出牌时长
-            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;margin-bottom:10px;font-size:13px;">' +
-              '<div style="font-weight:600;padding-top:4px;">' + _t('ddz_play_time') + '</div>' +
-              '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-                timeOpts.map(function(t) {
-                  return '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;">' +
-                    '<input type="radio" name="ddzPlayTime" value="' + t + '"' + (pt === t ? ' checked' : '') + ' onchange="window._setGameOption(\'playTimeLimit\',' + t + ')">' +
-                    _t('ddz_play_time_' + t) + '</label>';
-                }).join('') +
-              '</div>' +
-            '</div>' +
-            // Row 5: 总局数
-            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;font-size:13px;">' +
-              '<div style="font-weight:600;padding-top:4px;">' + _t('ddz_total_rounds') + '</div>' +
-              '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-                roundOpts.map(function(n) {
-                  return '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;">' +
-                    '<input type="radio" name="ddzTotalRounds" value="' + n + '"' + (tr === n ? ' checked' : '') + ' onchange="window._setGameOption(\'totalRounds\',' + n + ')">' +
-                    _t('ddz_total_rounds_' + n) + '</label>';
-                }).join('') +
-              '</div>' +
-            '</div>';
-        } else {
-          var timeLabel = _t('ddz_play_time_' + pt) || (pt + _t('seconds'));
-          var roundsLabel = _t('ddz_total_rounds_' + tr) || (tr + _t('rounds'));
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-            '<div style="font-size:13px;color:var(--text-muted)">' +
-              _t('ddz_bid_mode') + ': ' + (bm === 'rob' ? _t('ddz_bid_mode_rob') : _t('ddz_bid_mode_score')) + ' ・ ' +
-              _t('ddz_play_time') + ': ' + timeLabel + ' ・ ' +
-              _t('ddz_total_rounds') + ': ' + roundsLabel +
-            '</div>';
-        }
-      } else if (game === 'monopoly') {
-        optionsEl.style.display = 'block';
-        var rl = roomOptions.roundLimit !== undefined ? roomOptions.roundLimit : 50;
-        var rlLabel = function(v) { return v === 0 ? _t('mono_round_limit_0') : v + _t('mono_round_limit_n'); };
-        if (isHost) {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">' + _t('game_settings') + '</div>' +
-            '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;font-size:13px;">' +
-              '<div style="font-weight:600;padding-top:4px;">' + _t('mono_round_limit') + '</div>' +
-              '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-                [30, 50, 80, 0].map(function(v) {
-                  return '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;">' +
-                    '<input type="radio" name="monoRoundLimit" value="' + v + '"' + (rl === v ? ' checked' : '') + ' onchange="window._setGameOption(\'roundLimit\',' + v + ')">' +
-                    rlLabel(v) + '</label>';
-                }).join('') +
-              '</div>' +
-            '</div>';
-        } else {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-            '<div style="font-size:13px;color:var(--text-muted)">' + _t('mono_round_limit') + ': ' + rlLabel(rl) + '</div>';
-        }
-      } else if (game === 'sheeptile') {
-        optionsEl.style.display = 'block';
-        var sameBoard = roomOptions.sameBoard !== false; // default same board
-        if (isHost) {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-            '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">' +
-              '<input type="checkbox" id="optSameBoard" ' + (sameBoard ? 'checked' : '') + ' onchange="window._setGameOption(\'sameBoard\', this.checked)">' +
-              _t('same_board') +
-            '</label>' +
-            '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + _t('random_boards') + '</div>';
-        } else {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-            '<div style="font-size:13px;color:var(--text-muted)">' + _t('board_label') + ': ' + (sameBoard ? _t('same_board') : _t('random_boards')) + '</div>';
-        }
-      } else if (game === 'truthdare') {
-        optionsEl.style.display = 'block';
-        var tdDecks = [
-          ['icebreaker', _t('deck_icebreaker')],
-          ['party', _t('deck_party')],
-          ['deep', _t('deck_deep')],
-          ['challenge', _t('deck_challenge')],
-          ['custom', _t('deck_custom')],
-        ];
-        var tdEnabled = Array.isArray(roomOptions.enabledDecks) && roomOptions.enabledDecks.length > 0
-          ? roomOptions.enabledDecks : ['icebreaker', 'party', 'deep', 'challenge'];
-        var tdTruths = escapeHtml(roomOptions.customTruths || '');
-        var tdDares = escapeHtml(roomOptions.customDares || '');
-        if (isHost) {
-          var tdDeckHtml = '';
-          tdDecks.forEach(function(d) {
-            var checked = tdEnabled.indexOf(d[0]) >= 0;
-            tdDeckHtml += '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;margin:2px 10px 2px 0;">' +
-              '<input type="checkbox" class="td-deck" value="' + d[0] + '"' + (checked ? ' checked' : '') + ' onchange="window._tdCollectDecks()">' + d[1] + '</label>';
-          });
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-            '<div style="font-size:13px;margin-bottom:8px;">' + _t('enable_decks') + ':<br>' + tdDeckHtml + '</div>' +
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">' +
-              '<label>' + _t('custom_truths') + '<textarea id="optTdTruths" rows="3" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="' + _t('custom_truths_placeholder') + '">' + tdTruths + '</textarea></label>' +
-              '<label>' + _t('custom_dares') + '<textarea id="optTdDares" rows="3" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="' + _t('custom_dares_placeholder') + '">' + tdDares + '</textarea></label>' +
-            '</div>' +
-            '<button class="btn" style="margin-top:6px;padding:5px 14px;font-size:13px;" onclick="window._tdSaveCustom()">' + _t('save_custom_decks') + '</button>' +
-            '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + _t('truthdare_rule_hint') + '</div>';
-        } else {
-          var tdNames = tdDecks.filter(function(d) { return tdEnabled.indexOf(d[0]) >= 0; }).map(function(d) { return d[1]; }).join('、');
-          var truthCount = (roomOptions.customTruths || '').split(/\r?\n|[;；]/).filter(function(x) { return x.trim(); }).length;
-          var dareCount = (roomOptions.customDares || '').split(/\r?\n|[;；]/).filter(function(x) { return x.trim(); }).length;
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-            '<div style="font-size:13px;color:var(--text-muted)">' + _t('enable_decks') + ': ' + (tdNames || _t('deck_custom')) +
-            (truthCount + dareCount > 0 ? ' · ' + _t('deck_custom') + ' ' + (truthCount + dareCount) + ' ' + _t('seconds') : '') + '</div>';
-        }
-      } else if (game === 'werewolf') {
-        optionsEl.style.display = 'block';
-        var wwSpeech = roomOptions.speechTime || 60;
-        var wwSheriff = roomOptions.sheriff !== false;
-        var wwTalk = roomOptions.talkMode === 'chat' ? 'chat' : 'face';
-        var wwDiscuss = roomOptions.discussTime !== undefined ? roomOptions.discussTime : 60;
-        var wwDiscussLabel = function(v) { return v ? v + _t('seconds') : _t('ww_off'); };
-        var wwHead = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
-        var wwHint = '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.5;">' + _t('ww_setup_hint') + '</div>';
-        if (isHost) {
-          var wwSel = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
-          var wwOpts = '';
-          [30, 60, 90, 120, 180].forEach(function(v) { wwOpts += '<option value="' + v + '"' + (wwSpeech === v ? ' selected' : '') + '>' + v + _t('seconds') + '</option>'; });
-          var wwDisOpts = '';
-          [0, 60, 120, 180].forEach(function(v) { wwDisOpts += '<option value="' + v + '"' + (wwDiscuss === v ? ' selected' : '') + '>' + wwDiscussLabel(v) + '</option>'; });
-          optionsEl.innerHTML = wwHead +
-            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('ww_talk_mode') + ' <select onchange="window._setGameOption(\'talkMode\', this.value)" style="' + wwSel + '">' +
-                '<option value="face"' + (wwTalk === 'face' ? ' selected' : '') + '>' + _t('ww_talk_face') + '</option><option value="chat"' + (wwTalk === 'chat' ? ' selected' : '') + '>' + _t('ww_talk_chat') + '</option></select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('ww_discuss_time') + ' <select onchange="window._setGameOption(\'discussTime\', parseInt(this.value))" style="' + wwSel + '">' + wwDisOpts + '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('ww_speech_time') + ' <select onchange="window._setGameOption(\'speechTime\', parseInt(this.value))" style="' + wwSel + '">' + wwOpts + '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('ww_sheriff_opt') + ' <select onchange="window._setGameOption(\'sheriff\', this.value === \'1\')" style="' + wwSel + '">' +
-                '<option value="1"' + (wwSheriff ? ' selected' : '') + '>' + _t('ww_on') + '</option><option value="0"' + (wwSheriff ? '' : ' selected') + '>' + _t('ww_off') + '</option></select></label>' +
-            '</div>' + wwHint;
-        } else {
-          optionsEl.innerHTML = wwHead + '<div style="font-size:13px;color:var(--text-muted)">' + _t('ww_talk_mode') + ': ' + _t(wwTalk === 'chat' ? 'ww_talk_chat' : 'ww_talk_face') +
-            ' · ' + _t('ww_discuss_time') + ': ' + wwDiscussLabel(wwDiscuss) + ' · ' + _t('ww_speech_time') + ': ' + wwSpeech + _t('seconds') +
-            ' · ' + _t('ww_sheriff_opt') + ': ' + _t(wwSheriff ? 'ww_on' : 'ww_off') + '</div>' + wwHint;
-        }
-      } else if (game === 'undercover') {
-        optionsEl.style.display = 'block';
-        var ucTalk = roomOptions.talkMode === 'chat' ? 'chat' : 'face';
-        var ucTime = [30, 45, 60].indexOf(Number(roomOptions.speechTime)) >= 0 ? Number(roomOptions.speechTime) : 45;
-        var ucCount = (roomOptions.ucCount === 1 || roomOptions.ucCount === '1') ? '1' : (roomOptions.ucCount === 2 || roomOptions.ucCount === '2') ? '2' : 'auto';
-        var ucBlank = !!roomOptions.blank;
-        var ucDiff = roomOptions.difficulty || 'normal';
-        var ucWD = ['mixed', 'easy', 'normal', 'hard'].indexOf(roomOptions.wordDiff) >= 0 ? roomOptions.wordDiff : 'mixed';
-        var ucHead = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
-        if (isHost) {
-          var ucSel = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
-          optionsEl.innerHTML = ucHead +
-            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('uc_opt_talk_label') + ' <select onchange="window._setGameOption(\'talkMode\', this.value)" style="' + ucSel + '">' +
-                '<option value="face"' + (ucTalk === 'face' ? ' selected' : '') + '>' + _t('uc_opt_talk_face') + '</option>' +
-                '<option value="chat"' + (ucTalk === 'chat' ? ' selected' : '') + '>' + _t('uc_opt_talk_chat') + '</option>' +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('uc_opt_time_label') + ' <select onchange="window._setGameOption(\'speechTime\', parseInt(this.value))" style="' + ucSel + '">' +
-                '<option value="30"' + (ucTime === 30 ? ' selected' : '') + '>' + _t('uc_opt_time_30') + '</option>' +
-                '<option value="45"' + (ucTime === 45 ? ' selected' : '') + '>' + _t('uc_opt_time_45') + '</option>' +
-                '<option value="60"' + (ucTime === 60 ? ' selected' : '') + '>' + _t('uc_opt_time_60') + '</option>' +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('uc_opt_count_label') + ' <select onchange="window._setGameOption(\'ucCount\', this.value === \'auto\' ? \'auto\' : parseInt(this.value))" style="' + ucSel + '">' +
-                '<option value="auto"' + (ucCount === 'auto' ? ' selected' : '') + '>' + _t('uc_opt_count_auto') + '</option>' +
-                '<option value="1"' + (ucCount === '1' ? ' selected' : '') + '>' + _t('uc_opt_count_1') + '</option>' +
-                '<option value="2"' + (ucCount === '2' ? ' selected' : '') + '>' + _t('uc_opt_count_2') + '</option>' +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox"' + (ucBlank ? ' checked' : '') + ' onchange="window._setGameOption(\'blank\', this.checked)">' + _t('uc_opt_blank_label') + '</label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('uc_opt_worddiff_label') + ' <select onchange="window._setGameOption(\'wordDiff\', this.value)" style="' + ucSel + '">' +
-                ['mixed', 'easy', 'normal', 'hard'].map(function(d) { return '<option value="' + d + '"' + (ucWD === d ? ' selected' : '') + '>' + _t('uc_worddiff_' + d) + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('difficulty_label') + ' <select onchange="window._setGameOption(\'difficulty\', this.value)" style="' + ucSel + '">' +
-                '<option value="easy"' + (ucDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
-                '<option value="normal"' + (ucDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
-                '<option value="hard"' + (ucDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
-              '</select></label>' +
-              '<div style="flex-basis:100%;font-size:12px;color:var(--text-muted)">' + _t('uc_bot_hint') + '</div>' +
-            '</div>';
-        } else {
-          var ucCountLabel = ucCount === '1' ? _t('uc_opt_count_1') : ucCount === '2' ? _t('uc_opt_count_2') : _t('uc_opt_count_auto');
-          optionsEl.innerHTML = ucHead + '<div style="font-size:13px;color:var(--text-muted)">' +
-            tf('uc_opt_summary', _t(ucTalk === 'chat' ? 'uc_opt_talk_chat' : 'uc_opt_talk_face'), ucTime, ucCountLabel, ucBlank ? _t('uc_opt_blank_on') : '') + ' · ' + _t('uc_opt_worddiff_label') + ' ' + _t('uc_worddiff_' + ucWD) + '</div>';
-        }
-      } else if (game === 'drawguess') {
-        optionsEl.style.display = 'block';
-        var dgCats = [['animal',_t('cat_animal')],['food',_t('cat_food')],['daily',_t('cat_daily')],['action',_t('cat_action')],['place',_t('cat_place')],['idiom',_t('cat_idiom')],['movie',_t('cat_movie')],['internet',_t('cat_internet')]];
-        var selCats = Array.isArray(roomOptions.categories) && roomOptions.categories.length > 0
-          ? roomOptions.categories : dgCats.map(function(c){ return c[0]; });
-        var dgDraw = roomOptions.drawTime !== undefined ? roomOptions.drawTime : 90;
-        var dgGuess = roomOptions.guessTime !== undefined ? roomOptions.guessTime : 45;
-        var dgChoices = roomOptions.wordChoices !== undefined ? roomOptions.wordChoices : 3;
-        var dgRounds = roomOptions.rounds !== undefined ? roomOptions.rounds : 0;
-        var dgMode = roomOptions.mode || 'stage';
-        function _dgRoundsLbl(v) { return v ? _t('dg_rounds_each') + v + _t('dg_rounds_times') : _t('dg_rounds_auto'); }
-        if (isHost) {
-          var catHtml = '';
-          dgCats.forEach(function(c) {
-            var on = selCats.indexOf(c[0]) >= 0;
-            catHtml += '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;margin:2px 8px 2px 0;">' +
-              '<input type="checkbox" class="dg-cat" value="' + c[0] + '"' + (on ? ' checked' : '') + ' onchange="window._dgCollectCats()">' + c[1] + '</label>';
-          });
-          var selStyle = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
-          function dgSel(id, key, values, labels, cur) {
-            var h = '<select id="' + id + '" onchange="window._setGameOption(\'' + key + '\', parseInt(this.value))" style="' + selStyle + '">';
-            values.forEach(function(v, i) { h += '<option value="' + v + '"' + (cur === v ? ' selected' : '') + '>' + labels[i] + '</option>'; });
-            return h + '</select>';
-          }
-          var customVal = (roomOptions.customWords || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-          function _dgTimeLbl(v) { return v === 0 ? _t('unlimited') : v + _t('seconds'); }
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-            '<div style="font-size:13px;margin-bottom:8px;">' + _t('mode_label') + ' <select onchange="window._setGameOption(\'mode\', this.value)" style="' + selStyle + '"><option value="stage"' + (dgMode === 'stage' ? ' selected' : '') + '>' + _t('mode_stage') + '</option><option value="whisper"' + (dgMode === 'whisper' ? ' selected' : '') + '>' + _t('mode_whisper') + '</option></select></div>' +
-            '<div style="font-size:13px;margin-bottom:6px;">' + _t('word_categories') + ':<br>' + catHtml + '</div>' +
-            '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:14px;margin-bottom:6px;">' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('draw_time_label') + ' ' + dgSel('optDgDraw', 'drawTime', [45,60,90,120,0], [_dgTimeLbl(45),_dgTimeLbl(60),_dgTimeLbl(90),_dgTimeLbl(120),_dgTimeLbl(0)], dgDraw) + '</label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('guess_time_label') + ' ' + dgSel('optDgGuess', 'guessTime', [30,45,60,90,0], [_dgTimeLbl(30),_dgTimeLbl(45),_dgTimeLbl(60),_dgTimeLbl(90),_dgTimeLbl(0)], dgGuess) + '</label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('word_count_label') + ' ' + dgSel('optDgChoices', 'wordChoices', [1,2,3,5], [_t('label_1choice'),_t('label_2choices'),_t('label_3choices'),_t('label_5choices')], dgChoices) + '</label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('dg_rounds_label') + ' ' + dgSel('optDgRounds', 'rounds', [0,1,2,3,4], [0,1,2,3,4].map(_dgRoundsLbl), dgRounds) + '</label>' +
-            '</div>' +
-            '<div style="font-size:13px;">' + _t('custom_words_label') + ':<br>' +
-              '<textarea id="optDgCustom" rows="2" style="width:100%;margin-top:4px;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:13px;box-sizing:border-box;" placeholder="' + _t('custom_words_placeholder') + '">' + customVal + '</textarea>' +
-              '<button class="btn" style="margin-top:4px;padding:4px 14px;font-size:13px;" onclick="window._setGameOption(\'customWords\', document.getElementById(\'optDgCustom\').value)">' + _t('save_custom_words') + '</button>' +
-            '</div>';
-        } else {
-          var catNames = dgCats.filter(function(c){ return selCats.indexOf(c[0]) >= 0; }).map(function(c){ return c[1]; }).join('、');
-          var customCount = (roomOptions.customWords || '').split(/[,，\n\s]+/).filter(function(w){ return w.trim(); }).length;
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-            '<div style="font-size:13px;color:var(--text-muted)">' + _t('mode_label') + ': ' + (dgMode === 'stage' ? _t('mode_stage') : _t('mode_whisper')) + ' · ' + _t('word_categories') + ': ' + catNames +
-            ' · ' + _t('draw_time_label') + ': ' + (dgDraw === 0 ? _t('unlimited') : dgDraw + _t('seconds')) + ' · ' + _t('guess_time_label') + ': ' + (dgGuess === 0 ? _t('unlimited') : dgGuess + _t('seconds')) +
-            ' · ' + _t('word_count_label') + ': ' + dgChoices + ' ' + _t('dg_choices_suffix') + ' · ' + _t('dg_rounds_label') + ': ' + _dgRoundsLbl(dgRounds) + (customCount > 0 ? ' · ' + _t('deck_custom') + ' ' + customCount + ' ' + _t('dg_choices_suffix') : '') + '</div>';
-        }
-      } else if (isHost && game === 'reversi') {
-        optionsEl.style.display = 'block';
-        var bs = roomOptions.boardSize || 8;
-        var rvDiff = roomOptions.difficulty || 'normal';
-        optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-          '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
-            '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-              _t('ec_board_size') + ': <select onchange="window._setGameOption(\'boardSize\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                '<option value="8"' + (bs === 8 ? ' selected' : '') + '>8×8</option>' +
-                '<option value="10"' + (bs === 10 ? ' selected' : '') + '>10×10</option>' +
-                '<option value="12"' + (bs === 12 ? ' selected' : '') + '>12×12</option>' +
-              '</select>' +
-            '</label>' +
-            '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-              _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                '<option value="easy"' + (rvDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
-                '<option value="normal"' + (rvDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
-                '<option value="hard"' + (rvDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
-              '</select>' +
-            '</label>' +
-          '</div>';
-      } else if (game === 'reversi') {
-        optionsEl.style.display = 'block';
-        var bs2 = roomOptions.boardSize || 8;
-        var rvDiff2 = roomOptions.difficulty || 'normal';
-        var rvDiffLabel2 = rvDiff2 === 'easy' ? _t('difficulty_easy') : rvDiff2 === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
-        optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-          '<div style="font-size:13px;color:var(--text-muted)">' + _t('ec_board_size') + ': ' + bs2 + '×' + bs2 + ' · ' + _t('difficulty_label') + ': ' + rvDiffLabel2 + '</div>';
-      } else if (game === 'mahjong-sichuan') {
-        optionsEl.style.display = 'block';
-        var mjMode = roomOptions.mahjongMode || 'sichuan';
-        // Helper: build a toggle checkbox line + optional muted description
-        function mjToggle(key, labelKey) {
-          var checked = roomOptions[key] === true || roomOptions[key] === 'true';
-          var desc = _t(labelKey + '_desc');
-          var descHtml = (desc && desc !== labelKey + '_desc')
-            ? '<div style="font-size:12px;color:var(--text-muted);margin:-2px 0 6px 24px;line-height:1.4;">' + desc + '</div>'
-            : '';
-          return '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;margin-bottom:6px;">' +
-            '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="window._setGameOption(\'' + key + '\', this.checked)" style="width:16px;height:16px;cursor:pointer;">' +
-            _t(labelKey) +
-            '</label>' + descHtml;
-        }
-        if (isHost) {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-            '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;margin-bottom:10px;">' +
-              _t('mahjong_mode') + ': <select onchange="window._setGameOption(\'mahjongMode\', this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                '<option value="sichuan"' + (mjMode === 'sichuan' ? ' selected' : '') + '>' + _t('mahjong_mode_sichuan') + '</option>' +
-                '<option value="cantonese"' + (mjMode === 'cantonese' ? ' selected' : '') + '>' + _t('mahjong_mode_cantonese') + '</option>' +
-              '</select>' +
-            '</label>' +
-            (mjMode === 'sichuan' ? '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;">' +
-              '<div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted);">' + _t('mj_rules_title') + '</div>' +
-              mjToggle('mj_bloodBattle', 'mj_rule_bloodBattle') +
-              mjToggle('mj_multiWinner', 'mj_rule_multiWinner') +
-              mjToggle('mj_rain', 'mj_rule_rain') +
-              mjToggle('mj_checkFlowerPig', 'mj_rule_checkFlowerPig') +
-              mjToggle('mj_checkBigCall', 'mj_rule_checkBigCall') +
-              mjToggle('mj_lastFourAutoWin', 'mj_rule_lastFourAutoWin') +
-              mjToggle('mj_swapThree', 'mj_rule_swapThree') +
-            '</div>' : mjMode === 'cantonese' ? '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;">' +
-              '<div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted);">' + _t('mj_rules_cantonese') + '</div>' +
-              mjToggle('mj_buyTiles', 'mj_rule_buyTiles') +
-              mjToggle('mj_wildcard', 'mj_rule_wildcard') +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;margin-bottom:6px;">' +
-                _t('mj_rule_maxFan') + ': ' +
-                '<select onchange="window._setGameOption(\'mj_maxFan\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:13px;">' +
-                  '<option value="0"' + (roomOptions.mj_maxFan === 0 || !roomOptions.mj_maxFan ? ' selected' : '') + '>' + _t('mj_fan_nolimit') + '</option>' +
-                  '<option value="3"' + (roomOptions.mj_maxFan === 3 ? ' selected' : '') + '>' + tf('mj_fan_n', 3) + '</option>' +
-                  '<option value="4"' + (roomOptions.mj_maxFan === 4 ? ' selected' : '') + '>' + tf('mj_fan_n', 4) + '</option>' +
-                  '<option value="5"' + (roomOptions.mj_maxFan === 5 ? ' selected' : '') + '>' + tf('mj_fan_n', 5) + '</option>' +
-                '</select>' +
-              '</label>' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;margin-bottom:6px;">' +
-                _t('mj_rule_minFan') + ': ' +
-                '<select onchange="window._setGameOption(\'mj_minFan\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:13px;">' +
-                  '<option value="0"' + (roomOptions.mj_minFan === 0 || !roomOptions.mj_minFan ? ' selected' : '') + '>' + _t('mj_fan_chicken') + '</option>' +
-                  '<option value="1"' + (roomOptions.mj_minFan === 1 ? ' selected' : '') + '>' + tf('mj_fan_n', 1) + '</option>' +
-                  '<option value="3"' + (roomOptions.mj_minFan === 3 ? ' selected' : '') + '>' + tf('mj_fan_n', 3) + '</option>' +
-                '</select>' +
-              '</label>' +
-            '</div>' : '');
-        } else {
-          var onOff = function(k) { return (roomOptions[k] === true || roomOptions[k] === 'true') ? '✓' : '—'; };
-          var maxFanLabel = function(v) { return v ? tf('mj_fan_n', v) : _t('mj_fan_nolimit'); };
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-            '<div style="font-size:13px;color:var(--text-muted)">' + _t('mahjong_mode') + ': ' +
-              (mjMode === 'cantonese' ? _t('mahjong_mode_cantonese') : _t('mahjong_mode_sichuan')) + '</div>' +
-            (mjMode === 'sichuan' ? '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.8;">' +
-              '<div style="font-weight:600;margin-bottom:2px;">' + _t('mj_rules_title') + '</div>' +
-              _t('mj_rule_bloodBattle') + ': ' + onOff('mj_bloodBattle') + '<br>' +
-              _t('mj_rule_multiWinner') + ': ' + onOff('mj_multiWinner') + '<br>' +
-              _t('mj_rule_rain') + ': ' + onOff('mj_rain') + '<br>' +
-              _t('mj_rule_checkFlowerPig') + ': ' + onOff('mj_checkFlowerPig') + '<br>' +
-              _t('mj_rule_checkBigCall') + ': ' + onOff('mj_checkBigCall') + '<br>' +
-              _t('mj_rule_lastFourAutoWin') + ': ' + onOff('mj_lastFourAutoWin') + '<br>' +
-              _t('mj_rule_swapThree') + ': ' + onOff('mj_swapThree') +
-            '</div>' : mjMode === 'cantonese' ? '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.8;">' +
-              '<div style="font-weight:600;margin-bottom:2px;">' + _t('mj_rules_cantonese') + '</div>' +
-              _t('mj_rule_buyTiles') + ': ' + onOff('mj_buyTiles') + '<br>' +
-              _t('mj_rule_wildcard') + ': ' + onOff('mj_wildcard') + '<br>' +
-              _t('mj_rule_maxFan') + ': ' + maxFanLabel(roomOptions.mj_maxFan) + '<br>' +
-              _t('mj_rule_minFan') + ': ' + (roomOptions.mj_minFan ? tf('mj_fan_n', roomOptions.mj_minFan) : _t('mj_fan_chicken')) +
-            '</div>' : '');
-        }
-      } else if (game === 'paodekuai') {
-        optionsEl.style.display = 'block';
-        var pdkMustBeat = roomOptions.mustBeat !== false && roomOptions.mustBeat !== 'false';
-        var pdkRounds = [1, 3, 5, 8].indexOf(Number(roomOptions.rounds)) >= 0 ? Number(roomOptions.rounds) : 3;
-        var pdkTurnTime = [0, 15, 20, 30].indexOf(Number(roomOptions.turnTime)) >= 0 ? Number(roomOptions.turnTime) : 20;
-        var pdkDiff = roomOptions.difficulty || 'normal';
-        if (isHost) {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('pdk_must_beat_opt') + ': <select onchange="window._setGameOption(\'mustBeat\', this.value === \'true\')" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="true"' + (pdkMustBeat ? ' selected' : '') + '>' + _t('pdk_must_beat_on') + '</option>' +
-                  '<option value="false"' + (!pdkMustBeat ? ' selected' : '') + '>' + _t('pdk_must_beat_off') + '</option>' +
-                '</select>' +
-              '</label>' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('pdk_rounds_opt') + ': <select onchange="window._setGameOption(\'rounds\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="1"' + (pdkRounds === 1 ? ' selected' : '') + '>' + tf('pdk_rounds_n', 1) + '</option>' +
-                  '<option value="3"' + (pdkRounds === 3 ? ' selected' : '') + '>' + tf('pdk_rounds_n', 3) + '</option>' +
-                  '<option value="5"' + (pdkRounds === 5 ? ' selected' : '') + '>' + tf('pdk_rounds_n', 5) + '</option>' +
-                  '<option value="8"' + (pdkRounds === 8 ? ' selected' : '') + '>' + tf('pdk_rounds_n', 8) + '</option>' +
-                '</select>' +
-              '</label>' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('pdk_turn_time_opt') + ': <select onchange="window._setGameOption(\'turnTime\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="0"' + (pdkTurnTime === 0 ? ' selected' : '') + '>' + _t('pdk_turn_time_off') + '</option>' +
-                  '<option value="15"' + (pdkTurnTime === 15 ? ' selected' : '') + '>' + tf('pdk_turn_time_n', 15) + '</option>' +
-                  '<option value="20"' + (pdkTurnTime === 20 ? ' selected' : '') + '>' + tf('pdk_turn_time_n', 20) + '</option>' +
-                  '<option value="30"' + (pdkTurnTime === 30 ? ' selected' : '') + '>' + tf('pdk_turn_time_n', 30) + '</option>' +
-                '</select>' +
-              '</label>' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="easy"' + (pdkDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
-                  '<option value="normal"' + (pdkDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
-                  '<option value="hard"' + (pdkDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
-                '</select>' +
-              '</label>' +
-            '</div>';
-        } else {
-          var pdkDiffLabel = pdkDiff === 'easy' ? _t('difficulty_easy') : pdkDiff === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
-          var pdkTimeLabel = pdkTurnTime === 0 ? _t('pdk_turn_time_off') : tf('pdk_turn_time_n', pdkTurnTime);
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-            '<div style="font-size:13px;color:var(--text-muted)">' +
-              _t('pdk_must_beat_opt') + ': ' + (pdkMustBeat ? _t('pdk_must_beat_on') : _t('pdk_must_beat_off')) + ' · ' +
-              _t('pdk_rounds_opt') + ': ' + tf('pdk_rounds_n', pdkRounds) + ' · ' +
-              _t('pdk_turn_time_opt') + ': ' + pdkTimeLabel + ' · ' +
-              _t('difficulty_label') + ': ' + pdkDiffLabel +
-            '</div>';
-        }
-      } else if (game === 'liarsdice') {
-        optionsEl.style.display = 'block';
-        var ldStartDice = [3, 4, 5].indexOf(Number(roomOptions.startDice)) >= 0 ? Number(roomOptions.startDice) : 5;
-        var ldOnesWild = roomOptions.onesWild !== false && roomOptions.onesWild !== 'false';
-        var ldTurnTime = [0, 15, 20, 30].indexOf(Number(roomOptions.turnTime)) >= 0 ? Number(roomOptions.turnTime) : 20;
-        var ldDiff = roomOptions.difficulty || 'normal';
-        if (isHost) {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('ld_start_dice_opt') + ': <select onchange="window._setGameOption(\'startDice\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="3"' + (ldStartDice === 3 ? ' selected' : '') + '>' + tf('ld_start_dice_n', 3) + '</option>' +
-                  '<option value="4"' + (ldStartDice === 4 ? ' selected' : '') + '>' + tf('ld_start_dice_n', 4) + '</option>' +
-                  '<option value="5"' + (ldStartDice === 5 ? ' selected' : '') + '>' + tf('ld_start_dice_n', 5) + '</option>' +
-                '</select>' +
-              '</label>' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('ld_ones_wild_opt') + ': <select onchange="window._setGameOption(\'onesWild\', this.value === \'true\')" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="true"' + (ldOnesWild ? ' selected' : '') + '>' + _t('ld_ones_wild_yes') + '</option>' +
-                  '<option value="false"' + (!ldOnesWild ? ' selected' : '') + '>' + _t('ld_ones_wild_no') + '</option>' +
-                '</select>' +
-              '</label>' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('ld_turn_time_opt') + ': <select onchange="window._setGameOption(\'turnTime\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="0"' + (ldTurnTime === 0 ? ' selected' : '') + '>' + _t('ld_turn_time_off') + '</option>' +
-                  '<option value="15"' + (ldTurnTime === 15 ? ' selected' : '') + '>' + tf('ld_turn_time_n', 15) + '</option>' +
-                  '<option value="20"' + (ldTurnTime === 20 ? ' selected' : '') + '>' + tf('ld_turn_time_n', 20) + '</option>' +
-                  '<option value="30"' + (ldTurnTime === 30 ? ' selected' : '') + '>' + tf('ld_turn_time_n', 30) + '</option>' +
-                '</select>' +
-              '</label>' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
-                _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-                  '<option value="easy"' + (ldDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
-                  '<option value="normal"' + (ldDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
-                  '<option value="hard"' + (ldDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
-                '</select>' +
-              '</label>' +
-            '</div>';
-        } else {
-          var ldDiffLabel = ldDiff === 'easy' ? _t('difficulty_easy') : ldDiff === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
-          var ldTimeLabel = ldTurnTime === 0 ? _t('ld_turn_time_off') : tf('ld_turn_time_n', ldTurnTime);
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-            '<div style="font-size:13px;color:var(--text-muted)">' +
-              _t('ld_start_dice_opt') + ': ' + tf('ld_start_dice_n', ldStartDice) + ' · ' +
-              _t('ld_ones_wild_opt') + ': ' + (ldOnesWild ? _t('ld_ones_wild_yes') : _t('ld_ones_wild_no')) + ' · ' +
-              _t('ld_turn_time_opt') + ': ' + ldTimeLabel + ' · ' +
-              _t('difficulty_label') + ': ' + ldDiffLabel +
-            '</div>';
-        }
-      } else if (game === 'quizrace') {
-        optionsEl.style.display = 'block';
-        var qrCount = [10, 15, 20].indexOf(Number(roomOptions.questionCount)) >= 0 ? Number(roomOptions.questionCount) : 10;
-        var qrTime = [10, 15, 20].indexOf(Number(roomOptions.timePerQuestion)) >= 0 ? Number(roomOptions.timePerQuestion) : 15;
-        var qrCat = roomOptions.category || 'all';
-        var qrDiff = roomOptions.difficulty || 'normal';
-        var qrCats = ['all', 'general', 'geography', 'science', 'history', 'nature', 'sports', 'culture', 'food', 'idiom', 'life', 'cncult', 'anime', 'mental'];
-        var qrQD = ['mixed', 'easy', 'normal', 'hard'].indexOf(roomOptions.questionDiff) >= 0 ? roomOptions.questionDiff : 'mixed';
-        var qrSelStyle = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
-        if (isHost) {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_question_count') + ' <select onchange="window._setGameOption(\'questionCount\', parseInt(this.value))" style="' + qrSelStyle + '">' +
-                [10, 15, 20].map(function(n) { return '<option value="' + n + '"' + (qrCount === n ? ' selected' : '') + '>' + n + _t('qr_opt_questions_unit') + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_time_per_question') + ' <select onchange="window._setGameOption(\'timePerQuestion\', parseInt(this.value))" style="' + qrSelStyle + '">' +
-                [10, 15, 20].map(function(s) { return '<option value="' + s + '"' + (qrTime === s ? ' selected' : '') + '>' + s + _t('qr_opt_seconds_unit') + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_category') + ' <select onchange="window._setGameOption(\'category\', this.value)" style="' + qrSelStyle + '">' +
-                qrCats.map(function(c) { return '<option value="' + c + '"' + (qrCat === c ? ' selected' : '') + '>' + _t('qr_cat_' + c) + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('qr_opt_qdiff') + ' <select onchange="window._setGameOption(\'questionDiff\', this.value)" style="' + qrSelStyle + '">' +
-                ['mixed', 'easy', 'normal', 'hard'].map(function(d) { return '<option value="' + d + '"' + (qrQD === d ? ' selected' : '') + '>' + _t('qr_qdiff_' + d) + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="' + qrSelStyle + '">' +
-                '<option value="easy"' + (qrDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
-                '<option value="normal"' + (qrDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
-                '<option value="hard"' + (qrDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
-              '</select></label>' +
-            '</div>';
-        } else {
-          var qrDiffLbl = qrDiff === 'easy' ? _t('difficulty_easy') : qrDiff === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-            '<div style="font-size:13px;color:var(--text-muted)">' +
-              _t('qr_opt_question_count') + ' ' + qrCount + _t('qr_opt_questions_unit') + ' · ' +
-              _t('qr_opt_time_per_question') + ' ' + qrTime + _t('qr_opt_seconds_unit') + ' · ' +
-              _t('qr_opt_category') + ' ' + _t('qr_cat_' + qrCat) + ' · ' +
-              _t('qr_opt_qdiff') + ' ' + _t('qr_qdiff_' + qrQD) + ' · ' +
-              _t('difficulty_label') + ': ' + qrDiffLbl +
-            '</div>';
-        }
-      } else if (game === 'blackjack') {
-        optionsEl.style.display = 'block';
-        var bjDecks = [1, 2, 4].indexOf(Number(roomOptions.decks)) >= 0 ? Number(roomOptions.decks) : 2;
-        var bjRounds = [5, 10, 15].indexOf(Number(roomOptions.rounds)) >= 0 ? Number(roomOptions.rounds) : 10;
-        var bjTime = [0, 15, 20, 30].indexOf(Number(roomOptions.turnTime)) >= 0 ? Number(roomOptions.turnTime) : 20;
-        var bjDiff = roomOptions.difficulty || 'normal';
-        var bjSelStyle = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;';
-        if (isHost) {
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-            '<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:14px;">' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('bj_opt_decks') + ' <select onchange="window._setGameOption(\'decks\', parseInt(this.value))" style="' + bjSelStyle + '">' +
-                [1, 2, 4].map(function(d) { return '<option value="' + d + '"' + (bjDecks === d ? ' selected' : '') + '>' + d + _t('bj_decks_unit') + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('bj_opt_rounds') + ' <select onchange="window._setGameOption(\'rounds\', parseInt(this.value))" style="' + bjSelStyle + '">' +
-                [5, 10, 15].map(function(r) { return '<option value="' + r + '"' + (bjRounds === r ? ' selected' : '') + '>' + r + _t('bj_rounds_unit') + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('bj_opt_time') + ' <select onchange="window._setGameOption(\'turnTime\', parseInt(this.value))" style="' + bjSelStyle + '">' +
-                '<option value="0"' + (bjTime === 0 ? ' selected' : '') + '>' + _t('pdk_turn_time_off') + '</option>' +
-                [15, 20, 30].map(function(s) { return '<option value="' + s + '"' + (bjTime === s ? ' selected' : '') + '>' + tf('pdk_turn_time_n', s) + '</option>'; }).join('') +
-              '</select></label>' +
-              '<label style="display:flex;align-items:center;gap:6px;">' + _t('difficulty_label') + ': <select onchange="window._setGameOption(\'difficulty\', this.value)" style="' + bjSelStyle + '">' +
-                '<option value="easy"' + (bjDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
-                '<option value="normal"' + (bjDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
-                '<option value="hard"' + (bjDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
-              '</select></label>' +
-            '</div>';
-        } else {
-          var bjDiffLbl = bjDiff === 'easy' ? _t('difficulty_easy') : bjDiff === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
-          var bjTimeLbl = bjTime === 0 ? _t('pdk_turn_time_off') : tf('pdk_turn_time_n', bjTime);
-          optionsEl.innerHTML =
-            '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-            '<div style="font-size:13px;color:var(--text-muted)">' +
-              _t('bj_opt_decks') + ' ' + bjDecks + _t('bj_decks_unit') + ' · ' +
-              _t('bj_opt_rounds') + ' ' + bjRounds + _t('bj_rounds_unit') + ' · ' +
-              _t('bj_opt_time') + ' ' + bjTimeLbl + ' · ' +
-              _t('difficulty_label') + ': ' + bjDiffLbl +
-            '</div>';
-        }
-      } else if (isHost && gameInfo.supportsAI && window._gamesWithDifficulty.indexOf(game) >= 0) {
-        // AI difficulty selector only for games whose bots actually read it
-        optionsEl.style.display = 'block';
-        var curDiff = roomOptions.difficulty || 'normal';
-        optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>' +
-          '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">' +
-            _t('difficulty_label') + ': <select id="optDifficulty" onchange="window._setGameOption(\'difficulty\', this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">' +
-              '<option value="easy"' + (curDiff === 'easy' ? ' selected' : '') + '>' + _t('difficulty_easy') + '</option>' +
-              '<option value="normal"' + (curDiff === 'normal' ? ' selected' : '') + '>' + _t('difficulty_normal') + '</option>' +
-              '<option value="hard"' + (curDiff === 'hard' ? ' selected' : '') + '>' + _t('difficulty_hard') + '</option>' +
-            '</select>' +
-          '</label>';
-      } else if (!isHost && gameInfo.supportsAI && window._gamesWithDifficulty.indexOf(game) >= 0) {
-        // Non-host: show difficulty summary
-        optionsEl.style.display = 'block';
-        var curDiff2 = roomOptions.difficulty || 'normal';
-        var diffLabel = curDiff2 === 'easy' ? _t('difficulty_easy') : curDiff2 === 'hard' ? _t('difficulty_hard') : _t('difficulty_normal');
-        optionsEl.innerHTML =
-          '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + _t('game_settings') + '</div>' +
-          '<div style="font-size:13px;color:var(--text-muted)">' + _t('difficulty_label') + ': ' + diffLabel + '</div>';
-      } else {
-        optionsEl.style.display = 'none';
-      }
-      // 棋类多局制：局数选项追加在上面的设置之后，默认一局
-      if (SIDE_LAYOUT_GAMES.indexOf(game) !== -1) {
-        var bo = roomOptions.bestOf || 1;
-        if (optionsEl.style.display === 'none') {
-          optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
-          optionsEl.style.display = 'block';
-        }
-        var boHtml;
-        if (isHost) {
-          boHtml = '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' + _t('best_of_label') + ': <select onchange="window._setGameOption(\'bestOf\', parseInt(this.value))" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:14px;">';
-          [1, 3, 5].forEach(function(n) { boHtml += '<option value="' + n + '"' + (bo === n ? ' selected' : '') + '>' + _t('best_of_' + n) + '</option>'; });
-          boHtml += '</select></label>';
-        } else {
-          boHtml = '<span style="font-size:13px;color:var(--text-muted)">' + _t('best_of_label') + ': ' + _t('best_of_' + bo) + '</span>';
-        }
-        optionsEl.insertAdjacentHTML('beforeend', '<div style="margin-top:8px;font-size:14px;">' + boHtml + '</div>');
-      }
-
-      // 房间隐私设置（所有游戏通用，仅在等候室阶段显示）
-      if (roomPhase !== 'playing') {
-        if (optionsEl.style.display === 'none') {
-          optionsEl.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + _t('game_settings') + '</div>';
-          optionsEl.style.display = 'block';
-        }
-        var isPriv = !!roomOptions.isPrivate;
-        var privHtml = '';
-        if (isHost) {
-          privHtml =
-            '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);">' +
-              '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">' +
-                '<input type="checkbox" id="optIsPrivate" ' + (isPriv ? 'checked' : '') + ' onchange="window._setPrivate(this.checked)">' +
-                '<span>' + _t('private_room_checkbox') + '</span>' +
-              '</label>' +
-              '<div style="font-size:12px;color:var(--text-muted);margin-left:22px;margin-top:2px;">' + _t('private_room_hint') + '</div>' +
-            '</div>';
-        } else if (isPriv) {
-          privHtml =
-            '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);font-size:12px;color:var(--text-muted);">' +
-              '🔒 ' + _t('private_room_notice') +
-            '</div>';
-        }
-        if (privHtml) {
-          optionsEl.insertAdjacentHTML('beforeend', privHtml);
-        }
-      }
-    }
+    // ---- Game Options (compact summary row + settings sheet) ----
+    renderGameOptions(true);
 
     // Toggle action buttons
     const readyBtn = el.readyBtn;
@@ -2118,11 +2176,13 @@
       saved[key] = value;
       localStorage.setItem('gn_opts_' + game, JSON.stringify(saved));
     } catch (e) {}
+    renderGameOptions(key === 'mahjongMode');
   };
 
   window._setPrivate = function(checked) {
     roomOptions.isPrivate = !!checked;
     send('set_private', { isPrivate: !!checked });
+    renderGameOptions(false);
   };
 
   window._tdCollectDecks = function() {
