@@ -319,8 +319,10 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
   transition: transform 0.14s ease, opacity 0.14s ease, box-shadow 0.14s ease;
 }
-.bj-chip-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
+@media (hover: hover) {
+  .bj-chip-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
 }
 .bj-chip-btn:active:not(:disabled) {
   transform: translateY(0);
@@ -353,8 +355,10 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transition: transform 0.14s ease, opacity 0.14s ease, background-color 0.14s ease;
 }
-.bj-action-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
+@media (hover: hover) {
+  .bj-action-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
 }
 .bj-action-btn:disabled {
   opacity: 0.38;
@@ -381,10 +385,252 @@
   .bj-seats { grid-template-columns: repeat(auto-fit, minmax(126px, 1fr)); gap: 7px; }
   .bj-action-btn { min-width: 92px; padding: 8px 14px; font-size: 0.88rem; }
 }
-@media (orientation: landscape) and (max-height: 540px) {
-  .bj-wrap { padding: 4px 8px; gap: 6px; }
-  .bj-felt { min-height: 240px; padding: 8px 10px; gap: 8px; }
-  .bj-dealer-cards, .bj-seat-cards { min-height: 62px; }
+#boardArea:has(> .bj-wrap.sideways) {
+  width: 100%;
+}
+.bj-wrap.sideways {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(184px, 216px);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 4px 6px;
+  padding: 1px 4px;
+  max-width: none;
+  width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.bj-wrap.sideways .bj-hud {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  padding: 2px 8px;
+  gap: 6px;
+  font-size: 0.7rem;
+  flex-wrap: nowrap;
+  min-height: 22px;
+}
+.bj-wrap.sideways .bj-hud-left {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  gap: 5px;
+}
+.bj-wrap.sideways .bj-hud-right {
+  flex-wrap: nowrap;
+  min-width: 0;
+  gap: 5px;
+}
+.bj-wrap.sideways .bj-pill,
+.bj-wrap.sideways .bj-timer-badge {
+  padding: 1px 6px;
+  font-size: 0.68rem;
+}
+.bj-wrap.sideways .bj-timer-badge {
+  flex-shrink: 0;
+}
+.bj-wrap.sideways .bj-status-banner {
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bj-wrap.sideways .bj-felt {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 0;
+  height: 100%;
+  padding: 4px 6px;
+  gap: 3px;
+  border-width: 2px;
+  border-radius: 12px;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+.bj-wrap.sideways .bj-dealer-zone {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-bottom: 3px;
+  flex-shrink: 0;
+}
+.bj-wrap.sideways .bj-dealer-rule {
+  display: none;
+}
+.bj-wrap.sideways .bj-dealer-header {
+  flex-direction: column;
+  gap: 1px;
+  align-items: flex-end;
+}
+.bj-wrap.sideways .bj-dealer-title {
+  font-size: 0.72rem;
+  line-height: 1.1;
+}
+.bj-wrap.sideways .bj-dealer-cards {
+  min-height: 0;
+}
+.bj-wrap.sideways .bj-seats {
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 4px;
+  flex: 1 1 0;
+  min-height: 0;
+  align-items: stretch;
+}
+.bj-wrap.sideways .bj-seat {
+  padding: 2px 4px;
+  gap: 1px;
+  border-radius: 9px;
+  min-width: 0;
+  min-height: 0;
+}
+.bj-wrap.sideways .bj-seat.is-active-turn {
+  transform: none;
+  box-shadow: 0 0 0 1.5px rgba(251, 191, 36, 0.55);
+}
+.bj-wrap.sideways .bj-seat-top {
+  font-size: 0.66rem;
+  line-height: 1.15;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.bj-wrap.sideways .bj-seat-name {
+  min-width: 0;
+  flex: 1 1 auto;
+  max-width: none;
+}
+.bj-wrap.sideways .bj-me-tag {
+  padding: 0 3px;
+  font-size: 0.58rem;
+}
+.bj-wrap.sideways .bj-seat-chips {
+  font-size: 0.66rem;
+  flex-shrink: 0;
+}
+.bj-wrap.sideways .bj-seat-cards {
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.bj-wrap.sideways .bj-seat-cards::-webkit-scrollbar {
+  display: none;
+}
+.bj-wrap.sideways .bj-seat-foot {
+  min-height: 0;
+  flex-shrink: 0;
+  gap: 2px 3px;
+}
+.bj-wrap.sideways .bj-total-pill,
+.bj-wrap.sideways .bj-bet-chip,
+.bj-wrap.sideways .bj-outcome-badge {
+  font-size: 0.62rem;
+  line-height: 1.15;
+  padding: 1px 5px;
+  min-width: 24px;
+}
+.bj-wrap.sideways .bj-seats.is-crowded .bj-total-pill,
+.bj-wrap.sideways .bj-seats.is-crowded .bj-bet-chip,
+.bj-wrap.sideways .bj-seats.is-crowded .bj-outcome-badge {
+  font-size: 0.58rem;
+  padding: 1px 4px;
+  min-width: 20px;
+}
+.bj-wrap.sideways .pc-card {
+  --w: var(--bj-cw, 30px);
+}
+.bj-wrap.sideways .pc-group {
+  --pc-overlap: -14px !important;
+  gap: 0;
+}
+.bj-wrap.sideways .pc-group .pc-card + .pc-card {
+  margin-left: calc(var(--bj-cw, 30px) * -0.45);
+}
+.bj-wrap.sideways .bj-empty-slot {
+  width: var(--bj-cw, 30px);
+  height: calc(var(--bj-cw, 30px) * 1.4);
+  font-size: 0.62rem;
+}
+.bj-wrap.sideways .bj-seats.is-crowded .pc-card {
+  --w: var(--bj-cw, 26px);
+}
+.bj-wrap.sideways .bj-seats.is-crowded .pc-group .pc-card + .pc-card {
+  margin-left: calc(var(--bj-cw, 26px) * -0.54);
+}
+.bj-wrap.sideways .bj-controls {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 0;
+  height: 100%;
+  padding: 4px 6px;
+  gap: 4px;
+  justify-content: flex-start;
+  border-radius: 12px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.bj-wrap.sideways .bj-controls > :first-child {
+  margin-top: auto;
+}
+.bj-wrap.sideways .bj-controls > :last-child {
+  margin-bottom: auto;
+}
+.bj-wrap.sideways .bj-controls-hint {
+  font-size: clamp(0.62rem, 1.8vh, 0.74rem);
+  line-height: 1.2;
+}
+.bj-wrap.sideways .bj-controls:has(.bj-btn-row) .bj-controls-hint {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+.bj-wrap.sideways .bj-btn-row--chips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+}
+.bj-wrap.sideways .bj-chip-btn {
+  min-width: 0;
+  min-height: 32px;
+  padding: 3px 5px;
+  font-size: 0.74rem;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bj-wrap.sideways .bj-btn-row--actions {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+}
+.bj-wrap.sideways.is-short .bj-btn-row--actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+}
+.bj-wrap.sideways.is-short .bj-btn-row--actions .bj-action-btn:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+.bj-wrap.sideways .bj-action-btn {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  padding: 5px 8px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bj-wrap.sideways.is-short .bj-action-btn {
+  min-height: 42px;
+  padding: 4px 6px;
+  font-size: 0.76rem;
 }
 `;
 
@@ -395,6 +641,7 @@
   var timerId = null;
   var currentDeadline = 0;
   var prev = null;
+  var resizeHandler = null;
 
   function tr(key, fallback) {
     var fn = window._t || window.t;
@@ -523,7 +770,7 @@
             '</div>' +
             '<div class="bj-dealer-cards" id="bj-dealer-cards"></div>' +
           '</div>' +
-          '<div class="bj-seats" id="bj-seats">' + seatsHtml + '</div>' +
+          '<div class="bj-seats' + (n >= 5 ? ' is-crowded' : '') + '" id="bj-seats">' + seatsHtml + '</div>' +
         '</div>' +
         '<div class="bj-controls" id="bj-controls"></div>' +
       '</div>';
@@ -651,7 +898,7 @@
           esc(tr('bj_choose_bet_hint', 'Select a chip to place your bet')) +
           ' (' + esc(tr('bj_chips', 'Chips')) + ': <strong>$' + esc(myChips) + '</strong>)' +
         '</div>' +
-        '<div class="bj-btn-row">' + btns + '</div>';
+        '<div class="bj-btn-row bj-btn-row--chips">' + btns + '</div>';
 
       var chipBtns = controlsEl.querySelectorAll('[data-bet]');
       chipBtns.forEach(function (btn) {
@@ -679,7 +926,7 @@
 
       controlsEl.innerHTML =
         '<div class="bj-controls-hint">' + esc(tr('bj_your_turn', 'Your turn — choose an action')) + '</div>' +
-        '<div class="bj-btn-row">' +
+        '<div class="bj-btn-row bj-btn-row--actions">' +
           '<button type="button" class="bj-action-btn bj-btn-hit" data-act="hit">' +
             esc(tr('bj_hit', 'Hit')) +
           '</button>' +
@@ -712,7 +959,7 @@
       }
       controlsEl.innerHTML =
         '<div class="bj-controls-hint"><strong>' + esc(summary) + '</strong></div>' +
-        '<div class="bj-btn-row">' +
+        '<div class="bj-btn-row bj-btn-row--actions">' +
           '<button type="button" class="bj-action-btn bj-btn-next" id="bj-next-btn">' +
             esc(tr('bj_next_round', 'Next Round')) +
           '</button>' +
@@ -731,6 +978,41 @@
       '<div class="bj-controls-hint">' + esc(tr('bj_game_over', 'Game Over')) + '</div>';
   }
 
+  function applyLayout() {
+    if (!container) return;
+    var wrap = container.querySelector('.bj-wrap');
+    if (!wrap) return;
+    var sideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
+    wrap.classList.toggle('sideways', sideways);
+    if (sideways) {
+      var fitEl = (container.closest && container.closest('.board-wrap')) || container;
+      var fit = typeof window.boardFit === 'function'
+        ? window.boardFit(fitEl)
+        : { w: window.innerWidth - 24, h: window.innerHeight - 100 };
+      var actEl = document.getElementById('gameActions');
+      var actH = (actEl && actEl.offsetHeight) ? actEl.offsetHeight : 0;
+      // boardFit already subtracts 24px; leave ~20px for bottom stage/body padding and action gap.
+      var maxH = Math.max(185, Math.floor(fit.h - actH + (actH > 0 ? 4 : 0)));
+      wrap.style.height = maxH + 'px';
+      wrap.style.maxHeight = maxH + 'px';
+
+      var seatsEl = wrap.querySelector('#bj-seats');
+      var seatCount = seatsEl ? seatsEl.children.length : 4;
+      var availRow2 = maxH - 30;
+      var nonCardH = seatCount >= 5 ? 74 : 68;
+      var cardH = Math.floor((availRow2 - nonCardH) / 2);
+      var cw = Math.max(22, Math.min(36, Math.floor(cardH / 1.4)));
+      if (seatCount >= 5) cw = Math.min(cw, 28);
+      wrap.style.setProperty('--bj-cw', cw + 'px');
+      wrap.classList.toggle('is-short', availRow2 < 190);
+    } else {
+      wrap.classList.remove('is-short');
+      wrap.style.removeProperty('--bj-cw');
+      wrap.style.height = '';
+      wrap.style.maxHeight = '';
+    }
+  }
+
   function init(el, moveCb) {
     if (typeof window.injectStylesOnce === 'function') {
       window.injectStylesOnce('bj-styles', STYLES);
@@ -739,6 +1021,11 @@
     container = el;
     onMove = moveCb || null;
     prev = null;
+    if (resizeHandler) {
+      window.removeEventListener('resize', resizeHandler);
+    }
+    resizeHandler = applyLayout;
+    window.addEventListener('resize', resizeHandler);
   }
 
   function render(state, arg2, arg3) {
@@ -767,6 +1054,7 @@
         bets: Array(n).fill(0)
       };
     }
+    applyLayout();
 
     // Update HUD
     var roundPill = container.querySelector('#bj-round-pill');
