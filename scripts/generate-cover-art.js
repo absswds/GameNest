@@ -50,6 +50,7 @@ const covers = [
   { id: 'quizrace', palette: ['#eef4f2', '#bcd7d0', '#1f8a78', '#12231f'], motif: 'quizrace' },
   { id: 'blackjack', palette: ['#eef2ec', '#c3d6c4', '#2f6b4a', '#13201a'], motif: 'blackjack' },
   { id: 'liarsdice', palette: ['#f6eee6', '#e2c0a4', '#b5452f', '#22130e'], motif: 'liarsdice' },
+  { id: 'pool', palette: ['#edf1ec', '#bcd3c2', '#2f6b4a', '#13201a'], motif: 'pool' },
   { id: 'mahjong-sichuan', palette: ['#f4efe7', '#c7d0c6', '#2f7a55', '#14231a'], motif: 'mahjong' },
 ];
 
@@ -213,6 +214,17 @@ function motifSvg(cover) {
         ${circle(1245, 405, 16, accent)}${circle(1325, 405, 16, accent)}${circle(1245, 485, 16, accent)}${circle(1325, 485, 16, accent)}
         ${block(1040, 600, 300, 230, 60, dark)}
         ${block(1080, 570, 220, 60, 30, accent, 0.85)}
+      `;
+    case 'pool':
+      return `
+        ${block(960, 330, 440, 470, 48, '#5a3420')}
+        ${block(992, 362, 376, 406, 30, '#1f6b4a')}
+        ${circle(1000, 370, 26, '#0e0b09')}${circle(1360, 370, 26, '#0e0b09')}
+        ${circle(1000, 760, 26, '#0e0b09')}${circle(1360, 760, 26, '#0e0b09')}
+        ${circle(1180, 470, 30, '#f2b544')}${circle(1150, 522, 30, '#c8372d')}${circle(1210, 522, 30, '#2f5fb3')}
+        ${circle(1180, 575, 30, '#141414')}
+        ${circle(1180, 700, 30, '#fff8ef')}
+        ${line(1180, 740, 1260, 900, accent, 16)}
       `;
     case 'liarsbar':
       return `
