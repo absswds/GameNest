@@ -2421,6 +2421,7 @@ body.lobby-page .wifi-note {
 }
 
 .lb-count-seg {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0;
@@ -2431,7 +2432,35 @@ body.lobby-page .wifi-note {
   box-shadow: var(--lb-chip-ring);
 }
 
+/* Sliding pill for player-count segmented control */
+.lb-count-pill {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  z-index: 0;
+  width: var(--pill-w, 0px);
+  border-radius: 999px;
+  background: var(--lb-accent);
+  pointer-events: none;
+  transform: translateX(var(--pill-x, 0px));
+  opacity: 0;
+  will-change: transform, width;
+}
+
+.lb-count-seg.is-ready .lb-count-pill {
+  opacity: 1;
+}
+
+.lb-count-seg.is-animating .lb-count-pill {
+  transition:
+    transform var(--lb-dur-base) var(--lb-ease-out),
+    width var(--lb-dur-base) var(--lb-ease-out);
+}
+
 .lb-count-chip {
+  position: relative;
+  z-index: 1;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -2450,13 +2479,10 @@ body.lobby-page .wifi-note {
   white-space: nowrap;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition:
-    color var(--lb-dur-fast) var(--lb-ease-out),
-    background var(--lb-dur-fast) var(--lb-ease-out);
+  transition: color var(--lb-dur-fast) var(--lb-ease-out);
 }
 
 .lb-count-chip.selected {
-  background: var(--lb-accent);
   color: var(--lb-on-accent);
   font-weight: 700;
 }

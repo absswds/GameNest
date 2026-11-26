@@ -490,6 +490,49 @@ function syncCategorySelection(animate) {
   if (targetBtn) catIndControl.moveTo(targetBtn, !!animate);
 }
 
+// Sliding pill for player-count segmented chips
+var countPillControl = (function() {
+  var seg = document.getElementById('countChips');
+  if (!seg) return { placeCurrent: function() {}, moveTo: function() {} };
+
+  function current() {
+    return seg.querySelector('.lb-count-chip.selected') || seg.querySelector('.lb-count-chip');
+  }
+
+  function place(btn, animate) {
+    if (!btn) return;
+    var w = btn.offsetWidth;
+    if (w <= 0) return;
+    var shouldAnimate = !!animate && !reduceMotion.matches && seg.classList.contains('is-ready');
+    seg.classList.toggle('is-animating', shouldAnimate);
+    seg.style.setProperty('--pill-x', btn.offsetLeft + 'px');
+    seg.style.setProperty('--pill-w', w + 'px');
+    if (!seg.classList.contains('is-ready')) {
+      seg.classList.add('is-ready');
+    }
+  }
+
+  function snapCurrent() {
+    place(current(), false);
+  }
+
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(snapCurrent).observe(seg);
+  } else {
+    window.addEventListener('resize', snapCurrent);
+  }
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(snapCurrent);
+  }
+
+  return {
+    placeCurrent: snapCurrent,
+    moveTo: function(btn, animate) {
+      place(btn, animate);
+    }
+  };
+})();
+
 function renderCountChips() {
   const root = document.getElementById('countChips');
   if (!root) return;
@@ -500,7 +543,8 @@ function renderCountChips() {
   if (unitEl && typeof _t === 'function') {
     unitEl.textContent = _t('players_unit');
   }
-  root.innerHTML = [0, 1, 2, 3, 4, 5, 6].map(function(n) {
+  root.classList.remove('is-animating', 'is-ready');
+  root.innerHTML = '<span class="lb-count-pill" aria-hidden="true"></span>' + [0, 1, 2, 3, 4, 5, 6].map(function(n) {
     const aria = n === 0 ? _t('players_any') : n === 6 ? _t('players_n_plus').replace('%s', n) : _t('players_n').replace('%s', n);
     const label = n === 0 ? _t('players_any') : n === 6 ? '6+' : String(n);
     const on = n === activeCount;
@@ -508,15 +552,33 @@ function renderCountChips() {
   }).join('');
   root.querySelectorAll('.lb-count-chip').forEach(function(chip) {
     chip.addEventListener('click', function() {
-      activeCount = +this.dataset.count;
+      var nextCount = +this.dataset.count;
+      if (nextCount === activeCount) return;
+      activeCount = nextCount;
       root.querySelectorAll('.lb-count-chip').forEach(function(c) {
         var on = +c.dataset.count === activeCount;
         c.classList.toggle('selected', on);
         c.setAttribute('aria-pressed', on ? 'true' : 'false');
       });
+      countPillControl.moveTo(this, true);
       renderCatalog({ animate: true });
     });
   });
+  countPillControl.placeCurrent();
+  requestAnimationFrame(countPillControl.placeCurrent);
+}
+
+function syncCountSelection(animate) {
+  var root = document.getElementById('countChips');
+  if (!root) return;
+  var targetBtn = null;
+  root.querySelectorAll('.lb-count-chip').forEach(function(c) {
+    var on = +c.dataset.count === activeCount;
+    c.classList.toggle('selected', on);
+    c.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (on) targetBtn = c;
+  });
+  if (targetBtn) countPillControl.moveTo(targetBtn, !!animate);
 }
 
 function renderCatalog(opts) {
@@ -572,7 +634,7 @@ function renderLastGame() {
     if (searchInput) searchInput.value = '';
     if (searchWrap) searchWrap.classList.remove('has-value');
     syncCategorySelection(true);
-    renderCountChips();
+    syncCountSelection(true);
     renderCatalog();
     updateSelectionUI();
     updateQuickCreate();
