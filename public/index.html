@@ -903,7 +903,16 @@ if (refreshBtn) refreshBtn.addEventListener('click', fetchLanRooms);
       var dy = y - lastY;
       if (!desktopMQ.matches) {
         if (Math.abs(dy) > 6) {
-          var shouldHide = dy > 0 && y > header.offsetHeight && !header.contains(document.activeElement) && !bar.classList.contains('searching');
+          // Only an active search with text keeps the header pinned. Focus merely left on a header
+          // button (e.g. the search icon after closing search) or an empty open search used to block
+          // hiding forever, so scrolling down now drops that focus / closes the empty search.
+          var typing = !!searchInput.value && (bar.classList.contains('searching') || document.activeElement === searchInput);
+          var shouldHide = dy > 0 && y > header.offsetHeight && !typing;
+          if (shouldHide) {
+            if (bar.classList.contains('searching')) setSearching(false, false);
+            var ae = document.activeElement;
+            if (ae && ae !== document.body && header.contains(ae) && typeof ae.blur === 'function') ae.blur();
+          }
           header.classList.toggle('hide', shouldHide);
           lastY = y;
         }
