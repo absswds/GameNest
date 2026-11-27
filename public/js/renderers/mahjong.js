@@ -1172,25 +1172,54 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     c.save();
     c.translate(cx, cy);
     if (angle) c.rotate(angle);
+    // "Bulging node" bamboo: the stalk swells outward at both ends and at two joints (h/6 above and
+    // below the centre), outlined in the dark shade, with a light centre line.
+    var dark = (color === TILE_RED) ? TILE_DARK_RED : TILE_DARK_GREEN;
+    var body = w * 0.52;              // half width of the stalk
+    var bulge = w * 0.68;             // half width at a node
+    var d = Math.max(1, h * 0.06);    // half height of a node swell
+    var top = -h / 2, bot = h / 2;
+    var nodes = [-h / 6, h / 6];
+    c.beginPath();
+    c.moveTo(-body, top);
+    c.lineTo(body, top);
+    c.lineTo(bulge, top + d);
+    c.lineTo(body, top + 2 * d);
+    for (var ni = 0; ni < nodes.length; ni++) {
+      c.lineTo(body, nodes[ni] - d);
+      c.lineTo(bulge, nodes[ni]);
+      c.lineTo(body, nodes[ni] + d);
+    }
+    c.lineTo(body, bot - 2 * d);
+    c.lineTo(bulge, bot - d);
+    c.lineTo(body, bot);
+    c.lineTo(-body, bot);
+    c.lineTo(-bulge, bot - d);
+    c.lineTo(-body, bot - 2 * d);
+    for (var nj = nodes.length - 1; nj >= 0; nj--) {
+      c.lineTo(-body, nodes[nj] + d);
+      c.lineTo(-bulge, nodes[nj]);
+      c.lineTo(-body, nodes[nj] - d);
+    }
+    c.lineTo(-body, top + 2 * d);
+    c.lineTo(-bulge, top + d);
+    c.closePath();
     applyTileSymbolShadow(c, ah, simplified);
     c.fillStyle = color;
-    roundRectCtx(c, -w / 2, -h / 2, w, h, w * 0.48);
     c.fill();
     clearTileShadow(c);
+    c.lineJoin = 'round';
+    c.lineWidth = Math.max(0.8, w * 0.14);
+    c.strokeStyle = dark;
+    c.stroke();
 
-    if (!simplified) {
-      if (w >= 4.2) {
-        var slotW = Math.max(0.7, w * 0.16);
-        c.fillStyle = TILE_IVORY;
-        c.fillRect(-slotW / 2, -h * 0.30, slotW, h * 0.60);
-      }
-      var bandW = w * 1.18;
-      var bandH = Math.max(1.2, h * 0.095);
-      c.fillStyle = (color === TILE_RED) ? TILE_DARK_RED : TILE_DARK_GREEN;
-      roundRectCtx(c, -bandW / 2, -h * 0.17 - bandH / 2, bandW, bandH, bandH * 0.45);
-      c.fill();
-      roundRectCtx(c, -bandW / 2, h * 0.17 - bandH / 2, bandW, bandH, bandH * 0.45);
-      c.fill();
+    if (!simplified && w >= 4.2) {
+      c.strokeStyle = (color === TILE_RED) ? 'rgba(255,214,208,0.85)' : 'rgba(190,236,206,0.85)';
+      c.lineWidth = Math.max(0.6, w * 0.12);
+      c.beginPath();
+      c.moveTo(0, top + 3 * d);
+      c.lineTo(0, bot - 3 * d);
+      c.stroke();
     }
     c.restore();
   }
