@@ -104,7 +104,7 @@
     'body.gn-fs .ddz-fs-play-slot{position:absolute;z-index:11;display:flex;align-items:center;pointer-events:none;}' +
     'body.gn-fs #ddzFsPlayLeft{left:calc(var(--fs-opp-w,104px) + 18px);top:calc(var(--fs-opp-top,68px) + 8px);max-width:calc(50% - var(--fs-opp-w,104px) - 24px);justify-content:flex-start;}' +
     'body.gn-fs #ddzFsPlayRight{right:calc(var(--fs-opp-w,104px) + 18px);top:calc(var(--fs-opp-top,68px) + 8px);max-width:calc(50% - var(--fs-opp-w,104px) - 24px);justify-content:flex-end;}' +
-    'body.gn-fs #ddzFsPlayMe{left:50%;transform:translateX(-50%);bottom:var(--fs-playme-bottom,118px);max-width:min(560px,calc(100% - 220px));justify-content:center;}' +
+    'body.gn-fs #ddzFsPlayMe{left:50%;transform:translateX(-50%);bottom:var(--fs-playme-bottom,174px);max-width:min(560px,calc(100% - 40px));justify-content:center;}' +
     'body.gn-fs .ddz-fs-played-row{display:flex;align-items:flex-end;}' +
     'body.gn-fs .ddz-fs-played-row .pc-card{--w:var(--fs-table-card-w,39px);box-shadow:0 2px 8px rgba(0,0,0,0.32);}' +
     'body.gn-fs .ddz-fs-played-row .pc-card + .pc-card{margin-left:var(--fs-row-overlap,-18px);}' +
@@ -116,15 +116,20 @@
     'body.gn-fs .ddz-fs-me-info{display:flex;flex-direction:column;min-width:0;gap:1px;}' +
     'body.gn-fs .ddz-fs-me-name{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
     'body.gn-fs .ddz-fs-me-sub{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;}' +
-    'body.gn-fs #ddzFsHint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--fs-band-bottom,118px) + 4px);z-index:17;padding:4px 12px;border-radius:999px;background:rgba(16,30,24,0.9);border:1px solid rgba(255,253,248,0.18);font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;}' +
+    'body.gn-fs #ddzFsHint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--fs-band-bottom,118px) + 52px);z-index:17;padding:4px 12px;border-radius:999px;background:rgba(16,30,24,0.9);border:1px solid rgba(255,253,248,0.18);font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;}' +
     'body.gn-fs #ddzFsActions{position:absolute;right:12px;bottom:var(--fs-band-bottom,116px);z-index:20;display:flex;align-items:center;gap:8px;flex-wrap:nowrap;}' +
     'body.gn-fs .ddz-fs-pill{min-height:44px;min-width:72px;padding:0 16px;border-radius:999px;font-size:14px;font-weight:800;border:1px solid rgba(255,253,248,0.24);background:rgba(20,24,22,0.72);color:var(--ge-paper,#fffdf8);cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;font-family:inherit;transition:transform 120ms cubic-bezier(0.23,1,0.32,1),opacity 120ms cubic-bezier(0.23,1,0.32,1);}' +
     'body.gn-fs .ddz-fs-pill:active{transform:scale(0.97);}' +
     'body.gn-fs .ddz-fs-pill-primary{background:var(--ge-gold,#b9954f);color:var(--ge-ink,#1c1b19);border-color:transparent;box-shadow:0 4px 14px rgba(0,0,0,0.28);}' +
-    'body.gn-fs #ddzFsHandWrap{position:absolute;left:0;right:0;bottom:0;padding:18px 12px 6px;display:flex;justify-content:center;align-items:flex-end;z-index:15;pointer-events:none;overflow:visible;}' +
+    'body.gn-fs #ddzFsHandWrap{position:absolute;left:0;right:0;bottom:0;padding:18px var(--fs-hand-pad-x,12px) 6px;display:flex;justify-content:center;align-items:flex-end;z-index:15;pointer-events:none;overflow:visible;}' +
     'body.gn-fs .ddz-fs-hand-row{display:flex;align-items:flex-end;justify-content:center;pointer-events:auto;max-width:100%;}' +
     'body.gn-fs .ddz-fs-hand-row .pc-card{--w:var(--fs-card-w,66px);transition:transform 180ms cubic-bezier(0.23,1,0.32,1),opacity 180ms cubic-bezier(0.23,1,0.32,1);box-shadow:-2px 2px 6px rgba(0,0,0,0.28);}' +
     'body.gn-fs .ddz-fs-hand-row .pc-card + .pc-card{margin-left:var(--fs-card-overlap,-28px);}' +
+    'body.gn-fs .ddz-fs-hand-row .pc-corner{top:calc(var(--w) * 0.06);left:calc(var(--w) * 0.06);gap:1px;font-size:calc(var(--w) * 0.22);line-height:1;}' +
+    'body.gn-fs .ddz-fs-hand-row .pc-corner-br{top:auto;left:auto;bottom:calc(var(--w) * 0.06);right:calc(var(--w) * 0.06);}' +
+    'body.gn-fs .ddz-fs-hand-row .pc-corner .pc-rank{font-size:calc(var(--w) * 0.22);line-height:1;}' +
+    'body.gn-fs .ddz-fs-hand-row .pc-corner .pc-suit{font-size:calc(var(--w) * 0.18);line-height:1;}' +
+    'body.gn-fs .ddz-fs-hand-row .pc-joker .pc-joker-text{top:calc(var(--w) * 0.07);left:calc(var(--w) * 0.06);font-size:calc(var(--w) * 0.18);}' +
     'body.gn-fs .ddz-fs-hand-row .pc-card.is-selected{transform:translateY(-16px);border-color:var(--ge-gold,#b9954f);box-shadow:var(--ge-shadow-lift);}' +
     'body.gn-fs .ddz-fs-hand-row .pc-selectable:active{transform:translateY(-4px) scale(0.97);transition-duration:120ms;}' +
     'body.gn-fs .ddz-fs-hand-row .pc-selectable.is-selected:active{transform:translateY(-16px) scale(0.97);transition-duration:120ms;}' +
@@ -681,7 +686,7 @@
     renderHand: function(s, selfIdx, cp, isNewRoundDeal) {
       var el = document.getElementById('ddzHand');
       if (!el) return;
-      var hand = s.hands[selfIdx];
+      var hand = sortHandDesc(s.hands[selfIdx]);
       // Drop selections for cards no longer in hand (new round, timeout auto-play)
       var inHand = {};
       (hand || []).forEach(function(c) { if (c) inHand[c.id] = true; });
@@ -760,7 +765,7 @@
     renderFsHand: function(s, selfIdx, cp, winner, isNewRoundDeal) {
       var el = document.getElementById('ddzFsHand');
       if (!el) return;
-      var hand = s.hands[selfIdx];
+      var hand = sortHandDesc(s.hands[selfIdx]);
       var inHand = {};
       (hand || []).forEach(function(c) { if (c) inHand[c.id] = true; });
       Object.keys(selected).forEach(function(id) { if (!inHand[id]) delete selected[id]; });
@@ -1121,15 +1126,17 @@
     var W = rect.width || window.innerWidth || 812;
     var H = rect.height || window.innerHeight || 375;
 
-    var availW = Math.max(240, W - 24);
-    var cardW = Math.max(52, Math.min(98, Math.floor(H * 0.185)));
+    var marginX = W >= 960 ? Math.round(W * 0.06) : 12;
+    var availW = Math.max(240, W - marginX * 2);
+    var cardW = Math.max(52, Math.min(168, Math.floor(H * 0.192)));
     var overlap = 0;
 
     if (handCount > 1) {
+      var minVisible = Math.max(18, Math.round(cardW * 0.34));
       var idealStep = Math.round(cardW * 0.62);
       var maxStep = Math.floor((availW - cardW) / (handCount - 1));
-      if (maxStep < 18) {
-        cardW = Math.max(40, Math.floor(availW / (1 + (handCount - 1) * 0.48)));
+      if (maxStep < minVisible) {
+        cardW = Math.max(40, Math.floor(availW / (1 + (handCount - 1) * 0.38)));
         idealStep = Math.round(cardW * 0.62);
         maxStep = Math.floor((availW - cardW) / (handCount - 1));
       }
@@ -1138,19 +1145,23 @@
     }
 
     var cardH = Math.round(cardW * 1.4);
-    var bandBottom = cardH + 22;
+    var bandGap = Math.max(30, Math.round(H * 0.048));
+    var bandBottom = cardH + bandGap;
+    var actionBandH = H >= 540 ? 58 : 52;
+    var playMeBottom = bandBottom + actionBandH;
     var tableCardW = Math.max(34, Math.min(62, Math.floor(H * 0.105)));
     var miniCardW = Math.max(24, Math.min(42, Math.floor(H * 0.072)));
-    var oppTop = Math.max(68, Math.min(180, Math.round((H - bandBottom - 130) * 0.36)));
+    var oppTop = Math.max(58, Math.min(180, Math.round((H - bandBottom - 130) * 0.36)));
     var oppW = W >= 1000 ? 128 : 104;
 
+    stage.style.setProperty('--fs-hand-pad-x', marginX + 'px');
     stage.style.setProperty('--fs-card-w', cardW + 'px');
     stage.style.setProperty('--fs-card-h', cardH + 'px');
     stage.style.setProperty('--fs-card-overlap', overlap + 'px');
     stage.style.setProperty('--fs-table-card-w', tableCardW + 'px');
     stage.style.setProperty('--fs-mini-card-w', miniCardW + 'px');
     stage.style.setProperty('--fs-band-bottom', bandBottom + 'px');
-    stage.style.setProperty('--fs-playme-bottom', bandBottom + 'px');
+    stage.style.setProperty('--fs-playme-bottom', playMeBottom + 'px');
     stage.style.setProperty('--fs-opp-top', oppTop + 'px');
     stage.style.setProperty('--fs-opp-w', oppW + 'px');
   }
@@ -1165,7 +1176,7 @@
     var slots = [
       { id: 'ddzFsPlayLeft', maxW: Math.max(120, Math.floor(W * 0.33)) },
       { id: 'ddzFsPlayRight', maxW: Math.max(120, Math.floor(W * 0.33)) },
-      { id: 'ddzFsPlayMe', maxW: Math.max(200, Math.floor(W * 0.46)) }
+      { id: 'ddzFsPlayMe', maxW: Math.min(560, Math.max(200, Math.floor(W * 0.56))) }
     ];
     for (var i = 0; i < slots.length; i++) {
       var row = document.querySelector('#' + slots[i].id + ' .ddz-fs-played-row');
@@ -1540,6 +1551,28 @@
       html += '<button class="' + sec + '" onclick="window._ddzPass()"' + sty + '>' + _t('ddz_pass') + '</button>';
     }
     return html;
+  }
+
+  var SUIT_ORDER = { s: 0, h: 1, c: 2, d: 3 };
+
+  function _cardSortRank(c) {
+    if (!c) return -1;
+    if (c.id === 'BJ' || c.rank === '大王') return 14;
+    if (c.id === 'SJ' || c.rank === '小王') return 13;
+    return _rankVal(c.rank);
+  }
+
+  // Show hand from HIGH to LOW left-to-right (jokers, 2, A ... 3), grouping same rank with stable suit order.
+  function sortHandDesc(hand) {
+    if (!Array.isArray(hand)) return [];
+    return hand.slice().filter(Boolean).sort(function(a, b) {
+      var dr = _cardSortRank(b) - _cardSortRank(a);
+      if (dr !== 0) return dr;
+      var sa = SUIT_ORDER[a.suit] !== undefined ? SUIT_ORDER[a.suit] : 9;
+      var sb = SUIT_ORDER[b.suit] !== undefined ? SUIT_ORDER[b.suit] : 9;
+      if (sa !== sb) return sa - sb;
+      return String(a.id || '').localeCompare(String(b.id || ''));
+    });
   }
 
   // ---- Card type detection (mirrors server-side logic) ----
