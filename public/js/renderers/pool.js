@@ -143,7 +143,7 @@
     '.snooker-nom-btn:disabled { opacity:0.35; cursor:not-allowed; }',
     '.snooker-nom-dot { width:10px; height:10px; border-radius:50%; border:1px solid rgba(0,0,0,0.25); flex-shrink:0; }',
     '.pool-main { width:100%; display:flex; flex-direction:column; align-items:center; gap:8px; }',
-    '.pool-canvas-wrap { display:flex; align-items:center; justify-content:center; width:100%; }',
+    '.pool-canvas-wrap { position:relative; display:flex; align-items:center; justify-content:center; width:100%; }',
     '.pool-canvas { touch-action:none; display:block; border-radius:14px; box-shadow:0 10px 28px rgba(15,23,42,0.28); cursor:crosshair; }',
     '.pool-bar { width:100%; display:flex; align-items:center; justify-content:center; min-height:48px; }',
     '.pool-panel { width:100%; display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:10px; padding:6px 12px; border-radius:12px; background:var(--surface, #fff); border:1px solid var(--border, #e5e0d5); box-sizing:border-box; }',
@@ -173,6 +173,16 @@
     '.pool-group-ball { width:12px; height:12px; border-radius:50%; border:1px solid rgba(0,0,0,0.28); box-sizing:border-box; }',
     '.pool-group-ball--stripe { background:linear-gradient(180deg, #fff 24%, currentColor 25%, currentColor 75%, #fff 76%) !important; }',
     '.pool-group-tap { font-size:11px; color:#6a6257; margin-top:6px; }',
+    '.pool-shot-banner { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:35; display:inline-flex; flex-direction:column; align-items:center; gap:3px; max-width:min(86%, 340px); padding:9px 16px; border-radius:14px; background:rgba(17,24,21,0.92); color:#fffdf8; border:1.5px solid rgba(200,164,92,0.75); box-shadow:0 10px 28px rgba(0,0,0,0.42); backdrop-filter:blur(6px); text-align:center; cursor:pointer; user-select:none; }',
+    '.pool-shot-banner--foul { border-color:rgba(248,113,113,0.82); background:rgba(38,16,18,0.93); }',
+    '.pool-shot-banner--top { top:18%; }',
+    '.pool-shot-banner-row { display:inline-flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:6px; }',
+    '.pool-shot-banner-main { font-size:14px; font-weight:800; line-height:1.25; letter-spacing:0.01em; }',
+    '.pool-shot-banner-sub { font-size:11px; font-weight:600; color:rgba(255,253,248,0.76); line-height:1.2; }',
+    '.pool-shot-banner-chips { display:inline-flex; align-items:center; gap:4px; }',
+    '.pool-shot-banner-chip { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.45); font-size:10px; font-weight:800; color:#111827; box-sizing:border-box; flex-shrink:0; }',
+    '.pool-shot-banner-chip--stripe { background:linear-gradient(180deg, #fff 20%, currentColor 21%, currentColor 79%, #fff 80%) !important; }',
+    '.pool-shot-banner-chip-num { display:inline-flex; align-items:center; justify-content:center; width:12px; height:12px; border-radius:50%; background:rgba(255,255,255,0.92); color:#111827; font-size:9px; font-weight:800; line-height:1; }',
     '@media (max-width: 560px) {',
     '  .pool-wrap { gap:6px; }',
     '  .pool-main { gap:6px; }',
@@ -307,7 +317,7 @@
     '  body.gn-fs .pool-wrap .pool-fs-bdot { width:18px; height:18px; }',
     '  body.gn-fs .pool-wrap .pool-fs-score { font-size:19px; }',
     '}',
-    '@media (prefers-reduced-motion: reduce) { .pool-group-overlay, .pool-seat, body.gn-fs .pool-wrap .pool-fs-avatar, body.gn-fs .pool-wrap .snooker-nom-btn, body.gn-fs .pool-wrap .pool-fs-confirm-btn { transition:none !important; animation:none !important; } }',
+    '@media (prefers-reduced-motion: reduce) { .pool-group-overlay, .pool-shot-banner, .pool-seat, body.gn-fs .pool-wrap .pool-fs-avatar, body.gn-fs .pool-wrap .snooker-nom-btn, body.gn-fs .pool-wrap .pool-fs-confirm-btn { transition:none !important; animation:none !important; } }',
   ].join('\n');
 
   var containerEl = null;
@@ -354,14 +364,18 @@
   var fsMidRefs = null;
 
   var currentState = null;
+  var latestState = null;
   var myPlayerIndex = 0;
   var displayBalls = [];
-  var lastPlayedSeq = null;
+  var shotQueue = [];
+  var lastQueuedSeq = null;
   var lastAimInitSeq = -1;
   var lastTurnPhaseKey = '';
   var lastLayoutKey = '';
   var replaying = false;
   var rafId = null;
+  var postShotPauseTimer = null;
+  var POST_SHOT_PAUSE_MS = 1000;
 
   var isPortrait = false;
   var isSideways = false;
@@ -397,13 +411,16 @@
 
   var myStrikeAnim = null;
   var strikeRafId = null;
-  var pendingMyReplay = null;
   var awaitingShotSeq = null;
   var awaitingShotTimer = null;
 
   var oppAimPreview = null;
   var lastSeatCueAngle = {};
   var reducedTimerId = null;
+  var pocketEffects = [];
+  var pocketFxRafId = null;
+  var shotBannerEl = null;
+  var shotBannerTimer = null;
   var ballRoll = {};
   var prevBallPos = {};
   var prevGroups = null;
@@ -591,6 +608,22 @@
     } catch (_e) {}
   }
 
+  function findNearestPocket(x, y) {
+    var best = POCKETS[0];
+    var bestD2 = Infinity;
+    for (var i = 0; i < POCKETS.length; i++) {
+      var p = POCKETS[i];
+      var dx = x - p.x;
+      var dy = y - p.y;
+      var d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) {
+        bestD2 = d2;
+        best = p;
+      }
+    }
+    return best;
+  }
+
   function extractSoundEvents(parsed, fps) {
     var events = [];
     if (!parsed || parsed.length < 2) return events;
@@ -600,7 +633,13 @@
       var fNext = parsed[k + 1];
       for (var id = 0; id <= MAX_BALL_ID; id++) {
         if (fCurr[id] && !fNext[id]) {
-          events.push({ framePos: k + 0.35, type: 'pocket', intensity: 0.9 });
+          events.push({
+            framePos: k + 0.35,
+            type: 'pocket',
+            intensity: 0.9,
+            ballId: id,
+            pocket: findNearestPocket(fCurr[id].x, fCurr[id].y),
+          });
         }
       }
     }
@@ -918,7 +957,7 @@
   }
 
   function updateFsControlsEnabled() {
-    var canShoot = !!(currentState && isMyTurn() && !replaying && !myStrikeAnim && awaitingShotSeq === null && currentState.phase === 'shoot');
+    var canShoot = !!(currentState && isMyTurn() && !replaying && shotQueue.length === 0 && !myStrikeAnim && awaitingShotSeq === null && currentState.phase === 'shoot');
     if (fsCueTrackEl) fsCueTrackEl.classList.toggle('is-disabled', !canShoot);
     if (fsRulerEl) fsRulerEl.classList.toggle('is-disabled', !canShoot);
   }
@@ -1049,6 +1088,29 @@
     if (d > Math.PI) d -= Math.PI * 2;
     if (d < -Math.PI) d += Math.PI * 2;
     return d;
+  }
+
+  function easeOutBezier(u) {
+    var x = clamp(u, 0, 1);
+    if (x <= 0 || x >= 1) return x;
+    var t = x;
+    for (var i = 0; i < 5; i++) {
+      var mt = 1 - t;
+      var bx = 3 * mt * mt * t * 0.23 + 3 * mt * t * t * 0.32 + t * t * t;
+      var dx = 3 * mt * mt * 0.23 + 6 * mt * t * (0.32 - 0.23) + 3 * t * t * (1 - 0.32);
+      if (Math.abs(dx) < 1e-6) break;
+      t = clamp(t - (bx - x) / dx, 0, 1);
+    }
+    var m = 1 - t;
+    return 3 * m * m * t + 3 * m * t * t + t * t * t;
+  }
+
+  function popOvershootScale(u) {
+    var x = clamp(u, 0, 1);
+    if (x < 0.65) {
+      return 0.72 + 0.40 * easeOutBezier(x / 0.65);
+    }
+    return 1.12 - 0.12 * easeOutBezier((x - 0.65) / 0.35);
   }
 
   function resizeCanvas() {
@@ -1479,7 +1541,7 @@
     };
   }
 
-  function drawAimGuide(cue, balls, angleOverride, powerOverride) {
+  function drawAimGuide(cue, balls, angleOverride, powerOverride, guideOpts) {
     var angToUse = angleOverride !== undefined ? angleOverride : aimAngle;
     var pwrToUse = powerOverride !== undefined ? powerOverride : aimPower;
     var hit = raycastCue(cue, angToUse, balls);
@@ -1487,11 +1549,17 @@
     var cy = RAIL + cue.y;
     var gx = RAIL + hit.gx;
     var gy = RAIL + hit.gy;
+    var highlightTarget = !!(guideOpts && guideOpts.highlightTarget);
+    var fadeAlpha = (guideOpts && guideOpts.fadeAlpha !== undefined) ? guideOpts.fadeAlpha : 1;
+
+    ctx.save();
+    if (highlightTarget && fadeAlpha < 1) {
+      ctx.globalAlpha = fadeAlpha;
+    }
 
     // Dotted aim line from cue to ghost ball center
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = highlightTarget ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = highlightTarget ? 2.3 : 2;
     ctx.setLineDash([6, 6]);
     ctx.beginPath();
     ctx.moveTo(cx, cy);
@@ -1500,13 +1568,50 @@
     ctx.setLineDash([]);
 
     // Translucent hollow ghost ball ring
-    ctx.strokeStyle = 'rgba(255,255,255,0.88)';
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = highlightTarget ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.88)';
+    ctx.fillStyle = highlightTarget ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = highlightTarget ? 2 : 1.8;
     ctx.beginPath();
     ctx.arc(gx, gy, BALL_R, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+
+    // Pulsing ring around the first object ball hit during opponent aim animation
+    if (highlightTarget && hit.hitBall) {
+      var hbx = RAIL + hit.hitBall.x;
+      var hby = RAIL + hit.hitBall.y;
+      ctx.save();
+      if (guideOpts && guideOpts.reduced) {
+        ctx.strokeStyle = 'rgba(253,224,71,0.92)';
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.arc(hbx, hby, BALL_R + 6, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(253,224,71,0.32)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(hbx, hby, BALL_R + 10, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        var nowMs = (guideOpts && guideOpts.now) || performance.now();
+        var pulse = 0.5 + 0.5 * Math.sin(nowMs * 0.011);
+        var rippleU = (nowMs % 750) / 750;
+        var rippleE = easeOutBezier(rippleU);
+        ctx.strokeStyle = 'rgba(253,224,71,0.95)';
+        ctx.lineWidth = 2.8;
+        ctx.beginPath();
+        ctx.arc(hbx, hby, BALL_R + 4.5 + 2.2 * pulse, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(253,224,71,' + (0.7 * (1 - rippleU)).toFixed(3) + ')';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.arc(hbx, hby, BALL_R + 5 + 12 * rippleE, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
 
     // Target deflection arrow + cue ball deflection path when hitting an object ball
     if (hit.hitBall) {
@@ -1700,8 +1805,177 @@
     ctx.restore();
   }
 
+  function snookerBallValueLocal(id) {
+    if (id === 0) return 0;
+    if (id >= 1 && id <= 15) return 1;
+    for (var i = 0; i < SNOOKER_COLOURS.length; i++) {
+      if (SNOOKER_COLOURS[i].id === id) return SNOOKER_COLOURS[i].value;
+    }
+    return 1;
+  }
+
+  function startPocketFxLoop() {
+    if (pocketFxRafId || replaying || pocketEffects.length === 0) return;
+    function tickPocketFx() {
+      pocketFxRafId = null;
+      if (replaying || pocketEffects.length === 0) {
+        draw();
+        return;
+      }
+      draw();
+      if (pocketEffects.length > 0 && !replaying) {
+        pocketFxRafId = requestAnimationFrame(tickPocketFx);
+      }
+    }
+    pocketFxRafId = requestAnimationFrame(tickPocketFx);
+  }
+
+  function spawnPocketEffect(ballId, pocket, now, isFoul) {
+    if (!pocket) return;
+    var tNow = now || performance.now();
+    var stackIndex = 0;
+    for (var i = 0; i < pocketEffects.length; i++) {
+      var fx = pocketEffects[i];
+      if (fx.pocket && fx.pocket.id === pocket.id && tNow - fx.startTime < fx.duration) {
+        stackIndex++;
+      }
+    }
+    pocketEffects.push({
+      ballId: ballId,
+      pocket: pocket,
+      startTime: tNow,
+      ringDur: 420,
+      chipDur: 880,
+      duration: 880,
+      stackIndex: stackIndex,
+      isFoul: !!isFoul,
+      reduced: isReducedMotion(),
+    });
+    startPocketFxLoop();
+  }
+
+  function drawPocketEffects(now) {
+    if (!pocketEffects.length) return;
+    var active = [];
+    for (var i = 0; i < pocketEffects.length; i++) {
+      var fx = pocketEffects[i];
+      if (now - fx.startTime < fx.duration) {
+        active.push(fx);
+      }
+    }
+    pocketEffects = active;
+    if (!active.length) return;
+
+    for (var j = 0; j < active.length; j++) {
+      var item = active[j];
+      var elapsed = Math.max(0, now - item.startTime);
+      var px = RAIL + item.pocket.x;
+      var py = RAIL + item.pocket.y;
+      var ringColor = item.ballId === 0 ? '248,113,113' : '253,224,71';
+
+      if (elapsed < item.ringDur) {
+        var rt = clamp(elapsed / item.ringDur, 0, 1);
+        var re = easeOutBezier(rt);
+        ctx.save();
+        if (item.reduced) {
+          ctx.strokeStyle = 'rgba(' + ringColor + ',' + ((1 - re) * 0.85).toFixed(3) + ')';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(px, py, item.pocket.r + 6, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          var rad = item.pocket.r * 0.85 + (item.pocket.r + 22 - item.pocket.r * 0.85) * re;
+          var fillGrad = ctx.createRadialGradient(px, py, 2, px, py, item.pocket.r);
+          fillGrad.addColorStop(0, 'rgba(' + ringColor + ',' + ((1 - rt) * 0.28).toFixed(3) + ')');
+          fillGrad.addColorStop(1, 'rgba(' + ringColor + ',0)');
+          ctx.fillStyle = fillGrad;
+          ctx.beginPath();
+          ctx.arc(px, py, item.pocket.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = 'rgba(' + ringColor + ',' + ((1 - rt) * 0.92).toFixed(3) + ')';
+          ctx.lineWidth = Math.max(1.2, 4.5 - 3.2 * re);
+          ctx.beginPath();
+          ctx.arc(px, py, rad, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      if (elapsed < item.chipDur) {
+        var ct = clamp(elapsed / item.chipDur, 0, 1);
+        var alpha = ct < 0.12 ? ct / 0.12 : (ct < 0.72 ? 1 : (1 - ct) / 0.28);
+        var dx = CW / 2 - px;
+        var dy = CH / 2 - py;
+        var dLen = Math.hypot(dx, dy) || 1;
+        var ux = dx / dLen;
+        var uy = dy / dLen;
+        var baseDist = item.pocket.r + 26 + item.stackIndex * 28;
+        var drift = item.reduced ? 0 : (16 * easeOutBezier(ct));
+        var sc = item.reduced ? 1 : popOvershootScale(elapsed / 200);
+        var lx = clamp(px + ux * (baseDist + drift), 42, CW - 42);
+        var ly = clamp(py + uy * (baseDist + drift), 24, CH - 24);
+
+        var labelText;
+        if (item.ballId === 0) {
+          labelText = t('pool_chip_cue');
+        } else if (isSnooker) {
+          labelText = item.isFoul ? t('snooker_ball_' + snookerBallType(item.ballId)) : ('+' + snookerBallValueLocal(item.ballId));
+        } else {
+          labelText = String(item.ballId);
+        }
+        var ballCol = isSnooker ? (SNOOKER_BALL_COLORS[item.ballId] || '#c81e1e') : (BALL_COLORS[item.ballId] || '#ccc');
+        var isStripe = !isSnooker && item.ballId >= 9 && item.ballId <= 15;
+
+        ctx.save();
+        ctx.globalAlpha = clamp(alpha, 0, 1);
+        ctx.translate(lx, ly);
+        if (isPortrait) ctx.rotate(Math.PI / 2);
+        ctx.scale(sc, sc);
+        ctx.font = '800 12px sans-serif';
+        var tw = ctx.measureText(labelText).width;
+        var dotR = 6.5;
+        var padX = 8;
+        var pillW = Math.max(40, padX * 2 + dotR * 2 + 6 + tw);
+        var pillH = 24;
+        roundRectPath(ctx, -pillW / 2, -pillH / 2, pillW, pillH, pillH / 2);
+        ctx.fillStyle = item.ballId === 0 ? 'rgba(42,16,18,0.94)' : 'rgba(17,24,21,0.92)';
+        ctx.fill();
+        ctx.strokeStyle = item.ballId === 0 ? 'rgba(248,113,113,0.85)' : 'rgba(200,164,92,0.85)';
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+
+        var dotX = -pillW / 2 + padX + dotR;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(dotX, 0, dotR, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.fillStyle = ballCol;
+        ctx.fillRect(dotX - dotR, -dotR, dotR * 2, dotR * 2);
+        if (isStripe) {
+          ctx.fillStyle = '#faf9f2';
+          ctx.fillRect(dotX - dotR, -dotR, dotR * 2, dotR * 0.45);
+          ctx.fillRect(dotX - dotR, dotR * 0.55, dotR * 2, dotR * 0.45);
+        }
+        ctx.restore();
+        ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(dotX, 0, dotR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = item.ballId === 0 ? '#fca5a5' : '#fffdf8';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(labelText, dotX + dotR + 5, 0.5);
+        ctx.restore();
+      }
+    }
+  }
+
   function draw() {
     if (!ctx || !canvas) return;
+    var now = performance.now();
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1717,7 +1991,7 @@
     drawTable();
 
     var kitchenOnly = isKitchenPlace(currentState);
-    if (currentState && currentState.phase === 'ball_in_hand' && !replaying) {
+    if (currentState && currentState.phase === 'ball_in_hand' && !replaying && shotQueue.length === 0) {
       drawPlaceArea(kitchenOnly);
     }
 
@@ -1733,15 +2007,18 @@
     if (oppAimPreview && cue) {
       var curAng = oppAimPreview.angle;
       var curPwr = oppAimPreview.power;
-      if (!oppAimPreview.reduced) {
-        var pElapsed = Math.max(0, performance.now() - oppAimPreview.startTime);
+      var oppFadeAlpha = 1;
+      if (oppAimPreview.reduced) {
+        oppFadeAlpha = clamp((now - oppAimPreview.startTime) / 140, 0, 1);
+      } else {
+        var pElapsed = Math.max(0, now - oppAimPreview.startTime);
         var rotEnd = oppAimPreview.rotateDur;
         var holdEnd = rotEnd + oppAimPreview.holdDur;
         var pullEnd = holdEnd + oppAimPreview.pullDur;
         var strikeEnd = pullEnd + oppAimPreview.strikeDur;
         if (pElapsed < rotEnd) {
           var uRot = clamp(pElapsed / rotEnd, 0, 1);
-          var easeRot = uRot < 0.5 ? 2 * uRot * uRot : 1 - Math.pow(-2 * uRot + 2, 2) / 2;
+          var easeRot = easeOutBezier(uRot);
           curAng = oppAimPreview.fromAngle + oppAimPreview.angleDelta * easeRot;
           curPwr = 0;
         } else if (pElapsed < holdEnd) {
@@ -1750,20 +2027,25 @@
         } else if (pElapsed < pullEnd) {
           var uPull = clamp((pElapsed - holdEnd) / oppAimPreview.pullDur, 0, 1);
           curAng = oppAimPreview.angle;
-          curPwr = oppAimPreview.power * uPull;
+          curPwr = oppAimPreview.power * easeOutBezier(uPull);
         } else {
           var uStrike = clamp((pElapsed - pullEnd) / Math.max(1, strikeEnd - pullEnd), 0, 1);
           curAng = oppAimPreview.angle;
           curPwr = oppAimPreview.power * (1 - uStrike);
         }
       }
-      drawAimGuide(cue, balls, curAng, curPwr);
+      drawAimGuide(cue, balls, curAng, curPwr, {
+        highlightTarget: true,
+        now: now,
+        reduced: !!oppAimPreview.reduced,
+        fadeAlpha: oppFadeAlpha,
+      });
     } else if (myStrikeAnim && cue) {
-      var sElapsed = Math.max(0, performance.now() - myStrikeAnim.startTime);
+      var sElapsed = Math.max(0, now - myStrikeAnim.startTime);
       var su = clamp(sElapsed / myStrikeAnim.duration, 0, 1);
       var sPwr = myStrikeAnim.fromPower * (1 - su * su);
       drawAimGuide(cue, balls, myStrikeAnim.angle, sPwr);
-    } else if (currentState && isMyTurn() && !replaying) {
+    } else if (currentState && isMyTurn() && !replaying && shotQueue.length === 0) {
       if (currentState.phase === 'shoot' && cue) {
         var guidePwr = isFullscreenMode() ? (fsCharging ? fsChargePower : 0) : aimPower;
         drawAimGuide(cue, balls, aimAngle, guidePwr);
@@ -1771,6 +2053,8 @@
         drawBallInHandGhost(kitchenOnly);
       }
     }
+
+    drawPocketEffects(now);
 
     ctx.restore();
   }
@@ -2145,7 +2429,7 @@
 
   function syncNominateUI() {
     if (!nomBarEl) return;
-    var mine = isMyTurn() && !replaying;
+    var mine = isMyTurn() && !replaying && shotQueue.length === 0;
     var needNom = isSnooker && mine && currentState && currentState.phase === 'shoot' && currentState.ballOn === 'colour';
     var wasVisible = nomBarEl.style.display !== 'none';
     nomBarEl.style.display = needNom ? 'flex' : 'none';
@@ -2184,7 +2468,7 @@
 
   function updateBar() {
     if (!currentState) return;
-    var mine = isMyTurn() && !replaying;
+    var mine = isMyTurn() && !replaying && shotQueue.length === 0;
     var kitchenOnly = isKitchenPlace(currentState);
     if (mine && currentState.phase === 'shoot') {
       shootBarEl.style.display = 'flex';
@@ -2234,33 +2518,167 @@
     syncNominateUI();
   }
 
-  function announceShotOutcome(shot) {
-    if (!shot || typeof window.showToast !== 'function') return;
+  function closeShotBanner(immediate) {
+    if (shotBannerTimer) {
+      clearTimeout(shotBannerTimer);
+      shotBannerTimer = null;
+    }
+    var oldEl = shotBannerEl;
+    shotBannerEl = null;
+    if (!oldEl) return;
+    if (immediate || typeof oldEl.animate !== 'function') {
+      if (oldEl.parentNode) oldEl.parentNode.removeChild(oldEl);
+      return;
+    }
+    var removed = false;
+    function finishRemove() {
+      if (removed) return;
+      removed = true;
+      if (oldEl.parentNode) oldEl.parentNode.removeChild(oldEl);
+    }
+    try {
+      var anim = isReducedMotion()
+        ? oldEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: 'cubic-bezier(0.23,1,0.32,1)', fill: 'forwards' })
+        : oldEl.animate([
+            { opacity: 1, transform: 'translate(-50%,-50%) scale(1)' },
+            { opacity: 0, transform: 'translate(-50%,-50%) scale(0.95)' },
+          ], { duration: 160, easing: 'cubic-bezier(0.23,1,0.32,1)', fill: 'forwards' });
+      anim.onfinish = finishRemove;
+    } catch (_e) {
+      finishRemove();
+    }
+    setTimeout(finishRemove, 180);
+  }
+
+  function buildShotBannerData(shot) {
+    if (!shot) return null;
+    var shooter = typeof shot.shooter === 'number' ? shot.shooter : -1;
+    var isMe = shooter === myPlayerIndex;
+    var who = isMe ? t('pool_group_you') : (shooter >= 0 ? getPlayerInfo(shooter).name : t('pool_group_opp'));
+    var potted = Array.isArray(shot.potted) ? shot.potted : [];
+    var objIds = [];
+    for (var i = 0; i < potted.length; i++) {
+      if (potted[i] !== 0) objIds.push(potted[i]);
+    }
+
     if (isSnooker) {
       if (shot.respotBlackTie) {
-        window.showToast(t('snooker_respot_black'));
-        return;
+        return { text: t('snooker_banner_respot_black'), sub: '', isFoul: false, chipIds: [21] };
       }
       if (shot.foul) {
-        var reasonKey = 'snooker_foul_' + shot.foul;
-        var reason = t(reasonKey);
-        window.showToast(tf('snooker_foul_toast', reason, shot.foulPoints || 4));
+        var pts = shot.foulPoints || 4;
+        var fText = isMe ? tf('snooker_banner_foul_you', pts) : tf('snooker_banner_foul_opp', who, pts);
+        var fSub = t('snooker_foul_' + shot.foul);
+        return { text: fText, sub: fSub, isFoul: true, chipIds: potted.indexOf(0) >= 0 ? [0] : [] };
       }
-      return;
+      if (shot.pointsScored > 0 && objIds.length > 0) {
+        var seenTypes = {};
+        var names = [];
+        for (var j = 0; j < objIds.length; j++) {
+          var bt = snookerBallType(objIds[j]);
+          if (!seenTypes[bt]) {
+            seenTypes[bt] = true;
+            names.push(t('snooker_ball_' + bt));
+          }
+        }
+        return {
+          text: tf('snooker_banner_pot', shot.pointsScored, names.join(t('pool_list_sep'))),
+          sub: who,
+          isFoul: false,
+          chipIds: objIds,
+        };
+      }
+      return null;
     }
+
     if (shot.illegalBreak) {
-      window.showToast(t('pool_illegal_break'));
-      return;
+      return { text: tf('pool_banner_illegal_break', who), sub: '', isFoul: true, chipIds: [] };
     }
     if (shot.respotEight) {
-      window.showToast(t(shot.foul === 'scratch' ? 'pool_respot_eight_foul' : 'pool_respot_eight'));
-      return;
+      var rKey = shot.foul === 'scratch' ? 'pool_banner_respot_eight_foul' : 'pool_banner_respot_eight';
+      return { text: tf(rKey, who), sub: '', isFoul: !!shot.foul, chipIds: [8] };
     }
-    if (shot.foul === 'scratch') window.showToast(t('pool_foul_scratch'));
-    else if (shot.foul === 'no_hit') window.showToast(t('pool_foul_no_hit'));
-    else if (shot.foul === 'wrong_ball') window.showToast(t('pool_foul_wrong_ball'));
-    else if (shot.foul === 'no_rail') window.showToast(t('pool_foul_no_rail'));
-    else if (shot.foul === 'early_eight') window.showToast(t('pool_foul_early_eight'));
+    if (shot.foul) {
+      var foulKey = 'pool_banner_foul_' + shot.foul;
+      var chipIds = shot.foul === 'scratch' ? [0] : (shot.foul === 'early_eight' ? [8] : []);
+      return { text: tf(foulKey, who), sub: '', isFoul: true, chipIds: chipIds };
+    }
+    if (objIds.length > 0) {
+      var nums = objIds.map(function (id) { return String(id); }).join(t('pool_list_sep'));
+      var pText = isMe ? tf('pool_banner_you_potted', nums) : tf('pool_banner_opp_potted', who, nums);
+      return { text: pText, sub: '', isFoul: false, chipIds: objIds };
+    }
+    return null;
+  }
+
+  function showShotBanner(shot) {
+    closeShotBanner(true);
+    var data = buildShotBannerData(shot);
+    if (!data) return;
+    var host = canvas && canvas.parentNode;
+    if (!host) return;
+
+    var el = document.createElement('div');
+    el.className = 'pool-shot-banner' +
+      (data.isFoul ? ' pool-shot-banner--foul' : '') +
+      (groupOverlayEl ? ' pool-shot-banner--top' : '');
+    el.setAttribute('role', 'status');
+
+    var row = document.createElement('div');
+    row.className = 'pool-shot-banner-row';
+
+    if (data.chipIds && data.chipIds.length > 0) {
+      var chips = document.createElement('span');
+      chips.className = 'pool-shot-banner-chips';
+      for (var i = 0; i < data.chipIds.length && i < 6; i++) {
+        var bid = data.chipIds[i];
+        var chip = document.createElement('span');
+        var isStripe = !isSnooker && bid >= 9 && bid <= 15;
+        var col = isSnooker ? (SNOOKER_BALL_COLORS[bid] || '#c81e1e') : (BALL_COLORS[bid] || '#ccc');
+        chip.className = 'pool-shot-banner-chip' + (isStripe ? ' pool-shot-banner-chip--stripe' : '');
+        chip.style.background = col;
+        chip.style.color = col;
+        if (!isSnooker && bid > 0) {
+          var num = document.createElement('span');
+          num.className = 'pool-shot-banner-chip-num';
+          num.textContent = String(bid);
+          chip.appendChild(num);
+        }
+        chips.appendChild(chip);
+      }
+      row.appendChild(chips);
+    }
+
+    var mainEl = document.createElement('span');
+    mainEl.className = 'pool-shot-banner-main';
+    mainEl.textContent = data.text;
+    row.appendChild(mainEl);
+    el.appendChild(row);
+
+    if (data.sub) {
+      var subEl = document.createElement('div');
+      subEl.className = 'pool-shot-banner-sub';
+      subEl.textContent = data.sub;
+      el.appendChild(subEl);
+    }
+
+    el.addEventListener('click', function () { closeShotBanner(false); });
+    host.appendChild(el);
+    shotBannerEl = el;
+
+    if (typeof el.animate === 'function') {
+      if (isReducedMotion()) {
+        el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'cubic-bezier(0.23,1,0.32,1)', fill: 'backwards' });
+      } else {
+        el.animate([
+          { opacity: 0, transform: 'translate(-50%,-50%) scale(0.86)' },
+          { opacity: 1, transform: 'translate(-50%,-50%) scale(1.06)', offset: 0.68 },
+          { opacity: 1, transform: 'translate(-50%,-50%) scale(1)' },
+        ], { duration: 240, easing: 'cubic-bezier(0.23,1,0.32,1)', fill: 'backwards' });
+      }
+    }
+
+    shotBannerTimer = setTimeout(function () { closeShotBanner(false); }, 1600);
   }
 
   function parseFrame(flat) {
@@ -2272,9 +2690,15 @@
     return map;
   }
 
+  function clearPostShotPause() {
+    if (postShotPauseTimer) {
+      clearTimeout(postShotPauseTimer);
+      postShotPauseTimer = null;
+    }
+  }
+
   function clearStrikeAndPending() {
     myStrikeAnim = null;
-    pendingMyReplay = null;
     awaitingShotSeq = null;
     if (awaitingShotTimer) {
       clearTimeout(awaitingShotTimer);
@@ -2296,7 +2720,44 @@
     syncFsCueUI();
   }
 
-  function finishReplay(shot) {
+  function syncIdleState() {
+    if (!latestState) return;
+    currentState = latestState;
+    if (replaying || shotQueue.length > 0 || myStrikeAnim) return;
+    var seq = (currentState.lastShot && typeof currentState.lastShot.seq === 'number') ? currentState.lastShot.seq : (currentState.shotSeq || 0);
+    var turnPhaseKey = currentState.currentPlayer + ':' + currentState.phase + ':' + seq + ':' + (currentState.ballOn || '');
+    displayBalls = currentState.balls;
+    if (turnPhaseKey !== lastTurnPhaseKey) {
+      lastTurnPhaseKey = turnPhaseKey;
+      if (currentState.phase === 'ball_in_hand' && isMyTurn() && dragMode !== 'place') {
+        var spot2 = findInitialPlaceSpot(displayBalls, isKitchenPlace(currentState));
+        placeX = spot2.x;
+        placeY = spot2.y;
+      } else if (currentState.phase === 'shoot' && isMyTurn() && dragMode === null) {
+        aimAngle = pickDefaultAimAngle(currentState);
+        lastAimInitSeq = seq;
+      }
+    } else if (lastAimInitSeq !== seq && currentState.phase === 'shoot' && isMyTurn() && dragMode === null) {
+      aimAngle = pickDefaultAimAngle(currentState);
+      lastAimInitSeq = seq;
+    }
+    updateHUD();
+    updateBar();
+    maybeShowGroupPopup(currentState);
+    var curFs = isFullscreenMode();
+    var curSideways = !curFs && window.innerHeight < 540 && window.innerWidth > window.innerHeight;
+    var curPortrait = !curFs && !curSideways && window.innerHeight > window.innerWidth;
+    var layoutKey = window.innerWidth + 'x' + window.innerHeight + ':' + (containerEl ? containerEl.clientWidth : 0) + ':' + (curFs ? 'fs' : (curSideways ? 's' : (curPortrait ? 'p' : 'l'))) + ':' + (isSnooker ? 'sn' : '8b');
+    if (layoutKey !== lastLayoutKey) {
+      resizeCanvas();
+    } else {
+      draw();
+    }
+  }
+
+  function finishReplay(entry) {
+    var shot = (entry && entry.shot) ? entry.shot : entry;
+    var entryState = (entry && entry.state) ? entry.state : latestState;
     replaying = false;
     oppAimPreview = null;
     clearStrikeAndPending();
@@ -2309,26 +2770,48 @@
       cancelAnimationFrame(rafId);
       rafId = null;
     }
-    displayBalls = (currentState && Array.isArray(currentState.balls)) ? currentState.balls : [];
-    if (currentState && currentState.phase === 'ball_in_hand' && isMyTurn() && dragMode !== 'place') {
-      var spot = findInitialPlaceSpot(displayBalls, isKitchenPlace(currentState));
-      placeX = spot.x;
-      placeY = spot.y;
+    currentState = shotQueue.length > 0 ? entryState : (latestState || entryState);
+    displayBalls = (entryState && Array.isArray(entryState.balls))
+      ? entryState.balls
+      : ((currentState && Array.isArray(currentState.balls)) ? currentState.balls : []);
+    if (shotQueue.length === 0 && currentState) {
+      if (currentState.phase === 'ball_in_hand' && isMyTurn() && dragMode !== 'place') {
+        var spot = findInitialPlaceSpot(displayBalls, isKitchenPlace(currentState));
+        placeX = spot.x;
+        placeY = spot.y;
+      } else if (currentState.phase === 'shoot' && isMyTurn() && dragMode === null) {
+        aimAngle = pickDefaultAimAngle(currentState);
+      }
     }
     updateHUD();
     updateBar();
     draw();
-    maybeShowGroupPopup(currentState);
+    if (pocketEffects.length > 0) {
+      startPocketFxLoop();
+    }
+    maybeShowGroupPopup(entryState || currentState);
     try {
-      announceShotOutcome(shot);
+      showShotBanner(shot);
     } catch (_e) {}
+
+    clearPostShotPause();
+    postShotPauseTimer = setTimeout(function () {
+      postShotPauseTimer = null;
+      if (shotQueue.length > 0) {
+        drainShotQueue();
+      } else if (latestState) {
+        syncIdleState();
+      }
+    }, POST_SHOT_PAUSE_MS);
   }
 
-  function startReducedOppPreview(state, targetAngle) {
-    var shot = state && state.lastShot;
+  function startReducedOppPreview(entry) {
+    var state = entry && entry.state;
+    var shot = entry && entry.shot;
+    var targetAngle = shot && Number.isFinite(shot.angle) ? shot.angle : 0;
     var frames = shot && shot.frames;
     if (!shot || !Array.isArray(frames) || frames.length < 1) {
-      finishReplay(shot);
+      finishReplay(entry);
       return;
     }
     var fInit = parseFrame(frames[0]);
@@ -2348,24 +2831,68 @@
     replaying = true;
     oppAimPreview = {
       reduced: true,
-      angle: Number.isFinite(targetAngle) ? targetAngle : 0,
+      angle: targetAngle,
       power: clamp(Number(shot.power) || 0.5, 0.05, 1),
+      startTime: performance.now(),
     };
     updateBar();
     draw();
+
+    function fadeStep(now) {
+      if (!replaying || !oppAimPreview || !oppAimPreview.reduced) {
+        rafId = null;
+        return;
+      }
+      draw();
+      if (now - oppAimPreview.startTime < 150) {
+        rafId = requestAnimationFrame(fadeStep);
+      } else {
+        rafId = null;
+      }
+    }
+    rafId = requestAnimationFrame(fadeStep);
+
     if (reducedTimerId) clearTimeout(reducedTimerId);
     reducedTimerId = setTimeout(function () {
       reducedTimerId = null;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       playCueStrike(shot.power);
-      finishReplay(shot);
-    }, 400);
+      var spawnedAny = false;
+      if (frames.length >= 2) {
+        var parsed = [];
+        for (var i = 0; i < frames.length; i++) parsed.push(parseFrame(frames[i]));
+        var evs = extractSoundEvents(parsed, shot.fps || 30);
+        for (var j = 0; j < evs.length; j++) {
+          if (evs[j].type === 'pocket' && evs[j].pocket) {
+            if (!spawnedAny) playPocketDrop();
+            spawnPocketEffect(evs[j].ballId, evs[j].pocket, performance.now(), !!shot.foul);
+            spawnedAny = true;
+          }
+        }
+      }
+      if (!spawnedAny && Array.isArray(shot.potted) && shot.potted.length > 0) {
+        playPocketDrop();
+        for (var k = 0; k < shot.potted.length; k++) {
+          var pid = shot.potted[k];
+          if (fInit[pid]) {
+            spawnPocketEffect(pid, findNearestPocket(fInit[pid].x, fInit[pid].y), performance.now(), !!shot.foul);
+          }
+        }
+      }
+      finishReplay(entry);
+    }, 520);
   }
 
-  function startReplay(state, prevAngle) {
-    var shot = state && state.lastShot;
+  function startReplay(entry) {
+    var state = entry && entry.state;
+    var shot = entry && entry.shot;
+    var prevAngle = entry && entry.prevAngle;
     var frames = shot && shot.frames;
     if (!shot || !Array.isArray(frames) || frames.length < 2) {
-      finishReplay(shot);
+      finishReplay(entry);
       return;
     }
 
@@ -2374,7 +2901,7 @@
       parsed.push(parseFrame(frames[i]));
     }
     if (parsed.length < 2) {
-      finishReplay(shot);
+      finishReplay(entry);
       return;
     }
 
@@ -2406,7 +2933,12 @@
     function fireSound(ev) {
       if (ev.type === 'click') playBallClick(ev.intensity);
       else if (ev.type === 'cushion') playCushionThud(ev.intensity);
-      else if (ev.type === 'pocket') playPocketDrop();
+      else if (ev.type === 'pocket') {
+        playPocketDrop();
+        if (ev.pocket) {
+          spawnPocketEffect(ev.ballId, ev.pocket, performance.now(), !!shot.foul);
+        }
+      }
     }
 
     function ballStep(now) {
@@ -2422,7 +2954,7 @@
           while (soundCursor < soundEvents.length) {
             fireSound(soundEvents[soundCursor++]);
           }
-          finishReplay(shot);
+          finishReplay(entry);
           return;
         }
 
@@ -2436,7 +2968,7 @@
         var f0 = parsed[k];
         var f1 = parsed[k + 1];
         if (!f0 || !f1) {
-          finishReplay(shot);
+          finishReplay(entry);
           return;
         }
         var interp = [];
@@ -2464,7 +2996,7 @@
         draw();
         rafId = requestAnimationFrame(ballStep);
       } catch (_err) {
-        finishReplay(shot);
+        finishReplay(entry);
       }
     }
 
@@ -2519,6 +3051,49 @@
     }
   }
 
+  function playQueuedShot(entry) {
+    if (!entry || !entry.shot) return;
+    var shot = entry.shot;
+    var frames = shot.frames;
+    var reduced = isReducedMotion();
+    dragMode = null;
+    cancelActiveFsInputs();
+    if (!entry.isOpponent) {
+      aimSpinX = 0;
+      aimSpinY = 0;
+      syncSpinUI();
+    }
+    if (reduced) {
+      clearStrikeAndPending();
+      if (entry.isOpponent && Array.isArray(frames) && frames.length >= 1) {
+        try {
+          startReducedOppPreview(entry);
+        } catch (_errR) {
+          finishReplay(entry);
+        }
+      } else {
+        finishReplay(entry);
+      }
+      return;
+    }
+    if (!Array.isArray(frames) || frames.length < 2) {
+      clearStrikeAndPending();
+      finishReplay(entry);
+      return;
+    }
+    try {
+      startReplay(entry);
+    } catch (_err) {
+      finishReplay(entry);
+    }
+  }
+
+  function drainShotQueue() {
+    if (replaying || postShotPauseTimer || myStrikeAnim || shotQueue.length === 0) return;
+    var next = shotQueue.shift();
+    playQueuedShot(next);
+  }
+
   function clientToTable(e) {
     var rect = canvas.getBoundingClientRect();
     if (isPortrait) {
@@ -2541,13 +3116,14 @@
   }
 
   function trySendShot() {
-    if (!currentState || !isMyTurn() || replaying || currentState.phase !== 'shoot') return false;
+    if (!currentState || !isMyTurn() || replaying || shotQueue.length > 0 || currentState.phase !== 'shoot') return false;
     if (isSnooker && currentState.ballOn === 'colour' && !selectedNominate) {
       if (typeof window.showToast === 'function') {
         window.showToast(t('snooker_pick_colour_first'));
       }
       return false;
     }
+    clearPostShotPause();
     var mv = {
       type: 'shot',
       angle: aimAngle,
@@ -2600,14 +3176,8 @@
       if (elapsed >= myStrikeAnim.duration) {
         myStrikeAnim = null;
         strikeRafId = null;
-        if (pendingMyReplay) {
-          var pending = pendingMyReplay;
-          pendingMyReplay = null;
-          try {
-            startReplay(pending.state, pending.prevAngle);
-          } catch (_err) {
-            finishReplay(pending.state && pending.state.lastShot);
-          }
+        if (shotQueue.length > 0) {
+          drainShotQueue();
         } else {
           draw();
         }
@@ -2628,14 +3198,15 @@
   }
 
   function submitCuePlacement() {
-    if (!currentState || !isMyTurn() || replaying || currentState.phase !== 'ball_in_hand') return;
+    if (!currentState || !isMyTurn() || replaying || shotQueue.length > 0 || currentState.phase !== 'ball_in_hand') return;
     if (isValidCuePosLocal(displayBalls, placeX, placeY, isKitchenPlace(currentState))) {
+      clearPostShotPause();
       sendMove({ type: 'place', x: round1(placeX), y: round1(placeY) });
     }
   }
 
   function onPointerDown(e) {
-    if (!currentState || !isMyTurn() || replaying || myStrikeAnim || awaitingShotSeq !== null) return;
+    if (!currentState || !isMyTurn() || replaying || shotQueue.length > 0 || myStrikeAnim || awaitingShotSeq !== null) return;
     var pt = clientToTable(e);
 
     if (currentState.phase === 'ball_in_hand') {
@@ -2675,7 +3246,7 @@
   }
 
   function onPointerMove(e) {
-    if (!dragMode || !currentState || !isMyTurn() || replaying) return;
+    if (!dragMode || !currentState || !isMyTurn() || replaying || shotQueue.length > 0) return;
     var pt = clientToTable(e);
 
     if (dragMode === 'place') {
@@ -2780,18 +3351,27 @@
       cancelAnimationFrame(rafId);
       rafId = null;
     }
+    if (pocketFxRafId) {
+      cancelAnimationFrame(pocketFxRafId);
+      pocketFxRafId = null;
+    }
+    clearPostShotPause();
     clearStrikeAndPending();
     cancelAllScoreRolls();
     replaying = false;
     oppAimPreview = null;
     lastSeatCueAngle = {};
+    pocketEffects = [];
+    closeShotBanner(true);
     closeGroupPopup(true);
     prevGroups = null;
     prevSnapshot = null;
     resetBallRoll();
     ensureAudioCtxUnlocked();
 
-    lastPlayedSeq = null;
+    latestState = null;
+    shotQueue = [];
+    lastQueuedSeq = null;
     lastAimInitSeq = -1;
     lastTurnPhaseKey = '';
     lastLayoutKey = '';
@@ -2994,7 +3574,7 @@
         btnEl.querySelector('.snooker-nom-text').textContent =
           t('snooker_ball_' + cName) + ' ' + (meta ? meta.value : '');
         btnEl.addEventListener('click', function () {
-          if (!currentState || !isMyTurn() || replaying || currentState.phase !== 'shoot' || currentState.ballOn !== 'colour') return;
+          if (!currentState || !isMyTurn() || replaying || shotQueue.length > 0 || currentState.phase !== 'shoot' || currentState.ballOn !== 'colour') return;
           selectedNominate = cName;
           aimAngle = pickDefaultAimAngle(currentState);
           syncNominateUI();
@@ -3094,7 +3674,7 @@
 
     fsCueTrackEl.addEventListener('pointerdown', function (e) {
       e.preventDefault();
-      if (!isFullscreenMode() || !currentState || !isMyTurn() || replaying || myStrikeAnim || awaitingShotSeq !== null) return;
+      if (!isFullscreenMode() || !currentState || !isMyTurn() || replaying || shotQueue.length > 0 || myStrikeAnim || awaitingShotSeq !== null) return;
       if (currentState.phase !== 'shoot') return;
       if (isSnooker && currentState.ballOn === 'colour' && !selectedNominate) {
         if (typeof window.showToast === 'function') {
@@ -3141,7 +3721,7 @@
 
     fsRulerEl.addEventListener('pointerdown', function (e) {
       e.preventDefault();
-      if (!isFullscreenMode() || !currentState || !isMyTurn() || replaying || myStrikeAnim || awaitingShotSeq !== null) return;
+      if (!isFullscreenMode() || !currentState || !isMyTurn() || replaying || shotQueue.length > 0 || myStrikeAnim || awaitingShotSeq !== null) return;
       if (currentState.phase !== 'shoot') return;
       fineDragging = true;
       finePointerId = e.pointerId;
@@ -3153,7 +3733,7 @@
     });
     fsRulerEl.addEventListener('pointermove', function (e) {
       if (!fineDragging || e.pointerId !== finePointerId) return;
-      if (!currentState || !isMyTurn() || replaying || currentState.phase !== 'shoot') return;
+      if (!currentState || !isMyTurn() || replaying || shotQueue.length > 0 || currentState.phase !== 'shoot') return;
       var dy = e.clientY - fineLastY;
       fineLastY = e.clientY;
       aimAngle += dy * 0.0018;
@@ -3219,11 +3799,11 @@
 
     applyVariantConfig(state);
     myPlayerIndex = typeof playerIndex === 'number' ? playerIndex : 0;
-    currentState = state;
+    latestState = state;
 
     var seq = (state.lastShot && typeof state.lastShot.seq === 'number') ? state.lastShot.seq : (state.shotSeq || 0);
     var turnPhaseKey = state.currentPlayer + ':' + state.phase + ':' + seq + ':' + (state.ballOn || '');
-    if (seq !== lastNomSeq || !isSnooker || state.ballOn !== 'colour' || !isMyTurn()) {
+    if (seq !== lastNomSeq || !isSnooker || state.ballOn !== 'colour' || state.currentPlayer !== myPlayerIndex) {
       selectedNominate = null;
       lastNomSeq = seq;
     }
@@ -3233,11 +3813,15 @@
     var curPortrait = !curFs && !curSideways && window.innerHeight > window.innerWidth;
     var layoutKey = window.innerWidth + 'x' + window.innerHeight + ':' + (containerEl ? containerEl.clientWidth : 0) + ':' + (curFs ? 'fs' : (curSideways ? 's' : (curPortrait ? 'p' : 'l'))) + ':' + (isSnooker ? 'sn' : '8b');
 
-    if (lastPlayedSeq === null) {
-      lastPlayedSeq = seq;
+    if (lastQueuedSeq === null) {
+      currentState = state;
+      lastQueuedSeq = seq;
       lastAimInitSeq = seq;
       lastTurnPhaseKey = turnPhaseKey;
       prevGroups = Array.isArray(state.groups) ? [state.groups[0], state.groups[1]] : [null, null];
+      if (state.lastShot && typeof state.lastShot.shooter === 'number' && Number.isFinite(state.lastShot.angle)) {
+        lastSeatCueAngle[state.lastShot.shooter] = state.lastShot.angle;
+      }
       displayBalls = state.balls;
       if (state.phase === 'ball_in_hand' && isMyTurn() && dragMode !== 'place') {
         var initSpot = findInitialPlaceSpot(displayBalls, isKitchenPlace(state));
@@ -3252,27 +3836,14 @@
       return;
     }
 
-    if (state.lastShot && state.lastShot.seq > lastPlayedSeq) {
+    if (state.lastShot && typeof state.lastShot.seq === 'number' && state.lastShot.seq > lastQueuedSeq) {
       var shot = state.lastShot;
-      lastPlayedSeq = shot.seq;
+      lastQueuedSeq = shot.seq;
       awaitingShotSeq = null;
       if (awaitingShotTimer) {
         clearTimeout(awaitingShotTimer);
         awaitingShotTimer = null;
       }
-      if (reducedTimerId) {
-        clearTimeout(reducedTimerId);
-        reducedTimerId = null;
-      }
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      }
-      replaying = false;
-      oppAimPreview = null;
-      aimSpinX = 0;
-      aimSpinY = 0;
-      syncSpinUI();
 
       var shooter = typeof shot.shooter === 'number' ? shot.shooter : -1;
       var targetAngle = Number.isFinite(shot.angle) ? shot.angle : 0;
@@ -3282,57 +3853,36 @@
       }
       var isOpponent = shooter >= 0 && shooter !== myPlayerIndex;
 
-      if (dragMode === null && state.phase === 'shoot' && isMyTurn()) {
-        aimAngle = pickDefaultAimAngle(state);
-      }
-      lastAimInitSeq = seq;
-      lastTurnPhaseKey = turnPhaseKey;
+      shotQueue.push({
+        state: state,
+        shot: shot,
+        seq: shot.seq,
+        prevAngle: prevAngle,
+        isOpponent: isOpponent,
+      });
 
-      var reduced = isReducedMotion();
-      var frames = shot.frames;
-      if (reduced) {
-        clearStrikeAndPending();
-        if (isOpponent && Array.isArray(frames) && frames.length >= 1) {
-          if (layoutKey !== lastLayoutKey) {
-            resizeCanvas();
-          }
-          try {
-            startReducedOppPreview(state, targetAngle);
-          } catch (_errR) {
-            finishReplay(shot);
-          }
-        } else {
-          if (layoutKey !== lastLayoutKey) {
-            resizeCanvas();
-          }
-          finishReplay(shot);
-        }
-      } else if (!Array.isArray(frames) || frames.length < 2) {
-        clearStrikeAndPending();
+      if (!replaying && !postShotPauseTimer && !myStrikeAnim) {
+        currentState = state;
         if (layoutKey !== lastLayoutKey) {
           resizeCanvas();
-        }
-        finishReplay(shot);
-      } else {
-        if (layoutKey !== lastLayoutKey) {
-          resizeCanvas();
-        }
-        if (!isOpponent && myStrikeAnim) {
-          pendingMyReplay = { state: state, prevAngle: prevAngle };
-          return;
-        }
-        try {
-          startReplay(state, prevAngle);
-        } catch (_err) {
-          finishReplay(shot);
         }
       }
+      drainShotQueue();
       return;
     }
 
     // Same seq (e.g. ball_in_hand -> shoot transition after cue placement, or reset)
-    if (seq < lastPlayedSeq) {
-      lastPlayedSeq = seq;
+    if (seq < lastQueuedSeq) {
+      currentState = state;
+      lastQueuedSeq = seq;
+      shotQueue = [];
+      clearPostShotPause();
+      closeShotBanner(true);
+      pocketEffects = [];
+      if (pocketFxRafId) {
+        cancelAnimationFrame(pocketFxRafId);
+        pocketFxRafId = null;
+      }
       if (reducedTimerId) {
         clearTimeout(reducedTimerId);
         reducedTimerId = null;
@@ -3356,30 +3906,8 @@
       syncSpinUI();
     }
 
-    if (!replaying && !myStrikeAnim && !pendingMyReplay) {
-      displayBalls = state.balls;
-      if (turnPhaseKey !== lastTurnPhaseKey) {
-        lastTurnPhaseKey = turnPhaseKey;
-        if (state.phase === 'ball_in_hand' && isMyTurn() && dragMode !== 'place') {
-          var spot2 = findInitialPlaceSpot(displayBalls, isKitchenPlace(state));
-          placeX = spot2.x;
-          placeY = spot2.y;
-        } else if (state.phase === 'shoot' && isMyTurn() && dragMode === null) {
-          aimAngle = pickDefaultAimAngle(state);
-          lastAimInitSeq = seq;
-        }
-      } else if (lastAimInitSeq !== seq && state.phase === 'shoot' && isMyTurn() && dragMode === null) {
-        aimAngle = pickDefaultAimAngle(state);
-        lastAimInitSeq = seq;
-      }
-      updateHUD();
-      updateBar();
-      maybeShowGroupPopup(state);
-      if (layoutKey !== lastLayoutKey) {
-        resizeCanvas();
-      } else {
-        draw();
-      }
+    if (!replaying && !postShotPauseTimer && shotQueue.length === 0 && !myStrikeAnim) {
+      syncIdleState();
     }
   }
 

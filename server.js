@@ -999,6 +999,9 @@ function scheduleBotMove(room) {
     if (state.phase === 'shooting' && !shotsShown) delay += 3000;
     else if (state.phase === 'playing' && shotsShown && state.pileCards.length === 0) delay += 3000;
   }
+  if (typeof gameMod.botDelayMs === 'function') {
+    delay = Math.max(delay, gameMod.botDelayMs(state));
+  }
   // 上一次机器人连兜底都失败（状态没变）：别每秒空转重试，隔 15 秒再试，
   // 期间真人操作或计时器可能已让局面前进。
   const stuck = room._botStuck;
