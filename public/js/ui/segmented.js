@@ -24,13 +24,49 @@
       return -1;
     }
 
-    function syncUI() {
+    // Sliding selection pill. It flows between options with the same liquid stretch as the lobby
+    // category tabs: the leading edge runs ahead, then the trailing edge catches up (360 ms).
+    var ind = document.createElement('span');
+    ind.className = 'ui-seg-ind';
+    ind.setAttribute('aria-hidden', 'true');
+    root.appendChild(ind);
+    var indPos = null;
+
+    function reducedMotion() {
+      if (window.Motion && typeof window.Motion.reduced === 'function') return window.Motion.reduced();
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    function placeInd(animate) {
+      var btn = buttons[selectedIdx];
+      if (!btn) { ind.style.opacity = '0'; indPos = null; return; }
+      if (btn.offsetWidth <= 0) return; // not laid out yet; the ResizeObserver places it later
+      var to = { x: btn.offsetLeft, w: btn.offsetWidth };
+      var from = indPos;
+      ind.style.transform = 'translateX(' + to.x + 'px)';
+      ind.style.width = to.w + 'px';
+      ind.style.opacity = '1';
+      indPos = to;
+      if (!animate || !from || from.w <= 0 || reducedMotion() || typeof ind.animate !== 'function') return;
+      if (from.x === to.x && from.w === to.w) return;
+      var right = to.x > from.x, lead = 0.9, trail = 0.15;
+      var L = from.x + (to.x - from.x) * (right ? trail : lead);
+      var R = from.x + from.w + (to.x + to.w - from.x - from.w) * (right ? lead : trail);
+      ind.animate([
+        { transform: 'translateX(' + from.x + 'px)', width: from.w + 'px' },
+        { transform: 'translateX(' + L + 'px)', width: Math.max(0, R - L) + 'px', offset: 0.4 },
+        { transform: 'translateX(' + to.x + 'px)', width: to.w + 'px' }
+      ], { duration: 360, easing: 'cubic-bezier(0.33, 1, 0.68, 1)' });
+    }
+
+    function syncUI(animate) {
       for (var i = 0; i < buttons.length; i++) {
         var isSel = i === selectedIdx;
         buttons[i].classList.toggle('is-selected', isSel);
         buttons[i].setAttribute('aria-checked', isSel ? 'true' : 'false');
         buttons[i].tabIndex = isSel || (selectedIdx === -1 && i === 0) ? 0 : -1;
       }
+      placeInd(!!animate);
     }
 
     function selectIndex(idx, silent) {
@@ -38,7 +74,7 @@
       var changed = idx !== selectedIdx;
       selectedIdx = idx;
       curVal = options[idx].value;
-      syncUI();
+      syncUI(changed);
       if (!silent && changed && onChange) {
         onChange(curVal);
       }
@@ -85,7 +121,12 @@
 
     selectedIdx = findIndex(opts.value);
     if (selectedIdx >= 0) curVal = options[selectedIdx].value;
-    syncUI();
+    syncUI(false);
+    // The root is measured only once it is in the DOM and laid out (e.g. inside a sheet that opens
+    // later), so re-place the pill without animation whenever its size changes.
+    if (typeof ResizeObserver === 'function') {
+      new ResizeObserver(function() { indPos = null; placeInd(false); }).observe(root);
+    }
 
     root.getValue = function() {
       return curVal;
@@ -99,7 +140,7 @@
         var changed = curVal !== nextVal;
         selectedIdx = -1;
         curVal = nextVal;
-        syncUI();
+        syncUI(false);
         if (!silent && changed && onChange) {
           onChange(curVal);
         }

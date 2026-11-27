@@ -501,14 +501,32 @@ var countPillControl = (function() {
     return seg.querySelector('.lb-count-chip.selected') || seg.querySelector('.lb-count-chip');
   }
 
+  // Same liquid stretch as the category indicator (catIndControl): the leading edge runs ahead,
+  // the trailing edge catches up, so the pill flows to the new chip like a drop of water.
+  function stretchMove(pill, from, to) {
+    if (!pill || from.w <= 0 || (from.x === to.x && from.w === to.w)) return;
+    var right = to.x > from.x, lead = 0.9, trail = 0.15;
+    var L = from.x + (to.x - from.x) * (right ? trail : lead);
+    var R = from.x + from.w + (to.x + to.w - from.x - from.w) * (right ? lead : trail);
+    pill.animate([
+      { transform: 'translateX(' + from.x + 'px)', width: from.w + 'px' },
+      { transform: 'translateX(' + L + 'px)', width: Math.max(0, R - L) + 'px', offset: 0.4 },
+      { transform: 'translateX(' + to.x + 'px)', width: to.w + 'px' }
+    ], { duration: 360, easing: 'cubic-bezier(0.33, 1, 0.68, 1)' });
+  }
+
   function place(btn, animate) {
     if (!btn) return;
     var w = btn.offsetWidth;
     if (w <= 0) return;
     var shouldAnimate = !!animate && !reduceMotion.matches && seg.classList.contains('is-ready');
-    seg.classList.toggle('is-animating', shouldAnimate);
+    var from = {
+      x: parseFloat(seg.style.getPropertyValue('--pill-x')) || 0,
+      w: parseFloat(seg.style.getPropertyValue('--pill-w')) || 0
+    };
     seg.style.setProperty('--pill-x', btn.offsetLeft + 'px');
     seg.style.setProperty('--pill-w', w + 'px');
+    if (shouldAnimate) stretchMove(seg.querySelector('.lb-count-pill'), from, { x: btn.offsetLeft, w: w });
     if (!seg.classList.contains('is-ready')) {
       seg.classList.add('is-ready');
     }
@@ -545,7 +563,7 @@ function renderCountChips() {
   if (unitEl && typeof _t === 'function') {
     unitEl.textContent = _t('players_unit');
   }
-  root.classList.remove('is-animating', 'is-ready');
+  root.classList.remove('is-ready');
   root.innerHTML = '<span class="lb-count-pill" aria-hidden="true"></span>' + [0, 1, 2, 3, 4, 5, 6].map(function(n) {
     const aria = n === 0 ? _t('players_any') : n === 6 ? _t('players_n_plus').replace('%s', n) : _t('players_n').replace('%s', n);
     const label = n === 0 ? _t('players_any') : n === 6 ? '6+' : String(n);
