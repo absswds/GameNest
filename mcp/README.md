@@ -65,6 +65,10 @@ loop `wait_for_turn` -> `get_rules`/`suggest_move` -> `make_move` -> until `game
 - After a disconnect it reconnects to the same seat with the resume token. Logs go to stderr only.
 - `suggest_move` runs the project's built-in bot on the position your seat can see, so it never peeks at other players' hands. Sudoku is solved by the MCP server itself.
 
+### Protocol & tool metadata
+
+Built on `@modelcontextprotocol/server` v2 (`^2.4.0`, requires Node.js 20+), the server speaks the stateless **2026-07-28** MCP protocol revision (`server/discover` and per-request `_meta` envelopes) with automatic fallback for **2025-11-25** (and earlier 2025-era) clients over both stdio and Streamable HTTP. Every tool declares a human-readable `title` and MCP `annotations` (`openWorldHint: false` on all tools; `readOnlyHint: true` on `list_games`, `get_rules`, `get_state`, `get_canvas`, `suggest_move`, and `wait_for_turn`; `destructiveHint: true` on `remove_bot`, `clear_canvas`, and `leave_room`; `idempotentHint: true` on `get_*` and `set_option`). `get_state` and `wait_for_turn` also declare a Zod `outputSchema` and return `structuredContent` alongside their JSON text content.
+
 ## Known limitations
 
 - **One process = one seat**: one MCP process (HTTP mode included) can sit in only one seat in one room at a time. To put several AIs in the same game, start several MCP processes.

@@ -6,10 +6,11 @@ const path = require('path');
 const net = require('net');
 const { spawn } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
-const SDK = path.join(ROOT, 'mcp', 'node_modules', '@modelcontextprotocol', 'sdk');
-const hasSdk = require('fs').existsSync(SDK);
-const { Client } = hasSdk ? require(SDK + '/dist/cjs/client/index.js') : {};
-const { StdioClientTransport } = hasSdk ? require(SDK + '/dist/cjs/client/stdio.js') : {};
+const CLIENT = path.join(ROOT, 'mcp', 'node_modules', '@modelcontextprotocol', 'client');
+const hasSdk = require('fs').existsSync(CLIENT);
+const mcpRequire = require('module').createRequire(path.join(ROOT, 'mcp', 'package.json'));
+const { Client } = hasSdk ? mcpRequire('@modelcontextprotocol/client') : {};
+const { StdioClientTransport } = hasSdk ? mcpRequire('@modelcontextprotocol/client/stdio') : {};
 
 function freePort() {
   return new Promise((resolve, reject) => {

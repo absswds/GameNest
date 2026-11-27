@@ -4,12 +4,14 @@ const assert = require('node:assert');
 const path = require('path');
 const net = require('net');
 const { spawn } = require('child_process');
+const { createRequire } = require('module');
 const ROOT = path.resolve(__dirname, '..');
 // The MCP server is its own package (mcp/package.json) so the SDK never ships in the APK/exe.
-const SDK = path.join(ROOT, 'mcp', 'node_modules', '@modelcontextprotocol', 'sdk');
-const hasSdk = require('fs').existsSync(SDK);
-const { Client } = hasSdk ? require(SDK + '/dist/cjs/client/index.js') : {};
-const { StdioClientTransport } = hasSdk ? require(SDK + '/dist/cjs/client/stdio.js') : {};
+const CLIENT = path.join(ROOT, 'mcp', 'node_modules', '@modelcontextprotocol', 'client');
+const hasSdk = require('fs').existsSync(CLIENT);
+const mcpRequire = createRequire(path.join(ROOT, 'mcp', 'package.json'));
+const { Client, StreamableHTTPClientTransport } = hasSdk ? mcpRequire('@modelcontextprotocol/client') : {};
+const { StdioClientTransport } = hasSdk ? mcpRequire('@modelcontextprotocol/client/stdio') : {};
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -79,7 +81,6 @@ test('MCP agent plays tictactoe against a bot', { timeout: 90000, skip: !hasSdk 
 });
 
 test('MCP server also speaks Streamable HTTP (non-stdio clients)', { timeout: 30000, skip: !hasSdk && 'run npm install in mcp/ first' }, async (t) => {
-  const { StreamableHTTPClientTransport } = require(SDK + '/dist/cjs/client/streamableHttp.js');
   const port = await freePort();
   const proc = spawn(process.execPath, [path.join(ROOT, 'mcp', 'server.js'), '--http=' + port], { stdio: 'ignore' });
   const client = new Client({ name: 'test-http', version: '1.0.0' });
