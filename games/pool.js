@@ -99,6 +99,12 @@ function framesEqual(a, b) {
 
 function simulateShot(balls, angle, power, opts) {
   const recordFrames = opts && opts.recordFrames !== undefined ? !!opts.recordFrames : true;
+  let cueSpinX = Math.max(-1, Math.min(1, Number(opts && opts.spinX) || 0));
+  let cueSpinY = Math.max(-1, Math.min(1, Number(opts && opts.spinY) || 0));
+  let cueSpinYApplied = false;
+  const K_SPIN_FOLLOW = 0.42;
+  const K_SPIN_RAIL = 0.45;
+
   const simBalls = balls.map((b) => ({
     id: b.id,
     x: b.x,
@@ -159,17 +165,57 @@ function simulateShot(balls, angle, power, opts) {
       if (b.potted) continue;
       if (b.x < BALL_R) {
         b.x = BALL_R;
-        if (b.vx < 0) b.vx *= -E_RAIL;
+        if (b.vx < 0) {
+          const imp = Math.abs(b.vx);
+          b.vx *= -E_RAIL;
+          if (b.id === 0) {
+            if (cueSpinX !== 0) {
+              b.vy -= cueSpinX * imp * K_SPIN_RAIL;
+              cueSpinX *= 0.45;
+            }
+            if (cueSpinY !== 0) cueSpinY *= 0.7;
+          }
+        }
       } else if (b.x > W - BALL_R) {
         b.x = W - BALL_R;
-        if (b.vx > 0) b.vx *= -E_RAIL;
+        if (b.vx > 0) {
+          const imp = Math.abs(b.vx);
+          b.vx *= -E_RAIL;
+          if (b.id === 0) {
+            if (cueSpinX !== 0) {
+              b.vy += cueSpinX * imp * K_SPIN_RAIL;
+              cueSpinX *= 0.45;
+            }
+            if (cueSpinY !== 0) cueSpinY *= 0.7;
+          }
+        }
       }
       if (b.y < BALL_R) {
         b.y = BALL_R;
-        if (b.vy < 0) b.vy *= -E_RAIL;
+        if (b.vy < 0) {
+          const imp = Math.abs(b.vy);
+          b.vy *= -E_RAIL;
+          if (b.id === 0) {
+            if (cueSpinX !== 0) {
+              b.vx += cueSpinX * imp * K_SPIN_RAIL;
+              cueSpinX *= 0.45;
+            }
+            if (cueSpinY !== 0) cueSpinY *= 0.7;
+          }
+        }
       } else if (b.y > H - BALL_R) {
         b.y = H - BALL_R;
-        if (b.vy > 0) b.vy *= -E_RAIL;
+        if (b.vy > 0) {
+          const imp = Math.abs(b.vy);
+          b.vy *= -E_RAIL;
+          if (b.id === 0) {
+            if (cueSpinX !== 0) {
+              b.vx -= cueSpinX * imp * K_SPIN_RAIL;
+              cueSpinX *= 0.45;
+            }
+            if (cueSpinY !== 0) cueSpinY *= 0.7;
+          }
+        }
       }
     }
 
@@ -200,11 +246,36 @@ function simulateShot(balls, angle, power, opts) {
 
             const vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
             if (vn < 0) {
+              const cueBall = a.id === 0 ? a : (b.id === 0 ? b : null);
+              let preSpd = 0;
+              let dirX = 0;
+              let dirY = 0;
+              let cutFactor = 0;
+              if (cueBall && !cueSpinYApplied && cueSpinY !== 0) {
+                preSpd = Math.hypot(cueBall.vx, cueBall.vy);
+                if (preSpd > 1e-6) {
+                  dirX = cueBall.vx / preSpd;
+                  dirY = cueBall.vy / preSpd;
+                  cutFactor = Math.abs(dirX * nx + dirY * ny);
+                }
+              }
+
               const imp = -(1 + E_BALL) * vn * 0.5;
               a.vx -= imp * nx;
               a.vy -= imp * ny;
               b.vx += imp * nx;
               b.vy += imp * ny;
+
+              if (cueBall && !cueSpinYApplied && cueSpinY !== 0 && preSpd > 1e-6) {
+                const deltaV = cueSpinY * preSpd * K_SPIN_FOLLOW * (0.35 + 0.65 * cutFactor);
+                cueBall.vx += dirX * deltaV;
+                cueBall.vy += dirY * deltaV;
+                cueSpinYApplied = true;
+                cueSpinY = 0;
+              }
+              if (cueBall && cueSpinX !== 0) {
+                cueSpinX *= 0.8;
+              }
             }
           }
         }
@@ -274,14 +345,17 @@ function isValidBallSpot(balls, x, y, ignoreBallId) {
   return true;
 }
 
-function isValidCuePos(balls, x, y) {
+function isValidCuePos(balls, x, y, opts) {
+  const kitchenOnly = !!(opts === true || (opts && opts.kitchenOnly));
+  if (kitchenOnly && (!Number.isFinite(x) || x > TABLE.HEAD_STRING_X)) return false;
   return isValidBallSpot(balls, x, y, 0);
 }
 
-function findSafeCueSpot(balls) {
+function findSafeCueSpot(balls, opts) {
+  const kitchenOnly = !!(opts === true || (opts && opts.kitchenOnly));
   const startX = TABLE.HEAD_STRING_X;
   const startY = TABLE.FOOT_SPOT_Y;
-  if (isValidCuePos(balls, startX, startY)) {
+  if (isValidCuePos(balls, startX, startY, { kitchenOnly })) {
     return { x: startX, y: startY };
   }
 
@@ -292,22 +366,23 @@ function findSafeCueSpot(balls) {
       const a = (k * Math.PI) / 8;
       const cx = Math.round(startX + Math.cos(a) * r);
       const cy = Math.round(startY + Math.sin(a) * r);
-      if (isValidCuePos(balls, cx, cy)) {
+      if (isValidCuePos(balls, cx, cy, { kitchenOnly })) {
         return { x: cx, y: cy };
       }
     }
   }
 
-  // Deterministic full-table grid fallback
+  // Deterministic grid fallback (restricted to kitchen when kitchenOnly is set)
+  const maxX = kitchenOnly ? TABLE.HEAD_STRING_X : (TABLE.W - TABLE.BALL_R - 2);
   for (let y = TABLE.BALL_R + 2; y <= TABLE.H - TABLE.BALL_R - 2; y += 10) {
-    for (let x = TABLE.BALL_R + 2; x <= TABLE.W - TABLE.BALL_R - 2; x += 10) {
-      if (isValidCuePos(balls, x, y)) {
+    for (let x = TABLE.BALL_R + 2; x <= maxX; x += 10) {
+      if (isValidCuePos(balls, x, y, { kitchenOnly })) {
         return { x, y };
       }
     }
   }
 
-  return { x: startX, y: startY };
+  return { x: kitchenOnly ? Math.min(startX, TABLE.HEAD_STRING_X) : startX, y: startY };
 }
 
 function respotBall(balls, ballId, targetX, targetY) {
@@ -357,8 +432,8 @@ function countRemaining(balls, group) {
   return count;
 }
 
-function placeCueAtSafeSpot(state) {
-  const spot = findSafeCueSpot(state.balls);
+function placeCueAtSafeSpot(state, kitchenOnly) {
+  const spot = findSafeCueSpot(state.balls, { kitchenOnly: !!kitchenOnly });
   const cue = state.balls.find((b) => b.id === 0);
   if (cue) {
     cue.x = spot.x;
@@ -367,7 +442,7 @@ function placeCueAtSafeSpot(state) {
   }
 }
 
-function applyShotRules(state, playerIndex, angle, power, sim) {
+function applyShotRules(state, playerIndex, angle, power, sim, spinX, spinY) {
   const shooter = playerIndex;
   const opp = 1 - shooter;
   const myGroup = state.groups[shooter];
@@ -391,6 +466,7 @@ function applyShotRules(state, playerIndex, angle, power, sim) {
       if (scratched) {
         foul = 'scratch';
         state.foulCount[shooter] += 1;
+        state.kitchenOnly = false;
         state.winner = opp;
         state.phase = 'over';
         state.winReason = 'eight_foul';
@@ -398,23 +474,28 @@ function applyShotRules(state, playerIndex, angle, power, sim) {
         respotBall(state.balls, 8, TABLE.FOOT_SPOT_X, TABLE.FOOT_SPOT_Y);
         respotEight = true;
         state.groups = [null, null];
+        state.kitchenOnly = false;
         state.phase = 'shoot';
       }
     } else {
       foul = scratched ? 'scratch' : (firstHit === null ? 'no_hit' : null);
       if (foul) {
         state.foulCount[shooter] += 1;
-        placeCueAtSafeSpot(state);
+        state.kitchenOnly = !!scratched;
+        placeCueAtSafeSpot(state, state.kitchenOnly);
         state.currentPlayer = opp;
         state.phase = 'ball_in_hand';
       } else if (pottedSolids.length + pottedStripes.length > 0) {
+        state.kitchenOnly = false;
         state.phase = 'shoot';
       } else {
+        state.kitchenOnly = false;
         state.currentPlayer = opp;
         state.phase = 'shoot';
       }
     }
   } else {
+    state.kitchenOnly = false;
     if (scratched) {
       foul = 'scratch';
     } else if (firstHit === null) {
@@ -441,7 +522,7 @@ function applyShotRules(state, playerIndex, angle, power, sim) {
       }
     } else if (foul) {
       state.foulCount[shooter] += 1;
-      placeCueAtSafeSpot(state);
+      placeCueAtSafeSpot(state, false);
       state.currentPlayer = opp;
       state.phase = 'ball_in_hand';
     } else if (myGroup === null && pottedSolids.length + pottedStripes.length > 0) {
@@ -484,6 +565,8 @@ function applyShotRules(state, playerIndex, angle, power, sim) {
     shooter,
     angle,
     power,
+    spinX: spinX || 0,
+    spinY: spinY || 0,
     fps: 30,
     firstHit,
     potted,
@@ -500,6 +583,7 @@ function createState() {
     phase: 'shoot',
     groups: [null, null],
     isBreak: true,
+    kitchenOnly: false,
     shotSeq: 0,
     turnCount: 0,
     lastShot: null,
@@ -517,6 +601,7 @@ function initGame(state, _playerCount) {
   state.phase = 'shoot';
   state.groups = [null, null];
   state.isBreak = true;
+  state.kitchenOnly = false;
   state.shotSeq = 0;
   state.turnCount = 0;
   state.lastShot = null;
@@ -533,13 +618,22 @@ function handleMove(data, state, playerIndex) {
   if (data.type === 'place') {
     if (state.phase !== 'ball_in_hand') return 'pool_wrong_phase';
     const { x, y } = data;
-    if (!isValidCuePos(state.balls, x, y)) return 'pool_invalid_place';
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return 'pool_invalid_place';
+    const minX = TABLE.BALL_R + 1;
+    const maxX = TABLE.W - TABLE.BALL_R - 1;
+    const minY = TABLE.BALL_R + 1;
+    const maxY = TABLE.H - TABLE.BALL_R - 1;
+    if (x < minX || x > maxX || y < minY || y > maxY) return 'pool_invalid_place';
+    const kitchenOnly = !!(state.isBreak || state.kitchenOnly);
+    if (kitchenOnly && x > TABLE.HEAD_STRING_X) return 'pool_place_kitchen';
+    if (!isValidCuePos(state.balls, x, y, { kitchenOnly })) return 'pool_invalid_place';
     const cue = state.balls.find((b) => b.id === 0);
     if (!cue) return 'pool_invalid_place';
     cue.x = x;
     cue.y = y;
     cue.potted = false;
     state.phase = 'shoot';
+    state.kitchenOnly = false;
     return null;
   }
 
@@ -550,9 +644,19 @@ function handleMove(data, state, playerIndex) {
     if (typeof power !== 'number' || !Number.isFinite(power) || power < TABLE.MIN_POWER || power > 1.05) {
       return 'pool_invalid_shot';
     }
+    let spinX = 0;
+    let spinY = 0;
+    if (data.spinX !== undefined && data.spinX !== null) {
+      if (typeof data.spinX !== 'number' || !Number.isFinite(data.spinX)) return 'pool_invalid_shot';
+      spinX = Math.max(-1, Math.min(1, data.spinX));
+    }
+    if (data.spinY !== undefined && data.spinY !== null) {
+      if (typeof data.spinY !== 'number' || !Number.isFinite(data.spinY)) return 'pool_invalid_shot';
+      spinY = Math.max(-1, Math.min(1, data.spinY));
+    }
     const clampedPower = Math.max(TABLE.MIN_POWER, Math.min(TABLE.MAX_POWER, power));
-    const sim = simulateShot(state.balls, angle, clampedPower, { recordFrames: true });
-    applyShotRules(state, playerIndex, angle, clampedPower, sim);
+    const sim = simulateShot(state.balls, angle, clampedPower, { recordFrames: true, spinX, spinY });
+    applyShotRules(state, playerIndex, angle, clampedPower, sim, spinX, spinY);
     return null;
   }
 
@@ -561,7 +665,8 @@ function handleMove(data, state, playerIndex) {
 
 function botFallback(state, idx) {
   if (state.phase === 'ball_in_hand') {
-    const spot = findSafeCueSpot(state.balls);
+    const kitchenOnly = !!(state.isBreak || state.kitchenOnly);
+    const spot = findSafeCueSpot(state.balls, { kitchenOnly });
     return { type: 'place', x: spot.x, y: spot.y };
   }
 
@@ -584,7 +689,7 @@ function botFallback(state, idx) {
   }
 
   if (!cue || targets.length === 0) {
-    return { type: 'shot', angle: 0, power: 0.5 };
+    return { type: 'shot', angle: 0, power: 0.5, spinX: 0, spinY: 0 };
   }
 
   let best = targets[0];
@@ -599,7 +704,7 @@ function botFallback(state, idx) {
   }
 
   const angle = Math.atan2(best.y - cue.y, best.x - cue.x);
-  return { type: 'shot', angle, power: state.isBreak ? 0.9 : 0.6 };
+  return { type: 'shot', angle, power: state.isBreak ? 0.9 : 0.6, spinX: 0, spinY: 0 };
 }
 
 exports.name = 'pool';

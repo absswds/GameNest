@@ -418,4 +418,5 @@ module.exports = {
   'pool_wrong_phase': 'Cannot perform that action in the current phase',
   'pool_invalid_shot': 'Invalid shot angle or power',
   'pool_invalid_place': 'Invalid cue ball placement or overlapping another ball',
+  'pool_place_kitchen': 'Cue ball must be placed behind the head string in the kitchen',
 };

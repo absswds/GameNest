@@ -1716,8 +1716,11 @@
     'pool_opp_place_cue': 'Opponent Placing Cue Ball...',
     'pool_shoot': 'Shoot',
     'pool_power': 'Power',
+    'pool_spin': 'Spin',
+    'pool_spin_reset': 'Reset',
     'pool_aim_hint': 'Drag table to aim, or pull back from cue ball to shoot',
     'pool_place_hint': 'Tap or drag table to place cue ball',
+    'pool_place_kitchen_hint': 'Place cue ball behind the head string',
     'pool_confirm_place': 'Confirm Place',
     'pool_foul_scratch': 'Foul: Cue ball scratched (Ball in hand)',
     'pool_foul_no_hit': 'Foul: No ball hit (Ball in hand)',
@@ -1725,6 +1728,10 @@
     'pool_foul_early_eight': 'Early 8-ball potted — Game over!',
     'pool_respot_eight': '8-ball on break — 8-ball respotted',
     'pool_break_shot': 'Break Shot!',
+    'pool_groups_assigned': 'Groups Assigned',
+    'pool_group_you': 'You',
+    'pool_group_opp': 'Opponent',
+    'pool_tap_close': 'Tap to close',
 
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'en';
