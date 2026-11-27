@@ -8,6 +8,8 @@ const poolBot = require('../bots/pool');
 function makeStateWithBalls(ballsList, overrides = {}) {
   const s = pool.createState();
   pool.initGame(s, 2);
+  s.phase = 'shoot';
+  s.kitchenOnly = false;
   const byId = new Map(ballsList.map((b) => [b.id, b]));
   for (let i = 0; i < s.balls.length; i++) {
     const custom = byId.get(s.balls[i].id);
@@ -32,9 +34,21 @@ describe('Pool bot', () => {
   it('does not mutate state on shoot (break and normal) or ball_in_hand', () => {
     const bot = poolBot.createBot(0);
 
+    // Break ball-in-hand placement behind head string
+    const sBreakPlace = pool.createState();
+    pool.initGame(sBreakPlace, 2);
+    sBreakPlace._options = { difficulty: 'normal' };
+    const snapBreakPlace = JSON.stringify(sBreakPlace);
+    const mvBreakPlace = bot.getMove(sBreakPlace, 0);
+    assert.equal(mvBreakPlace.type, 'place');
+    assert.ok(mvBreakPlace.x <= pool.TABLE.HEAD_STRING_X);
+    assert.equal(JSON.stringify(sBreakPlace), snapBreakPlace);
+
     // Break shot
     const sBreak = pool.createState();
     pool.initGame(sBreak, 2);
+    sBreak.phase = 'shoot';
+    sBreak.kitchenOnly = false;
     sBreak._options = { difficulty: 'normal' };
     const snapBreak = JSON.stringify(sBreak);
     const mvBreak = bot.getMove(sBreak, 0);

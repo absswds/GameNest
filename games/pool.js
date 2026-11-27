@@ -170,37 +170,52 @@ function applyShotRules(state, playerIndex, angle, power, sim, spinX, spinY) {
   state.shotSeq += 1;
 
   const { firstHit, potted } = sim;
+  const railHits = Array.isArray(sim.railHits) ? sim.railHits : [];
+  const railAfterContact = !!sim.railAfterContact;
   const scratched = potted.includes(0);
   const pottedEight = potted.includes(8);
   const pottedSolids = potted.filter((id) => id >= 1 && id <= 7);
   const pottedStripes = potted.filter((id) => id >= 9 && id <= 15);
+  const pottedObjCount = pottedSolids.length + pottedStripes.length + (pottedEight ? 1 : 0);
+  const objRailHits = railHits.filter((id) => id !== 0).length;
 
   let foul = null;
   let respotEight = false;
+  let illegalBreak = false;
 
   if (state.isBreak) {
-    state.isBreak = false;
-    if (pottedEight) {
-      if (scratched) {
-        foul = 'scratch';
-        state.foulCount[shooter] += 1;
-        state.kitchenOnly = false;
-        state.winner = opp;
-        state.phase = 'over';
-        state.winReason = 'eight_foul';
-      } else {
+    const legalBreak = pottedObjCount >= 1 || objRailHits >= 4;
+    if (!legalBreak) {
+      illegalBreak = true;
+      foul = 'illegal_break';
+      state.balls = buildRackBalls();
+      state.currentPlayer = opp;
+      state.isBreak = true;
+      state.kitchenOnly = true;
+      state.phase = 'ball_in_hand';
+      state.groups = [null, null];
+    } else {
+      state.isBreak = false;
+      state.groups = [null, null];
+      if (pottedEight) {
         respotBall(state.balls, 8, TABLE.FOOT_SPOT_X, TABLE.FOOT_SPOT_Y);
         respotEight = true;
-        state.groups = [null, null];
-        state.kitchenOnly = false;
-        state.phase = 'shoot';
-      }
-    } else {
-      foul = scratched ? 'scratch' : (firstHit === null ? 'no_hit' : null);
-      if (foul) {
+        if (scratched) {
+          foul = 'scratch';
+          state.foulCount[shooter] += 1;
+          state.kitchenOnly = true;
+          placeCueAtSafeSpot(state, true);
+          state.currentPlayer = opp;
+          state.phase = 'ball_in_hand';
+        } else {
+          state.kitchenOnly = false;
+          state.phase = 'shoot';
+        }
+      } else if (scratched) {
+        foul = 'scratch';
         state.foulCount[shooter] += 1;
-        state.kitchenOnly = !!scratched;
-        placeCueAtSafeSpot(state, state.kitchenOnly);
+        state.kitchenOnly = true;
+        placeCueAtSafeSpot(state, true);
         state.currentPlayer = opp;
         state.phase = 'ball_in_hand';
       } else if (pottedSolids.length + pottedStripes.length > 0) {
@@ -225,6 +240,9 @@ function applyShotRules(state, playerIndex, angle, power, sim, spinX, spinY) {
     } else if (firstHit !== 8) {
       foul = 'wrong_ball';
     }
+    if (!foul && pottedObjCount === 0 && !railAfterContact) {
+      foul = 'no_rail';
+    }
 
     if (pottedEight) {
       if (foul) state.foulCount[shooter] += 1;
@@ -243,13 +261,19 @@ function applyShotRules(state, playerIndex, angle, power, sim, spinX, spinY) {
       placeCueAtSafeSpot(state, false);
       state.currentPlayer = opp;
       state.phase = 'ball_in_hand';
-    } else if (myGroup === null && pottedSolids.length + pottedStripes.length > 0) {
-      const firstObjId = potted.find((id) => id !== 0 && id !== 8);
-      const chosen = firstObjId <= 7 ? 'solid' : 'stripe';
-      state.groups[shooter] = chosen;
-      state.groups[opp] = chosen === 'solid' ? 'stripe' : 'solid';
-      state.phase = 'shoot';
-    } else if (myGroup !== null) {
+      state.kitchenOnly = false;
+    } else if (myGroup === null) {
+      const firstHitGroup = ballType(firstHit);
+      const pottedSameGroup = (firstHitGroup === 'solid' ? pottedSolids.length : pottedStripes.length) > 0;
+      if (pottedSameGroup) {
+        state.groups[shooter] = firstHitGroup;
+        state.groups[opp] = firstHitGroup === 'solid' ? 'stripe' : 'solid';
+        state.phase = 'shoot';
+      } else {
+        state.currentPlayer = opp;
+        state.phase = 'shoot';
+      }
+    } else {
       const pottedOwn = (myGroup === 'solid' ? pottedSolids.length : pottedStripes.length) > 0;
       if (pottedOwn) {
         state.phase = 'shoot';
@@ -257,9 +281,6 @@ function applyShotRules(state, playerIndex, angle, power, sim, spinX, spinY) {
         state.currentPlayer = opp;
         state.phase = 'shoot';
       }
-    } else {
-      state.currentPlayer = opp;
-      state.phase = 'shoot';
     }
   }
 
@@ -290,6 +311,7 @@ function applyShotRules(state, playerIndex, angle, power, sim, spinX, spinY) {
     potted,
     foul,
     respotEight,
+    illegalBreak,
     frames: sim.frames,
   };
 }
@@ -299,10 +321,10 @@ function createState() {
     variant: '8ball',
     balls: buildRackBalls(),
     currentPlayer: 0,
-    phase: 'shoot',
+    phase: 'ball_in_hand',
     groups: [null, null],
     isBreak: true,
-    kitchenOnly: false,
+    kitchenOnly: true,
     inDOnly: false,
     shotSeq: 0,
     turnCount: 0,
@@ -324,10 +346,10 @@ function initGame(state, _playerCount) {
   state.variant = '8ball';
   state.balls = buildRackBalls();
   state.currentPlayer = 0;
-  state.phase = 'shoot';
+  state.phase = 'ball_in_hand';
   state.groups = [null, null];
   state.isBreak = true;
-  state.kitchenOnly = false;
+  state.kitchenOnly = true;
   state.inDOnly = false;
   state.shotSeq = 0;
   state.turnCount = 0;

@@ -3,21 +3,21 @@
     W: 1000,
     H: 500,
     BALL_R: 14,
-    HEAD_STRING_X: 250,
+    HEAD_STRING_X: 177,
     FOOT_SPOT_X: 750,
     FOOT_SPOT_Y: 250,
-    BAULK_X: 250,
+    BAULK_X: 177,
     D_RADIUS: 0,
     CENTER_Y: 250,
     RAIL: 42,
     MAX_BALL_ID: 15,
     POCKETS: [
-      { id: 0, x: 0, y: 0, r: 28 },
-      { id: 1, x: 500, y: -4, r: 25 },
-      { id: 2, x: 1000, y: 0, r: 28 },
-      { id: 3, x: 0, y: 500, r: 28 },
-      { id: 4, x: 500, y: 504, r: 25 },
-      { id: 5, x: 1000, y: 500, r: 28 },
+      { id: 0, x: 0, y: 0, r: 23 },
+      { id: 1, x: 500, y: -3, r: 20 },
+      { id: 2, x: 1000, y: 0, r: 23 },
+      { id: 3, x: 0, y: 500, r: 23 },
+      { id: 4, x: 500, y: 503, r: 20 },
+      { id: 5, x: 1000, y: 500, r: 23 },
     ],
   };
 
@@ -216,6 +216,37 @@
     '.pool-wrap.sideways .pool-spin-label { display:none; }',
     '.pool-wrap.sideways .pool-btn { width:100%; min-height:34px; padding:4px 6px; font-size:13px; white-space:nowrap; }',
     '.pool-wrap.sideways .pool-hint { display:none !important; }',
+    'body.gn-fs:has(.pool-wrap) { overflow:hidden; height:100dvh; max-height:100dvh; padding:0 !important; }',
+    'body.gn-fs:has(.pool-wrap) #gameStage { width:100%; height:100%; max-width:none !important; padding:0 !important; margin:0 !important; }',
+    'body.gn-fs:has(.pool-wrap) .board-wrap { width:100%; height:100%; padding:0 !important; margin:0 !important; }',
+    'body.gn-fs:has(.pool-wrap) #boardArea { width:100%; height:100%; padding:0 !important; margin:0 !important; max-width:none !important; }',
+    'body.gn-fs .pool-wrap { width:100vw; height:100dvh; max-width:none; padding:6px 8px; box-sizing:border-box; overflow:hidden; display:grid; grid-template-columns:var(--pool-fs-left, 152px) minmax(0, 1fr) var(--pool-fs-right, 132px); grid-template-rows:auto minmax(0, 1fr); column-gap:8px; row-gap:4px; align-items:stretch; }',
+    'body.gn-fs .pool-wrap .pool-main { display:contents; }',
+    'body.gn-fs .pool-wrap .pool-hud { grid-column:1; grid-row:1 / -1; display:flex; flex-direction:column; justify-content:center; align-items:stretch; gap:8px; height:100%; padding-top:56px; box-sizing:border-box; overflow:hidden; }',
+    'body.gn-fs .pool-wrap .pool-seat, body.gn-fs .pool-wrap .pool-seat--right { align-items:flex-start; text-align:left; padding:6px 8px; gap:4px; }',
+    'body.gn-fs .pool-wrap .pool-seat--right .pool-seat-top { flex-direction:row; }',
+    'body.gn-fs .pool-wrap .pool-seat--right .snooker-score { margin-left:auto; margin-right:0; }',
+    'body.gn-fs .pool-wrap .pool-seat-name { font-size:12px; }',
+    'body.gn-fs .pool-wrap .pool-dots { display:flex; gap:3px; }',
+    'body.gn-fs .pool-wrap .pool-dot { width:11px; height:11px; }',
+    'body.gn-fs .pool-wrap .snooker-seat-meta { display:flex; }',
+    'body.gn-fs .pool-wrap .pool-status-pill { white-space:normal; word-break:break-word; padding:5px 8px; font-size:11px; }',
+    'body.gn-fs .pool-wrap .snooker-nom-bar { grid-column:2; grid-row:1; padding:3px 8px; gap:4px; }',
+    'body.gn-fs .pool-wrap .pool-canvas-wrap { grid-column:2; grid-row:2; width:100%; height:100%; display:flex; align-items:center; justify-content:center; min-width:0; min-height:0; }',
+    'body.gn-fs .pool-wrap .pool-bar { grid-column:3; grid-row:1 / -1; width:100%; height:100%; min-height:0; align-items:stretch; }',
+    'body.gn-fs .pool-wrap .pool-panel { flex-direction:column; flex-wrap:nowrap; justify-content:space-between; align-items:center; padding:8px 8px; gap:8px; width:100%; height:100%; overflow:hidden; }',
+    'body.gn-fs .pool-wrap .pool-spin-wrap { order:1; flex-direction:column; align-items:center; gap:4px; width:100%; }',
+    'body.gn-fs .pool-wrap .pool-spin-ball { width:90px; height:90px; }',
+    'body.gn-fs .pool-wrap .pool-spin-dot { width:14px; height:14px; }',
+    'body.gn-fs .pool-wrap .pool-spin-meta { flex-direction:row; align-items:center; justify-content:center; gap:4px; }',
+    'body.gn-fs .pool-wrap .pool-spin-label { display:none; }',
+    'body.gn-fs .pool-wrap .pool-power-wrap { order:2; flex-direction:column; flex:1 1 auto; min-height:0; width:100%; max-width:none; min-width:0; gap:4px; align-items:center; }',
+    'body.gn-fs .pool-wrap .pool-power-head { width:100%; justify-content:space-between; }',
+    'body.gn-fs .pool-wrap .pool-power-slider { writing-mode:vertical-lr; direction:rtl; width:34px; height:100%; min-height:64px; max-height:none; min-width:0; flex:1 1 auto; }',
+    'body.gn-fs .pool-wrap .pool-btn { order:3; width:100%; min-height:52px; padding:10px 8px; font-size:16px; font-weight:800; border-radius:12px; white-space:nowrap; }',
+    'body.gn-fs .pool-wrap #poolAimHint { display:none !important; }',
+    'body.gn-fs .pool-wrap #poolPlaceBar { justify-content:center; gap:12px; }',
+    'body.gn-fs .pool-wrap #poolWaitBar { justify-content:center; align-items:center; text-align:center; }',
     '@media (prefers-reduced-motion: reduce) { .pool-group-overlay, .pool-seat { transition:none !important; animation:none !important; } }',
   ].join('\n');
 
@@ -264,10 +295,11 @@
   var lastNomSeq = -1;
   var placeX = HEAD_STRING_X;
   var placeY = FOOT_SPOT_Y;
-  var dragMode = null; // null | 'pull' | 'aim' | 'place'
-  var pullDist = 0;
+  var dragMode = null; // null | 'aim' | 'place'
 
   var oppAimPreview = null;
+  var lastSeatCueAngle = {};
+  var reducedTimerId = null;
   var ballRoll = {};
   var prevBallPos = {};
   var prevGroups = null;
@@ -809,14 +841,41 @@
     return 0;
   }
 
+  function isFullscreenMode() {
+    return !!(document.body && document.body.classList.contains('gn-fs'));
+  }
+
+  function isReducedMotion() {
+    return !!((window.Motion && window.Motion.reduced && window.Motion.reduced()) ||
+      (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches));
+  }
+
+  function shortestAngleDiff(from, to) {
+    var d = (to - from) % (Math.PI * 2);
+    if (d > Math.PI) d -= Math.PI * 2;
+    if (d < -Math.PI) d += Math.PI * 2;
+    return d;
+  }
+
   function resizeCanvas() {
     if (!canvas || !ctx || !containerEl) return;
-    isSideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
-    isPortrait = !isSideways && window.innerHeight > window.innerWidth;
+    var isFs = isFullscreenMode();
+    if (isFs) {
+      isSideways = false;
+      isPortrait = false;
+    } else {
+      isSideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
+      isPortrait = !isSideways && window.innerHeight > window.innerWidth;
+    }
 
     if (wrapEl) {
-      wrapEl.classList.toggle('sideways', isSideways);
-      wrapEl.classList.toggle('portrait', isPortrait);
+      wrapEl.classList.toggle('fs', isFs);
+      wrapEl.classList.toggle('sideways', !isFs && isSideways);
+      wrapEl.classList.toggle('portrait', !isFs && isPortrait);
+      if (!isFs) {
+        wrapEl.style.removeProperty('--pool-fs-left');
+        wrapEl.style.removeProperty('--pool-fs-right');
+      }
     }
 
     var fitEl = (isSideways && containerEl.closest && containerEl.closest('.board-wrap')) || containerEl;
@@ -825,7 +884,22 @@
     var nomH = (nomBarEl && nomBarEl.style.display !== 'none' && nomBarEl.offsetHeight) ? (nomBarEl.offsetHeight + 4) : 0;
     var dispW, dispH;
 
-    if (isSideways) {
+    if (isFs) {
+      var vw = window.innerWidth || 640;
+      var vh = window.innerHeight || 360;
+      var leftW = clamp(Math.round(vw * 0.17), 132, 184);
+      var rightW = clamp(Math.round(vw * 0.15), 118, 152);
+      if (wrapEl) {
+        wrapEl.style.setProperty('--pool-fs-left', leftW + 'px');
+        wrapEl.style.setProperty('--pool-fs-right', rightW + 'px');
+      }
+      var availWFs = Math.max(200, vw - leftW - rightW - 32);
+      var availHFs = Math.max(120, vh - nomH - 12);
+      var scaleFs = Math.min(availWFs / CW, availHFs / CH);
+      dispW = Math.max(200, Math.floor(CW * scaleFs));
+      dispH = Math.max(100, Math.floor(CH * scaleFs));
+      if (barEl) barEl.style.height = '';
+    } else if (isSideways) {
       var ga = document.getElementById('gameActions');
       var gaH = (ga && ga.offsetParent) ? ga.offsetHeight + 6 : 0;
       var topY = containerEl ? Math.max(0, containerEl.getBoundingClientRect().top) : 44;
@@ -862,7 +936,7 @@
     canvas.style.width = dispW + 'px';
     canvas.style.height = dispH + 'px';
 
-    lastLayoutKey = window.innerWidth + 'x' + window.innerHeight + ':' + (containerEl ? containerEl.clientWidth : 0) + ':' + (isSideways ? 's' : (isPortrait ? 'p' : 'l')) + ':' + (isSnooker ? 'sn' : '8b');
+    lastLayoutKey = window.innerWidth + 'x' + window.innerHeight + ':' + (containerEl ? containerEl.clientWidth : 0) + ':' + (isFs ? 'fs' : (isSideways ? 's' : (isPortrait ? 'p' : 'l'))) + ':' + (isSnooker ? 'sn' : '8b');
 
     draw();
   }
@@ -1404,12 +1478,33 @@
     }
 
     if (oppAimPreview && cue) {
-      var pElapsed = performance.now() - oppAimPreview.startTime;
-      var pRatio = clamp(pElapsed / oppAimPreview.duration, 0, 1);
-      var animPower = pRatio < 0.82
-        ? oppAimPreview.power * (0.25 + 0.75 * (pRatio / 0.82))
-        : oppAimPreview.power * Math.max(0, 1 - (pRatio - 0.82) / 0.18);
-      drawAimGuide(cue, balls, oppAimPreview.angle, animPower);
+      var curAng = oppAimPreview.angle;
+      var curPwr = oppAimPreview.power;
+      if (!oppAimPreview.reduced) {
+        var pElapsed = Math.max(0, performance.now() - oppAimPreview.startTime);
+        var rotEnd = oppAimPreview.rotateDur;
+        var holdEnd = rotEnd + oppAimPreview.holdDur;
+        var pullEnd = holdEnd + oppAimPreview.pullDur;
+        var strikeEnd = pullEnd + oppAimPreview.strikeDur;
+        if (pElapsed < rotEnd) {
+          var uRot = clamp(pElapsed / rotEnd, 0, 1);
+          var easeRot = uRot < 0.5 ? 2 * uRot * uRot : 1 - Math.pow(-2 * uRot + 2, 2) / 2;
+          curAng = oppAimPreview.fromAngle + oppAimPreview.angleDelta * easeRot;
+          curPwr = 0;
+        } else if (pElapsed < holdEnd) {
+          curAng = oppAimPreview.angle;
+          curPwr = 0;
+        } else if (pElapsed < pullEnd) {
+          var uPull = clamp((pElapsed - holdEnd) / oppAimPreview.pullDur, 0, 1);
+          curAng = oppAimPreview.angle;
+          curPwr = oppAimPreview.power * uPull;
+        } else {
+          var uStrike = clamp((pElapsed - pullEnd) / Math.max(1, strikeEnd - pullEnd), 0, 1);
+          curAng = oppAimPreview.angle;
+          curPwr = oppAimPreview.power * (1 - uStrike);
+        }
+      }
+      drawAimGuide(cue, balls, curAng, curPwr);
     } else if (currentState && isMyTurn() && !replaying) {
       if (currentState.phase === 'shoot' && cue) {
         drawAimGuide(cue, balls);
@@ -1714,13 +1809,18 @@
       }
       return;
     }
+    if (shot.illegalBreak) {
+      window.showToast(t('pool_illegal_break'));
+      return;
+    }
     if (shot.respotEight) {
-      window.showToast(t('pool_respot_eight'));
+      window.showToast(t(shot.foul === 'scratch' ? 'pool_respot_eight_foul' : 'pool_respot_eight'));
       return;
     }
     if (shot.foul === 'scratch') window.showToast(t('pool_foul_scratch'));
     else if (shot.foul === 'no_hit') window.showToast(t('pool_foul_no_hit'));
     else if (shot.foul === 'wrong_ball') window.showToast(t('pool_foul_wrong_ball'));
+    else if (shot.foul === 'no_rail') window.showToast(t('pool_foul_no_rail'));
     else if (shot.foul === 'early_eight') window.showToast(t('pool_foul_early_eight'));
   }
 
@@ -1737,12 +1837,16 @@
     replaying = false;
     oppAimPreview = null;
     prevBallPos = {};
+    if (reducedTimerId) {
+      clearTimeout(reducedTimerId);
+      reducedTimerId = null;
+    }
     if (rafId) {
       cancelAnimationFrame(rafId);
       rafId = null;
     }
     displayBalls = (currentState && Array.isArray(currentState.balls)) ? currentState.balls : [];
-    if (currentState && currentState.phase === 'ball_in_hand' && isMyTurn()) {
+    if (currentState && currentState.phase === 'ball_in_hand' && isMyTurn() && dragMode !== 'place') {
       var spot = findInitialPlaceSpot(displayBalls, isKitchenPlace(currentState));
       placeX = spot.x;
       placeY = spot.y;
@@ -1756,7 +1860,44 @@
     } catch (_e) {}
   }
 
-  function startReplay(state) {
+  function startReducedOppPreview(state, targetAngle) {
+    var shot = state && state.lastShot;
+    var frames = shot && shot.frames;
+    if (!shot || !Array.isArray(frames) || frames.length < 1) {
+      finishReplay(shot);
+      return;
+    }
+    var fInit = parseFrame(frames[0]);
+    var initialBalls = [];
+    for (var id0 = 0; id0 <= MAX_BALL_ID; id0++) {
+      if (fInit[id0]) {
+        initialBalls.push({
+          id: id0,
+          x: fInit[id0].x,
+          y: fInit[id0].y,
+          potted: false,
+          type: ballTypeFor(id0),
+        });
+      }
+    }
+    displayBalls = initialBalls;
+    replaying = true;
+    oppAimPreview = {
+      reduced: true,
+      angle: Number.isFinite(targetAngle) ? targetAngle : 0,
+      power: clamp(Number(shot.power) || 0.5, 0.05, 1),
+    };
+    updateBar();
+    draw();
+    if (reducedTimerId) clearTimeout(reducedTimerId);
+    reducedTimerId = setTimeout(function () {
+      reducedTimerId = null;
+      playCueStrike(shot.power);
+      finishReplay(shot);
+    }, 400);
+  }
+
+  function startReplay(state, prevAngle) {
     var shot = state && state.lastShot;
     var frames = shot && shot.frames;
     if (!shot || !Array.isArray(frames) || frames.length < 2) {
@@ -1866,11 +2007,21 @@
     var isOpponent = typeof shot.shooter === 'number' && shot.shooter !== myPlayerIndex;
     if (isOpponent) {
       displayBalls = initialBalls;
+      var targetAngle = Number.isFinite(shot.angle) ? shot.angle : 0;
+      var targetPower = clamp(Number(shot.power) || 0.5, 0.05, 1);
+      var fromAngle = Number.isFinite(prevAngle) ? prevAngle : 0;
       oppAimPreview = {
-        angle: Number.isFinite(shot.angle) ? shot.angle : 0,
-        power: Number.isFinite(shot.power) ? shot.power : 0.5,
+        reduced: false,
+        fromAngle: fromAngle,
+        angleDelta: shortestAngleDiff(fromAngle, targetAngle),
+        angle: targetAngle,
+        power: targetPower,
         startTime: performance.now(),
-        duration: 1000,
+        rotateDur: 700,
+        holdDur: 500,
+        pullDur: 250,
+        strikeDur: 70,
+        duration: 1520,
       };
       updateBar();
       draw();
@@ -1967,14 +2118,14 @@
     if (currentState.phase === 'shoot') {
       var cue = findDisplayCue();
       if (!cue) return;
+      dragMode = 'aim';
       var distCue = Math.hypot(pt.x - cue.x, pt.y - cue.y);
-      if (distCue <= 4.5 * BALL_R) {
-        dragMode = 'pull';
-        pullDist = 0;
-      } else {
-        dragMode = 'aim';
+      if (distCue > 1e-3) {
         aimAngle = Math.atan2(pt.y - cue.y, pt.x - cue.x);
       }
+      var curSeq = (currentState.lastShot && typeof currentState.lastShot.seq === 'number')
+        ? currentState.lastShot.seq : (currentState.shotSeq || 0);
+      lastAimInitSeq = curSeq;
       try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
       draw();
     }
@@ -1999,19 +2150,10 @@
     var cue = findDisplayCue();
     if (!cue) return;
 
-    if (dragMode === 'pull') {
-      var dx = cue.x - pt.x;
-      var dy = cue.y - pt.y;
-      var dist = Math.hypot(dx, dy);
-      pullDist = dist;
-      if (dist >= 16) {
-        aimAngle = Math.atan2(dy, dx);
-        aimPower = clamp((dist - 14) / 200, 0.08, 1.0);
-        syncPowerUI();
+    if (dragMode === 'aim') {
+      if (Math.hypot(pt.x - cue.x, pt.y - cue.y) > 1e-3) {
+        aimAngle = Math.atan2(pt.y - cue.y, pt.x - cue.x);
       }
-      draw();
-    } else if (dragMode === 'aim') {
-      aimAngle = Math.atan2(pt.y - cue.y, pt.x - cue.x);
       draw();
     }
   }
@@ -2022,37 +2164,24 @@
 
   function onPointerUp(e) {
     if (!dragMode) return;
-    var mode = dragMode;
-    var dist = pullDist;
     dragMode = null;
-    pullDist = 0;
     try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
-
-    if (e.type !== 'pointerup' || !currentState || !isMyTurn() || replaying) {
-      draw();
-      return;
-    }
-
-    if (mode === 'pull' && currentState.phase === 'shoot') {
-      if (dist >= 18) {
-        trySendShot();
-      }
-    } else if (mode === 'place' && currentState.phase === 'ball_in_hand') {
-      if (isValidCuePosLocal(displayBalls, placeX, placeY, isKitchenPlace(currentState))) {
-        sendMove({ type: 'place', x: round1(placeX), y: round1(placeY) });
-      }
-    }
     draw();
   }
 
   function init(container) {
     containerEl = container;
+    if (reducedTimerId) {
+      clearTimeout(reducedTimerId);
+      reducedTimerId = null;
+    }
     if (rafId) {
       cancelAnimationFrame(rafId);
       rafId = null;
     }
     replaying = false;
     oppAimPreview = null;
+    lastSeatCueAngle = {};
     closeGroupPopup();
     prevGroups = null;
     resetBallRoll();
@@ -2065,7 +2194,6 @@
     currentState = null;
     displayBalls = [];
     dragMode = null;
-    pullDist = 0;
     aimPower = 0.58;
     aimSpinX = 0;
     aimSpinY = 0;
@@ -2235,10 +2363,21 @@
     if (window._poolOrientHandler) {
       window.removeEventListener('orientationchange', window._poolOrientHandler);
     }
+    if (window._poolFsHandler) {
+      window.removeEventListener('gn:fullscreen', window._poolFsHandler);
+    }
     window._poolResizeHandler = resizeCanvas;
     window._poolOrientHandler = function () { setTimeout(resizeCanvas, 80); };
+    window._poolFsHandler = function () {
+      lastLayoutKey = '';
+      resizeCanvas();
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(resizeCanvas);
+      }
+    };
     window.addEventListener('resize', window._poolResizeHandler);
     window.addEventListener('orientationchange', window._poolOrientHandler);
+    window.addEventListener('gn:fullscreen', window._poolFsHandler);
 
     resizeCanvas();
   }
@@ -2258,9 +2397,10 @@
       lastNomSeq = seq;
     }
 
-    var curSideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
-    var curPortrait = !curSideways && window.innerHeight > window.innerWidth;
-    var layoutKey = window.innerWidth + 'x' + window.innerHeight + ':' + (containerEl ? containerEl.clientWidth : 0) + ':' + (curSideways ? 's' : (curPortrait ? 'p' : 'l')) + ':' + (isSnooker ? 'sn' : '8b');
+    var curFs = isFullscreenMode();
+    var curSideways = !curFs && window.innerHeight < 540 && window.innerWidth > window.innerHeight;
+    var curPortrait = !curFs && !curSideways && window.innerHeight > window.innerWidth;
+    var layoutKey = window.innerWidth + 'x' + window.innerHeight + ':' + (containerEl ? containerEl.clientWidth : 0) + ':' + (curFs ? 'fs' : (curSideways ? 's' : (curPortrait ? 'p' : 'l'))) + ':' + (isSnooker ? 'sn' : '8b');
 
     if (lastPlayedSeq === null) {
       lastPlayedSeq = seq;
@@ -2268,11 +2408,11 @@
       lastTurnPhaseKey = turnPhaseKey;
       prevGroups = Array.isArray(state.groups) ? [state.groups[0], state.groups[1]] : [null, null];
       displayBalls = state.balls;
-      if (state.phase === 'ball_in_hand' && isMyTurn()) {
+      if (state.phase === 'ball_in_hand' && isMyTurn() && dragMode !== 'place') {
         var initSpot = findInitialPlaceSpot(displayBalls, isKitchenPlace(state));
         placeX = initSpot.x;
         placeY = initSpot.y;
-      } else if (state.phase === 'shoot' && isMyTurn()) {
+      } else if (state.phase === 'shoot' && isMyTurn() && dragMode === null) {
         aimAngle = pickDefaultAimAngle(state);
       }
       updateHUD();
@@ -2282,7 +2422,12 @@
     }
 
     if (state.lastShot && state.lastShot.seq > lastPlayedSeq) {
-      lastPlayedSeq = state.lastShot.seq;
+      var shot = state.lastShot;
+      lastPlayedSeq = shot.seq;
+      if (reducedTimerId) {
+        clearTimeout(reducedTimerId);
+        reducedTimerId = null;
+      }
       if (rafId) {
         cancelAnimationFrame(rafId);
         rafId = null;
@@ -2293,28 +2438,53 @@
       aimSpinY = 0;
       syncSpinUI();
 
-      if (state.phase === 'shoot' && isMyTurn()) {
+      var shooter = typeof shot.shooter === 'number' ? shot.shooter : -1;
+      var targetAngle = Number.isFinite(shot.angle) ? shot.angle : 0;
+      var prevAngle = (shooter >= 0 && lastSeatCueAngle[shooter] !== undefined) ? lastSeatCueAngle[shooter] : 0;
+      if (shooter >= 0) {
+        lastSeatCueAngle[shooter] = targetAngle;
+      }
+      var isOpponent = shooter >= 0 && shooter !== myPlayerIndex;
+
+      if (dragMode === null && state.phase === 'shoot' && isMyTurn()) {
         aimAngle = pickDefaultAimAngle(state);
       }
       lastAimInitSeq = seq;
       lastTurnPhaseKey = turnPhaseKey;
 
-      var reduced = window.Motion && window.Motion.reduced && window.Motion.reduced();
-      var frames = state.lastShot.frames;
-      if (reduced || !Array.isArray(frames) || frames.length < 2) {
+      var reduced = isReducedMotion();
+      var frames = shot.frames;
+      if (reduced) {
+        if (isOpponent && Array.isArray(frames) && frames.length >= 1) {
+          updateHUD();
+          if (layoutKey !== lastLayoutKey) {
+            resizeCanvas();
+          }
+          try {
+            startReducedOppPreview(state, targetAngle);
+          } catch (_errR) {
+            finishReplay(shot);
+          }
+        } else {
+          if (layoutKey !== lastLayoutKey) {
+            resizeCanvas();
+          }
+          finishReplay(shot);
+        }
+      } else if (!Array.isArray(frames) || frames.length < 2) {
         if (layoutKey !== lastLayoutKey) {
           resizeCanvas();
         }
-        finishReplay(state.lastShot);
+        finishReplay(shot);
       } else {
         updateHUD();
         if (layoutKey !== lastLayoutKey) {
           resizeCanvas();
         }
         try {
-          startReplay(state);
+          startReplay(state, prevAngle);
         } catch (_err) {
-          finishReplay(state.lastShot);
+          finishReplay(shot);
         }
       }
       return;
@@ -2323,12 +2493,17 @@
     // Same seq (e.g. ball_in_hand -> shoot transition after cue placement, or reset)
     if (seq < lastPlayedSeq) {
       lastPlayedSeq = seq;
+      if (reducedTimerId) {
+        clearTimeout(reducedTimerId);
+        reducedTimerId = null;
+      }
       if (rafId) {
         cancelAnimationFrame(rafId);
         rafId = null;
       }
       replaying = false;
       oppAimPreview = null;
+      lastSeatCueAngle = {};
       closeGroupPopup();
       prevGroups = [null, null];
       resetBallRoll();
@@ -2341,15 +2516,15 @@
       displayBalls = state.balls;
       if (turnPhaseKey !== lastTurnPhaseKey) {
         lastTurnPhaseKey = turnPhaseKey;
-        if (state.phase === 'ball_in_hand' && isMyTurn()) {
+        if (state.phase === 'ball_in_hand' && isMyTurn() && dragMode !== 'place') {
           var spot2 = findInitialPlaceSpot(displayBalls, isKitchenPlace(state));
           placeX = spot2.x;
           placeY = spot2.y;
-        } else if (state.phase === 'shoot' && isMyTurn()) {
+        } else if (state.phase === 'shoot' && isMyTurn() && dragMode === null) {
           aimAngle = pickDefaultAimAngle(state);
           lastAimInitSeq = seq;
         }
-      } else if (lastAimInitSeq !== seq && state.phase === 'shoot' && isMyTurn()) {
+      } else if (lastAimInitSeq !== seq && state.phase === 'shoot' && isMyTurn() && dragMode === null) {
         aimAngle = pickDefaultAimAngle(state);
         lastAimInitSeq = seq;
       }

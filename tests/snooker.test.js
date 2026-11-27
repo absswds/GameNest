@@ -39,7 +39,8 @@ describe('Snooker — default variant & initial setup', () => {
     pool.initGame(s, 2);
     assert.equal(s.variant, '8ball');
     assert.equal(s.balls.length, 16);
-    assert.equal(s.phase, 'shoot');
+    assert.equal(s.phase, 'ball_in_hand');
+    assert.equal(s.kitchenOnly, true);
     assert.deepEqual(s.groups, [null, null]);
   });
 

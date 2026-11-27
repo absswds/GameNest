@@ -5,7 +5,7 @@ const DEFAULT_TABLE = {
   W: 1000,
   H: 500,
   BALL_R: 14,
-  HEAD_STRING_X: 250,
+  HEAD_STRING_X: 177,
   FOOT_SPOT_X: 750,
   FOOT_SPOT_Y: 250,
   MAX_SPEED: 1450,
@@ -19,12 +19,12 @@ const DEFAULT_TABLE = {
   MAX_TICKS: 1800,
   FRAME_STRIDE: 6,
   POCKETS: [
-    { id: 0, x: 0, y: 0, r: 28 },
-    { id: 1, x: 500, y: -4, r: 25 },
-    { id: 2, x: 1000, y: 0, r: 28 },
-    { id: 3, x: 0, y: 500, r: 28 },
-    { id: 4, x: 500, y: 504, r: 25 },
-    { id: 5, x: 1000, y: 500, r: 28 },
+    { id: 0, x: 0, y: 0, r: 23 },
+    { id: 1, x: 500, y: -3, r: 20 },
+    { id: 2, x: 1000, y: 0, r: 23 },
+    { id: 3, x: 0, y: 500, r: 23 },
+    { id: 4, x: 500, y: 503, r: 20 },
+    { id: 5, x: 1000, y: 500, r: 23 },
   ],
 };
 
@@ -90,6 +90,8 @@ function simulateShot(balls, angle, power, opts) {
 
   let firstHit = null;
   const potted = [];
+  const railHitIds = new Set();
+  let railAfterContact = false;
   const frames = recordFrames ? [encodeFrame(simBalls)] : [];
   let ticks = 0;
 
@@ -132,6 +134,8 @@ function simulateShot(balls, angle, power, opts) {
       if (b.x < BALL_R) {
         b.x = BALL_R;
         if (b.vx < 0) {
+          railHitIds.add(b.id);
+          if (firstHit !== null) railAfterContact = true;
           const imp = Math.abs(b.vx);
           b.vx *= -E_RAIL;
           if (b.id === 0) {
@@ -145,6 +149,8 @@ function simulateShot(balls, angle, power, opts) {
       } else if (b.x > W - BALL_R) {
         b.x = W - BALL_R;
         if (b.vx > 0) {
+          railHitIds.add(b.id);
+          if (firstHit !== null) railAfterContact = true;
           const imp = Math.abs(b.vx);
           b.vx *= -E_RAIL;
           if (b.id === 0) {
@@ -159,6 +165,8 @@ function simulateShot(balls, angle, power, opts) {
       if (b.y < BALL_R) {
         b.y = BALL_R;
         if (b.vy < 0) {
+          railHitIds.add(b.id);
+          if (firstHit !== null) railAfterContact = true;
           const imp = Math.abs(b.vy);
           b.vy *= -E_RAIL;
           if (b.id === 0) {
@@ -172,6 +180,8 @@ function simulateShot(balls, angle, power, opts) {
       } else if (b.y > H - BALL_R) {
         b.y = H - BALL_R;
         if (b.vy > 0) {
+          railHitIds.add(b.id);
+          if (firstHit !== null) railAfterContact = true;
           const imp = Math.abs(b.vy);
           b.vy *= -E_RAIL;
           if (b.id === 0) {
@@ -292,7 +302,15 @@ function simulateShot(balls, angle, power, opts) {
     }
   }
 
-  return { balls: outBalls, firstHit, potted, frames, ticks };
+  return {
+    balls: outBalls,
+    firstHit,
+    potted,
+    frames,
+    ticks,
+    railHits: Array.from(railHitIds),
+    railAfterContact,
+  };
 }
 
 function isValidBallSpot(balls, x, y, ignoreBallId, table) {
