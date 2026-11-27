@@ -466,7 +466,7 @@
       }
 
       const handler = Object.prototype.hasOwnProperty.call(handlers, msg.type) ? handlers[msg.type] : null;
-      if (handler) handler(msg);
+      if (typeof handler === 'function') handler(msg);
     };
     ws.onclose = () => {
       if (sock !== ws) return; // superseded by a newer socket
