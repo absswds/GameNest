@@ -42,6 +42,9 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     if (s.winners) return s.winners;
     return (typeof s.winner === 'number' && s.winner >= 0) ? [s.winner] : [];
   }
+  function isFs() {
+    return !!(document.body && document.body.classList.contains('gn-fs'));
+  }
 
   // i18n helper (mirrors other renderers: _t(key) with hardcoded fallback).
   function t(key, fallback) {
@@ -66,7 +69,15 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     '@media(max-width:500px){' +
       '.mj-btn{padding:11px 18px;font-size:15px;}' +
       '.mj-status{font-size:12px;}' +
-    '}';
+    '}' +
+    'body.gn-fs .mj-wrap{position:relative;flex-direction:row;align-items:stretch;gap:0;width:100%;height:100%;background:#14281d;overflow:hidden;}' +
+    'body.gn-fs .mj-status{position:absolute;top:12px;left:64px;z-index:5;min-height:0;padding:4px 12px;border-radius:999px;background:rgba(0,0,0,.52);color:rgba(255,255,255,.92);font-size:12px;line-height:1.3;pointer-events:none;max-width:min(280px,38vw);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
+    'body.gn-fs .mj-status:empty{display:none;}' +
+    'body.gn-fs .mj-board{flex:1 1 auto;min-width:0;min-height:0;width:auto!important;height:100%;overflow:hidden!important;}' +
+    'body.gn-fs .mj-bar{flex:0 0 auto;display:flex;flex-direction:column;flex-wrap:nowrap;justify-content:center;align-items:stretch;gap:8px;min-height:0;height:100%;padding:12px 10px 12px 6px;background:rgba(0,0,0,.22);border-left:1px solid rgba(255,255,255,.08);overflow-y:auto;max-width:136px;}' +
+    'body.gn-fs .mj-bar:empty{display:none;}' +
+    'body.gn-fs .mj-bar .mj-btn{padding:10px 14px;font-size:14px;border-radius:12px;white-space:nowrap;text-align:center;min-height:40px;}' +
+    '@media(max-height:440px){body.gn-fs .mj-bar{gap:6px;padding:8px 8px 8px 6px;}body.gn-fs .mj-bar .mj-btn{padding:7px 12px;font-size:13px;min-height:34px;}}';
 
   var mahjongRenderer = {
     init: function(container) {
@@ -98,11 +109,13 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         sizeCanvas();
         // 设置 canvas.width 会清空画布，必须紧接着重绘，否则旋转屏幕后白屏
         if (!_resizeBound) {
-          window.addEventListener('resize', function() {
+          var onLayoutChange = function() {
             // 离开麻将后旧 canvas 已脱离页面，不再白白重绘
             if (!canvas || !canvas.isConnected) return;
             sizeCanvas(); draw();
-          });
+          };
+          window.addEventListener('resize', onLayoutChange);
+          window.addEventListener('gn:fullscreen', onLayoutChange);
           _resizeBound = true;
         }
         canvas.addEventListener('click', onClick);
@@ -131,7 +144,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         // 手机端：手牌数变化时重新计算 canvas 高度（支持多行滚动）
         if (state && state.hands && state.hands[_playerIndex]) {
           var curSize = state.hands[_playerIndex].length || 0;
-          if (curSize !== _prevHandSize && W < 500) {
+          if (!isFs() && curSize !== _prevHandSize && W < 500) {
             _prevHandSize = curSize;
             sizeCanvas();
           }
@@ -241,6 +254,30 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
 
   function sizeCanvas() {
     var board = document.getElementById('mjBoard');
+    if (isFs()) {
+      _portrait = false;
+      var fsW = board ? board.clientWidth : 0;
+      var fsH = board ? board.clientHeight : 0;
+      if (!fsW || fsW < 50) fsW = window.innerWidth || 812;
+      if (!fsH || fsH < 50) fsH = window.innerHeight || 375;
+      W = fsW;
+      H = fsH;
+      DPR = Math.min(window.devicePixelRatio || 1, 3);
+      var byWidth = Math.floor((W - 24 - 14 * 4) / 14);
+      var byHeight = Math.floor((H * 0.23) / 1.4);
+      TW = Math.max(28, Math.min(82, byWidth, byHeight));
+      TH = Math.round(TW * 1.4);
+      if (board) board.classList.remove('mj-board-mobile');
+      var fcw = Math.round(W * DPR), fch = Math.round(H * DPR);
+      if (canvas.width !== fcw) canvas.width = fcw;
+      if (canvas.height !== fch) canvas.height = fch;
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      canvas.style.display = 'block';
+      canvas.style.margin = '0';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      return;
+    }
     var bw = board ? board.clientWidth : 0;
     // 防御：flex 容器子项在首次布局前 clientWidth 可能为 0，用窗口宽兜底
     if (!bw || bw < 50) bw = window.innerWidth || 375;
@@ -480,11 +517,14 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       // 桌面区 = 手牌（和自己的明牌、定缺标签）上方的部分
       var myMelds = _state.melds && _state.melds[_playerIndex];
       VH = handTopY() - 26 - (myMelds && myMelds.length ? Math.round(TH * 0.3) + 8 : 0);
+    } else if (isFs()) {
+      VH = Math.max(120, H - TH - 20);
     }
     var cx = W / 2, cy = VH / 2;
     // 中央椭圆桌面（径向渐变，中心亮四周暗 = 聚光灯）
     var rx = Math.min(W, VH) * 0.46, ry = Math.min(W, VH) * 0.38;
     if (_portrait) { rx = W * 0.46; ry = VH * 0.42; }
+    else if (isFs()) { rx = Math.min(W * 0.44, VH * 0.62); ry = VH * 0.42; }
     var felt = ctx.createRadialGradient(cx, cy * 0.92, ry * 0.1, cx, cy, Math.max(rx, ry));
     felt.addColorStop(0, '#2f5a40');
     felt.addColorStop(0.7, '#234731');
@@ -534,7 +574,13 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
   }
 
   // 对手牌背尺寸（与 drawOpponents 一致，高亮框和名字跟着它走）
-  function oppScale() { return (W < 500 || H < 500) ? 0.28 : 0.5; }
+  function oppScale() {
+    if (isFs()) {
+      var maxOppH = Math.max(16, (VH - 70) / 7 - 2);
+      return Math.min((W < 500 || H < 500) ? 0.3 : 0.44, maxOppH / TH);
+    }
+    return (W < 500 || H < 500) ? 0.28 : 0.5;
+  }
   function oppTW() { return Math.round(TW * oppScale()); }
   function oppTH() { return Math.round(TH * oppScale()); }
 
@@ -604,7 +650,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     var n = hand.length;
     var tw = TW, th = TH;
     var maxW = W - 20;
-    var _isMobile = W < 500;
+    var _isMobile = !isFs() && W < 500;
     // 多行布局（手机端手牌过多时换行，不压缩牌面大小）
     var useMultiRow = _isMobile && n * (tw + 4) > maxW;
     var rows = 1, perRow = n;
@@ -614,6 +660,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       rows = Math.ceil(n / perRow);
     } else if (n * (tw + 4) > maxW) {
       tw = Math.floor((maxW - n * 4) / n); // 桌面端仍用压缩
+      if (isFs()) th = Math.round(tw * 1.4);
     }
     var totalW = (useMultiRow ? perRow : n) * (tw + 4);
     var startX = (W - totalW) / 2;
@@ -753,9 +800,26 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       while (dw > 12 && Math.ceil(allTiles.length / Math.max(6, Math.floor(zoneW / (dw + gap)))) * (dh + gap) > zoneH) {
         dw--; dh = Math.round(dw * 1.4);
       }
+    } else if (isFs()) {
+      var sideMargin = 20 + 2 * (oppTW() + 2) + 16;
+      zoneW = Math.max(160, Math.min(W * 0.64, W - sideMargin * 2));
+      var bottomLimit = handTopY() - 26;
+      if (_state.melds && _state.melds[_playerIndex] && _state.melds[_playerIndex].length) {
+        bottomLimit = Math.min(bottomLimit, H - TH - 28 - meldTH() - 8);
+      }
+      zoneH = Math.max(dh * 2, bottomLimit - topClear);
+      while (dw > 14 && Math.ceil(allTiles.length / Math.max(6, Math.floor(zoneW / (dw + gap)))) * (dh + gap) > zoneH) {
+        dw--; dh = Math.round(dw * 1.4);
+      }
     }
     var perRow = Math.max(6, Math.floor(zoneW / (dw + gap)));
     if (_portrait) zoneX = (W - perRow * (dw + gap) + gap) / 2;
+    else if (isFs()) {
+      var fsRows = Math.ceil(allTiles.length / perRow);
+      var fsGridH = fsRows * (dh + gap) - gap;
+      zoneX = (W - perRow * (dw + gap) + gap) / 2;
+      zoneY = topClear + Math.max(0, (zoneH - fsGridH) / 2);
+    }
     // 中央网格：按全局时间从左到右、从上到下，新牌始终在末尾
     for (var idx = 0; idx < allTiles.length; idx++) {
       var row = Math.floor(idx / perRow);
@@ -932,7 +996,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         if (lCurRow.length > 0) lRows.push(lCurRow);
         // 绘制：从左上角开始，向下排列
         var lStartX = 12;
-        var lStartY = 28;
+        var lStartY = isFs() ? 64 : 28;
         for (var lri = 0; lri < lRows.length; lri++) {
           var lRow = lRows[lri];
           var lPlaced = 0;
@@ -1123,6 +1187,17 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
   }
 
   function drawControls() {
+    drawControlsInner();
+    if (isFs() && canvas && canvas.isConnected) {
+      var board = document.getElementById('mjBoard');
+      if (board && (Math.abs(board.clientWidth - W) > 1 || Math.abs(board.clientHeight - H) > 1)) {
+        sizeCanvas();
+        draw();
+      }
+    }
+  }
+
+  function drawControlsInner() {
     var bar = document.getElementById('mjActions');
     var status = document.getElementById('mjStatus');
     if (!bar) return;
@@ -1152,7 +1227,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
           b.style.minWidth = '48px';
           b.onclick = function() {
             _swapSelected.splice(_swapSelected.indexOf(sid), 1);
-            drawControls();
+            drawControlsInner();
           };
           bar.appendChild(b);
         })(hand[idx], id);

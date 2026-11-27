@@ -3350,3 +3350,136 @@ body.lobby-page .toast {
     transform: none;
   }
 }
+
+/* ====== Fullscreen Landscape Mode (pool, mahjong) ====== */
+.fs-enter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+}
+
+.fs-exit-btn {
+  display: none;
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  left: calc(env(safe-area-inset-left, 0px) + 8px);
+  z-index: 45;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(18, 20, 24, 0.62);
+  color: #fff;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+
+.fs-exit-btn:active {
+  transform: scale(0.94);
+  background: rgba(18, 20, 24, 0.8);
+}
+
+.fs-exit-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+html:has(body.gn-fs) {
+  overflow: hidden !important;
+  height: 100dvh !important;
+}
+
+html body.gn-fs,
+body.gn-fs:has(.game-page-shell) {
+  padding: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+body.gn-fs .fs-exit-btn {
+  display: inline-flex;
+}
+
+body.gn-fs .game-topbar,
+body.gn-fs #playerBar,
+body.gn-fs .player-bar,
+body.gn-fs #status,
+body.gn-fs .game-status,
+body.gn-fs #emojiRow,
+body.gn-fs #stageInfo,
+body.gn-fs #gameActions,
+body.gn-fs .game-actions-fixed {
+  display: none !important;
+}
+
+body.gn-fs .game-page-shell,
+body.gn-fs .room-stage {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+}
+
+body.gn-fs #gameStage.game-stage-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  width: 100vw;
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
+  margin: 0;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  gap: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+body.gn-fs #gameStage.game-stage-panel:has(.mj-wrap) {
+  background: #14281d;
+}
+
+body.gn-fs #gameStage .board-wrap.stage-board {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+body.gn-fs #boardArea {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}

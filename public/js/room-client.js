@@ -2,7 +2,7 @@
 (function() {
   const el = {};
   function cacheElements() {
-    ['notifyBar','status','overlay','boardArea','waitingRoom','waitingSlots','waitingStatus','playerBar','resultOverlay','resultText','resultSub','gameStage','gameActions','profileEdit','emojiRow','avatarDrawer','readyBtn','startGameBtn','addBotBtn','gameOptions','seatSwapModal','seatSwapGrid','seatSwapHint','nameInput','avatarEmoji','qrImage','qrRoomCode','roomBadge','muteBtn','gameMenuBtn','shareLinkBtn'].forEach(function(id) {
+    ['notifyBar','status','overlay','boardArea','waitingRoom','waitingSlots','waitingStatus','playerBar','resultOverlay','resultText','resultSub','gameStage','gameActions','profileEdit','emojiRow','avatarDrawer','readyBtn','startGameBtn','addBotBtn','gameOptions','seatSwapModal','seatSwapGrid','seatSwapHint','nameInput','avatarEmoji','qrImage','qrRoomCode','roomBadge','muteBtn','gameMenuBtn','fsEnterBtn','fsExitBtn','shareLinkBtn'].forEach(function(id) {
       el[id] = document.getElementById(id);
     });
   }
@@ -78,6 +78,9 @@
   }
 
   function clearExpiredRoomAndReturn() {
+    exitFullscreen();
+    autoImmersiveApplied = false;
+    setImmersiveLandscape(false);
     terminalRoomError = true;
     GNSession.clear();
     if (ws) { try { ws.close(); } catch (e) {} }
@@ -226,6 +229,14 @@
     var restartBtns = document.querySelectorAll('#gameActions .btn-outline');
     if (restartBtns.length > 0) restartBtns[0].textContent = _t('restart');
     if (el.gameMenuBtn) el.gameMenuBtn.setAttribute('aria-label', _t('ui_menu'));
+    if (el.fsEnterBtn) {
+      el.fsEnterBtn.setAttribute('aria-label', _t('ui_fullscreen'));
+      el.fsEnterBtn.title = _t('ui_fullscreen');
+    }
+    if (el.fsExitBtn) {
+      el.fsExitBtn.setAttribute('aria-label', _t('ui_exit_fullscreen'));
+      el.fsExitBtn.title = _t('ui_exit_fullscreen');
+    }
     document.title = gameInfo ? (gameInfo.name || 'GameNest') : 'GameNest';
   }
   i18nStatic();
@@ -279,6 +290,7 @@
       },
       game_started(msg) {
         resultHapticPlayed = false;
+        autoImmersiveApplied = false;
         state = msg.state;
         if (msg.match !== undefined) match = msg.match;
         players = msg.players;
@@ -321,6 +333,9 @@
       },
       // Host removed this player from the room: clear local state and go back to lobby.
       kicked(msg) {
+        exitFullscreen();
+        autoImmersiveApplied = false;
+        setImmersiveLandscape(false);
         terminalRoomError = true;
         GNSession.clear();
         if (ws) { try { ws.close(); } catch (e) {} }
@@ -677,10 +692,28 @@
   // 麻将竖屏放不下 14 张手牌（360dp 宽最多容 ~8 张可点的牌），锁横屏 + 沉浸式全屏。
   // 安卓走 WebAppBridge；普通浏览器退化到 Screen Orientation API（多数需已全屏，失败静默）。
   const IMMERSIVE_GAMES = ['mahjong-sichuan', 'mahjong-cantonese'];
+  const FULLSCREEN_GAMES = ['pool', 'mahjong-sichuan', 'mahjong-cantonese'];
   // 方形棋盘游戏：宽屏时玩家栏放左侧、操作按钮放右侧，让棋盘占满中间高度
   const SIDE_LAYOUT_GAMES = ['chess', 'checkers', 'reversi', 'go9', 'gomoku', 'chinesechess'];
   // Other square boards that only borrow the wide three-column stage (no match score / move list)
   const SIDE_STAGE_GAMES = SIDE_LAYOUT_GAMES.concat(['connect4', 'tictactoe']);
+  let isFullscreen = false;
+  let autoImmersiveApplied = false;
+
+  function isFullscreenGame() {
+    var eff = typeof window._effectiveGameKey === 'function' ? window._effectiveGameKey() : game;
+    return FULLSCREEN_GAMES.indexOf(game) !== -1 || FULLSCREEN_GAMES.indexOf(eff) !== -1;
+  }
+
+  function isMahjongGame() {
+    var eff = typeof window._effectiveGameKey === 'function' ? window._effectiveGameKey() : game;
+    return IMMERSIVE_GAMES.indexOf(game) !== -1 || IMMERSIVE_GAMES.indexOf(eff) !== -1;
+  }
+
+  function getFullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
   function setImmersiveLandscape(on) {
     try {
       if (window.GameNestNative && window.GameNestNative.setImmersiveLandscape) {
@@ -692,6 +725,74 @@
     } catch (e) { /* 桌面浏览器不支持，静默降级 */ }
   }
 
+  function enterFullscreen() {
+    if (isFullscreen || roomPhase !== 'playing' || !isFullscreenGame()) return;
+    isFullscreen = true;
+    document.body.classList.add('gn-fs');
+
+    var hasNative = !!(window.GameNestNative && window.GameNestNative.setImmersiveLandscape);
+    if (hasNative) {
+      setImmersiveLandscape(true);
+    } else {
+      var elDoc = document.documentElement;
+      var req = elDoc && (elDoc.requestFullscreen || elDoc.webkitRequestFullscreen);
+      if (typeof req === 'function') {
+        try {
+          var p = req.call(elDoc);
+          if (p && typeof p.then === 'function') {
+            p.then(function() {
+              if (isFullscreen) setImmersiveLandscape(true);
+            }, function() {
+              if (isFullscreen) setImmersiveLandscape(true);
+            });
+          } else {
+            setImmersiveLandscape(true);
+          }
+        } catch (e) {
+          setImmersiveLandscape(true);
+        }
+      } else {
+        setImmersiveLandscape(true);
+      }
+    }
+
+    window.dispatchEvent(new CustomEvent('gn:fullscreen', { detail: { on: true } }));
+    requestAnimationFrame(function() {
+      window.dispatchEvent(new Event('resize'));
+    });
+  }
+
+  function exitFullscreen() {
+    if (!isFullscreen) return;
+    isFullscreen = false;
+    autoImmersiveApplied = false;
+    document.body.classList.remove('gn-fs');
+    setImmersiveLandscape(false);
+    if (getFullscreenElement()) {
+      try {
+        var ex = document.exitFullscreen || document.webkitExitFullscreen;
+        if (typeof ex === 'function') {
+          var p = ex.call(document);
+          if (p && typeof p.catch === 'function') p.catch(function() {});
+        }
+      } catch (e) {}
+    }
+    window.dispatchEvent(new CustomEvent('gn:fullscreen', { detail: { on: false } }));
+    requestAnimationFrame(function() {
+      window.dispatchEvent(new Event('resize'));
+    });
+  }
+
+  function onFullscreenChange() {
+    if (isFullscreen && !getFullscreenElement()) {
+      exitFullscreen();
+    }
+  }
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+  if (el.fsEnterBtn) el.fsEnterBtn.addEventListener('click', enterFullscreen);
+  if (el.fsExitBtn) el.fsExitBtn.addEventListener('click', exitFullscreen);
+
   function showGame() {
     el.waitingRoom.style.display = 'none';
     el.profileEdit.style.display = 'none';
@@ -701,7 +802,11 @@
     el.status.style.display = (game === 'sanguo' || game === 'werewolf' || game === 'undercover') ? 'none' : '';
     // 动作条现在在文档流最底部、不遮挡棋盘，所有游戏都照常显示
     el.gameActions.style.display = '';
-    setImmersiveLandscape(IMMERSIVE_GAMES.indexOf(game) !== -1);
+    if (el.fsEnterBtn) el.fsEnterBtn.style.display = isFullscreenGame() ? '' : 'none';
+    if (!isFullscreen && !autoImmersiveApplied && isMahjongGame() && window.innerWidth < 600 && window.innerHeight > window.innerWidth) {
+      autoImmersiveApplied = true;
+      setImmersiveLandscape(true);
+    }
     el.gameStage.classList.toggle('stage-side', SIDE_STAGE_GAMES.indexOf(game) !== -1);
     syncWakeLock();
     // 棋盘在等待房间还显示时就量过尺寸，舞台出现后让各渲染器按真实位置重新量一次
@@ -710,7 +815,10 @@
 
   function showLobby() {
     resultHapticPlayed = false;
+    exitFullscreen();
+    autoImmersiveApplied = false;
     setImmersiveLandscape(false);
+    if (el.fsEnterBtn) el.fsEnterBtn.style.display = 'none';
     el.waitingRoom.style.display = '';
     el.profileEdit.style.display = 'flex';
     el.emojiRow.style.display = '';
@@ -1973,6 +2081,7 @@
 
   function showResult(winner) {
     if (game === 'mahjong-sichuan' || game === 'mahjong-cantonese') return;
+    exitFullscreen();
     const overlay = el.overlay;
     const resultEl = el.resultText;
     let txt, sub, isWin = false, subHtml = '';
@@ -2161,6 +2270,7 @@
   };
 
   window.doReturnToRoom = function() {
+    exitFullscreen();
     el.overlay.style.display = 'none';
     send('return_to_room');
   };
@@ -2168,6 +2278,8 @@
   window.doLeaveRoom = function() {
     if (typeof window._beforeLeaveRoom === 'function') window._beforeLeaveRoom();
     // 页面马上要 location.replace 跳走，showLobby() 不会执行，必须在这里主动解锁横屏
+    exitFullscreen();
+    autoImmersiveApplied = false;
     setImmersiveLandscape(false);
     leavingOnPurpose = true;
     send('leave_room');

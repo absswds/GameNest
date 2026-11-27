@@ -1704,6 +1704,8 @@
     'ui_sound_off': '音效：关',
     'ui_done': '完成',
     'ui_private_short': '私密',
+    'ui_fullscreen': '全屏横屏',
+    'ui_exit_fullscreen': '退出全屏',
 
     // ---- Pool (pool_) ----
     'pool_open_table': '自由球局',

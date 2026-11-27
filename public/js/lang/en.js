@@ -1704,6 +1704,8 @@
     'ui_sound_off': 'Sound: Off',
     'ui_done': 'Done',
     'ui_private_short': 'Private',
+    'ui_fullscreen': 'Fullscreen',
+    'ui_exit_fullscreen': 'Exit fullscreen',
 
     // ---- Pool (pool_) ----
     'pool_open_table': 'Open Table',
