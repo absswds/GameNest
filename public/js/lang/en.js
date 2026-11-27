@@ -1263,6 +1263,18 @@
     'sk_fruit_watermelon': 'Watermelon',
     'ddz_joker_small': '★S',
     'ddz_joker_big': '★B',
+    'ddz_farmer_label': 'Farmer',
+    'ddz_base_score': 'Base',
+    'ddz_alarm_badge': 'Low',
+    'ddz_card_counter': 'Cards',
+    'ddz_card_counter_title': 'Remaining Cards',
+    'ddz_rank_bj': 'BJ',
+    'ddz_rank_sj': 'SJ',
+    'ddz_ann_spring': 'Spring!',
+    'ddz_ann_anti_spring': 'Counter-Spring!',
+    'ddz_thinking': 'Thinking...',
+    'ddz_round_of': 'Round %s/%s',
+    'ddz_tap_dismiss': 'Tap to dismiss',
 
     // ---- Side panels on wide screens (2048 / minesweeper / sudoku / sheeptile / numberbomb / 24 / drawguess) ----
     'g2048_side_score': 'Score',
