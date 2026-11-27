@@ -1287,6 +1287,18 @@
     'sk_fruit_watermelon': '西瓜',
     'ddz_joker_small': '★小',
     'ddz_joker_big': '★大',
+    'ddz_farmer_label': '农民',
+    'ddz_base_score': '底分',
+    'ddz_alarm_badge': '报警',
+    'ddz_card_counter': '记牌',
+    'ddz_card_counter_title': '剩余牌统计',
+    'ddz_rank_bj': '大王',
+    'ddz_rank_sj': '小王',
+    'ddz_ann_spring': '春天！',
+    'ddz_ann_anti_spring': '反春！',
+    'ddz_thinking': '思考中…',
+    'ddz_round_of': '第 %s/%s 局',
+    'ddz_tap_dismiss': '轻触关闭',
 
     // ---- Side panels on wide screens (2048 / minesweeper / sudoku / sheeptile / numberbomb / 24 / drawguess) ----
     'g2048_side_score': '分数',
