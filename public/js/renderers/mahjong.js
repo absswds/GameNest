@@ -26,7 +26,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
   var _lastDrawnId = null;   // 上次新摸牌 id
   var _drawPulse = 0;        // 新摸牌脉冲(0..1) 青蓝高亮
   var _animTimer = null;     // 动画循环句柄
-  var _claimEffects = [];    // 碰杠吃胡动画效果 [{ pos, type, text, birth }]
+  var _claimEffects = [];    // 碰杠吃胡动画效果 [{ player, type, label, birth }]
   var _shownWinners = new Set(); // 已触发过胡牌动画的玩家（避免血战到底反复弹出）
   var _swapSelected = [];         // 换三张：当前玩家已选中的牌 id
   var _prevPhase = null;          // 上一帧 phase（用于检测进入 swap 阶段时清空选择）
@@ -41,6 +41,180 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
   var _wildcardShownKey = null;
   var _countdownTimer = null;     // 全屏罗盘倒计时刷新定时器
   var _fsMetrics = null;          // 全屏布局几何缓存
+
+  // ---- 传统牌面 SVG 资源预加载 + 离屏缓存 + 动画状态 ----
+  var TILE_SVG_MAP = {
+    'wan:1': 'Man1.svg', 'wan:2': 'Man2.svg', 'wan:3': 'Man3.svg',
+    'wan:4': 'Man4.svg', 'wan:5': 'Man5.svg', 'wan:6': 'Man6.svg',
+    'wan:7': 'Man7.svg', 'wan:8': 'Man8.svg', 'wan:9': 'Man9.svg',
+    'tong:1': 'Pin1.svg', 'tong:2': 'Pin2.svg', 'tong:3': 'Pin3.svg',
+    'tong:4': 'Pin4.svg', 'tong:5': 'Pin5.svg', 'tong:6': 'Pin6.svg',
+    'tong:7': 'Pin7.svg', 'tong:8': 'Pin8.svg', 'tong:9': 'Pin9.svg',
+    'tiao:1': 'Sou1.svg', 'tiao:2': 'Sou2.svg', 'tiao:3': 'Sou3.svg',
+    'tiao:4': 'Sou4.svg', 'tiao:5': 'Sou5.svg', 'tiao:6': 'Sou6.svg',
+    'tiao:7': 'Sou7.svg', 'tiao:8': 'Sou8.svg', 'tiao:9': 'Sou9.svg',
+    'feng:1': 'Ton.svg', 'feng:2': 'Nan.svg', 'feng:3': 'Shaa.svg', 'feng:4': 'Pei.svg',
+    'jian:1': 'Chun.svg', 'jian:2': 'Hatsu.svg', 'jian:3': 'Haku.svg'
+  };
+  var _tileImgs = {};
+  var _tileImgState = {}; // 'loading' | 'ready' | 'error'
+  var _tilePreloadStarted = false;
+  var _artRedrawPending = false;
+
+  var _tileCache = new Map();
+  var MAX_TILE_CACHE = 400;
+  var _lastCacheW = 0;
+  var _lastCacheH = 0;
+  var _lastCacheDPR = 0;
+
+  var _prevSnapshot = null;
+  var _discardFly = null;       // { tile, tileId, fromSeat, fromRect, target, start, duration }
+  var _discardFlyMatched = false;
+  var _drawSlide = null;        // { tileId, start, duration }
+  var _lastHandTileRects = {};  // tileId -> { x, y, w, h }
+
+  function tileArtKey(tile) {
+    if (!tile || tile.k === undefined || tile.n === undefined) return '';
+    return tile.k + ':' + tile.n;
+  }
+
+  function clearTileCache() {
+    _tileCache.clear();
+  }
+
+  function putTileCache(key, entry) {
+    if (_tileCache.size >= MAX_TILE_CACHE) {
+      var deleted = 0;
+      _tileCache.forEach(function(_v, k) {
+        if (deleted < 80) {
+          _tileCache.delete(k);
+          deleted++;
+        }
+      });
+    }
+    _tileCache.set(key, entry);
+  }
+
+  function scheduleArtRedraw() {
+    if (_artRedrawPending) return;
+    _artRedrawPending = true;
+    var raf = window.requestAnimationFrame || function(fn) { return setTimeout(fn, 16); };
+    raf(function() {
+      _artRedrawPending = false;
+      if (canvas && canvas.isConnected && _state) draw();
+    });
+  }
+
+  function preloadTileArt() {
+    if (_tilePreloadStarted) return;
+    _tilePreloadStarted = true;
+    for (var key in TILE_SVG_MAP) {
+      if (!Object.prototype.hasOwnProperty.call(TILE_SVG_MAP, key)) continue;
+      (function(k, file) {
+        _tileImgState[k] = 'loading';
+        var img = new Image();
+        img.onload = function() {
+          _tileImgState[k] = 'ready';
+          clearTileCache();
+          scheduleArtRedraw();
+        };
+        img.onerror = function() {
+          _tileImgState[k] = 'error';
+        };
+        img.src = '/assets/mahjong-tiles/' + file;
+        _tileImgs[k] = img;
+      })(key, TILE_SVG_MAP[key]);
+    }
+  }
+
+  function getTileArtImg(tile) {
+    var key = tileArtKey(tile);
+    if (!key || _tileImgState[key] !== 'ready') return null;
+    var img = _tileImgs[key];
+    return (img && img.complete && img.naturalWidth > 0) ? img : null;
+  }
+
+  function nowMs() {
+    return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  }
+
+  // Exact cubic-bezier(x1, y1, x2, y2) solver for 0 <= t <= 1
+  function cubicBezier(x1, y1, x2, y2, t) {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    var cx = 3 * x1;
+    var bx = 3 * (x2 - x1) - cx;
+    var ax = 1 - cx - bx;
+    var cy = 3 * y1;
+    var by = 3 * (y2 - y1) - cy;
+    var ay = 1 - cy - by;
+    var u = t;
+    for (var i = 0; i < 5; i++) {
+      var xErr = ((ax * u + bx) * u + cx) * u - t;
+      if (Math.abs(xErr) < 1e-4) break;
+      var dx = (3 * ax * u + 2 * bx) * u + cx;
+      if (Math.abs(dx) < 1e-6) break;
+      u -= xErr / dx;
+      if (u < 0) u = 0;
+      else if (u > 1) u = 1;
+    }
+    var lo = 0, hi = 1;
+    var xCur = ((ax * u + bx) * u + cx) * u;
+    if (Math.abs(xCur - t) > 1e-3) {
+      u = t;
+      for (var j = 0; j < 10; j++) {
+        xCur = ((ax * u + bx) * u + cx) * u;
+        if (Math.abs(xCur - t) < 1e-4) break;
+        if (t > xCur) lo = u;
+        else hi = u;
+        u = (lo + hi) * 0.5;
+      }
+    }
+    return ((ay * u + by) * u + cy) * u;
+  }
+
+  function easeOutDiscard(t) {
+    return cubicBezier(0.23, 1, 0.32, 1, t);
+  }
+
+  // Pop easing with mild overshoot (<= 1.15)
+  function easeOutPop(t) {
+    var s = 1.70158;
+    var u = clamp(t, 0, 1) - 1;
+    return 1 + (s + 1) * u * u * u + s * u * u;
+  }
+
+  function buildStateSnapshot(state) {
+    var snap = {
+      roundNumber: state ? (state.roundNumber || 1) : 1,
+      phase: state ? state.phase : null,
+      currentPlayer: state ? state.currentPlayer : -1,
+      drawn: state ? state.drawn : null,
+      lastDiscardId: (state && state.lastDiscard) ? state.lastDiscard.id : null,
+      discardIds: {},
+      totalDiscards: 0,
+      meldCounts: [],
+      totalMelds: 0,
+      winners: winnersOf(state).slice()
+    };
+    if (state && state.discards) {
+      for (var s = 0; s < state.discards.length; s++) {
+        var pile = state.discards[s] || [];
+        snap.totalDiscards += pile.length;
+        for (var j = 0; j < pile.length; j++) {
+          if (pile[j] && pile[j].id) snap.discardIds[pile[j].id] = s;
+        }
+      }
+    }
+    if (state && state.melds) {
+      for (var m = 0; m < state.melds.length; m++) {
+        var mc = state.melds[m] ? state.melds[m].length : 0;
+        snap.meldCounts.push(mc);
+        snap.totalMelds += mc;
+      }
+    }
+    return snap;
+  }
 
   // 是否广东（带番子）：四川 playerView 总带 cfg，广东不带
   function isCantonese() { return _state && _state.cfg === undefined; }
@@ -140,6 +314,12 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     if (s.wildcard && s.wildcard.k) return s.wildcard;
     if (s._wildcard) return { k: 'jian', n: 1 };
     return null;
+  }
+
+  function isWildcardTile(tile) {
+    if (!tile || tile.k === undefined) return false;
+    var w = getWildcardTile(_state);
+    return !!(w && tile.k === w.k && tile.n === w.n);
   }
 
   function miniTileHtml(tile, extraClass) {
@@ -263,11 +443,12 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
           '</div>';
         canvas = document.getElementById('mjCanvas');
         ctx = canvas.getContext('2d');
+        preloadTileArt();
         // 强制拉取牌面字体（canvas 不触发懒加载），字体就绪后重绘一帧，
         // 避免开牌瞬间字牌/万条用回退字体渲染
         if (document.fonts && document.fonts.load) {
           try {
-            document.fonts.load('32px "Ma Shan Zheng"').then(function() { draw(); }).catch(function() {});
+            document.fonts.load('32px "Ma Shan Zheng"').then(function() { clearTileCache(); draw(); }).catch(function() {});
           } catch (e) {}
         }
         sizeCanvas();
@@ -300,18 +481,27 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         canvas.addEventListener('mousemove', onMouseMove);
         canvas.addEventListener('mouseleave', function() { _hoverIdx = -1; draw(); });
         // 重置闭包状态：init 在跨局重启时会再次调用，必须清掉上一局残留
+        if (_animTimer) { cancelAnimationFrame(_animTimer); _animTimer = null; }
         _prevPhase = null;
+        _prevSnapshot = null;
+        _discardFly = null;
+        _discardFlyMatched = false;
+        _drawSlide = null;
+        _lastHandTileRects = {};
         _swapSelected = [];
         _shownWinners = new Set();
         _prevMeldCounts = [];
         _claimEffects = [];
         _lastDiscardId = null;
+        _lastDiscardPulse = 0;
+        _lastDrawnId = null;
         _drawPulse = 0;
         _activePanel = null;
         _discardHistory = [];
         _lastRoundMarker = null;
         _wildcardCardVisible = false;
         _wildcardShownKey = null;
+        clearTileCache();
         if (_wildcardTimer) { clearTimeout(_wildcardTimer); _wildcardTimer = null; }
         if (_countdownTimer) { clearInterval(_countdownTimer); _countdownTimer = null; }
       } catch (e) {
@@ -337,52 +527,135 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         }
         // 新局开始（定缺阶段）→ 重置胡牌动画记录
         if (state && state.phase === 'void') _shownWinners.clear();
-        // 检测新弃牌 → 触发落点脉冲
-        var ld = state && state.lastDiscard;
-        if (ld && ld.id !== _lastDiscardId) {
-          _lastDiscardId = ld.id;
-          _lastDiscardPulse = 1;
-          startAnimLoop();
+
+        var curSnap = buildStateSnapshot(state);
+        var isFirstRender = (_prevSnapshot === null);
+        var isNewRound = !isFirstRender && (
+          _prevSnapshot.roundNumber !== curSnap.roundNumber ||
+          (curSnap.totalDiscards === 0 && curSnap.totalMelds === 0 && _prevSnapshot.totalDiscards > 0)
+        );
+        if (isNewRound) {
+          _discardFly = null;
+          _discardFlyMatched = false;
+          _drawSlide = null;
+          _lastHandTileRects = {};
+          _claimEffects = [];
+          _shownWinners.clear();
+          _lastDiscardPulse = 0;
+          _drawPulse = 0;
         }
-        // 检测新摸牌 → 触发青蓝脉冲（与黄色轮到你区分）
-        var curDrawn = state && state.drawn;
-        if (curDrawn && curDrawn !== _lastDrawnId && state.currentPlayer === _playerIndex && state.phase === 'play') {
-          _lastDrawnId = curDrawn;
-          _drawPulse = 1;
-          startAnimLoop();
-        }
-        if (!curDrawn) { _lastDrawnId = null; _drawPulse = 0; }
-        // 检测新增明牌 → 触发碰杠吃胡动画
-        // init 后首帧（含重连）只记录现状，不把已有明牌/胡牌当新事件播放
-        var firstFrame = _prevPhase === null;
-        if (state && state.melds) {
-          for (var i = 0; i < state.melds.length; i++) {
-            var cnt = state.melds[i] ? state.melds[i].length : 0;
-            var prev = _prevMeldCounts[i] || 0;
-            if (!firstFrame && cnt > prev && cnt > 0) {
-              var md = state.melds[i][cnt - 1];
-              var type = md.type;
-              var label = type === 'kong' ? t('mj_kong', '杠') : type === 'pung' ? t('mj_pung', '碰') : type === 'chow' ? t('mj_chow', '吃') : type === 'win' ? t('mj_win', '胡') : '';
-              if (label) {
-                _claimEffects.push({ player: i, type: type, label: label, birth: Date.now() });
-                if (_claimEffects.length > 8) _claimEffects.shift();
+        var skipAnim = isFirstRender || isNewRound;
+
+        if (skipAnim) {
+          // init 后首帧（含加入/重连）或跨局首帧只记录现状，不播飞牌/摸牌/碰杠胡动画
+          _lastDiscardId = curSnap.lastDiscardId;
+          _lastDrawnId = curSnap.drawn;
+          _prevMeldCounts = curSnap.meldCounts.slice();
+          for (var sw = 0; sw < curSnap.winners.length; sw++) {
+            _shownWinners.add(curSnap.winners[sw]);
+          }
+        } else {
+          // 检测新弃牌 → 触发飞牌动画 + 落点脉冲
+          var newDiscardTile = null;
+          var fromSeat = -1;
+          var ld = state && state.lastDiscard;
+          if (ld && ld.id && ld.id !== _prevSnapshot.lastDiscardId && !_prevSnapshot.discardIds[ld.id]) {
+            newDiscardTile = ld;
+          } else if (state && state.discards) {
+            var bestSeq = -1;
+            for (var ds = 0; ds < state.discards.length; ds++) {
+              var dpile = state.discards[ds] || [];
+              for (var di = 0; di < dpile.length; di++) {
+                var dt = dpile[di];
+                if (dt && dt.id && !_prevSnapshot.discardIds[dt.id]) {
+                  var dseq = dt._discardSeq || 0;
+                  if (!newDiscardTile || dseq >= bestSeq) {
+                    newDiscardTile = dt;
+                    bestSeq = dseq;
+                    fromSeat = ds;
+                  }
+                }
               }
             }
-            _prevMeldCounts[i] = cnt;
           }
-        }
-        // 胡牌效果（仅首次触发，避免血战到底反复弹出）
-        var stWinners = winnersOf(state);
-        if (stWinners.length > 0) {
-          for (var w = 0; w < stWinners.length; w++) {
-            var wPlayer = stWinners[w];
-            if (!_shownWinners.has(wPlayer)) {
-              _shownWinners.add(wPlayer);
-              if (!firstFrame) _claimEffects.push({ player: wPlayer, type: 'win', label: t('mj_win', '胡') + '!', birth: Date.now() });
+          if (newDiscardTile) {
+            if (fromSeat < 0) {
+              if (ld && typeof ld.player === 'number') fromSeat = ld.player;
+              else if (state.claim && typeof state.claim.discarder === 'number') fromSeat = state.claim.discarder;
+              else if (state.discards) {
+                for (var fsSeat = 0; fsSeat < state.discards.length; fsSeat++) {
+                  var fpile = state.discards[fsSeat] || [];
+                  for (var fi = 0; fi < fpile.length; fi++) {
+                    if (fpile[fi] && fpile[fi].id === newDiscardTile.id) { fromSeat = fsSeat; break; }
+                  }
+                  if (fromSeat >= 0) break;
+                }
+              }
+              if (fromSeat < 0 && typeof _prevSnapshot.currentPlayer === 'number') fromSeat = _prevSnapshot.currentPlayer;
+            }
+            var fromRect = null;
+            if (fromSeat === _playerIndex && _lastHandTileRects[newDiscardTile.id]) {
+              var hr = _lastHandTileRects[newDiscardTile.id];
+              fromRect = { x: hr.x, y: hr.y, w: hr.w, h: hr.h };
+            } else {
+              fromRect = getSeatHandOrigin(fromSeat);
+            }
+            _discardFly = {
+              tile: newDiscardTile,
+              tileId: newDiscardTile.id,
+              fromSeat: fromSeat,
+              fromRect: fromRect,
+              target: null,
+              start: nowMs(),
+              duration: 280
+            };
+            _lastDiscardId = newDiscardTile.id;
+            _lastDiscardPulse = 1;
+          }
+
+          // 检测新摸牌 → 触发滑入 + 青蓝脉冲
+          var curDrawn = curSnap.drawn;
+          if (curDrawn && curDrawn !== _prevSnapshot.drawn && state.currentPlayer === _playerIndex && state.phase === 'play') {
+            _lastDrawnId = curDrawn;
+            _drawPulse = 1;
+            _drawSlide = { tileId: curDrawn, start: nowMs(), duration: 220 };
+          }
+          if (!curDrawn) { _lastDrawnId = null; _drawPulse = 0; }
+
+          // 检测新增明牌 → 触发碰杠吃胡动画
+          if (state && state.melds) {
+            for (var i = 0; i < state.melds.length; i++) {
+              var cnt = curSnap.meldCounts[i] || 0;
+              var prev = _prevSnapshot.meldCounts[i] || 0;
+              if (cnt > prev && cnt > 0) {
+                var md = state.melds[i][cnt - 1];
+                var type = md.type;
+                var label = type === 'kong' ? t('mj_kong', '杠') : type === 'pung' ? t('mj_pung', '碰') : type === 'chow' ? t('mj_chow', '吃') : type === 'win' ? t('mj_win', '胡') : '';
+                if (label) {
+                  _claimEffects.push({ player: i, type: type, label: label, birth: nowMs() });
+                  if (_claimEffects.length > 8) _claimEffects.shift();
+                }
+              }
+              _prevMeldCounts[i] = cnt;
+            }
+          }
+
+          // 胡牌效果（仅首次触发，避免血战到底反复弹出）
+          if (curSnap.winners.length > 0) {
+            for (var w = 0; w < curSnap.winners.length; w++) {
+              var wPlayer = curSnap.winners[w];
+              if (!_shownWinners.has(wPlayer)) {
+                _shownWinners.add(wPlayer);
+                _claimEffects.push({ player: wPlayer, type: 'win', label: t('mj_win', '胡') + '!', birth: nowMs() });
+              }
             }
           }
         }
-        if (_claimEffects.length > 0 && !_animTimer) startAnimLoop();
+
+        _prevSnapshot = curSnap;
+        if (_discardFly || _drawSlide || _lastDiscardPulse > 0.01 || _drawPulse > 0.01 || _claimEffects.length > 0) {
+          startAnimLoop();
+        }
         updateDiscardHistory();
         draw();
         drawControls();
@@ -406,11 +679,26 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
   window.gameRenderers.set('mahjong-sichuan', mahjongRenderer);
   window.gameRenderers.set('mahjong-cantonese', mahjongRenderer);
 
-  // ---- 动画循环：弃牌脉冲 + 碰杠效果 + 新摸牌脉冲，空闲自动停 ----
+  // ---- 动画循环：飞牌 + 摸牌滑入 + 弃牌脉冲 + 碰杠效果，空闲自动停 ----
   function startAnimLoop() {
     if (_animTimer) return;
     var tick = function () {
       var active = false;
+      var now = nowMs();
+      if (_discardFly) {
+        if ((now - _discardFly.start) >= _discardFly.duration) {
+          _discardFly = null;
+        } else {
+          active = true;
+        }
+      }
+      if (_drawSlide) {
+        if ((now - _drawSlide.start) >= _drawSlide.duration) {
+          _drawSlide = null;
+        } else {
+          active = true;
+        }
+      }
       // 弃牌脉冲
       if (_lastDiscardPulse > 0.01) {
         _lastDiscardPulse *= 0.92;
@@ -423,10 +711,9 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         if (_drawPulse < 0.02) _drawPulse = 0;
         active = true;
       }
-      // 碰杠效果（2 秒生命周期）
+      // 碰杠效果（300ms 弹出 + ~1.5s 停留 + 淡出）
       if (_claimEffects.length > 0) {
-        var now = Date.now();
-        _claimEffects = _claimEffects.filter(function(e){ return (now - e.birth) < 2000; });
+        _claimEffects = _claimEffects.filter(function(e){ return (now - e.birth) < 1800; });
         if (_claimEffects.length > 0) active = true;
       }
       if (!active) {
@@ -455,10 +742,11 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       var byHeight = Math.round((H * 0.195) / 1.4);
       TW = Math.max(28, Math.min(92, byWidth, byHeight));
       TH = Math.round(TW * 1.4);
+      var fsSlab = Math.max(3, Math.round(TH * 0.12));
       var wrap = board ? board.closest('.mj-wrap') : null;
       if (wrap) {
-        wrap.style.setProperty('--mj-status-bottom', (TH + 12) + 'px');
-        wrap.style.setProperty('--mj-actions-bottom', (TH + 12) + 'px');
+        wrap.style.setProperty('--mj-status-bottom', (TH + fsSlab + 10) + 'px');
+        wrap.style.setProperty('--mj-actions-bottom', (TH + fsSlab + 10) + 'px');
       }
       if (board) board.classList.remove('mj-board-mobile');
       var fcw = Math.round(W * DPR), fch = Math.round(H * DPR);
@@ -469,6 +757,10 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       canvas.style.display = 'block';
       canvas.style.margin = '0';
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      if (W !== _lastCacheW || H !== _lastCacheH || DPR !== _lastCacheDPR) {
+        _lastCacheW = W; _lastCacheH = H; _lastCacheDPR = DPR;
+        clearTileCache();
+      }
       return;
     }
     var bw = board ? board.clientWidth : 0;
@@ -527,7 +819,8 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       var handRows = 1;
       if (handN * (TW + 4) > W - 20) handRows = Math.ceil(handN / Math.max(4, Math.floor((W - 20) / (TW + 4))));
       if (handRows > 1) {
-        var neededH = H + (handRows - 1) * (TH + 12) + 20;
+        var mobSlab = Math.max(3, Math.round(TH * 0.12));
+        var neededH = H + (handRows - 1) * (TH + mobSlab + 10) + 20;
         H = Math.min(neededH, 1600);
       }
     }
@@ -548,6 +841,10 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     canvas.style.display = 'block';
     canvas.style.margin = 'auto';
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (W !== _lastCacheW || H !== _lastCacheH || DPR !== _lastCacheDPR) {
+      _lastCacheW = W; _lastCacheH = H; _lastCacheDPR = DPR;
+      clearTileCache();
+    }
     // 恢复滚动位置
     if (board && board.scrollHeight > board.clientHeight) {
       board.scrollTop = oldScrollRatio * (board.scrollHeight - board.clientHeight);
@@ -558,123 +855,469 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     }
   }
 
-  // ---- 牌面绘制 ----
+  // ---- 牌面绘制（SVG 传统牌面 + 2.5D 立体厚度 + 离屏缓存）----
 
-  function roundRect(x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
+  function roundRectCtx(c, x, y, w, h, r) {
+    var rr = Math.max(0, Math.min(r, w / 2, h / 2));
+    c.beginPath();
+    c.moveTo(x + rr, y);
+    c.arcTo(x + w, y, x + w, y + h, rr);
+    c.arcTo(x + w, y + h, x, y + h, rr);
+    c.arcTo(x, y + h, x, y, rr);
+    c.arcTo(x, y, x + w, y, rr);
+    c.closePath();
   }
 
-  function drawTileFace(x, y, w, h, tile, highlight) {
-    // highlight: false/0 = none, 1/'hover' = 金色(悬停), 2/'drawn' = 青蓝(新摸, 与黄色轮提示区分)
-    var isHover = highlight === 1 || highlight === true || highlight === 'hover';
-    var isDrawn = highlight === 2 || highlight === 'drawn';
-    ctx.save();
-    // 投影：牌从台面浮起（自己手牌才画投影，牌河/明牌省略以保性能）
-    if (w >= TW * 0.9) {
-      ctx.shadowColor = 'rgba(0,0,0,.3)';
-      ctx.shadowBlur = Math.max(3, w * 0.1);
-      ctx.shadowOffsetY = Math.max(2, h * 0.05);
-    }
-    // 象牙白渐变（顶亮底暗，模拟顶光）
-    var grad = ctx.createLinearGradient(x, y, x, y + h);
-    if (isHover) {
-      grad.addColorStop(0, '#fffef6');
-      grad.addColorStop(1, '#f4eac4');
-    } else if (isDrawn) {
-      grad.addColorStop(0, '#ecfeff');
-      grad.addColorStop(1, '#a5f3fc');
-    } else {
-      grad.addColorStop(0, '#fdfbf0');
-      grad.addColorStop(0.45, '#f9f4e3');
-      grad.addColorStop(1, '#efe6c8');
-    }
-    ctx.fillStyle = grad;
-    roundRect(x, y, w, h, 5);
-    ctx.fill();
-    ctx.shadowColor = 'transparent';
-    // 描边：悬停金色，新摸青蓝，普通灰
-    if (isHover) ctx.strokeStyle = '#c8a45c';
-    else if (isDrawn) ctx.strokeStyle = '#06b6d4';
-    else ctx.strokeStyle = 'rgba(0,0,0,.16)';
-    ctx.lineWidth = (isHover || isDrawn) ? 2.5 : 1;
-    roundRect(x, y, w, h, 5);
-    ctx.stroke();
-    // 顶边高光（倒角反光）
-    ctx.strokeStyle = 'rgba(255,255,255,.55)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x + 5, y + 1.5);
-    ctx.lineTo(x + w - 5, y + 1.5);
-    ctx.stroke();
+  function roundRect(x, y, w, h, r) {
+    roundRectCtx(ctx, x, y, w, h, r);
+  }
 
-    if (!tile || tile.k === undefined) { ctx.restore(); return; }
+  function tileSlabH(h, ratio) {
+    return Math.max(2, Math.round(h * (ratio || 0.12)));
+  }
 
+  function drawTileTextFallback(c, x, y, w, h, tile) {
+    if (!tile || tile.k === undefined) return;
     var isHonour = (tile.k === 'feng' || tile.k === 'jian');
     var col = SUIT_COLOR[tile.k] || '#333';
-    ctx.fillStyle = col;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    c.fillStyle = col;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
 
     if (isHonour) {
-      var name = HONOUR[tile.k] && HONOUR[tile.k][tile.n] || '';
-      ctx.font = 'bold ' + Math.floor(h * 0.44) + 'px "Ma Shan Zheng","LXGW WenKai","KaiTi","Microsoft YaHei",serif';
-      ctx.fillText(name, x + w / 2, y + h / 2 + 1);
+      var name = (HONOUR[tile.k] && HONOUR[tile.k][tile.n]) || '';
+      c.font = 'bold ' + Math.max(8, Math.floor(h * 0.44)) + 'px "Ma Shan Zheng","LXGW WenKai","KaiTi","Microsoft YaHei",serif';
+      c.fillText(name, x + w / 2, y + h / 2 + 1);
       // 番子右上角小红点（中/发）
       if (tile.k === 'jian' && (tile.n === 1 || tile.n === 2)) {
-        ctx.fillStyle = 'rgba(192,48,48,.7)';
-        ctx.beginPath();
-        ctx.arc(x + w - 5, y + 5, 2.2, 0, Math.PI * 2);
-        ctx.fill();
+        c.fillStyle = 'rgba(192,48,48,.7)';
+        c.beginPath();
+        c.arc(x + w - Math.max(3, w * 0.14), y + Math.max(3, h * 0.1), Math.max(1.4, w * 0.055), 0, Math.PI * 2);
+        c.fill();
       }
     } else {
-      ctx.font = 'bold ' + Math.floor(h * 0.42) + 'px "Ma Shan Zheng","LXGW WenKai","KaiTi","Microsoft YaHei",serif';
-      ctx.fillText(String(tile.n), x + w / 2, y + h * 0.35);
-      ctx.font = Math.floor(h * 0.26) + 'px "Ma Shan Zheng","LXGW WenKai","KaiTi","Microsoft YaHei",serif';
-      ctx.fillText(SUIT_GLYPH[tile.k] || '', x + w / 2, y + h * 0.72);
+      c.font = 'bold ' + Math.max(7, Math.floor(h * 0.42)) + 'px "Ma Shan Zheng","LXGW WenKai","KaiTi","Microsoft YaHei",serif';
+      c.fillText(String(tile.n), x + w / 2, y + h * 0.35);
+      c.font = Math.max(6, Math.floor(h * 0.26)) + 'px "Ma Shan Zheng","LXGW WenKai","KaiTi","Microsoft YaHei",serif';
+      c.fillText(SUIT_GLYPH[tile.k] || '', x + w / 2, y + h * 0.72);
     }
-    ctx.restore();
+  }
+
+  function renderTileFaceSprite(rw, rh, slabH, tile, hlCode, isWild, artImg, dpr) {
+    var pad = 2;
+    var cw = rw + pad * 2;
+    var ch = rh + slabH + pad * 2;
+    var off = document.createElement('canvas');
+    off.width = Math.max(1, Math.round(cw * dpr));
+    off.height = Math.max(1, Math.round(ch * dpr));
+    var c = off.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    var x = pad, y = pad;
+    var r = Math.max(2, Math.min(6, Math.round(rw * 0.11)));
+
+    // 2.5D 立体牌身厚度：后半截墨绿竹青底 + 前半截象牙侧壁
+    var backGrad = c.createLinearGradient(x, y + rh * 0.4, x, y + rh + slabH);
+    backGrad.addColorStop(0, '#2e6f5f');
+    backGrad.addColorStop(1, '#1c493d');
+    c.fillStyle = backGrad;
+    roundRectCtx(c, x, y + slabH, rw, rh, r);
+    c.fill();
+    c.strokeStyle = 'rgba(0,0,0,.3)';
+    c.lineWidth = 0.8;
+    c.stroke();
+
+    var ivoryOff = Math.max(1, Math.round(slabH * 0.5));
+    var sideGrad = c.createLinearGradient(x, y + rh - ivoryOff, x, y + rh + ivoryOff);
+    sideGrad.addColorStop(0, '#e3d8b8');
+    sideGrad.addColorStop(1, '#c8ba92');
+    c.fillStyle = sideGrad;
+    roundRectCtx(c, x, y + ivoryOff, rw, rh, r);
+    c.fill();
+    c.strokeStyle = 'rgba(42,36,20,.16)';
+    c.lineWidth = 0.7;
+    c.stroke();
+
+    // 象牙白牌面主体（顶亮底暗模拟顶光）
+    var faceGrad = c.createLinearGradient(x, y, x, y + rh);
+    faceGrad.addColorStop(0, '#fefcf3');
+    faceGrad.addColorStop(0.5, '#f8f2df');
+    faceGrad.addColorStop(1, '#ece2c4');
+    c.fillStyle = faceGrad;
+    roundRectCtx(c, x, y, rw, rh, r);
+    c.fill();
+    c.strokeStyle = 'rgba(42,36,20,.24)';
+    c.lineWidth = 1;
+    c.stroke();
+
+    // 顶边倒角高光
+    if (rw >= 14) {
+      c.strokeStyle = 'rgba(255,255,255,.72)';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(x + r, y + 1.1);
+      c.lineTo(x + rw - r, y + 1.1);
+      c.stroke();
+    }
+
+    // 牌面图案：优先用预加载 SVG，未就绪时用文字兜底
+    if (tile && tile.k !== undefined) {
+      if (artImg) {
+        var insetX = rw * 0.08;
+        var insetY = rh * 0.08;
+        var boxW = Math.max(2, rw - insetX * 2);
+        var boxH = Math.max(2, rh - insetY * 2);
+        var ar = (artImg.naturalWidth && artImg.naturalHeight) ? (artImg.naturalWidth / artImg.naturalHeight) : 0.75;
+        var dw = boxW;
+        var dh = dw / ar;
+        if (dh > boxH) {
+          dh = boxH;
+          dw = dh * ar;
+        }
+        var dx = x + insetX + (boxW - dw) / 2;
+        var dy = y + insetY + (boxH - dh) / 2;
+        c.drawImage(artImg, dx, dy, dw, dh);
+
+        // 白板（Haku.svg 原图为空白图层）：补刻传统蓝边双框以防误认未加载
+        if (tile.k === 'jian' && tile.n === 3) {
+          var fx = x + rw * 0.18;
+          var fy = y + rh * 0.16;
+          var fw = rw * 0.64;
+          var fh = rh * 0.68;
+          c.strokeStyle = '#1d4e89';
+          c.lineWidth = Math.max(1.2, rw * 0.055);
+          roundRectCtx(c, fx, fy, fw, fh, Math.max(1.5, r * 0.6));
+          c.stroke();
+          if (rw >= 20) {
+            c.strokeStyle = 'rgba(29,78,137,.55)';
+            c.lineWidth = 0.8;
+            roundRectCtx(c, fx + fw * 0.12, fy + fh * 0.1, fw * 0.76, fh * 0.8, Math.max(1, r * 0.4));
+            c.stroke();
+          }
+        }
+      } else {
+        drawTileTextFallback(c, x, y, rw, rh, tile);
+      }
+    }
+
+    // 鬼牌（百搭）叠加标识：金色微染色 + 金框 + 左上角鬼牌徽标
+    if (isWild) {
+      c.fillStyle = 'rgba(245,196,81,.16)';
+      roundRectCtx(c, x, y, rw, rh, r);
+      c.fill();
+      c.strokeStyle = '#d99b26';
+      c.lineWidth = rw >= 26 ? 2 : 1.4;
+      roundRectCtx(c, x + 0.5, y + 0.5, rw - 1, rh - 1, r);
+      c.stroke();
+
+      c.save();
+      roundRectCtx(c, x, y, rw, rh, r);
+      c.clip();
+      var badgeS = Math.max(6, Math.round(rw * 0.28));
+      c.fillStyle = '#d99b26';
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + badgeS, y);
+      c.lineTo(x, y + badgeS);
+      c.closePath();
+      c.fill();
+      if (rw >= 28) {
+        c.fillStyle = '#fff9db';
+        c.font = 'bold ' + Math.max(7, Math.round(rw * 0.18)) + 'px system-ui,"Microsoft YaHei",sans-serif';
+        c.textAlign = 'left';
+        c.textBaseline = 'top';
+        c.fillText('★', x + 1.5, y + 0.5);
+      }
+      c.restore();
+    }
+
+    // 状态高亮（叠在图案上方，确保悬停 / 新摸 / 最新弃牌清晰可见）
+    if (hlCode === 1) {
+      c.fillStyle = 'rgba(245,200,80,.14)';
+      roundRectCtx(c, x, y, rw, rh, r);
+      c.fill();
+      c.strokeStyle = '#d4a843';
+      c.lineWidth = 2.4;
+      roundRectCtx(c, x + 0.5, y + 0.5, rw - 1, rh - 1, r);
+      c.stroke();
+    } else if (hlCode === 2) {
+      c.fillStyle = 'rgba(6,182,212,.15)';
+      roundRectCtx(c, x, y, rw, rh, r);
+      c.fill();
+      c.strokeStyle = '#06b6d4';
+      c.lineWidth = 2.4;
+      roundRectCtx(c, x + 0.5, y + 0.5, rw - 1, rh - 1, r);
+      c.stroke();
+    } else if (hlCode === 3) {
+      c.fillStyle = 'rgba(255,140,40,.13)';
+      roundRectCtx(c, x, y, rw, rh, r);
+      c.fill();
+      c.strokeStyle = '#ef7d22';
+      c.lineWidth = 1.8;
+      roundRectCtx(c, x + 0.5, y + 0.5, rw - 1, rh - 1, r);
+      c.stroke();
+    }
+
+    return { canvas: off, pad: pad, drawW: cw, drawH: ch };
+  }
+
+  function drawTileFace(x, y, w, h, tile, highlight, opts) {
+    // highlight: 0/false = none, 1/true/'hover' = 金色悬停, 2/'drawn' = 青蓝新摸, 3/'last' = 橙色最新弃牌
+    var hlCode = (highlight === 2 || highlight === 'drawn') ? 2
+      : (highlight === 3 || highlight === 'last') ? 3
+      : (highlight === 1 || highlight === true || highlight === 'hover') ? 1 : 0;
+    var rw = Math.max(6, Math.round(w));
+    var rh = Math.max(8, Math.round(h));
+    var slabRatio = (opts && opts.slabRatio !== undefined) ? opts.slabRatio : 0.12;
+    var slabH = tileSlabH(rh, slabRatio);
+    var isWild = isWildcardTile(tile);
+    var artImg = getTileArtImg(tile);
+    var cacheDpr = Math.min(DPR || 1, 2.5);
+    var dprKey = Math.round(cacheDpr * 2);
+    var key = 'F|' + tileArtKey(tile) + '|' + rw + 'x' + rh + '|' + slabH + '|' + hlCode + '|' + (isWild ? 1 : 0) + '|' + (artImg ? 1 : 0) + '|' + dprKey;
+
+    var entry = _tileCache.get(key);
+    if (!entry) {
+      entry = renderTileFaceSprite(rw, rh, slabH, tile, hlCode, isWild, artImg, cacheDpr);
+      putTileCache(key, entry);
+    }
+
+    var r = Math.max(2, Math.min(6, Math.round(rw * 0.11)));
+    // 桌面接地面投影（上浮牌把投影留在原桌面位置，增强悬浮高度感）
+    if (opts && opts.lift && opts.lift < 0) {
+      var restY = y - opts.lift;
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,.32)';
+      roundRect(x + 2, restY + rh + Math.round(slabH * 0.35), rw - 2, Math.max(3, Math.round(slabH * 0.85)), r);
+      ctx.fill();
+      ctx.restore();
+    } else if ((opts && opts.shadow) || rw >= TW * 0.85) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,.28)';
+      roundRect(x + 1.5, y + slabH + 2.5, rw, rh, r);
+      ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,.20)';
+      roundRect(x + 1, y + slabH + 1.5, rw, rh, r);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.drawImage(entry.canvas, x - entry.pad, y - entry.pad, entry.drawW, entry.drawH);
+  }
+
+  function renderTileBackSprite(rw, rh, slabH, dpr) {
+    var pad = 2;
+    var cw = rw + pad * 2;
+    var ch = rh + slabH + pad * 2;
+    var off = document.createElement('canvas');
+    off.width = Math.max(1, Math.round(cw * dpr));
+    off.height = Math.max(1, Math.round(ch * dpr));
+    var c = off.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    var x = pad, y = pad;
+    var r = Math.max(2, Math.min(5, Math.round(rw * 0.12)));
+
+    // 底部 2.5D 厚度（象牙前层 + 深绿牌背底沿）
+    c.fillStyle = '#d5caa6';
+    roundRectCtx(c, x, y + slabH, rw, rh, r);
+    c.fill();
+    c.strokeStyle = 'rgba(0,0,0,.26)';
+    c.lineWidth = 0.8;
+    c.stroke();
+
+    var sideOff = Math.max(1, Math.round(slabH * 0.45));
+    c.fillStyle = '#1d493e';
+    roundRectCtx(c, x, y + sideOff, rw, rh, r);
+    c.fill();
+
+    // 牌背：深竹青渐变
+    var grad = c.createLinearGradient(x, y, x, y + rh);
+    grad.addColorStop(0, '#3d8474');
+    grad.addColorStop(1, '#28584d');
+    c.fillStyle = grad;
+    roundRectCtx(c, x, y, rw, rh, r);
+    c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.16)';
+    c.lineWidth = 1;
+    c.stroke();
+
+    // 背纹：内框 + 双菱形
+    c.strokeStyle = 'rgba(255,255,255,.22)';
+    c.lineWidth = 0.9;
+    roundRectCtx(c, x + rw * 0.16, y + rh * 0.16, rw * 0.68, rh * 0.68, Math.max(1.5, r * 0.6));
+    c.stroke();
+    if (rw >= 14) {
+      c.beginPath();
+      c.moveTo(x + rw / 2, y + rh * 0.3);
+      c.lineTo(x + rw * 0.7, y + rh / 2);
+      c.lineTo(x + rw / 2, y + rh * 0.7);
+      c.lineTo(x + rw * 0.3, y + rh / 2);
+      c.closePath();
+      c.stroke();
+      c.beginPath();
+      c.moveTo(x + rw / 2, y + rh * 0.4);
+      c.lineTo(x + rw * 0.6, y + rh / 2);
+      c.lineTo(x + rw / 2, y + rh * 0.6);
+      c.lineTo(x + rw * 0.4, y + rh / 2);
+      c.closePath();
+      c.stroke();
+    }
+    return { canvas: off, pad: pad, drawW: cw, drawH: ch };
   }
 
   function drawTileBack(x, y, w, h) {
-    ctx.save();
-    // 牌背：深竹青渐变
-    var grad = ctx.createLinearGradient(x, y, x, y + h);
-    grad.addColorStop(0, '#3a7d6e');
-    grad.addColorStop(1, '#2a5c50');
-    ctx.fillStyle = grad;
-    roundRect(x, y, w, h, 5);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.12)';
-    ctx.lineWidth = 1;
-    roundRect(x, y, w, h, 5);
-    ctx.stroke();
-    // 背纹：内框+双菱形（经典麻将牌背纹样）
-    ctx.strokeStyle = 'rgba(255,255,255,.22)';
-    ctx.lineWidth = 1;
-    roundRect(x + w * .16, y + h * .16, w * .68, h * .68, 3);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x + w / 2, y + h * .3);
-    ctx.lineTo(x + w * .7, y + h / 2);
-    ctx.lineTo(x + w / 2, y + h * .7);
-    ctx.lineTo(x + w * .3, y + h / 2);
-    ctx.closePath();
-    ctx.stroke();
-    // 内菱形
-    ctx.beginPath();
-    ctx.moveTo(x + w / 2, y + h * .4);
-    ctx.lineTo(x + w * .6, y + h / 2);
-    ctx.lineTo(x + w / 2, y + h * .6);
-    ctx.lineTo(x + w * .4, y + h / 2);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.restore();
+    var rw = Math.max(6, Math.round(w));
+    var rh = Math.max(8, Math.round(h));
+    var slabH = tileSlabH(rh, 0.11);
+    var cacheDpr = Math.min(DPR || 1, 2.5);
+    var key = 'B|' + rw + 'x' + rh + '|' + slabH + '|' + Math.round(cacheDpr * 2);
+    var entry = _tileCache.get(key);
+    if (!entry) {
+      entry = renderTileBackSprite(rw, rh, slabH, cacheDpr);
+      putTileCache(key, entry);
+    }
+    ctx.drawImage(entry.canvas, x - entry.pad, y - entry.pad, entry.drawW, entry.drawH);
+  }
+
+  // 对家直立手牌（从斜上方看：顶面竹青+象牙厚度条 + 正面立面牌背）
+  function drawTopTileBack25D(x, y, w, h) {
+    var rw = Math.max(6, Math.round(w));
+    var rh = Math.max(8, Math.round(h));
+    var cacheDpr = Math.min(DPR || 1, 2.5);
+    var key = 'BT|' + rw + 'x' + rh + '|' + Math.round(cacheDpr * 2);
+    var entry = _tileCache.get(key);
+    if (!entry) {
+      var pad = 2;
+      var cw = rw + pad * 2;
+      var ch = rh + 4 + pad * 2;
+      var off = document.createElement('canvas');
+      off.width = Math.max(1, Math.round(cw * cacheDpr));
+      off.height = Math.max(1, Math.round(ch * cacheDpr));
+      var c = off.getContext('2d');
+      c.setTransform(cacheDpr, 0, 0, cacheDpr, 0, 0);
+
+      var px = pad, py = pad;
+      var r = Math.max(2, Math.min(4, Math.round(rw * 0.14)));
+      var topRim = Math.max(3, Math.round(rh * 0.22));
+      var ivoryLip = Math.max(1.5, Math.round(topRim * 0.42));
+
+      // 桌面投下的微弱底影
+      c.fillStyle = 'rgba(0,0,0,.28)';
+      roundRectCtx(c, px + 0.5, py + 2.5, rw, rh, r);
+      c.fill();
+
+      // 立牌主体背面
+      var bodyGrad = c.createLinearGradient(px, py + topRim, px, py + rh);
+      bodyGrad.addColorStop(0, '#357465');
+      bodyGrad.addColorStop(1, '#214d42');
+      c.fillStyle = bodyGrad;
+      roundRectCtx(c, px, py, rw, rh, r);
+      c.fill();
+
+      // 牌顶面（远侧象牙唇边 + 近侧竹青倒角顶）
+      c.fillStyle = '#e8dfc2';
+      roundRectCtx(c, px, py, rw, ivoryLip + 2, r);
+      c.fill();
+      c.fillStyle = '#4c9986';
+      roundRectCtx(c, px, py + ivoryLip, rw, topRim - ivoryLip + 1.5, Math.max(1, r - 1));
+      c.fill();
+
+      // 立面微弱高光边与背框
+      c.strokeStyle = 'rgba(255,255,255,.16)';
+      c.lineWidth = 0.8;
+      roundRectCtx(c, px, py, rw, rh, r);
+      c.stroke();
+      if (rw >= 14) {
+        c.strokeStyle = 'rgba(255,255,255,.16)';
+        roundRectCtx(c, px + rw * 0.18, py + topRim + 2, rw * 0.64, Math.max(3, rh - topRim - 5), 1.5);
+        c.stroke();
+      }
+
+      entry = { canvas: off, pad: pad, drawW: cw, drawH: ch };
+      putTileCache(key, entry);
+    }
+    ctx.drawImage(entry.canvas, x - entry.pad, y - entry.pad, entry.drawW, entry.drawH);
+  }
+
+  // 左右家透视立牌（外侧为牌背竹青，内侧露出象牙白牌面半边，底部带暗色厚度块）
+  function drawSideTileBack25D(x, y, w, h, side) {
+    var rw = Math.max(8, Math.round(w));
+    var rh = Math.max(6, Math.round(h));
+    var slabH = Math.max(2, Math.round(rh * 0.24));
+    var cacheDpr = Math.min(DPR || 1, 2.5);
+    var key = 'BS|' + side + '|' + rw + 'x' + rh + '|' + slabH + '|' + Math.round(cacheDpr * 2);
+    var entry = _tileCache.get(key);
+    if (!entry) {
+      var pad = 2;
+      var cw = rw + pad * 2;
+      var ch = rh + slabH + pad * 2;
+      var off = document.createElement('canvas');
+      off.width = Math.max(1, Math.round(cw * cacheDpr));
+      off.height = Math.max(1, Math.round(ch * cacheDpr));
+      var c = off.getContext('2d');
+      c.setTransform(cacheDpr, 0, 0, cacheDpr, 0, 0);
+
+      var px = pad, py = pad;
+      var r = Math.max(2, Math.min(3.5, Math.round(rh * 0.18)));
+      var ivoryW = Math.max(3, Math.round(rw * 0.28));
+      var backW = rw - ivoryW;
+
+      // 底部阴影 + 2.5D 侧厚
+      c.fillStyle = 'rgba(0,0,0,.26)';
+      roundRectCtx(c, px + 0.5, py + slabH + 1.5, rw, rh, r);
+      c.fill();
+      c.fillStyle = '#1b4338';
+      roundRectCtx(c, px, py + slabH, rw, rh, r);
+      c.fill();
+      c.fillStyle = '#c5b890';
+      if (side === 'left') {
+        roundRectCtx(c, px + backW - 1, py + slabH, ivoryW + 1, rh, r);
+      } else {
+        roundRectCtx(c, px, py + slabH, ivoryW + 1, rh, r);
+      }
+      c.fill();
+
+      // 牌身顶面：竹青牌背 + 朝向桌心的象牙侧面
+      var bGrad = c.createLinearGradient(px, py, px + rw, py);
+      if (side === 'left') {
+        bGrad.addColorStop(0, '#3e8574');
+        bGrad.addColorStop(1, '#295b4e');
+        c.fillStyle = bGrad;
+        roundRectCtx(c, px, py, rw, rh, r);
+        c.fill();
+        var iGradL = c.createLinearGradient(px + backW, py, px + rw, py);
+        iGradL.addColorStop(0, '#efe6c9');
+        iGradL.addColorStop(1, '#d8cca6');
+        c.fillStyle = iGradL;
+        roundRectCtx(c, px + backW, py, ivoryW, rh, Math.max(1.5, r - 0.5));
+        c.fill();
+      } else {
+        bGrad.addColorStop(0, '#295b4e');
+        bGrad.addColorStop(1, '#3e8574');
+        c.fillStyle = bGrad;
+        roundRectCtx(c, px, py, rw, rh, r);
+        c.fill();
+        var iGradR = c.createLinearGradient(px, py, px + ivoryW, py);
+        iGradR.addColorStop(0, '#d8cca6');
+        iGradR.addColorStop(1, '#efe6c9');
+        c.fillStyle = iGradR;
+        roundRectCtx(c, px, py, ivoryW, rh, Math.max(1.5, r - 0.5));
+        c.fill();
+      }
+
+      c.strokeStyle = 'rgba(255,255,255,.16)';
+      c.lineWidth = 0.8;
+      roundRectCtx(c, px, py, rw, rh, r);
+      c.stroke();
+
+      entry = { canvas: off, pad: pad, drawW: cw, drawH: ch };
+      putTileCache(key, entry);
+    }
+    ctx.drawImage(entry.canvas, x - entry.pad, y - entry.pad, entry.drawW, entry.drawH);
   }
 
   // ---- 座位映射：以自己为基准，逆时针排列（真实麻将顺序）----
@@ -707,8 +1350,8 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       return;
     }
 
-    // 背景：深墨绿
-    ctx.fillStyle = '#14281d';
+    // 背景：深墨绿 + 中心聚光 + 四角暗角
+    ctx.fillStyle = '#102419';
     ctx.fillRect(0, 0, W, H);
     VH = H;
     if (_portrait) {
@@ -717,33 +1360,53 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       VH = handTopY() - 26 - (myMelds && myMelds.length ? Math.round(TH * 0.3) + 8 : 0);
     }
     var cx = W / 2, cy = VH / 2;
-    // 中央椭圆桌面（径向渐变，中心亮四周暗 = 聚光灯）
+    var bgLight = ctx.createRadialGradient(cx, cy * 0.92, Math.min(W, VH) * 0.08, cx, cy, Math.max(W, H) * 0.72);
+    bgLight.addColorStop(0, '#1f4530');
+    bgLight.addColorStop(0.55, '#153121');
+    bgLight.addColorStop(1, '#0b1a12');
+    ctx.fillStyle = bgLight;
+    ctx.fillRect(0, 0, W, H);
+
+    // 中央椭圆桌面（聚光灯 + 立起细边框）
     var rx = Math.min(W, VH) * 0.46, ry = Math.min(W, VH) * 0.38;
     if (_portrait) { rx = W * 0.46; ry = VH * 0.42; }
-    var felt = ctx.createRadialGradient(cx, cy * 0.92, ry * 0.1, cx, cy, Math.max(rx, ry));
-    felt.addColorStop(0, '#2f5a40');
-    felt.addColorStop(0.7, '#234731');
-    felt.addColorStop(1, '#163020');
+    var felt = ctx.createRadialGradient(cx, cy * 0.92, ry * 0.08, cx, cy, Math.max(rx, ry));
+    felt.addColorStop(0, '#336447');
+    felt.addColorStop(0.68, '#234932');
+    felt.addColorStop(1, '#152f20');
     ctx.save();
     ctx.fillStyle = felt;
     ctx.beginPath();
     ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
-    // 金色双圈镶边
-    ctx.strokeStyle = 'rgba(200,164,92,.3)';
-    ctx.lineWidth = 2;
+    // 凸起桌沿与内倒角高光
+    ctx.strokeStyle = 'rgba(0,0,0,.42)';
+    ctx.lineWidth = 4;
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(200,164,92,.12)';
+    ctx.strokeStyle = '#254a35';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(200,164,92,.32)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.1)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, Math.max(4, rx - 2), Math.max(4, ry - 2), 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(200,164,92,.14)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.ellipse(cx, cy, rx + 5, ry + 5, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
 
+    _discardFlyMatched = false;
     drawOpponents();
     drawOwnHand();
     drawDiscards();
     drawMelds();
+    drawDiscardFly();
     drawClaimEffects();
     drawTurnIndicator();
     drawPlayerNames();
@@ -763,8 +1426,9 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
   }
 
   function computeFsMetrics() {
-    var handBottomPad = 6;
-    var handTop = H - TH - handBottomPad;
+    var handBottomPad = 4;
+    var handSlabH = tileSlabH(TH, 0.12);
+    var handTop = H - TH - handSlabH - handBottomPad;
     var statusH = 24;
     var statusTop = handTop - statusH - 8;
     var rightToolsW = 68;
@@ -775,7 +1439,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     var topLeftClear = hasWild ? 148 : 66;
 
     var oppTopW = clamp(Math.round(H * 0.05), 16, 28);
-    var oppTopH = Math.round(oppTopW * 1.38);
+    var oppTopH = Math.round(oppTopW * 1.2);
     var oppTopY = 8;
     var topRowBottom = oppTopY + oppTopH;
 
@@ -801,6 +1465,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
 
     return {
       handBottomPad: handBottomPad,
+      handSlabH: handSlabH,
       handTopY: handTop,
       statusTopY: statusTop,
       rightToolsW: rightToolsW,
@@ -836,49 +1501,61 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     var m = _fsMetrics = computeFsMetrics();
     VH = m.handTopY;
 
-    // 铺满视口的桌面渐变 + 柔和聚光灯
-    ctx.fillStyle = '#13271c';
+    // 铺满视口的桌面渐变 + 中心径向聚光 + 四周暗角
+    ctx.fillStyle = '#0f2117';
     ctx.fillRect(0, 0, W, H);
-    var felt = ctx.createRadialGradient(m.tableCx, m.cy, 20, m.tableCx, m.cy, Math.max(W, H) * 0.62);
-    felt.addColorStop(0, '#2c583e');
-    felt.addColorStop(0.55, '#1f422d');
-    felt.addColorStop(1, '#12261b');
+    var felt = ctx.createRadialGradient(m.tableCx, m.cy * 0.94, 18, m.tableCx, m.cy, Math.max(W, H) * 0.62);
+    felt.addColorStop(0, '#326346');
+    felt.addColorStop(0.45, '#214731');
+    felt.addColorStop(1, '#0f2217');
     ctx.fillStyle = felt;
     ctx.fillRect(0, 0, W, H);
 
-    // 桌面内框细金线（柔和边界）
+    // 中心柔光晕 + 四角压暗暗角
+    var vig = ctx.createRadialGradient(m.tableCx, m.cy, Math.min(W, H) * 0.3, m.tableCx, m.cy, Math.max(W, H) * 0.72);
+    vig.addColorStop(0, 'rgba(205,245,215,.07)');
+    vig.addColorStop(0.5, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(3,10,6,.48)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, W, H);
+
+    // 游戏区域外围细凸起桌沿（暗底影 + 实体窄框 + 顶缘高光 + 内嵌金线）
+    var rimX = 5, rimY = 4, rimW = W - 10, rimH = Math.max(40, m.handTopY - 6);
     ctx.save();
-    ctx.strokeStyle = 'rgba(200,164,92,.14)';
-    ctx.lineWidth = 1.5;
-    roundRect(6, 5, W - 12, m.handTopY - 8, 16);
+    ctx.strokeStyle = 'rgba(0,0,0,.52)';
+    ctx.lineWidth = 5;
+    roundRect(rimX, rimY, rimW, rimH, 16);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#244835';
+    ctx.lineWidth = 3;
+    roundRect(rimX, rimY, rimW, rimH, 16);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(255,246,214,.2)';
+    ctx.lineWidth = 1;
+    roundRect(rimX + 1, rimY + 1, rimW - 2, rimH - 2, 15);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(200,164,92,.22)';
+    ctx.lineWidth = 1;
+    roundRect(rimX + 3.5, rimY + 3.5, rimW - 7, rimH - 7, 13);
     ctx.stroke();
     ctx.restore();
 
+    _discardFlyMatched = false;
     drawFsOpponents(m);
     drawFsCompass(m);
     drawFsDiscards(m);
     drawFsOwnHandAndMelds(m);
     drawFsPlayerCards(m);
+    drawDiscardFly();
     drawClaimEffects();
     drawScorePanel();
   }
 
-  function drawFsSideTileBack(x, y, w, h) {
-    ctx.save();
-    var grad = ctx.createLinearGradient(x, y, x + w, y);
-    grad.addColorStop(0, '#3a7d6e');
-    grad.addColorStop(1, '#2a5c50');
-    ctx.fillStyle = grad;
-    roundRect(x, y, w, h, 3);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.16)';
-    ctx.lineWidth = 1;
-    roundRect(x, y, w, h, 3);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,.22)';
-    roundRect(x + w * 0.14, y + h * 0.2, w * 0.72, h * 0.6, 2);
-    ctx.stroke();
-    ctx.restore();
+  function drawFsSideTileBack(x, y, w, h, side) {
+    drawSideTileBack25D(x, y, w, h, side || 'left');
   }
 
   function meldGroupTiles(md) {
@@ -888,6 +1565,14 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       out.push((md.tiles && md.tiles[i]) || md.tile || null);
     }
     return out;
+  }
+
+  function rowPerspective(yNorm, fsMode) {
+    var t = clamp(yNorm, 0, 1);
+    if (fsMode) {
+      return { sx: 0.84 + 0.18 * t, sy: 0.76 + 0.24 * t };
+    }
+    return { sx: 0.90 + 0.12 * t, sy: 0.84 + 0.16 * t };
   }
 
   function drawFsOpponents(m) {
@@ -903,7 +1588,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         var tw = m.oppTopW, th = m.oppTopH;
         var y0 = m.oppTopY;
         var mw = Math.max(13, Math.round(tw * 0.88));
-        var mh = Math.round(mw * 1.38);
+        var mh = Math.round(mw * 1.32);
         var mGap = 2, groupGap = 5;
         var meldW = 0;
         for (var mg = 0; mg < melds.length; mg++) {
@@ -925,14 +1610,14 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
             var gt = meldGroupTiles(melds[g]);
             for (var k = 0; k < gt.length; k++) {
               if (melds[g].concealed || !gt[k]) drawTileBack(mx, my, mw, mh);
-              else drawTileFace(mx, my, mw, mh, gt[k], false);
+              else drawTileFace(mx, my, mw, mh, gt[k], false, { slabRatio: 0.11 });
               mx += mw + mGap;
             }
             mx += groupGap - mGap;
           }
         }
         for (var i = 0; i < count; i++) {
-          drawTileBack(x0 + i * (tw + gap), y0, tw, th);
+          drawTopTileBack25D(x0 + i * (tw + gap), y0, tw, th);
         }
         m.oppRowRight = count > 0 ? (x0 + backsW) : (m.tableCx + 20);
         m.oppCard = {
@@ -942,27 +1627,49 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
           h: m.hCardH
         };
       } else {
-        // 左右家：靠边单列竖排牌背 + 明牌紧邻卡片下方
+        // 左右家：靠边 2.5D 立牌透视纵列（远端略窄略收拢，近端略宽）+ 明牌紧邻卡片下方
         var minY = Math.max(m.topRowBottom + 8, 62);
         var maxY = m.meCard.y - 6;
         var availH = Math.max(60, maxY - minY);
         var sideGap = 1.5;
         var sideH = count > 0 ? Math.min(Math.round(m.sideTileW * 0.62), Math.floor((availH - (count - 1) * sideGap) / count)) : 12;
-        sideH = Math.max(8, sideH);
-        var totalH = count > 0 ? count * sideH + (count - 1) * sideGap : 0;
-        var startY = Math.round(clamp(m.cy - totalH / 2, minY, maxY - totalH));
-        var colX = pos === 'left' ? m.leftTileX : m.rightTileX;
+        sideH = Math.max(7, sideH);
+        var itemHeights = [];
+        var rawTotalH = 0;
+        for (var hj = 0; hj < count; hj++) {
+          var ht = count > 1 ? hj / (count - 1) : 0.5;
+          var hs = 0.82 + 0.24 * ht;
+          var ih = Math.max(7, Math.round(sideH * hs));
+          itemHeights.push(ih);
+          rawTotalH += ih + (hj > 0 ? sideGap : 0);
+        }
+        if (rawTotalH > availH && count > 0) {
+          var shrink = Math.max(0.55, (availH - (count - 1) * sideGap) / Math.max(1, rawTotalH - (count - 1) * sideGap));
+          rawTotalH = 0;
+          for (var sj = 0; sj < count; sj++) {
+            itemHeights[sj] = Math.max(6, Math.floor(itemHeights[sj] * shrink));
+            rawTotalH += itemHeights[sj] + (sj > 0 ? sideGap : 0);
+          }
+        }
+        var curY = Math.round(clamp(m.cy - rawTotalH / 2, minY, maxY - rawTotalH));
         for (var j = 0; j < count; j++) {
-          drawFsSideTileBack(colX, startY + j * (sideH + sideGap), m.sideTileW, sideH);
+          var pt = count > 1 ? j / (count - 1) : 0.5;
+          var wScale = 0.76 + 0.28 * pt;
+          var tw_j = Math.max(12, Math.round(m.sideTileW * wScale));
+          var th_j = itemHeights[j];
+          var inward = Math.round((1 - pt) * m.sideTileW * 0.30);
+          var tx = pos === 'left' ? (m.leftTileX + inward) : (m.rightTileX + (m.sideTileW - tw_j) - inward);
+          drawFsSideTileBack(tx, curY, tw_j, th_j, pos);
+          curY += th_j + sideGap;
         }
         if (melds.length > 0) {
           var card = pos === 'left' ? m.leftCard : m.rightCard;
           var smw = Math.max(12, Math.min(18, Math.floor((m.sCardW - 10) / 4) - 1));
-          var smh = Math.round(smw * 1.36);
+          var smh = Math.round(smw * 1.32);
           var smGap = 1.5;
           var myStart = card.y + card.h + 5;
           var myDir = 1;
-          if (myStart + melds.length * (smh + 3) > m.meCard.y - 4) {
+          if (myStart + melds.length * (smh + 4) > m.meCard.y - 4) {
             myStart = card.y - 5 - smh;
             myDir = -1;
           }
@@ -970,10 +1677,10 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
             var sgt = meldGroupTiles(melds[sg]);
             var rowW = sgt.length * (smw + smGap) - smGap;
             var rx0 = pos === 'left' ? card.x : (card.x + card.w - rowW);
-            var ry = myStart + sg * (smh + 3) * myDir;
+            var ry = myStart + sg * (smh + 4) * myDir;
             for (var sk = 0; sk < sgt.length; sk++) {
               if (melds[sg].concealed || !sgt[sk]) drawTileBack(rx0 + sk * (smw + smGap), ry, smw, smh);
-              else drawTileFace(rx0 + sk * (smw + smGap), ry, smw, smh, sgt[sk], false);
+              else drawTileFace(rx0 + sk * (smw + smGap), ry, smw, smh, sgt[sk], false, { slabRatio: 0.11 });
             }
           }
         }
@@ -1081,56 +1788,90 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     ctx.restore();
   }
 
-  function drawFsDiscardPile(tiles, zoneX, zoneY, zoneW, zoneH, align, anchorBottom, vCenter) {
+  function drawFsDiscardPile(tiles, zoneX, zoneY, zoneW, zoneH, align, anchorBottom, vCenter, tableTopY, tableBotY) {
     if (!tiles || !tiles.length) return;
     var gap = 2;
     var dw = clamp(Math.round(H * 0.048), 15, 24);
-    var dh = Math.round(dw * 1.38);
-    var cols = Math.max(4, Math.floor((zoneW + gap) / (dw + gap)));
-    var rows = Math.ceil(tiles.length / cols);
-    while (dw > 12 && rows * (dh + gap) - gap > zoneH) {
-      dw--;
-      dh = Math.round(dw * 1.38);
-      cols = Math.max(4, Math.floor((zoneW + gap) / (dw + gap)));
+    var cols, rows, rowMeta, gridH;
+    var depthSpan = Math.max(40, (tableBotY || (zoneY + zoneH)) - (tableTopY || zoneY));
+
+    function measureGrid(baseW) {
+      var baseH = Math.round(baseW * 1.38);
+      cols = Math.max(4, Math.floor((zoneW + gap) / (baseW + gap)));
       rows = Math.ceil(tiles.length / cols);
+      var approxGridH = rows * (baseH + gap) - gap;
+      var sy0 = anchorBottom
+        ? Math.max(zoneY, zoneY + zoneH - approxGridH)
+        : (vCenter ? zoneY + Math.max(0, (zoneH - approxGridH) / 2) : zoneY);
+      rowMeta = [];
+      var totalH = 0;
+      for (var r = 0; r < rows; r++) {
+        var rowYApprox = sy0 + r * (baseH + gap) + baseH * 0.5;
+        var yNorm = (rowYApprox - (tableTopY || zoneY)) / depthSpan;
+        var p = rowPerspective(yNorm, true);
+        var rw = Math.max(10, Math.round(baseW * p.sx));
+        var rh = Math.max(12, Math.round(baseH * p.sy));
+        var rSlab = tileSlabH(rh, 0.11);
+        rowMeta.push({ dw: rw, dh: rh, slab: rSlab });
+        totalH += rh + (r > 0 ? gap : 0);
+      }
+      gridH = totalH + (rowMeta.length ? rowMeta[rowMeta.length - 1].slab : 0);
     }
-    var gridH = rows * (dh + gap) - gap;
+
+    measureGrid(dw);
+    while (dw > 11 && gridH > zoneH) {
+      dw--;
+      measureGrid(dw);
+    }
+
     var startY = anchorBottom
       ? Math.max(zoneY, zoneY + zoneH - gridH)
       : (vCenter ? zoneY + Math.max(0, (zoneH - gridH) / 2) : zoneY);
     var lastId = _state.lastDiscard && _state.lastDiscard.id;
+    var reduced = prefersReducedMotion();
 
-    for (var i = 0; i < tiles.length; i++) {
-      var r = Math.floor(i / cols);
-      var c = i % cols;
-      var rowCount = Math.min(cols, tiles.length - r * cols);
-      var rowW = rowCount * (dw + gap) - gap;
-      var rx;
-      if (align === 'right') rx = zoneX + zoneW - rowW + c * (dw + gap);
-      else if (align === 'left') rx = zoneX + c * (dw + gap);
-      else rx = zoneX + (zoneW - rowW) / 2 + c * (dw + gap);
-      var ry = startY + r * (dh + gap);
-      var tile = tiles[i];
-      var isLast = !!(lastId && tile.id === lastId);
+    var curY = startY;
+    for (var r = 0; r < rows; r++) {
+      var rm = rowMeta[r];
+      var rdw = rm.dw, rdh = rm.dh;
+      var rowStart = r * cols;
+      var rowCount = Math.min(cols, tiles.length - rowStart);
+      var rowW = rowCount * (rdw + gap) - gap;
+      var rowX0;
+      if (align === 'right') rowX0 = zoneX + zoneW - rowW;
+      else if (align === 'left') rowX0 = zoneX;
+      else rowX0 = zoneX + (zoneW - rowW) / 2;
 
-      if (isLast && _lastDiscardPulse > 0.01) {
+      for (var c = 0; c < rowCount; c++) {
+        var rx = rowX0 + c * (rdw + gap);
+        var ry = curY;
+        var tile = tiles[rowStart + c];
+        var isLast = !!(lastId && tile.id === lastId);
+
+        var isFlying = !!(_discardFly && _discardFly.tileId === tile.id);
+        if (isFlying) {
+          _discardFlyMatched = true;
+          _discardFly.target = { x: rx, y: ry, w: rdw, h: rdh };
+          if (!reduced) continue;
+        }
+
         ctx.save();
-        ctx.strokeStyle = 'rgba(245,196,81,' + (0.7 * _lastDiscardPulse) + ')';
-        ctx.lineWidth = 2 + 2 * _lastDiscardPulse;
-        var pad = 2 + 4 * _lastDiscardPulse;
-        roundRect(rx - pad, ry - pad, dw + pad * 2, dh + pad * 2, 5);
-        ctx.stroke();
+        if (isFlying && reduced) {
+          ctx.globalAlpha = clamp((nowMs() - _discardFly.start) / _discardFly.duration, 0, 1);
+        }
+        if (isLast && _lastDiscardPulse > 0.01) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(245,196,81,' + (0.7 * _lastDiscardPulse) + ')';
+          ctx.lineWidth = 2 + 2 * _lastDiscardPulse;
+          var pad = 2 + 4 * _lastDiscardPulse;
+          roundRect(rx - pad, ry - pad, rdw + pad * 2, rdh + rm.slab + pad * 2, 5);
+          ctx.stroke();
+          ctx.restore();
+        }
+        drawTileFace(rx, ry, rdw, rdh, tile, isLast ? 3 : 0, { slabRatio: 0.11 });
         ctx.restore();
       }
-      if (isLast) {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(255,140,40,.95)';
-        ctx.lineWidth = 2;
-        roundRect(rx - 1.5, ry - 1.5, dw + 3, dh + 3, 4);
-        ctx.stroke();
-        ctx.restore();
-      }
-      drawTileFace(rx, ry, dw, dh, tile, isLast);
+      curY += rdh + gap;
     }
   }
 
@@ -1141,6 +1882,8 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     var rightBound = m.rightCard.x - 6;
     var sideTop = m.topRowBottom + 8;
     var sideH = Math.max(40, m.statusTopY - sideTop);
+    var tableTopY = m.topRowBottom;
+    var tableBotY = m.statusTopY;
 
     for (var s = 0; s < _state.discards.length; s++) {
       var pile = _state.discards[s];
@@ -1151,19 +1894,19 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         var bH = Math.max(36, m.statusTopY - 4 - bTop);
         var bMinX = m.meCard.x + m.meCard.w + 12;
         var bW = clamp(Math.round(m.compassS * 2.4), 140, Math.max(140, (m.tableCx - bMinX) * 2));
-        drawFsDiscardPile(pile, m.tableCx - bW / 2, bTop, bW, bH, 'center', false, false);
+        drawFsDiscardPile(pile, m.tableCx - bW / 2, bTop, bW, bH, 'center', false, false, tableTopY, tableBotY);
       } else if (pos === 'top') {
         var tTop = m.topRowBottom + 4;
         var tH = Math.max(36, (m.cy - cHalf - 4) - tTop);
         var tW = clamp(Math.round(m.compassS * 2.4), 140, rightBound - leftBound);
-        drawFsDiscardPile(pile, m.tableCx - tW / 2, tTop, tW, tH, 'center', true, false);
+        drawFsDiscardPile(pile, m.tableCx - tW / 2, tTop, tW, tH, 'center', true, false, tableTopY, tableBotY);
       } else if (pos === 'left') {
         var lW = Math.max(54, (m.tableCx - cHalf - 6) - leftBound);
-        drawFsDiscardPile(pile, leftBound, sideTop, lW, sideH, 'right', false, true);
+        drawFsDiscardPile(pile, leftBound, sideTop, lW, sideH, 'right', false, true, tableTopY, tableBotY);
       } else {
         var rX = m.tableCx + cHalf + 6;
         var rW = Math.max(54, rightBound - rX);
-        drawFsDiscardPile(pile, rX, sideTop, rW, sideH, 'left', false, true);
+        drawFsDiscardPile(pile, rX, sideTop, rW, sideH, 'left', false, true, tableTopY, tableBotY);
       }
     }
   }
@@ -1173,6 +1916,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     var melds = (_state.melds && _state.melds[_playerIndex]) || [];
     var hasHand = Array.isArray(hand) && hand.length > 0;
     _layout = [];
+    _lastHandTileRects = {};
     if (!hasHand && melds.length === 0) return;
 
     var n = hasHand ? hand.length : 0;
@@ -1223,9 +1967,11 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       dims = calcTotalW(tw, mw);
     }
 
+    var slabH = tileSlabH(th, 0.12);
     var startX = Math.round((W - dims.total) / 2);
-    var baseY = H - th - m.handBottomPad;
+    var baseY = H - th - slabH - m.handBottomPad;
     var curX = startX;
+    var reduced = prefersReducedMotion();
 
     for (var oi = 0; oi < order.length; oi++) {
       var idx = order[oi];
@@ -1234,15 +1980,35 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       var isDrawn = idx === drawnIdx;
       var isSwapSel = _state.phase === 'swap' && _swapSelected && _swapSelected.indexOf(tile.id) >= 0;
       var hover = _hoverIdx === idx;
-      var lift = isSwapSel ? -12 : (hover ? -10 : (isDrawn ? -8 : 0));
+      var lift = isSwapSel ? -Math.round(th * 0.14) : (hover ? -Math.round(th * 0.12) : (isDrawn ? -Math.round(th * 0.09) : 0));
 
+      var slideDx = 0;
+      var slideAlpha = 1;
+      if (_drawSlide && _drawSlide.tileId === tile.id) {
+        var st = clamp((nowMs() - _drawSlide.start) / _drawSlide.duration, 0, 1);
+        if (st < 1) {
+          if (reduced) {
+            slideAlpha = st;
+          } else {
+            var sp = easeOutDiscard(st);
+            slideDx = Math.round((1 - sp) * (tw * 1.15 + 16));
+            slideAlpha = Math.min(1, 0.25 + 0.75 * sp);
+          }
+        }
+      }
+
+      var drawX = curX + slideDx;
+      var drawY = baseY + lift;
+
+      ctx.save();
+      if (slideAlpha < 1) ctx.globalAlpha = slideAlpha;
       if (isSwapSel) {
         ctx.save();
         ctx.shadowColor = 'rgba(200,164,92,.7)';
         ctx.shadowBlur = 12;
         ctx.strokeStyle = '#c8a45c';
         ctx.lineWidth = 3;
-        roundRect(curX - 3, baseY + lift - 3, tw + 6, th + 6, 8);
+        roundRect(drawX - 3, drawY - 3, tw + 6, th + slabH + 6, 8);
         ctx.stroke();
         ctx.restore();
       }
@@ -1251,37 +2017,41 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         ctx.shadowColor = 'rgba(6,182,212,' + (0.65 * _drawPulse) + ')';
         ctx.shadowBlur = 14 + 8 * _drawPulse;
         ctx.fillStyle = 'rgba(6,182,212,' + (0.10 * _drawPulse) + ')';
-        roundRect(curX - 4, baseY + lift - 4, tw + 8, th + 8, 8);
+        roundRect(drawX - 4, drawY - 4, tw + 8, th + slabH + 8, 8);
         ctx.fill();
         ctx.restore();
       }
-      drawTileFace(curX, baseY + lift, tw, th, tile, hover ? 1 : (isDrawn ? 2 : 0));
+      drawTileFace(drawX, drawY, tw, th, tile, hover ? 1 : (isDrawn ? 2 : 0), { shadow: true, lift: lift, slabRatio: 0.12 });
       if (isDrawn) {
         ctx.save();
         ctx.fillStyle = '#06b6d4';
         ctx.beginPath();
-        ctx.arc(curX + tw - 8, baseY + lift + 8, 7.5, 0, Math.PI * 2);
+        ctx.arc(drawX + tw - 8, drawY + 8, 7.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 9px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(t('mj_new_tile', '新'), curX + tw - 8, baseY + lift + 8.5);
+        ctx.fillText(t('mj_new_tile', '新'), drawX + tw - 8, drawY + 8.5);
         ctx.restore();
       }
-      _layout.push({ x: curX, y: baseY + lift, w: tw, h: th - lift, idx: idx });
+      ctx.restore();
+
+      if (tile && tile.id) _lastHandTileRects[tile.id] = { x: curX, y: drawY, w: tw, h: th };
+      _layout.push({ x: curX, y: drawY, w: tw, h: th + slabH - lift, idx: idx });
       curX += tw + gap;
     }
 
     // 自己的明牌摆在手牌右侧，底部对齐
     if (melds.length > 0) {
       var mx = startX + dims.hw + (dims.hw > 0 ? handMeldGap : 0);
-      var my = H - mh - m.handBottomPad;
+      var mSlab = tileSlabH(mh, 0.11);
+      var my = H - mh - mSlab - m.handBottomPad;
       for (var mg = 0; mg < melds.length; mg++) {
         var gt = meldGroupTiles(melds[mg]);
         for (var gk = 0; gk < gt.length; gk++) {
           if (melds[mg].concealed || !gt[gk]) drawTileBack(mx, my, mw, mh);
-          else drawTileFace(mx, my, mw, mh, gt[gk], false);
+          else drawTileFace(mx, my, mw, mh, gt[gk], false, { slabRatio: 0.11 });
           mx += mw + meldGap;
         }
         mx += groupGap - meldGap;
@@ -1438,8 +2208,9 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
 
   function drawOpponents() {
     var seats = _state.hands.length;
-    // 对手牌背：对家横排在顶部；左右家打横、垂直向下延伸（2列多行网格）
+    // 对手牌背：对家横排立牌；左右家 2.5D 透视两列纵排（远端略窄）
     var tw = oppTW(), th = oppTH();
+    var topTh = Math.max(10, Math.round(th * 0.86));
     var gap = 2;
     var sideCols = 2; // 左右家每行摆 2 张（打横），然后向下延伸
     for (var s = 0; s < seats; s++) {
@@ -1449,13 +2220,13 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       var pos = seatPos(s);
 
       if (pos === 'top') {
-        // 对家：顶部横排居中（单行）
-        var totalW = count * (tw + gap);
+        // 对家：顶部横排居中（单行立牌）
+        var totalW = count * (tw + gap) - gap;
         var x0 = (W - totalW) / 2;
         var y0 = 30;
-        for (var i = 0; i < count; i++) drawTileBack(x0 + i * (tw + gap), y0, tw, th);
+        for (var i = 0; i < count; i++) drawTopTileBack25D(x0 + i * (tw + gap), y0, tw, topTh);
       } else if (pos === 'left') {
-        // 左家：打横、垂直向下（2列多行，靠左对齐）
+        // 左家：2.5D 透视纵列（顶部远端略窄、向内微收）
         var rowsL = Math.ceil(count / sideCols);
         var rowHL = th + gap;
         var gridHL = rowsL * rowHL;
@@ -1464,10 +2235,14 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         for (var k = 0; k < count; k++) {
           var rowL = Math.floor(k / sideCols);
           var colL = k % sideCols;
-          drawTileBack(startXL + colL * (tw + gap), startYL + rowL * rowHL, tw, th);
+          var rtL = rowsL > 1 ? rowL / (rowsL - 1) : 0.5;
+          var twL = Math.max(10, Math.round(tw * (0.84 + 0.18 * rtL)));
+          var thL = Math.max(8, Math.round(th * (0.86 + 0.14 * rtL)));
+          var inL = Math.round((1 - rtL) * tw * 0.25);
+          drawSideTileBack25D(startXL + inL + colL * (twL + gap), startYL + rowL * rowHL, twL, thL, 'left');
         }
       } else {
-        // 右家：打横、垂直向下（2列多行，靠右对齐）
+        // 右家：2.5D 透视纵列（顶部远端略窄、向内微收）
         var rows = Math.ceil(count / sideCols);
         var rowH = th + gap;
         var gridH = rows * rowH;
@@ -1477,7 +2252,14 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         for (var j = 0; j < count; j++) {
           var row = Math.floor(j / sideCols);
           var col = j % sideCols;
-          drawTileBack(startX + col * (tw + gap), startY + row * rowH, tw, th);
+          var rtR = rows > 1 ? row / (rows - 1) : 0.5;
+          var twR = Math.max(10, Math.round(tw * (0.84 + 0.18 * rtR)));
+          var thR = Math.max(8, Math.round(th * (0.86 + 0.14 * rtR)));
+          var rowGridW = sideCols * (twR + gap) - gap;
+          var inR = Math.round((1 - rtR) * tw * 0.25);
+          var baseRX = (W - rowGridW - 20) - inR;
+          if (baseRX < 0) baseRX = startX;
+          drawSideTileBack25D(baseRX + col * (twR + gap), startY + row * rowH, twR, thR, 'right');
         }
       }
     }
@@ -1491,13 +2273,15 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     if (!n) return H;
     var rows = 1;
     if (W < 500 && n * (TW + 4) > W - 20) rows = Math.ceil(n / Math.max(4, Math.floor((W - 20) / (TW + 4))));
-    return H - rows * (TH + 6) - handBottomPad();
+    var slabH = tileSlabH(TH, 0.12);
+    return H - rows * (TH + slabH + 5) - handBottomPad();
   }
   // 手牌下沿留白：竖屏多留几像素，"第N局·余牌"不被轮到你的高亮框压住
   function handBottomPad() { return _portrait ? 22 : 14; }
 
   function drawOwnHand() {
     var hand = _state.hands[_playerIndex];
+    _lastHandTileRects = {};
     if (!Array.isArray(hand) || hand.length === 0) return;
     var n = hand.length;
     var tw = TW, th = TH;
@@ -1512,14 +2296,17 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       rows = Math.ceil(n / perRow);
     } else if (n * (tw + 4) > maxW) {
       tw = Math.floor((maxW - n * 4) / n); // 桌面端仍用压缩
-      if (isFs()) th = Math.round(tw * 1.4);
+      th = Math.round(tw * 1.4);
     }
+    var slabH = tileSlabH(th, 0.12);
+    var rowStep = th + slabH + 5;
     var totalW = (useMultiRow ? perRow : n) * (tw + 4);
     var startX = (W - totalW) / 2;
     // 垂直居中多行手牌
-    var totalHandH = rows * (th + 6);
+    var totalHandH = rows * rowStep;
     var y = H - totalHandH - handBottomPad();
     _layout = [];
+    var reduced = prefersReducedMotion();
     for (var i = 0; i < n; i++) {
       var row = useMultiRow ? Math.floor(i / perRow) : 0;
       var col = useMultiRow ? (i % perRow) : i;
@@ -1527,11 +2314,32 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       var rowW = rowTiles * (tw + 4);
       var rowStartX = (W - rowW) / 2;
       var x = rowStartX + col * (tw + 4);
-      var tileY = y + row * (th + 6);
+      var tileY = y + row * rowStep;
       var isDrawn = _state.drawn && hand[i].id === _state.drawn && _state.currentPlayer === _playerIndex && _state.phase === 'play';
       var isSwapSel = _state.phase === 'swap' && _swapSelected && _swapSelected.indexOf(hand[i].id) >= 0;
       var hover = _hoverIdx === i;
-      var lift = isSwapSel ? -14 : (hover ? -12 : (isDrawn ? -10 : 0));
+      var lift = isSwapSel ? -Math.round(th * 0.14) : (hover ? -Math.round(th * 0.12) : (isDrawn ? -Math.round(th * 0.09) : 0));
+
+      var slideDx = 0;
+      var slideAlpha = 1;
+      if (_drawSlide && _drawSlide.tileId === hand[i].id) {
+        var st = clamp((nowMs() - _drawSlide.start) / _drawSlide.duration, 0, 1);
+        if (st < 1) {
+          if (reduced) {
+            slideAlpha = st;
+          } else {
+            var sp = easeOutDiscard(st);
+            slideDx = Math.round((1 - sp) * (tw * 1.15 + 16));
+            slideAlpha = Math.min(1, 0.25 + 0.75 * sp);
+          }
+        }
+      }
+
+      var drawX = x + slideDx;
+      var drawY = tileY + lift;
+
+      ctx.save();
+      if (slideAlpha < 1) ctx.globalAlpha = slideAlpha;
       // 换三张选中：金色粗边框 + 上浮
       if (isSwapSel) {
         ctx.save();
@@ -1539,7 +2347,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         ctx.shadowBlur = 12;
         ctx.strokeStyle = '#c8a45c';
         ctx.lineWidth = 3;
-        roundRect(x - 3, tileY + lift - 3, tw + 6, th + 6, 8);
+        roundRect(drawX - 3, drawY - 3, tw + 6, th + slabH + 6, 8);
         ctx.stroke();
         ctx.restore();
       }
@@ -1549,28 +2357,30 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         ctx.shadowColor = 'rgba(6,182,212,' + (0.65 * _drawPulse) + ')';
         ctx.shadowBlur = 16 + 10 * _drawPulse;
         ctx.fillStyle = 'rgba(6,182,212,' + (0.10 * _drawPulse) + ')';
-        roundRect(x - 4, tileY + lift - 4, tw + 8, th + 8, 8);
+        roundRect(drawX - 4, drawY - 4, tw + 8, th + slabH + 8, 8);
         ctx.fill();
         ctx.restore();
       }
       var hl = hover ? 1 : (isDrawn ? 2 : 0);
-      drawTileFace(x, tileY + lift, tw, th, hand[i], hl);
+      drawTileFace(drawX, drawY, tw, th, hand[i], hl, { shadow: true, lift: lift, slabRatio: 0.12 });
       // 新摸角标”新”
       if (isDrawn) {
         ctx.save();
         ctx.fillStyle = '#06b6d4';
         ctx.beginPath();
-        ctx.arc(x + tw - 9, tileY + lift + 9, 8, 0, Math.PI * 2);
+        ctx.arc(drawX + tw - 9, drawY + 9, 8, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 9px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(t('mj_new_tile', '新'), x + tw - 9, tileY + lift + 9.5);
+        ctx.fillText(t('mj_new_tile', '新'), drawX + tw - 9, drawY + 9.5);
         ctx.restore();
       }
+      ctx.restore();
+      if (hand[i] && hand[i].id) _lastHandTileRects[hand[i].id] = { x: x, y: drawY, w: tw, h: th };
       // 命中区向下延伸到原位：上浮后鼠标仍在牌下沿时不会失去悬停而来回闪
-      _layout.push({ x: x, y: tileY + lift, w: tw, h: th - lift, idx: i });
+      _layout.push({ x: x, y: drawY, w: tw, h: th + slabH - lift, idx: i });
     }
     // 定缺花色（自己）：钉在手牌区左上角，缺什么就亮什么（仅四川）
     if (!isCantonese()) {
@@ -1631,7 +2441,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     // 更高会贴到对家牌
     var zoneY = (H - zoneH) / 2 - (H * (isMobile ? 0.15 : 0.1));
     // 钳制：顶部永远给对家牌背 + 名牌留出空间，横屏/矮画布下不再压住对家
-    var oppTh = oppTH(); // same scale as drawOpponents (landscape phones are short, not narrow)
+    var oppTh = Math.round(oppTH() * 0.86);
     var topClear = 30 + oppTh + 16;
     // 对家有明牌时，弃牌区从明牌行下方开始，不压在明牌上
     if (seatHasMelds('top')) topClear = Math.max(topClear, topMeldY() + meldTH() + 8);
@@ -1652,55 +2462,57 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
       while (dw > 12 && Math.ceil(allTiles.length / Math.max(6, Math.floor(zoneW / (dw + gap)))) * (dh + gap) > zoneH) {
         dw--; dh = Math.round(dw * 1.4);
       }
-    } else if (isFs()) {
-      var sideMargin = 20 + 2 * (oppTW() + 2) + 16;
-      zoneW = Math.max(160, Math.min(W * 0.64, W - sideMargin * 2));
-      var bottomLimit = handTopY() - 26;
-      if (_state.melds && _state.melds[_playerIndex] && _state.melds[_playerIndex].length) {
-        bottomLimit = Math.min(bottomLimit, H - TH - 28 - meldTH() - 8);
-      }
-      zoneH = Math.max(dh * 2, bottomLimit - topClear);
-      while (dw > 14 && Math.ceil(allTiles.length / Math.max(6, Math.floor(zoneW / (dw + gap)))) * (dh + gap) > zoneH) {
-        dw--; dh = Math.round(dw * 1.4);
-      }
     }
     var perRow = Math.max(6, Math.floor(zoneW / (dw + gap)));
-    if (_portrait) zoneX = (W - perRow * (dw + gap) + gap) / 2;
-    else if (isFs()) {
-      var fsRows = Math.ceil(allTiles.length / perRow);
-      var fsGridH = fsRows * (dh + gap) - gap;
-      zoneX = (W - perRow * (dw + gap) + gap) / 2;
-      zoneY = topClear + Math.max(0, (zoneH - fsGridH) / 2);
+    var rows = Math.ceil(allTiles.length / perRow);
+    var reduced = prefersReducedMotion();
+    var rowMeta = [];
+    var curY = zoneY;
+    for (var mr = 0; mr < rows; mr++) {
+      var rt = rows > 1 ? mr / (rows - 1) : 0.5;
+      var p = rowPerspective(rt, false);
+      var rdw = Math.max(10, Math.round(dw * p.sx));
+      var rdh = Math.max(12, Math.round(dh * p.sy));
+      rowMeta.push({ dw: rdw, dh: rdh, y: curY });
+      curY += rdh + gap;
     }
-    // 中央网格：按全局时间从左到右、从上到下，新牌始终在末尾
+
+    // 中央网格：按全局时间从左到右、从上到下，带轻微远小近大透视
     for (var idx = 0; idx < allTiles.length; idx++) {
       var row = Math.floor(idx / perRow);
       var col = idx % perRow;
-      var x = zoneX + col * (dw + gap);
-      var y = zoneY + row * (dh + gap);
+      var rm = rowMeta[row];
+      var rdw = rm.dw, rdh = rm.dh;
+      var rowTotalW = perRow * (rdw + gap) - gap;
+      var rowStartX = _portrait ? (W - rowTotalW) / 2 : (zoneX + (zoneW - rowTotalW) / 2);
+      var x = rowStartX + col * (rdw + gap);
+      var y = rm.y;
       var dt = allTiles[idx];
       var isLast = _state.lastDiscard && dt.tile.id === _state.lastDiscard.id;
+
+      var isFlying = !!(_discardFly && _discardFly.tileId === dt.tile.id);
+      if (isFlying) {
+        _discardFlyMatched = true;
+        _discardFly.target = { x: x, y: y, w: rdw, h: rdh };
+        if (!reduced) continue;
+      }
+
+      ctx.save();
+      if (isFlying && reduced) {
+        ctx.globalAlpha = clamp((nowMs() - _discardFly.start) / _discardFly.duration, 0, 1);
+      }
       // 落点脉冲光晕
       if (isLast && _lastDiscardPulse > 0.01) {
         ctx.save();
         ctx.strokeStyle = 'rgba(200,164,92,' + (0.6 * _lastDiscardPulse) + ')';
         ctx.lineWidth = 2 + 3 * _lastDiscardPulse;
         var pad = 3 + 6 * _lastDiscardPulse;
-        roundRect(x - pad, y - pad, dw + pad * 2, dh + pad * 2, 6);
+        roundRect(x - pad, y - pad, rdw + pad * 2, rdh + tileSlabH(rdh, 0.11) + pad * 2, 6);
         ctx.stroke();
         ctx.restore();
       }
-      // 刚出的牌持久高亮外框（亮橙色，区别于 hover 金色）
-      if (isLast) {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(255,140,40,.9)';
-        ctx.lineWidth = 2.5;
-        var lpad = 2;
-        roundRect(x - lpad, y - lpad, dw + lpad * 2, dh + lpad * 2, 5);
-        ctx.stroke();
-        ctx.restore();
-      }
-      drawTileFace(x, y, dw, dh, dt.tile, isLast);
+      drawTileFace(x, y, rdw, rdh, dt.tile, isLast ? 3 : 0, { slabRatio: 0.11 });
+      ctx.restore();
     }
   }
 
@@ -1760,12 +2572,12 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         for (var bi = 0; bi < groups.length; bi++) bTotal += groups[bi].count;
         var bRowW = bTotal * (tw + gap) + (groups.length - 1) * groupGap;
         var bPlaced = 0;
+        var bY = _portrait ? handTopY() - th - 26 : H - TH - tileSlabH(TH, 0.12) - 24 - th;
         for (var bg = 0; bg < groups.length; bg++) {
           for (var bk = 0; bk < groups[bg].count; bk++) {
             var bx = W / 2 - bRowW / 2 + bPlaced * (tw + gap) + bg * groupGap;
-            var by = _portrait ? handTopY() - th - 26 : H - TH - 28 - th;
             var bt = (groups[bg].md.tiles && groups[bg].md.tiles[bk]) || groups[bg].md.tile;
-            drawTileFace(bx, by, tw, th, bt, false);
+            drawTileFace(bx, bY, tw, th, bt, false, { slabRatio: 0.11 });
             bPlaced++;
           }
         }
@@ -1780,7 +2592,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
             var tx = W / 2 - tRowW / 2 + tPlaced * (tw + gap) + tg * groupGap;
             var ty = topMeldY();
             var tt = (groups[tg].md.tiles && groups[tg].md.tiles[tk]) || groups[tg].md.tile;
-            drawTileFace(tx, ty, tw, th, tt, false);
+            drawTileFace(tx, ty, tw, th, tt, false, { slabRatio: 0.11 });
             tPlaced++;
           }
         }
@@ -1794,7 +2606,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
           var px0 = pos === 'left' ? SIDE_MELD_X : W - SIDE_MELD_X - pw;
           for (var pk = 0; pk < groups[pg].count; pk++) {
             var pt = (groups[pg].md.tiles && groups[pg].md.tiles[pk]) || groups[pg].md.tile;
-            drawTileFace(px0 + pk * (tw + gap), pY + pg * pRowH, tw, th, pt, false);
+            drawTileFace(px0 + pk * (tw + gap), pY + pg * pRowH, tw, th, pt, false, { slabRatio: 0.11 });
           }
         }
       } else if (pos === 'right') {
@@ -1826,7 +2638,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
               var rx = rStartX - rowW + rPlaced * (tw + gap) + rgi2 * groupGap;
               var ry = rStartY + rri * (th + gap + 4);
               var rt = (row[rgi2].md.tiles && row[rgi2].md.tiles[gk]) || row[rgi2].md.tile;
-              drawTileFace(rx, ry, tw, th, rt, false);
+              drawTileFace(rx, ry, tw, th, rt, false, { slabRatio: 0.11 });
               rPlaced++;
             }
           }
@@ -1857,7 +2669,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
               var lx = lStartX + lPlaced * (tw + gap) + lgi * groupGap;
               var ly = lStartY + lri * (th + gap + 4);
               var lt = (lRow[lgi].md.tiles && lRow[lgi].md.tiles[lgk]) || lRow[lgi].md.tile;
-              drawTileFace(lx, ly, tw, th, lt, false);
+              drawTileFace(lx, ly, tw, th, lt, false, { slabRatio: 0.11 });
               lPlaced++;
             }
           }
@@ -1866,34 +2678,102 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     }
   }
 
-  // ---- 碰杠吃胡动画效果 ----
+  // ---- 弃牌飞入动画 + 碰杠吃胡弹出效果 ----
+
+  function getSeatHandOrigin(seat) {
+    var pos = seat >= 0 ? seatPos(seat) : 'bottom';
+    var w = clamp(Math.round((TW || 42) * 0.48), 16, 28);
+    var h = Math.round(w * 1.38);
+    if (isFs() && _fsMetrics) {
+      if (pos === 'bottom') return { x: _fsMetrics.tableCx - w / 2, y: _fsMetrics.handTopY, w: w, h: h };
+      if (pos === 'top') return { x: _fsMetrics.tableCx - w / 2, y: _fsMetrics.oppTopY, w: w, h: h };
+      if (pos === 'left') return { x: _fsMetrics.leftTileX, y: _fsMetrics.cy - h / 2, w: w, h: h };
+      return { x: _fsMetrics.rightTileX, y: _fsMetrics.cy - h / 2, w: w, h: h };
+    }
+    var deskH = VH || H;
+    if (pos === 'bottom') return { x: W / 2 - w / 2, y: H - TH - 14, w: w, h: h };
+    if (pos === 'top') return { x: W / 2 - w / 2, y: 30, w: w, h: h };
+    if (pos === 'left') return { x: 24, y: deskH / 2 - h / 2, w: w, h: h };
+    return { x: W - 24 - w, y: deskH / 2 - h / 2, w: w, h: h };
+  }
+
+  function drawDiscardFly() {
+    if (!_discardFly) return;
+    if (!_discardFlyMatched || !_discardFly.target || !_discardFly.fromRect) {
+      _discardFly = null;
+      return;
+    }
+    if (prefersReducedMotion()) return;
+    var t = clamp((nowMs() - _discardFly.start) / _discardFly.duration, 0, 1);
+    if (t >= 1) {
+      _discardFly = null;
+      return;
+    }
+    var p = easeOutDiscard(t);
+    var f = _discardFly.fromRect;
+    var trg = _discardFly.target;
+    var ix = f.x + (trg.x - f.x) * p;
+    var iy = f.y + (trg.y - f.y) * p;
+    var iw = f.w + (trg.w - f.w) * p;
+    var ih = f.h + (trg.h - f.h) * p;
+
+    ctx.save();
+    var shadowAlpha = (1 - p) * 0.34;
+    if (shadowAlpha > 0.02) {
+      ctx.fillStyle = 'rgba(0,0,0,' + shadowAlpha.toFixed(3) + ')';
+      roundRect(ix + 3 * (1 - p), iy + ih * 0.12 + 6 * (1 - p), iw, ih, Math.max(2, Math.round(iw * 0.11)));
+      ctx.fill();
+    }
+    drawTileFace(ix, iy, iw, ih, _discardFly.tile, 3, { slabRatio: 0.11 });
+    ctx.restore();
+  }
+
   var CLAIM_COLORS = {
-    pung: { bg: 'rgba(58,143,212,.9)', text: '#fff' },
-    kong: { bg: 'rgba(155,109,222,.9)', text: '#fff' },
-    chow: { bg: 'rgba(62,184,112,.9)', text: '#fff' },
+    pung: { bg: 'rgba(58,143,212,.92)', text: '#fff' },
+    kong: { bg: 'rgba(155,109,222,.92)', text: '#fff' },
+    chow: { bg: 'rgba(62,184,112,.92)', text: '#fff' },
     win:  { bg: 'rgba(224,80,80,.95)', text: '#fff' },
   };
   function drawClaimEffects() {
     if (_claimEffects.length === 0) return;
-    var now = Date.now();
+    var now = nowMs();
+    var reduced = prefersReducedMotion();
     for (var i = 0; i < _claimEffects.length; i++) {
       var e = _claimEffects[i];
-      var age = (now - e.birth) / 1000;
-      if (age > 2.0) continue; // 过期清理由动画循环 tick 负责，这里只跳过不画
-      var progress = age / 2.0; // 0→1
-      var alpha = 1 - progress;  // 渐隐
-      var riseY = progress * 40; // 上浮
-      var scale = 1 + progress * 0.3; // 放大
+      var ageMs = now - e.birth;
+      if (ageMs < 0 || ageMs >= 1800) continue; // 过期清理由动画循环 tick 负责，这里只跳过不画
+      var alpha, scale, riseY;
+      if (reduced) {
+        scale = 1;
+        riseY = 0;
+        alpha = ageMs < 200 ? (ageMs / 200) : (ageMs > 1500 ? (1800 - ageMs) / 300 : 1);
+      } else {
+        if (ageMs < 300) {
+          var popT = ageMs / 300;
+          scale = 0.35 + 0.65 * easeOutPop(popT); // peak ~1.065 (<= 1.15)
+          alpha = Math.min(1, popT * 2.5);
+          riseY = 0;
+        } else if (ageMs < 1500) {
+          scale = 1;
+          alpha = 1;
+          riseY = 0;
+        } else {
+          scale = 1;
+          alpha = (1800 - ageMs) / 300;
+          riseY = ((ageMs - 1500) / 300) * 10;
+        }
+      }
+      alpha = clamp(alpha, 0, 1);
       // 效果位置：在该玩家牌背附近
       var pos = seatPos(e.player);
       var ex, ey;
       if (isFs() && _fsMetrics) {
-        if (pos === 'bottom') { ex = _fsMetrics.tableCx; ey = _fsMetrics.handTopY - 36 - riseY; }
-        else if (pos === 'top') { ex = _fsMetrics.tableCx; ey = _fsMetrics.topRowBottom + 24 + riseY; }
+        if (pos === 'bottom') { ex = _fsMetrics.tableCx; ey = _fsMetrics.handTopY - 38 - riseY; }
+        else if (pos === 'top') { ex = _fsMetrics.tableCx; ey = _fsMetrics.topRowBottom + 26 + riseY; }
         else if (pos === 'left') { ex = _fsMetrics.leftCard.x + _fsMetrics.leftCard.w / 2; ey = _fsMetrics.cy - riseY; }
         else { ex = _fsMetrics.rightCard.x + _fsMetrics.rightCard.w / 2; ey = _fsMetrics.cy - riseY; }
       } else {
-        if (pos === 'bottom') { ex = W / 2; ey = H - TH - 50 - riseY; }
+        if (pos === 'bottom') { ex = W / 2; ey = H - TH - 54 - riseY; }
         else if (pos === 'top') { ex = W / 2; ey = 30 + Math.round(TH * 0.5) + 20 + riseY; }
         else if (pos === 'left') { ex = 80; ey = VH / 2 - riseY; }
         else { ex = W - 80; ey = VH / 2 - riseY; }
@@ -1953,7 +2833,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     } else if (pos === 'bottom') {
       bx = W / 2 - 14 * (TW + 4) / 2; by = H - TH - 22; bw = 14 * (TW + 4); bh = TH + 8;
     } else if (pos === 'top') {
-      bx = W / 2 - 14 * (oppTW() + 2) / 2; by = 26; bw = 14 * (oppTW() + 2); bh = oppTH() + 8;
+      bx = W / 2 - 14 * (oppTW() + 2) / 2; by = 26; bw = 14 * (oppTW() + 2); bh = Math.round(oppTH() * 0.86) + 8;
     } else if (pos === 'left') {
       var lCount = handCount(cp);
       var lRows = Math.ceil(lCount / 2);
@@ -2053,7 +2933,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
     if (fsOn && bar && status) {
       var wrap = bar.closest('.mj-wrap');
       if (wrap) {
-        var baseBottom = TH + 12;
+        var baseBottom = TH + tileSlabH(TH, 0.12) + 10;
         wrap.style.setProperty('--mj-actions-bottom', baseBottom + 'px');
         if (bar.children.length > 0 && status.textContent) {
           var sr = status.getBoundingClientRect();
