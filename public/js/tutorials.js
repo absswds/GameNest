@@ -412,11 +412,11 @@
     },
     pool: {
       sections: [
-        { h: '目标', p: '经典美式 8 球双人对战。1～7 号为全色球（Solids），9～15 号为花色球（Stripes），8 号为黑八。先打完自己花色全部球，再将 8 号球合法打入袋中即可获胜。' },
-        { h: '操作', p: '在球台拖动调整瞄准方向并观察辅助线；也可按住母球向后拉杆并松手击球，或使用下方力度条微调后点击「击球」。点按力度旁的母球加塞圆盘可调整高低杆与左右塞。自由球阶段点击或拖动球台摆放母球。' },
-        { h: '开球与自由球局', p: '1 号位开球，开球后桌面保持自由球局（未分配花色）；若开球干净打进 8 号球不判负，8 号球放回置球点并由开球方继续。非开球回合首次干净打进目标球后，正式分配双方花色。' },
-        { h: '犯规与手中球', p: '母球落袋（洗袋）、未击中任何球、或先击中非本方目标球（未清空本方花色前先碰 8 号球）均属犯规。开球洗袋后对手须将母球摆放在开球线后方（开球区）；其余犯规对手可在全桌面任意合法位置摆球。' },
-        { h: '胜负', p: '清空本方花色后干净打进 8 号球获胜；若提前误进 8 号球，或打进 8 号球的同时犯规，立即判负。达到 150 杆上限时按场上剩余本方球更少者胜。' },
+        { h: '目标', p: '房间设置可切换「美式 8 球」或「斯诺克」。美式 8 球由 1～7 号全色球与 9～15 号花色球构成，先打完己方花色再合法打进 8 号球获胜；斯诺克则使用 15 颗红球与 6 颗彩球累计得分，台面清台或黑球决胜时分高者胜。' },
+        { h: '操作', p: '在球台拖动调整瞄准方向并观察辅助线；也可按住母球向后拉杆并松手击球，或使用下方力度条微调后点击「击球」。点按力度旁的母球加塞圆盘可调整高低杆与左右塞。手中球阶段点击或拖动球台摆放母球。' },
+        { h: '美式 8 球规则', p: '1 号位开球，开球后保持自由球局；非开球回合首次干净打进目标球后分配花色。洗袋、未击中或先碰错误球均为犯规，对手获得手中球（开球洗袋限开球区）。清空花色后干净打进 8 号球获胜，误进或伴随犯规立即判负。' },
+        { h: '斯诺克规则', p: '开局及母球落袋后只能在 D 形半圆内摆球。红球尚在时按「红球（1分）→ 任意指定彩球」交替击打，打进彩球得分并放回原置球点（被占则放最高空置球点，全占则紧靠其后方）。红球清完并完成最后一颗彩球后，须按黄(2)→绿(3)→棕(4)→蓝(5)→粉(6)→黑(7)顺序击打且不再复位。' },
+        { h: '斯诺克犯规与胜负', p: '先碰非目标球、未碰任何球、母球落袋或打进非目标球均属犯规，对手获得 max(4, 涉及球最高分) 罚分并接手击球。最后一颗黑球打进或犯规后分高者胜；若打进最后黑球双方同分，则重放黑球并由另一方从 D 区开球争黑决胜。' },
       ]
     },
   };
@@ -881,11 +881,11 @@
     },
     pool: {
       sections: [
-        { h: 'Goal', p: 'Two-player 8-ball billiards. Balls 1 to 7 are Solids, 9 to 15 are Stripes, and 8 is the black 8-ball. Clear every ball of your assigned group, then legally pocket the 8-ball to win.' },
+        { h: 'Goal and Modes', p: 'Room settings choose between 8-Ball (default) and Snooker. In 8-Ball, clear Solids (1-7) or Stripes (9-15) and legally pocket the 8-ball. In Snooker, score more points than your opponent using 15 reds and 6 colours.' },
         { h: 'Controls', p: 'Drag anywhere on the table to aim with the guide line, or pull back directly from the cue ball and release to shoot. Adjust power with the slider and set top, back, or side spin on the cue-ball widget before tapping Shoot. During ball-in-hand, tap or drag on the table to place the cue ball.' },
-        { h: 'Break and Open Table', p: 'Seat 1 breaks. The table stays open after the break; potting the 8-ball cleanly on the break respots the 8-ball on the foot spot and keeps the turn. The first clean pot on a non-break shot assigns Solids and Stripes.' },
-        { h: 'Fouls and Ball-in-Hand', p: 'Scratching the cue ball, hitting no ball, or hitting an opponent ball or early 8-ball first is a foul. Scratching on the break gives the opponent ball-in-hand behind the head string in the kitchen; all other fouls give ball-in-hand anywhere on the table.' },
-        { h: 'Winning and Losing', p: 'Potting the 8-ball cleanly after clearing your group wins immediately. Potting the 8-ball early or committing a foul while potting the 8-ball loses immediately. If 150 turns pass, fewer remaining balls wins.' },
+        { h: '8-Ball Rules', p: 'Seat 1 breaks and the table stays open until the first clean non-break pot assigns Solids and Stripes. Fouls grant ball-in-hand (behind the head string after a break scratch). Potting the 8-ball cleanly after clearing your group wins; an early or foul 8-ball pot loses immediately.' },
+        { h: 'Snooker Rules', p: 'On the break and after any cue-ball scratch, place the cue ball inside the D semicircle. While reds remain, alternate hitting and potting a red (1 pt) followed by a nominated colour (yellow 2, green 3, brown 4, blue 5, pink 6, black 7). Potted colours are respotted until all reds are cleared, then colours must be potted in order from yellow to black and stay down.' },
+        { h: 'Snooker Fouls and Frame End', p: 'Missing all balls, hitting the wrong ball first, potting a ball not on, or potting the cue ball awards max(4, involved ball value) penalty points to the opponent, who plays next. When the final black is potted or fouled, the higher score wins; a tie respots the black and the other player shoots from the D.' },
       ]
     },
   };

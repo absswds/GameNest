@@ -419,4 +419,7 @@ module.exports = {
   'pool_invalid_shot': '击球角度或力度无效',
   'pool_invalid_place': '母球摆放位置无效或与其他球重叠',
   'pool_place_kitchen': '开球或开球洗袋后，母球只能摆放在开球线后方（开球区）',
+  'pool_place_d': '斯诺克母球只能摆放在D形区（开球半圆）内',
+  'pool_nominate_required': '请先指定要击打的彩球',
+  'pool_invalid_nominate': '指定的彩球无效或已不在台面上',
 };

@@ -1208,6 +1208,17 @@
         ], bjTime));
         target.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), bjDiff));
       });
+    } else if (game === 'pool') {
+      var poolVariant = roomOptions.variant === 'snooker' ? 'snooker' : '8ball';
+      var poolDiff = roomOptions.difficulty || 'normal';
+      parts.push(_t(poolVariant === 'snooker' ? 'pool_variant_snooker' : 'pool_variant_8ball'), diffLabelText(poolDiff));
+      builders.push(function(target) {
+        target.appendChild(optSegRow(_t('pool_variant_label'), 'variant', [
+          { value: '8ball', label: _t('pool_variant_8ball') },
+          { value: 'snooker', label: _t('pool_variant_snooker') }
+        ], poolVariant));
+        target.appendChild(optSegRow(_t('difficulty_label'), 'difficulty', difficultyOpts(), poolDiff));
+      });
     } else if (gameInfo.supportsAI && window._gamesWithDifficulty.indexOf(game) >= 0) {
       var curDiff = roomOptions.difficulty || 'normal';
       parts.push(diffLabelText(curDiff));

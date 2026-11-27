@@ -88,7 +88,7 @@ const CONFIG = {
   monopoly: { sizes: [3, 2] },
   numberbomb: { sizes: [3, 2] },
   oldmaid: { sizes: [4, 3] },
-  pool: { sizes: [2] },
+  pool: { sizes: [2], options: [{}, { variant: 'snooker' }] },
   reversi: { sizes: [2] },
   rummikub: { sizes: [3, 2] },
   sanguo: { sizes: [5, 4] },

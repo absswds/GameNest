@@ -1,22 +1,64 @@
 (function () {
-  var W = 1000;
-  var H = 500;
-  var BALL_R = 14;
-  var HEAD_STRING_X = 250;
-  var FOOT_SPOT_X = 750;
-  var FOOT_SPOT_Y = 250;
-  var RAIL = 42;
+  var POOL_CFG = {
+    W: 1000,
+    H: 500,
+    BALL_R: 14,
+    HEAD_STRING_X: 250,
+    FOOT_SPOT_X: 750,
+    FOOT_SPOT_Y: 250,
+    BAULK_X: 250,
+    D_RADIUS: 0,
+    CENTER_Y: 250,
+    RAIL: 42,
+    MAX_BALL_ID: 15,
+    POCKETS: [
+      { id: 0, x: 0, y: 0, r: 28 },
+      { id: 1, x: 500, y: -4, r: 25 },
+      { id: 2, x: 1000, y: 0, r: 28 },
+      { id: 3, x: 0, y: 500, r: 28 },
+      { id: 4, x: 500, y: 504, r: 25 },
+      { id: 5, x: 1000, y: 500, r: 28 },
+    ],
+  };
+
+  var SNOOKER_CFG = {
+    W: 1200,
+    H: 600,
+    BALL_R: 11,
+    HEAD_STRING_X: 250,
+    FOOT_SPOT_X: 900,
+    FOOT_SPOT_Y: 300,
+    BAULK_X: 250,
+    D_RADIUS: 100,
+    CENTER_Y: 300,
+    RAIL: 42,
+    MAX_BALL_ID: 21,
+    POCKETS: [
+      { id: 0, x: 0, y: 0, r: 21 },
+      { id: 1, x: 600, y: -3, r: 19 },
+      { id: 2, x: 1200, y: 0, r: 21 },
+      { id: 3, x: 0, y: 600, r: 21 },
+      { id: 4, x: 600, y: 603, r: 19 },
+      { id: 5, x: 1200, y: 600, r: 21 },
+    ],
+  };
+
+  var isSnooker = false;
+  var configInitialized = false;
+  var W = POOL_CFG.W;
+  var H = POOL_CFG.H;
+  var BALL_R = POOL_CFG.BALL_R;
+  var HEAD_STRING_X = POOL_CFG.HEAD_STRING_X;
+  var FOOT_SPOT_X = POOL_CFG.FOOT_SPOT_X;
+  var FOOT_SPOT_Y = POOL_CFG.FOOT_SPOT_Y;
+  var BAULK_X = POOL_CFG.BAULK_X;
+  var D_RADIUS = POOL_CFG.D_RADIUS;
+  var CENTER_Y = POOL_CFG.CENTER_Y;
+  var RAIL = POOL_CFG.RAIL;
   var CW = W + 2 * RAIL;
   var CH = H + 2 * RAIL;
-
-  var POCKETS = [
-    { id: 0, x: 0, y: 0, r: 28 },
-    { id: 1, x: 500, y: -4, r: 25 },
-    { id: 2, x: 1000, y: 0, r: 28 },
-    { id: 3, x: 0, y: 500, r: 28 },
-    { id: 4, x: 500, y: 504, r: 25 },
-    { id: 5, x: 1000, y: 500, r: 28 },
-  ];
+  var MAX_BALL_ID = POOL_CFG.MAX_BALL_ID;
+  var POCKETS = POOL_CFG.POCKETS;
 
   var BALL_COLORS = {
     0: '#fbfbf7',
@@ -37,13 +79,45 @@
     15: '#7f1d1d',
   };
 
+  var SNOOKER_COLOURS = [
+    { name: 'yellow', id: 16, value: 2, color: '#eab308', x: 250, y: 400 },
+    { name: 'green', id: 17, value: 3, color: '#15803d', x: 250, y: 200 },
+    { name: 'brown', id: 18, value: 4, color: '#7c3f18', x: 250, y: 300 },
+    { name: 'blue', id: 19, value: 5, color: '#1d4ed8', x: 600, y: 300 },
+    { name: 'pink', id: 20, value: 6, color: '#ec4899', x: 900, y: 300 },
+    { name: 'black', id: 21, value: 7, color: '#141418', x: 1090, y: 300 },
+  ];
+
+  var SNOOKER_BALL_COLORS = {
+    0: '#fbfbf7',
+    1: '#c81e1e', 2: '#c81e1e', 3: '#c81e1e', 4: '#c81e1e', 5: '#c81e1e',
+    6: '#c81e1e', 7: '#c81e1e', 8: '#c81e1e', 9: '#c81e1e', 10: '#c81e1e',
+    11: '#c81e1e', 12: '#c81e1e', 13: '#c81e1e', 14: '#c81e1e', 15: '#c81e1e',
+    16: '#eab308',
+    17: '#15803d',
+    18: '#7c3f18',
+    19: '#1d4ed8',
+    20: '#ec4899',
+    21: '#141418',
+  };
+
+  var SNOOKER_COLOUR_HEX = {
+    red: '#c81e1e',
+    yellow: '#eab308',
+    green: '#15803d',
+    brown: '#7c3f18',
+    blue: '#1d4ed8',
+    pink: '#ec4899',
+    black: '#141418',
+  };
+
   var STYLES = [
     '.pool-wrap { position:relative; width:100%; max-width:920px; margin:0 auto; display:flex; flex-direction:column; align-items:center; gap:8px; box-sizing:border-box; user-select:none; }',
     '.pool-hud { width:100%; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; }',
     '.pool-seat { display:flex; flex-direction:column; gap:3px; padding:6px 10px; border-radius:12px; background:var(--surface, #fff); border:2px solid var(--border, #e5e0d5); min-width:0; transition:border-color 0.2s, box-shadow 0.2s; }',
     '.pool-seat--right { align-items:flex-end; text-align:right; }',
     '.pool-seat--active { border-color:var(--accent, #c8a45c); box-shadow:0 0 0 2px rgba(200,164,92,0.22); }',
-    '.pool-seat-top { display:flex; align-items:center; gap:6px; max-width:100%; }',
+    '.pool-seat-top { display:flex; align-items:center; gap:6px; max-width:100%; width:100%; }',
     '.pool-seat--right .pool-seat-top { flex-direction:row-reverse; }',
     '.pool-seat-name { font-size:13px; font-weight:700; color:var(--text, #1c1917); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }',
     '.pool-group-badge { font-size:11px; font-weight:700; padding:1px 7px; border-radius:999px; background:rgba(148,163,184,0.16); color:var(--text-muted, #6a6257); white-space:nowrap; }',
@@ -54,8 +128,20 @@
     '.pool-dot { width:9px; height:9px; border-radius:50%; border:1px solid rgba(0,0,0,0.25); box-sizing:border-box; }',
     '.pool-dot--stripe { background:linear-gradient(180deg, #fff 24%, currentColor 25%, currentColor 75%, #fff 76%) !important; }',
     '.pool-dot--potted { opacity:0.2; }',
-    '.pool-status-pill { padding:5px 12px; border-radius:999px; font-size:12px; font-weight:700; background:var(--surface, #fff); border:1px solid var(--border, #e5e0d5); color:var(--text, #1c1917); white-space:nowrap; text-align:center; }',
+    '.snooker-score { font-size:16px; font-weight:800; color:var(--text, #1c1917); font-variant-numeric:tabular-nums; margin-left:auto; }',
+    '.pool-seat--right .snooker-score { margin-left:0; margin-right:auto; }',
+    '.snooker-seat-meta { display:flex; align-items:center; gap:5px; min-height:14px; font-size:11px; font-weight:700; color:var(--text-muted, #6a6257); }',
+    '.snooker-break-pill { padding:0 6px; border-radius:999px; background:rgba(200,164,92,0.22); color:#854d0e; font-size:11px; font-weight:700; white-space:nowrap; }',
+    '.pool-status-pill { padding:5px 12px; border-radius:999px; font-size:12px; font-weight:700; background:var(--surface, #fff); border:1px solid var(--border, #e5e0d5); color:var(--text, #1c1917); white-space:nowrap; text-align:center; display:flex; flex-direction:column; align-items:center; gap:1px; }',
     '.pool-status-pill--mine { background:rgba(200,164,92,0.18); border-color:var(--accent, #c8a45c); }',
+    '.snooker-status-sub { display:flex; align-items:center; justify-content:center; gap:5px; font-size:11px; font-weight:600; color:var(--text-muted, #6a6257); }',
+    '.snooker-on-dot { display:inline-block; width:9px; height:9px; border-radius:50%; border:1px solid rgba(0,0,0,0.3); flex-shrink:0; }',
+    '.snooker-nom-bar { width:100%; display:none; align-items:center; justify-content:center; flex-wrap:wrap; gap:6px; padding:5px 10px; border-radius:12px; background:var(--surface, #fff); border:1.5px solid var(--accent, #c8a45c); box-sizing:border-box; }',
+    '.snooker-nom-label { font-size:12px; font-weight:700; color:var(--text, #1c1917); margin-right:2px; white-space:nowrap; }',
+    '.snooker-nom-btn { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; min-height:28px; border-radius:999px; border:1.5px solid var(--border, #e5e0d5); background:var(--bg, #f8f9fa); color:var(--text, #1c1917); font-size:12px; font-weight:700; cursor:pointer; }',
+    '.snooker-nom-btn--active { border-color:var(--accent, #c8a45c); background:rgba(200,164,92,0.22); box-shadow:0 0 0 2px rgba(200,164,92,0.22); }',
+    '.snooker-nom-btn:disabled { opacity:0.35; cursor:not-allowed; }',
+    '.snooker-nom-dot { width:10px; height:10px; border-radius:50%; border:1px solid rgba(0,0,0,0.25); flex-shrink:0; }',
     '.pool-main { width:100%; display:flex; flex-direction:column; align-items:center; gap:8px; }',
     '.pool-canvas-wrap { display:flex; align-items:center; justify-content:center; width:100%; }',
     '.pool-canvas { touch-action:none; display:block; border-radius:14px; box-shadow:0 10px 28px rgba(15,23,42,0.28); cursor:crosshair; }',
@@ -93,7 +179,11 @@
     '  .pool-hud { gap:5px; }',
     '  .pool-seat { padding:4px 7px; }',
     '  .pool-seat-name { font-size:12px; }',
+    '  .snooker-score { font-size:14px; }',
     '  .pool-status-pill { padding:4px 8px; font-size:11px; }',
+    '  .snooker-status-sub { font-size:10px; }',
+    '  .snooker-nom-bar { padding:4px 6px; gap:4px; }',
+    '  .snooker-nom-btn { padding:2px 7px; min-height:26px; font-size:11px; }',
     '  .pool-panel { padding:5px 10px; gap:8px; }',
     '  .pool-hint { display:none; }',
     '}',
@@ -104,9 +194,14 @@
     '.pool-wrap.sideways .pool-hud { gap:6px; }',
     '.pool-wrap.sideways .pool-seat { padding:2px 7px; border-radius:8px; border-width:1.5px; }',
     '.pool-wrap.sideways .pool-seat-name { font-size:11px; }',
+    '.pool-wrap.sideways .snooker-score { font-size:13px; }',
+    '.pool-wrap.sideways .snooker-seat-meta { display:none; }',
     '.pool-wrap.sideways .pool-group-badge { font-size:10px; padding:0 5px; }',
     '.pool-wrap.sideways .pool-dots { display:none; }',
-    '.pool-wrap.sideways .pool-status-pill { padding:2px 9px; font-size:11px; }',
+    '.pool-wrap.sideways .pool-status-pill { padding:2px 9px; font-size:11px; flex-direction:row; gap:6px; }',
+    '.pool-wrap.sideways .snooker-status-sub { margin-top:0; font-size:10px; }',
+    '.pool-wrap.sideways .snooker-nom-bar { padding:2px 6px; gap:4px; }',
+    '.pool-wrap.sideways .snooker-nom-btn { padding:1px 6px; min-height:22px; font-size:10px; }',
     '.pool-wrap.sideways .pool-main { flex-direction:row; align-items:stretch; justify-content:center; gap:8px; width:100%; }',
     '.pool-wrap.sideways .pool-canvas-wrap { width:auto; flex:0 0 auto; }',
     '.pool-wrap.sideways .pool-bar { width:108px; flex:0 0 108px; min-height:0; align-items:stretch; }',
@@ -133,6 +228,8 @@
   var seat0El = null;
   var seat1El = null;
   var statusEl = null;
+  var nomBarEl = null;
+  var nomButtons = {};
   var shootBarEl = null;
   var placeBarEl = null;
   var waitBarEl = null;
@@ -163,6 +260,8 @@
   var aimSpinX = 0;
   var aimSpinY = 0;
   var spinDragging = false;
+  var selectedNominate = null;
+  var lastNomSeq = -1;
   var placeX = HEAD_STRING_X;
   var placeY = FOOT_SPOT_Y;
   var dragMode = null; // null | 'pull' | 'aim' | 'place'
@@ -179,6 +278,33 @@
   var lastClickMs = 0;
   var lastThudMs = 0;
   var lastPocketMs = 0;
+
+  function applyVariantConfig(state) {
+    var nextSnooker = !!(state && state.variant === 'snooker');
+    if (configInitialized && nextSnooker === isSnooker) return false;
+    configInitialized = true;
+    isSnooker = nextSnooker;
+    var cfg = isSnooker ? SNOOKER_CFG : POOL_CFG;
+    W = cfg.W;
+    H = cfg.H;
+    BALL_R = cfg.BALL_R;
+    HEAD_STRING_X = cfg.HEAD_STRING_X;
+    FOOT_SPOT_X = cfg.FOOT_SPOT_X;
+    FOOT_SPOT_Y = cfg.FOOT_SPOT_Y;
+    BAULK_X = cfg.BAULK_X;
+    D_RADIUS = cfg.D_RADIUS;
+    CENTER_Y = cfg.CENTER_Y;
+    RAIL = cfg.RAIL;
+    CW = W + 2 * RAIL;
+    CH = H + 2 * RAIL;
+    MAX_BALL_ID = cfg.MAX_BALL_ID;
+    POCKETS = cfg.POCKETS;
+    lastLayoutKey = '';
+    selectedNominate = null;
+    lastNomSeq = -1;
+    resetBallRoll();
+    return true;
+  }
 
   function isMuted() {
     try {
@@ -334,7 +460,7 @@
     for (var k = 0; k < parsed.length - 1; k++) {
       var fCurr = parsed[k];
       var fNext = parsed[k + 1];
-      for (var id = 0; id <= 15; id++) {
+      for (var id = 0; id <= MAX_BALL_ID; id++) {
         if (fCurr[id] && !fNext[id]) {
           events.push({ framePos: k + 0.35, type: 'pocket', intensity: 0.9 });
         }
@@ -346,7 +472,7 @@
       var fCur = parsed[f];
       var fNxt = parsed[f + 1];
 
-      for (var bId = 0; bId <= 15; bId++) {
+      for (var bId = 0; bId <= MAX_BALL_ID; bId++) {
         var p0 = fPrev[bId];
         var p1 = fCur[bId];
         var p2 = fNxt[bId];
@@ -364,7 +490,7 @@
       }
 
       var bestClickIntensity = 0;
-      for (var aId = 0; aId <= 15; aId++) {
+      for (var aId = 0; aId <= MAX_BALL_ID; aId++) {
         var a0 = fPrev[aId];
         var a1 = fCur[aId];
         var a2 = fNxt[aId];
@@ -373,7 +499,7 @@
         var dvAy = (a2.y - 2 * a1.y + a0.y) * frameRate;
         var magA = Math.hypot(dvAx, dvAy);
         if (magA < 35) continue;
-        for (var cId = aId + 1; cId <= 15; cId++) {
+        for (var cId = aId + 1; cId <= MAX_BALL_ID; cId++) {
           var b0 = fPrev[cId];
           var b1 = fCur[cId];
           var b2 = fNxt[cId];
@@ -401,7 +527,7 @@
 
   function resetBallRoll() {
     ballRoll = {};
-    for (var id = 0; id <= 15; id++) {
+    for (var id = 0; id <= MAX_BALL_ID; id++) {
       ballRoll[id] = {
         p: { x: 0, y: 0, z: 1 },
         s: { x: 0, y: 1, z: 0 },
@@ -443,6 +569,14 @@
     return window._t ? window._t(key) : key;
   }
 
+  function tf(key) {
+    if (window._tf) return window._tf.apply(null, arguments);
+    var args = Array.prototype.slice.call(arguments, 1);
+    var s = t(key);
+    var i = 0;
+    return String(s).replace(/%s/g, function () { return args[i++] !== undefined ? args[i - 1] : '%s'; });
+  }
+
   function clamp(v, lo, hi) {
     return Math.max(lo, Math.min(hi, v));
   }
@@ -462,13 +596,58 @@
     return 'stripe';
   }
 
+  function snookerBallType(id) {
+    if (id === 0) return 'cue';
+    if (id >= 1 && id <= 15) return 'red';
+    for (var i = 0; i < SNOOKER_COLOURS.length; i++) {
+      if (SNOOKER_COLOURS[i].id === id) return SNOOKER_COLOURS[i].name;
+    }
+    return 'red';
+  }
+
+  function ballTypeFor(id) {
+    return isSnooker ? snookerBallType(id) : ballType(id);
+  }
+
   function isKitchenPlace(state) {
-    return !!(state && (state.isBreak || state.kitchenOnly));
+    return !!(state && (state.isBreak || state.kitchenOnly || state.inDOnly));
+  }
+
+  function isInDLocal(x, y) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+    if (x > BAULK_X + 0.01) return false;
+    var dx = x - BAULK_X;
+    var dy = y - CENTER_Y;
+    return dx * dx + dy * dy <= D_RADIUS * D_RADIUS + 0.01;
+  }
+
+  function clampPlacePos(x, y, kitchenOnly) {
+    if (isSnooker) {
+      var cx = clamp(x, BALL_R + 1, BAULK_X);
+      var cy = clamp(y, BALL_R + 1, H - BALL_R - 1);
+      var dx = cx - BAULK_X;
+      var dy = cy - CENTER_Y;
+      var d = Math.hypot(dx, dy);
+      if (d > D_RADIUS - 0.5 && d > 1e-6) {
+        cx = BAULK_X + (dx / d) * (D_RADIUS - 0.5);
+        cy = CENTER_Y + (dy / d) * (D_RADIUS - 0.5);
+      }
+      return { x: clamp(cx, BALL_R + 1, BAULK_X), y: clamp(cy, BALL_R + 1, H - BALL_R - 1) };
+    }
+    var maxPlaceX = kitchenOnly ? HEAD_STRING_X : (W - BALL_R - 1);
+    return {
+      x: clamp(x, BALL_R + 1, maxPlaceX),
+      y: clamp(y, BALL_R + 1, H - BALL_R - 1),
+    };
   }
 
   function isValidCuePosLocal(balls, x, y, kitchenOnly) {
     if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
-    if (kitchenOnly && x > HEAD_STRING_X) return false;
+    if (isSnooker) {
+      if (!isInDLocal(x, y)) return false;
+    } else if (kitchenOnly && x > HEAD_STRING_X) {
+      return false;
+    }
     if (x < BALL_R + 1 || x > W - BALL_R - 1 || y < BALL_R + 1 || y > H - BALL_R - 1) return false;
     var minDist = 2 * BALL_R + 1;
     var minDist2 = minDist * minDist;
@@ -483,6 +662,25 @@
   }
 
   function findInitialPlaceSpot(balls, kitchenOnly) {
+    if (isSnooker) {
+      var pref = [
+        { x: 205, y: 340 },
+        { x: 205, y: 260 },
+        { x: 195, y: 300 },
+        { x: 225, y: 345 },
+        { x: 225, y: 255 },
+        { x: 175, y: 300 },
+      ];
+      for (var p = 0; p < pref.length; p++) {
+        if (isValidCuePosLocal(balls, pref[p].x, pref[p].y, true)) return pref[p];
+      }
+      for (var sx = BAULK_X; sx >= BAULK_X - D_RADIUS; sx -= 10) {
+        for (var sy = CENTER_Y - D_RADIUS; sy <= CENTER_Y + D_RADIUS; sy += 10) {
+          if (isValidCuePosLocal(balls, sx, sy, true)) return { x: sx, y: sy };
+        }
+      }
+      return { x: 205, y: 340 };
+    }
     if (isValidCuePosLocal(balls, HEAD_STRING_X, FOOT_SPOT_Y, kitchenOnly)) {
       return { x: HEAD_STRING_X, y: FOOT_SPOT_Y };
     }
@@ -552,6 +750,37 @@
       }
     }
     if (!cue) return 0;
+
+    if (isSnooker) {
+      if (state.isBreak) {
+        return Math.atan2(CENTER_Y - cue.y, 924 - cue.x);
+      }
+      var targetType = state.ballOn;
+      var bestS = null;
+      var bestSD2 = Infinity;
+      for (var si = 0; si < state.balls.length; si++) {
+        var sb = state.balls[si];
+        if (!sb || sb.potted || sb.id === 0) continue;
+        if (targetType === 'red' && sb.type !== 'red') continue;
+        if (targetType === 'colour') {
+          if (selectedNominate) {
+            if (sb.type !== selectedNominate) continue;
+          } else if (sb.id < 16) {
+            continue;
+          }
+        } else if (targetType !== 'red' && sb.type !== targetType) {
+          continue;
+        }
+        var sd2 = (sb.x - cue.x) * (sb.x - cue.x) + (sb.y - cue.y) * (sb.y - cue.y);
+        if (sd2 < bestSD2) {
+          bestSD2 = sd2;
+          bestS = sb;
+        }
+      }
+      if (bestS) return Math.atan2(bestS.y - cue.y, bestS.x - cue.x);
+      return 0;
+    }
+
     if (state.isBreak) {
       return Math.atan2(FOOT_SPOT_Y - cue.y, FOOT_SPOT_X - cue.x);
     }
@@ -593,6 +822,7 @@
     var fitEl = (isSideways && containerEl.closest && containerEl.closest('.board-wrap')) || containerEl;
     var fit = window.boardFit ? window.boardFit(fitEl) : { w: window.innerWidth - 24, h: window.innerHeight - 160 };
     var hudH = (hudEl && hudEl.offsetHeight) ? hudEl.offsetHeight : (isSideways ? 28 : 54);
+    var nomH = (nomBarEl && nomBarEl.style.display !== 'none' && nomBarEl.offsetHeight) ? (nomBarEl.offsetHeight + 4) : 0;
     var dispW, dispH;
 
     if (isSideways) {
@@ -601,7 +831,7 @@
       var topY = containerEl ? Math.max(0, containerEl.getBoundingClientRect().top) : 44;
       var sideBarW = 108 + 8;
       var availW = Math.max(180, fit.w - sideBarW);
-      var availH = Math.max(100, window.innerHeight - topY - hudH - gaH - 12);
+      var availH = Math.max(100, window.innerHeight - topY - hudH - nomH - gaH - 12);
       var scaleS = Math.min(availW / CW, availH / CH);
       dispW = Math.max(180, Math.floor(CW * scaleS));
       dispH = Math.max(100, Math.floor(CH * scaleS));
@@ -609,7 +839,7 @@
     } else if (isPortrait) {
       if (barEl) barEl.style.height = '';
       var barH = (barEl && barEl.offsetHeight) ? barEl.offsetHeight : 58;
-      var reserveP = hudH + Math.max(58, barH) + 16;
+      var reserveP = hudH + nomH + Math.max(58, barH) + 16;
       var availWP = Math.max(160, fit.w);
       var availHP = Math.max(240, fit.h - reserveP);
       var scaleP = Math.min(availWP / CH, availHP / CW);
@@ -618,7 +848,7 @@
     } else {
       if (barEl) barEl.style.height = '';
       var barHL = (barEl && barEl.offsetHeight) ? barEl.offsetHeight : 54;
-      var reserveL = hudH + Math.max(54, barHL) + 18;
+      var reserveL = hudH + nomH + Math.max(54, barHL) + 18;
       var availWL = Math.max(240, fit.w);
       var availHL = Math.max(130, fit.h - reserveL);
       var scaleL = Math.min(availWL / CW, availHL / CH);
@@ -632,7 +862,7 @@
     canvas.style.width = dispW + 'px';
     canvas.style.height = dispH + 'px';
 
-    lastLayoutKey = window.innerWidth + 'x' + window.innerHeight + ':' + (containerEl ? containerEl.clientWidth : 0) + ':' + (isSideways ? 's' : (isPortrait ? 'p' : 'l'));
+    lastLayoutKey = window.innerWidth + 'x' + window.innerHeight + ':' + (containerEl ? containerEl.clientWidth : 0) + ':' + (isSideways ? 's' : (isPortrait ? 'p' : 'l')) + ':' + (isSnooker ? 'sn' : '8b');
 
     draw();
   }
@@ -684,14 +914,14 @@
 
     // Rail diamond sights
     ctx.fillStyle = 'rgba(255,236,195,0.65)';
-    var sx = [125, 250, 375, 625, 750, 875];
+    var sx = [W * 0.125, W * 0.25, W * 0.375, W * 0.625, W * 0.75, W * 0.875];
     for (var si = 0; si < sx.length; si++) {
       ctx.beginPath();
       ctx.arc(RAIL + sx[si], RAIL * 0.45, 3, 0, Math.PI * 2);
       ctx.arc(RAIL + sx[si], CH - RAIL * 0.45, 3, 0, Math.PI * 2);
       ctx.fill();
     }
-    var sy = [125, 250, 375];
+    var sy = [H * 0.25, H * 0.5, H * 0.75];
     for (var sj = 0; sj < sy.length; sj++) {
       ctx.beginPath();
       ctx.arc(RAIL * 0.45, RAIL + sy[sj], 3, 0, Math.PI * 2);
@@ -716,18 +946,41 @@
     ctx.lineWidth = 6;
     ctx.strokeRect(RAIL + 3, RAIL + 3, W - 6, H - 6);
 
-    // Baulk (head string) line & foot spot
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(RAIL + HEAD_STRING_X, RAIL + 4);
-    ctx.lineTo(RAIL + HEAD_STRING_X, RAIL + H - 4);
-    ctx.stroke();
+    if (isSnooker) {
+      // Baulk line and D semicircle
+      ctx.strokeStyle = 'rgba(255,255,255,0.24)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(RAIL + BAULK_X, RAIL + 4);
+      ctx.lineTo(RAIL + BAULK_X, RAIL + H - 4);
+      ctx.stroke();
 
-    ctx.fillStyle = 'rgba(255,255,255,0.28)';
-    ctx.beginPath();
-    ctx.arc(RAIL + FOOT_SPOT_X, RAIL + FOOT_SPOT_Y, 4.5, 0, Math.PI * 2);
-    ctx.fill();
+      ctx.beginPath();
+      ctx.arc(RAIL + BAULK_X, RAIL + CENTER_Y, D_RADIUS, Math.PI / 2, Math.PI * 1.5, false);
+      ctx.stroke();
+
+      // Standard colour spots
+      ctx.fillStyle = 'rgba(255,255,255,0.26)';
+      for (var ci = 0; ci < SNOOKER_COLOURS.length; ci++) {
+        var sp = SNOOKER_COLOURS[ci];
+        ctx.beginPath();
+        ctx.arc(RAIL + sp.x, RAIL + sp.y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      // Head string line & foot spot
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(RAIL + HEAD_STRING_X, RAIL + 4);
+      ctx.lineTo(RAIL + HEAD_STRING_X, RAIL + H - 4);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(255,255,255,0.28)';
+      ctx.beginPath();
+      ctx.arc(RAIL + FOOT_SPOT_X, RAIL + FOOT_SPOT_Y, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // 6 dark recessed pockets
     for (var k = 0; k < POCKETS.length; k++) {
@@ -752,8 +1005,8 @@
   function drawBall(b, alpha) {
     var cx = RAIL + b.x;
     var cy = RAIL + b.y;
-    var color = BALL_COLORS[b.id] || '#ccc';
-    var isStripe = b.id >= 9 && b.id <= 15;
+    var color = isSnooker ? (SNOOKER_BALL_COLORS[b.id] || '#c81e1e') : (BALL_COLORS[b.id] || '#ccc');
+    var isStripe = !isSnooker && b.id >= 9 && b.id <= 15;
     var roll = ballRoll[b.id] || { p: { x: 0, y: 0, z: 1 }, s: { x: 0, y: 1, z: 0 } };
     var p = roll.p;
     var s = roll.s;
@@ -835,9 +1088,30 @@
     ctx.fillStyle = shade;
     ctx.fillRect(cx - BALL_R, cy - BALL_R, BALL_R * 2, BALL_R * 2);
 
-    // Rolling number disc (1..15) or red cue-ball spot (0) clipped inside ball circle
+    // Rolling marker clipped inside ball circle
     var ang = (vx !== 0 || vy !== 0) ? Math.atan2(vy, vx) : 0;
-    if (b.id > 0) {
+    if (b.id === 0) {
+      ctx.save();
+      ctx.translate(cx + vx * BALL_R * 0.82, cy + vy * BALL_R * 0.82);
+      ctx.rotate(ang);
+      ctx.scale(Math.max(0.3, vz), 1);
+      ctx.fillStyle = 'rgba(200, 48, 48, 0.72)';
+      ctx.beginPath();
+      ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (isSnooker) {
+      // Subtle surface glint that rotates with ballRoll so snooker balls look rolling
+      ctx.save();
+      ctx.translate(cx + vx * BALL_R * 0.78, cy + vy * BALL_R * 0.78);
+      ctx.rotate(ang);
+      ctx.scale(Math.max(0.28, vz), 1);
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      ctx.beginPath();
+      ctx.arc(0, 0, BALL_R * 0.22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else {
       var fScale = Math.max(0.28, vz);
       ctx.save();
       ctx.translate(cx + vx * BALL_R * 0.86, cy + vy * BALL_R * 0.86);
@@ -857,16 +1131,6 @@
       ctx.textBaseline = 'middle';
       ctx.fillText(String(b.id), 0, 0.6);
       ctx.restore();
-    } else {
-      ctx.save();
-      ctx.translate(cx + vx * BALL_R * 0.82, cy + vy * BALL_R * 0.82);
-      ctx.rotate(ang);
-      ctx.scale(Math.max(0.3, vz), 1);
-      ctx.fillStyle = 'rgba(200, 48, 48, 0.72)';
-      ctx.beginPath();
-      ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
     }
 
     ctx.restore();
@@ -883,6 +1147,24 @@
     ctx.beginPath();
     ctx.arc(cx, cy, BALL_R, 0, Math.PI * 2);
     ctx.stroke();
+
+    // Highlight nominated colour ball
+    if (
+      isSnooker &&
+      !replaying &&
+      isMyTurn() &&
+      currentState &&
+      currentState.phase === 'shoot' &&
+      currentState.ballOn === 'colour' &&
+      selectedNominate &&
+      b.type === selectedNominate
+    ) {
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.arc(cx, cy, BALL_R + 4, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     ctx.restore();
   }
@@ -1029,7 +1311,32 @@
 
   function drawPlaceArea(kitchenOnly) {
     ctx.save();
-    if (kitchenOnly) {
+    if (isSnooker) {
+      // Shade outside the D
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+      ctx.beginPath();
+      ctx.rect(RAIL, RAIL, W, H);
+      ctx.moveTo(RAIL + BAULK_X, RAIL + CENTER_Y + D_RADIUS);
+      ctx.arc(RAIL + BAULK_X, RAIL + CENTER_Y, D_RADIUS, Math.PI / 2, Math.PI * 1.5, false);
+      ctx.closePath();
+      ctx.fill('evenodd');
+
+      // Highlight inside the D
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.16)';
+      ctx.beginPath();
+      ctx.arc(RAIL + BAULK_X, RAIL + CENTER_Y, D_RADIUS, Math.PI / 2, Math.PI * 1.5, false);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(74, 222, 128, 0.88)';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([7, 5]);
+      ctx.beginPath();
+      ctx.arc(RAIL + BAULK_X, RAIL + CENTER_Y, D_RADIUS, Math.PI / 2, Math.PI * 1.5, false);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else if (kitchenOnly) {
       ctx.fillStyle = 'rgba(34, 197, 94, 0.14)';
       ctx.fillRect(RAIL, RAIL, HEAD_STRING_X, H);
 
@@ -1148,6 +1455,27 @@
   function updateSeatCard(el, seatIdx) {
     if (!el || !currentState) return;
     var name = window.getPlayerName ? window.getPlayerName(seatIdx) : ('P' + (seatIdx + 1));
+    var active = currentState.winner === null && currentState.phase !== 'over' && currentState.currentPlayer === seatIdx;
+    el.className = 'pool-seat' + (seatIdx === 1 ? ' pool-seat--right' : '') + (active ? ' pool-seat--active' : '');
+
+    if (isSnooker) {
+      var score = (currentState.scores && currentState.scores[seatIdx]) || 0;
+      var brk = active && currentState.currentBreak > 0 ? currentState.currentBreak : 0;
+      el.innerHTML =
+        '<div class="pool-seat-top">' +
+          '<span class="pool-seat-name"></span>' +
+          '<span class="snooker-score">' + score + '</span>' +
+        '</div>' +
+        '<div class="snooker-seat-meta">' +
+          (brk > 0 ? '<span class="snooker-break-pill"></span>' : '') +
+        '</div>';
+      el.querySelector('.pool-seat-name').textContent = name;
+      if (brk > 0) {
+        el.querySelector('.snooker-break-pill').textContent = t('snooker_break') + ' ' + brk;
+      }
+      return;
+    }
+
     var group = currentState.groups ? currentState.groups[seatIdx] : null;
     var balls = currentState.balls || [];
     var ownLeft = 0;
@@ -1176,8 +1504,6 @@
       }
     }
 
-    var active = currentState.winner === null && currentState.phase !== 'over' && currentState.currentPlayer === seatIdx;
-    el.className = 'pool-seat' + (seatIdx === 1 ? ' pool-seat--right' : '') + (active ? ' pool-seat--active' : '');
     el.innerHTML =
       '<div class="pool-seat-top">' +
         '<span class="pool-seat-name"></span>' +
@@ -1196,15 +1522,41 @@
     if (!statusEl) return;
     var mine = isMyTurn();
     statusEl.className = 'pool-status-pill' + (mine ? ' pool-status-pill--mine' : '');
+
+    var mainText;
     if (currentState.phase === 'over' || currentState.winner !== null) {
-      statusEl.textContent = currentState.winner === myPlayerIndex ? t('rv_you_win') : (currentState.winner === -1 ? t('rv_draw') : t('rv_you_lose'));
+      mainText = currentState.winner === myPlayerIndex ? t('rv_you_win') : (currentState.winner === -1 ? t('rv_draw') : t('rv_you_lose'));
     } else if (currentState.phase === 'ball_in_hand') {
-      statusEl.textContent = mine ? t('pool_place_cue') : t('pool_opp_place_cue');
+      mainText = mine ? t('pool_place_cue') : t('pool_opp_place_cue');
     } else if (currentState.isBreak && mine) {
-      statusEl.textContent = t('pool_break_shot');
+      mainText = t('pool_break_shot');
     } else {
-      statusEl.textContent = mine ? t('pool_your_turn') : t('pool_opp_turn');
+      mainText = mine ? t('pool_your_turn') : t('pool_opp_turn');
     }
+
+    if (!isSnooker) {
+      statusEl.textContent = mainText;
+      return;
+    }
+
+    var ballOn = currentState.ballOn || 'red';
+    var dotColor = ballOn === 'colour'
+      ? (selectedNominate ? SNOOKER_COLOUR_HEX[selectedNominate] : 'linear-gradient(135deg,#eab308,#1d4ed8,#ec4899)')
+      : (SNOOKER_COLOUR_HEX[ballOn] || '#c81e1e');
+    var onLabel = ballOn === 'colour' && selectedNominate
+      ? t('snooker_ball_' + selectedNominate)
+      : t('snooker_ball_' + ballOn);
+    var remPts = typeof currentState.pointsRemaining === 'number' ? currentState.pointsRemaining : 0;
+
+    statusEl.innerHTML =
+      '<span class="snooker-status-main"></span>' +
+      '<span class="snooker-status-sub">' +
+        '<span class="snooker-on-dot" style="background:' + dotColor + '"></span>' +
+        '<span class="snooker-on-text"></span>' +
+      '</span>';
+    statusEl.querySelector('.snooker-status-main').textContent = mainText;
+    statusEl.querySelector('.snooker-on-text').textContent =
+      t('snooker_on') + ': ' + onLabel + ' · ' + t('snooker_left') + ': ' + remPts;
   }
 
   function closeGroupPopup() {
@@ -1267,11 +1619,48 @@
   }
 
   function maybeShowGroupPopup(state) {
+    if (isSnooker) return;
     var g = (state && Array.isArray(state.groups)) ? [state.groups[0], state.groups[1]] : [null, null];
     if (prevGroups && prevGroups[0] === null && prevGroups[1] === null && g[0] !== null && g[1] !== null) {
       showGroupPopup(g);
     }
     prevGroups = g;
+  }
+
+  function syncNominateUI() {
+    if (!nomBarEl) return;
+    var mine = isMyTurn() && !replaying;
+    var needNom = isSnooker && mine && currentState && currentState.phase === 'shoot' && currentState.ballOn === 'colour';
+    var wasVisible = nomBarEl.style.display !== 'none';
+    nomBarEl.style.display = needNom ? 'flex' : 'none';
+
+    if (needNom) {
+      var activeMap = {};
+      var balls = currentState.balls || [];
+      for (var i = 0; i < balls.length; i++) {
+        var b = balls[i];
+        if (b && !b.potted && b.id >= 16) activeMap[b.type] = true;
+      }
+      if (selectedNominate && !activeMap[selectedNominate]) {
+        selectedNominate = null;
+      }
+      for (var c = 0; c < SNOOKER_COLOURS.length; c++) {
+        var col = SNOOKER_COLOURS[c];
+        var btn = nomButtons[col.name];
+        if (!btn) continue;
+        btn.disabled = !activeMap[col.name];
+        btn.classList.toggle('snooker-nom-btn--active', selectedNominate === col.name);
+      }
+    }
+
+    if (shootBtnEl) {
+      shootBtnEl.disabled = !!(needNom && !selectedNominate);
+    }
+
+    var isVisibleNow = nomBarEl.style.display !== 'none';
+    if (wasVisible !== isVisibleNow) {
+      resizeCanvas();
+    }
   }
 
   function updateBar() {
@@ -1289,7 +1678,9 @@
       placeBarEl.style.display = 'flex';
       waitBarEl.style.display = 'none';
       if (placeHintEl) {
-        placeHintEl.textContent = kitchenOnly ? t('pool_place_kitchen_hint') : t('pool_place_hint');
+        placeHintEl.textContent = isSnooker
+          ? t('snooker_place_d_hint')
+          : (kitchenOnly ? t('pool_place_kitchen_hint') : t('pool_place_hint'));
       }
       if (confirmPlaceBtnEl) {
         confirmPlaceBtnEl.disabled = !isValidCuePosLocal(displayBalls, placeX, placeY, kitchenOnly);
@@ -1306,10 +1697,23 @@
         waitBarEl.textContent = t('pool_opp_turn');
       }
     }
+    syncNominateUI();
   }
 
   function announceShotOutcome(shot) {
     if (!shot || typeof window.showToast !== 'function') return;
+    if (isSnooker) {
+      if (shot.respotBlackTie) {
+        window.showToast(t('snooker_respot_black'));
+        return;
+      }
+      if (shot.foul) {
+        var reasonKey = 'snooker_foul_' + shot.foul;
+        var reason = t(reasonKey);
+        window.showToast(tf('snooker_foul_toast', reason, shot.foulPoints || 4));
+      }
+      return;
+    }
     if (shot.respotEight) {
       window.showToast(t('pool_respot_eight'));
       return;
@@ -1378,7 +1782,7 @@
     prevBallPos = {};
     var fInit = parsed[0];
     var initialBalls = [];
-    for (var id0 = 0; id0 <= 15; id0++) {
+    for (var id0 = 0; id0 <= MAX_BALL_ID; id0++) {
       if (fInit[id0]) {
         prevBallPos[id0] = { x: fInit[id0].x, y: fInit[id0].y };
         initialBalls.push({
@@ -1386,7 +1790,7 @@
           x: fInit[id0].x,
           y: fInit[id0].y,
           potted: false,
-          type: ballType(id0),
+          type: ballTypeFor(id0),
         });
       }
     }
@@ -1431,7 +1835,7 @@
           return;
         }
         var interp = [];
-        for (var id = 0; id <= 15; id++) {
+        for (var id = 0; id <= MAX_BALL_ID; id++) {
           var a = f0[id];
           var b = f1[id];
           if (a && b) {
@@ -1447,7 +1851,7 @@
               x: nx,
               y: ny,
               potted: false,
-              type: ballType(id),
+              type: ballTypeFor(id),
             });
           }
         }
@@ -1521,16 +1925,37 @@
     return null;
   }
 
+  function trySendShot() {
+    if (!currentState || !isMyTurn() || replaying || currentState.phase !== 'shoot') return;
+    if (isSnooker && currentState.ballOn === 'colour' && !selectedNominate) {
+      if (typeof window.showToast === 'function') {
+        window.showToast(t('snooker_pick_colour_first'));
+      }
+      return;
+    }
+    var mv = {
+      type: 'shot',
+      angle: aimAngle,
+      power: clamp(aimPower, 0.05, 1.0),
+      spinX: round2(aimSpinX),
+      spinY: round2(aimSpinY),
+    };
+    if (isSnooker && currentState.ballOn === 'colour') {
+      mv.nominate = selectedNominate;
+    }
+    sendMove(mv);
+  }
+
   function onPointerDown(e) {
     if (!currentState || !isMyTurn() || replaying) return;
     var pt = clientToTable(e);
 
     if (currentState.phase === 'ball_in_hand') {
       var kitchenOnly = isKitchenPlace(currentState);
-      var maxPlaceX = kitchenOnly ? HEAD_STRING_X : (W - BALL_R - 1);
+      var clamped = clampPlacePos(pt.x, pt.y, kitchenOnly);
       dragMode = 'place';
-      placeX = clamp(pt.x, BALL_R + 1, maxPlaceX);
-      placeY = clamp(pt.y, BALL_R + 1, H - BALL_R - 1);
+      placeX = clamped.x;
+      placeY = clamped.y;
       if (confirmPlaceBtnEl) {
         confirmPlaceBtnEl.disabled = !isValidCuePosLocal(displayBalls, placeX, placeY, kitchenOnly);
       }
@@ -1561,9 +1986,9 @@
 
     if (dragMode === 'place') {
       var kitchenOnly = isKitchenPlace(currentState);
-      var maxPlaceX = kitchenOnly ? HEAD_STRING_X : (W - BALL_R - 1);
-      placeX = clamp(pt.x, BALL_R + 1, maxPlaceX);
-      placeY = clamp(pt.y, BALL_R + 1, H - BALL_R - 1);
+      var clamped = clampPlacePos(pt.x, pt.y, kitchenOnly);
+      placeX = clamped.x;
+      placeY = clamped.y;
       if (confirmPlaceBtnEl) {
         confirmPlaceBtnEl.disabled = !isValidCuePosLocal(displayBalls, placeX, placeY, kitchenOnly);
       }
@@ -1610,13 +2035,7 @@
 
     if (mode === 'pull' && currentState.phase === 'shoot') {
       if (dist >= 18) {
-        sendMove({
-          type: 'shot',
-          angle: aimAngle,
-          power: clamp(aimPower, 0.05, 1.0),
-          spinX: round2(aimSpinX),
-          spinY: round2(aimSpinY),
-        });
+        trySendShot();
       }
     } else if (mode === 'place' && currentState.phase === 'ball_in_hand') {
       if (isValidCuePosLocal(displayBalls, placeX, placeY, isKitchenPlace(currentState))) {
@@ -1651,9 +2070,22 @@
     aimSpinX = 0;
     aimSpinY = 0;
     spinDragging = false;
+    selectedNominate = null;
+    lastNomSeq = -1;
+    nomButtons = {};
 
     if (window.injectStylesOnce) {
       window.injectStylesOnce('pool-styles', STYLES);
+    }
+
+    var nomBtnsHtml = '';
+    for (var c = 0; c < SNOOKER_COLOURS.length; c++) {
+      var col = SNOOKER_COLOURS[c];
+      nomBtnsHtml +=
+        '<button type="button" class="snooker-nom-btn" data-nom="' + col.name + '">' +
+          '<span class="snooker-nom-dot" style="background:' + col.color + '"></span>' +
+          '<span class="snooker-nom-text"></span>' +
+        '</button>';
     }
 
     container.innerHTML =
@@ -1662,6 +2094,10 @@
           '<div id="poolSeat0" class="pool-seat"></div>' +
           '<div id="poolStatus" class="pool-status-pill"></div>' +
           '<div id="poolSeat1" class="pool-seat pool-seat--right"></div>' +
+        '</div>' +
+        '<div class="snooker-nom-bar" id="snookerNomBar" style="display:none">' +
+          '<span class="snooker-nom-label" id="snookerNomLabel"></span>' +
+          nomBtnsHtml +
         '</div>' +
         '<div class="pool-main">' +
           '<div class="pool-canvas-wrap">' +
@@ -1699,6 +2135,7 @@
 
     wrapEl = document.getElementById('poolWrap');
     hudEl = document.getElementById('poolHud');
+    nomBarEl = document.getElementById('snookerNomBar');
     barEl = document.getElementById('poolBar');
     seat0El = document.getElementById('poolSeat0');
     seat1El = document.getElementById('poolSeat1');
@@ -1716,6 +2153,26 @@
     placeHintEl = document.getElementById('poolPlaceHint');
     shootBtnEl = document.getElementById('poolShootBtn');
     confirmPlaceBtnEl = document.getElementById('poolConfirmPlaceBtn');
+
+    document.getElementById('snookerNomLabel').textContent = t('snooker_pick_colour');
+    var nomBtnEls = nomBarEl.querySelectorAll('.snooker-nom-btn');
+    for (var nb = 0; nb < nomBtnEls.length; nb++) {
+      (function (btnEl) {
+        var cName = btnEl.getAttribute('data-nom');
+        var meta = SNOOKER_COLOURS.filter(function (x) { return x.name === cName; })[0];
+        nomButtons[cName] = btnEl;
+        btnEl.querySelector('.snooker-nom-text').textContent =
+          t('snooker_ball_' + cName) + ' ' + (meta ? meta.value : '');
+        btnEl.addEventListener('click', function () {
+          if (!currentState || !isMyTurn() || replaying || currentState.phase !== 'shoot' || currentState.ballOn !== 'colour') return;
+          selectedNominate = cName;
+          aimAngle = pickDefaultAimAngle(currentState);
+          syncNominateUI();
+          updateHUD();
+          draw();
+        });
+      })(nomBtnEls[nb]);
+    }
 
     document.getElementById('poolPowerLabel').textContent = t('pool_power');
     document.getElementById('poolSpinLabel').textContent = t('pool_spin');
@@ -1757,14 +2214,7 @@
     });
 
     shootBtnEl.addEventListener('click', function () {
-      if (!currentState || !isMyTurn() || replaying || currentState.phase !== 'shoot') return;
-      sendMove({
-        type: 'shot',
-        angle: aimAngle,
-        power: clamp(aimPower, 0.05, 1.0),
-        spinX: round2(aimSpinX),
-        spinY: round2(aimSpinY),
-      });
+      trySendShot();
     });
 
     confirmPlaceBtnEl.addEventListener('click', function () {
@@ -1797,14 +2247,20 @@
     if (!state || !Array.isArray(state.balls)) return;
     if (!canvas || !containerEl) init(container);
 
+    applyVariantConfig(state);
     myPlayerIndex = typeof playerIndex === 'number' ? playerIndex : 0;
     currentState = state;
 
     var seq = (state.lastShot && typeof state.lastShot.seq === 'number') ? state.lastShot.seq : (state.shotSeq || 0);
-    var turnPhaseKey = state.currentPlayer + ':' + state.phase + ':' + seq;
+    var turnPhaseKey = state.currentPlayer + ':' + state.phase + ':' + seq + ':' + (state.ballOn || '');
+    if (seq !== lastNomSeq || !isSnooker || state.ballOn !== 'colour' || !isMyTurn()) {
+      selectedNominate = null;
+      lastNomSeq = seq;
+    }
+
     var curSideways = window.innerHeight < 540 && window.innerWidth > window.innerHeight;
     var curPortrait = !curSideways && window.innerHeight > window.innerWidth;
-    var layoutKey = window.innerWidth + 'x' + window.innerHeight + ':' + (containerEl ? containerEl.clientWidth : 0) + ':' + (curSideways ? 's' : (curPortrait ? 'p' : 'l'));
+    var layoutKey = window.innerWidth + 'x' + window.innerHeight + ':' + (containerEl ? containerEl.clientWidth : 0) + ':' + (curSideways ? 's' : (curPortrait ? 'p' : 'l')) + ':' + (isSnooker ? 'sn' : '8b');
 
     if (lastPlayedSeq === null) {
       lastPlayedSeq = seq;

@@ -1,34 +1,10 @@
-// games/pool.js — 2-player 8-Ball Pool with deterministic 2D physics
+// games/pool.js — 2-player 8-Ball Pool & Snooker with deterministic 2D physics
 'use strict';
 
-const TABLE = {
-  W: 1000,
-  H: 500,
-  BALL_R: 14,
-  HEAD_STRING_X: 250,
-  FOOT_SPOT_X: 750,
-  FOOT_SPOT_Y: 250,
-  MAX_SPEED: 1450,
-  MIN_POWER: 0.05,
-  MAX_POWER: 1.0,
-  FRICTION: 260,
-  STOP_SPEED: 6,
-  E_BALL: 0.96,
-  E_RAIL: 0.80,
-  DT: 1 / 180,
-  MAX_TICKS: 1800,
-  FRAME_STRIDE: 6,
-  POCKETS: [
-    { id: 0, x: 0, y: 0, r: 28 },
-    { id: 1, x: 500, y: -4, r: 25 },
-    { id: 2, x: 1000, y: 0, r: 28 },
-    { id: 3, x: 0, y: 500, r: 28 },
-    { id: 4, x: 500, y: 504, r: 25 },
-    { id: 5, x: 1000, y: 500, r: 28 },
-  ],
-};
+const physics = require('./lib/pool-physics');
+const snooker = require('./lib/snooker');
 
-const MAX_FRAMES = 300;
+const TABLE = physics.DEFAULT_TABLE;
 const TURN_LIMIT = 150;
 
 // Fixed deterministic 8-ball rack layout by (row, col) -> ball id.
@@ -74,284 +50,26 @@ function buildRackBalls() {
   return balls;
 }
 
-function round1(v) {
-  return Math.round(v * 10) / 10;
-}
-
-function encodeFrame(simBalls) {
-  const frame = [];
-  for (let i = 0; i < simBalls.length; i++) {
-    const b = simBalls[i];
-    if (!b.potted) {
-      frame.push(b.id, round1(b.x), round1(b.y));
-    }
-  }
-  return frame;
-}
-
-function framesEqual(a, b) {
-  if (!a || !b || a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false;
-  }
-  return true;
-}
-
 function simulateShot(balls, angle, power, opts) {
-  const recordFrames = opts && opts.recordFrames !== undefined ? !!opts.recordFrames : true;
-  let cueSpinX = Math.max(-1, Math.min(1, Number(opts && opts.spinX) || 0));
-  let cueSpinY = Math.max(-1, Math.min(1, Number(opts && opts.spinY) || 0));
-  let cueSpinYApplied = false;
-  const K_SPIN_FOLLOW = 0.42;
-  const K_SPIN_RAIL = 0.45;
-
-  const simBalls = balls.map((b) => ({
-    id: b.id,
-    x: b.x,
-    y: b.y,
-    vx: 0,
-    vy: 0,
-    potted: !!b.potted,
-    type: b.type || ballType(b.id),
-  }));
-
-  const clampedPower = Math.max(0, Math.min(TABLE.MAX_POWER, Number(power) || 0));
-  const cue = simBalls.find((b) => b.id === 0);
-  if (cue && !cue.potted) {
-    cue.vx = Math.cos(angle) * clampedPower * TABLE.MAX_SPEED;
-    cue.vy = Math.sin(angle) * clampedPower * TABLE.MAX_SPEED;
-  }
-
-  let firstHit = null;
-  const potted = [];
-  const frames = recordFrames ? [encodeFrame(simBalls)] : [];
-  let ticks = 0;
-
-  const { W, H, BALL_R, FRICTION, STOP_SPEED, E_BALL, E_RAIL, DT, MAX_TICKS, FRAME_STRIDE, POCKETS } = TABLE;
-  const minD = 2 * BALL_R;
-  const minD2 = minD * minD;
-  const n = simBalls.length;
-
-  for (let tick = 1; tick <= MAX_TICKS; tick++) {
-    ticks = tick;
-
-    // 1. Integrate positions
-    for (let i = 0; i < n; i++) {
-      const b = simBalls[i];
-      if (b.potted) continue;
-      b.x += b.vx * DT;
-      b.y += b.vy * DT;
-    }
-
-    // 2. Pocket check BEFORE cushions
-    for (let i = 0; i < n; i++) {
-      const b = simBalls[i];
-      if (b.potted) continue;
-      for (let k = 0; k < POCKETS.length; k++) {
-        const p = POCKETS[k];
-        if (Math.hypot(b.x - p.x, b.y - p.y) < p.r) {
-          b.potted = true;
-          b.vx = 0;
-          b.vy = 0;
-          potted.push(b.id);
-          break;
-        }
-      }
-    }
-
-    // 3. Cushion collisions
-    for (let i = 0; i < n; i++) {
-      const b = simBalls[i];
-      if (b.potted) continue;
-      if (b.x < BALL_R) {
-        b.x = BALL_R;
-        if (b.vx < 0) {
-          const imp = Math.abs(b.vx);
-          b.vx *= -E_RAIL;
-          if (b.id === 0) {
-            if (cueSpinX !== 0) {
-              b.vy -= cueSpinX * imp * K_SPIN_RAIL;
-              cueSpinX *= 0.45;
-            }
-            if (cueSpinY !== 0) cueSpinY *= 0.7;
-          }
-        }
-      } else if (b.x > W - BALL_R) {
-        b.x = W - BALL_R;
-        if (b.vx > 0) {
-          const imp = Math.abs(b.vx);
-          b.vx *= -E_RAIL;
-          if (b.id === 0) {
-            if (cueSpinX !== 0) {
-              b.vy += cueSpinX * imp * K_SPIN_RAIL;
-              cueSpinX *= 0.45;
-            }
-            if (cueSpinY !== 0) cueSpinY *= 0.7;
-          }
-        }
-      }
-      if (b.y < BALL_R) {
-        b.y = BALL_R;
-        if (b.vy < 0) {
-          const imp = Math.abs(b.vy);
-          b.vy *= -E_RAIL;
-          if (b.id === 0) {
-            if (cueSpinX !== 0) {
-              b.vx += cueSpinX * imp * K_SPIN_RAIL;
-              cueSpinX *= 0.45;
-            }
-            if (cueSpinY !== 0) cueSpinY *= 0.7;
-          }
-        }
-      } else if (b.y > H - BALL_R) {
-        b.y = H - BALL_R;
-        if (b.vy > 0) {
-          const imp = Math.abs(b.vy);
-          b.vy *= -E_RAIL;
-          if (b.id === 0) {
-            if (cueSpinX !== 0) {
-              b.vx -= cueSpinX * imp * K_SPIN_RAIL;
-              cueSpinX *= 0.45;
-            }
-            if (cueSpinY !== 0) cueSpinY *= 0.7;
-          }
-        }
-      }
-    }
-
-    // 4. Ball-ball collisions (2 passes keep break rack crisp without sticking)
-    for (let pass = 0; pass < 2; pass++) {
-      for (let i = 0; i < n; i++) {
-        const a = simBalls[i];
-        if (a.potted) continue;
-        for (let j = i + 1; j < n; j++) {
-          const b = simBalls[j];
-          if (b.potted) continue;
-          const dx = b.x - a.x;
-          const dy = b.y - a.y;
-          const d2 = dx * dx + dy * dy;
-          if (d2 < minD2) {
-            if (firstHit === null) {
-              if (a.id === 0) firstHit = b.id;
-              else if (b.id === 0) firstHit = a.id;
-            }
-            const d = Math.sqrt(d2) || 0.0001;
-            const nx = dx / d;
-            const ny = dy / d;
-            const overlap = (minD - d) * 0.5;
-            a.x -= overlap * nx;
-            a.y -= overlap * ny;
-            b.x += overlap * nx;
-            b.y += overlap * ny;
-
-            const vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
-            if (vn < 0) {
-              const cueBall = a.id === 0 ? a : (b.id === 0 ? b : null);
-              let preSpd = 0;
-              let dirX = 0;
-              let dirY = 0;
-              let cutFactor = 0;
-              if (cueBall && !cueSpinYApplied && cueSpinY !== 0) {
-                preSpd = Math.hypot(cueBall.vx, cueBall.vy);
-                if (preSpd > 1e-6) {
-                  dirX = cueBall.vx / preSpd;
-                  dirY = cueBall.vy / preSpd;
-                  cutFactor = Math.abs(dirX * nx + dirY * ny);
-                }
-              }
-
-              const imp = -(1 + E_BALL) * vn * 0.5;
-              a.vx -= imp * nx;
-              a.vy -= imp * ny;
-              b.vx += imp * nx;
-              b.vy += imp * ny;
-
-              if (cueBall && !cueSpinYApplied && cueSpinY !== 0 && preSpd > 1e-6) {
-                const deltaV = cueSpinY * preSpd * K_SPIN_FOLLOW * (0.35 + 0.65 * cutFactor);
-                cueBall.vx += dirX * deltaV;
-                cueBall.vy += dirY * deltaV;
-                cueSpinYApplied = true;
-                cueSpinY = 0;
-              }
-              if (cueBall && cueSpinX !== 0) {
-                cueSpinX *= 0.8;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // 5. Rolling friction & stop check
-    let anyMoving = false;
-    for (let i = 0; i < n; i++) {
-      const b = simBalls[i];
-      if (b.potted) continue;
-      const spd = Math.hypot(b.vx, b.vy);
-      if (spd <= STOP_SPEED || spd <= FRICTION * DT) {
-        b.vx = 0;
-        b.vy = 0;
-      } else {
-        const scale = (spd - FRICTION * DT) / spd;
-        b.vx *= scale;
-        b.vy *= scale;
-        anyMoving = true;
-      }
-    }
-
-    if (recordFrames && tick % FRAME_STRIDE === 0 && frames.length < MAX_FRAMES) {
-      frames.push(encodeFrame(simBalls));
-    }
-
-    if (!anyMoving) break;
-  }
-
-  const outBalls = simBalls.map((b) => ({
-    id: b.id,
-    x: b.x,
-    y: b.y,
-    potted: b.potted,
-    type: b.type,
-  }));
-
-  if (recordFrames) {
-    const finalFrame = encodeFrame(simBalls);
-    if (!framesEqual(frames[frames.length - 1], finalFrame)) {
-      if (frames.length < MAX_FRAMES) frames.push(finalFrame);
-      else frames[frames.length - 1] = finalFrame;
-    }
-  }
-
-  return { balls: outBalls, firstHit, potted, frames, ticks };
-}
-
-function isValidBallSpot(balls, x, y, ignoreBallId) {
-  if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
-  const minX = TABLE.BALL_R + 1;
-  const maxX = TABLE.W - TABLE.BALL_R - 1;
-  const minY = TABLE.BALL_R + 1;
-  const maxY = TABLE.H - TABLE.BALL_R - 1;
-  if (x < minX || x > maxX || y < minY || y > maxY) return false;
-
-  const minDist = 2 * TABLE.BALL_R + 1;
-  const minDist2 = minDist * minDist;
-  for (let i = 0; i < balls.length; i++) {
-    const b = balls[i];
-    if (!b || b.potted || b.id === ignoreBallId) continue;
-    const dx = x - b.x;
-    const dy = y - b.y;
-    if (dx * dx + dy * dy < minDist2) return false;
-  }
-  return true;
+  const simOpts = opts ? Object.assign({}, opts) : {};
+  if (!simOpts.table) simOpts.table = TABLE;
+  if (!simOpts.ballType) simOpts.ballType = ballType;
+  return physics.simulateShot(balls, angle, power, simOpts);
 }
 
 function isValidCuePos(balls, x, y, opts) {
+  if (opts && opts.variant === 'snooker') {
+    return snooker.isValidSnookerCuePos(balls, x, y);
+  }
   const kitchenOnly = !!(opts === true || (opts && opts.kitchenOnly));
   if (kitchenOnly && (!Number.isFinite(x) || x > TABLE.HEAD_STRING_X)) return false;
-  return isValidBallSpot(balls, x, y, 0);
+  return physics.isValidBallSpot(balls, x, y, 0, TABLE);
 }
 
 function findSafeCueSpot(balls, opts) {
+  if (opts && opts.variant === 'snooker') {
+    return snooker.findSafeSnookerCueSpot(balls);
+  }
   const kitchenOnly = !!(opts === true || (opts && opts.kitchenOnly));
   const startX = TABLE.HEAD_STRING_X;
   const startY = TABLE.FOOT_SPOT_Y;
@@ -389,7 +107,7 @@ function respotBall(balls, ballId, targetX, targetY) {
   const ball = balls.find((b) => b.id === ballId);
   if (!ball) return;
 
-  if (isValidBallSpot(balls, targetX, targetY, ballId)) {
+  if (physics.isValidBallSpot(balls, targetX, targetY, ballId, TABLE)) {
     ball.x = targetX;
     ball.y = targetY;
     ball.potted = false;
@@ -398,7 +116,7 @@ function respotBall(balls, ballId, targetX, targetY) {
 
   // Shift along +x in steps of BALL_R
   for (let x = targetX + TABLE.BALL_R; x <= TABLE.W - TABLE.BALL_R - 1; x += TABLE.BALL_R) {
-    if (isValidBallSpot(balls, x, targetY, ballId)) {
+    if (physics.isValidBallSpot(balls, x, targetY, ballId, TABLE)) {
       ball.x = x;
       ball.y = targetY;
       ball.potted = false;
@@ -409,7 +127,7 @@ function respotBall(balls, ballId, targetX, targetY) {
   // Grid fallback if +x line is completely blocked
   for (let y = TABLE.BALL_R + 2; y <= TABLE.H - TABLE.BALL_R - 2; y += TABLE.BALL_R) {
     for (let x = TABLE.BALL_R + 2; x <= TABLE.W - TABLE.BALL_R - 2; x += TABLE.BALL_R) {
-      if (isValidBallSpot(balls, x, y, ballId)) {
+      if (physics.isValidBallSpot(balls, x, y, ballId, TABLE)) {
         ball.x = x;
         ball.y = y;
         ball.potted = false;
@@ -578,12 +296,14 @@ function applyShotRules(state, playerIndex, angle, power, sim, spinX, spinY) {
 
 function createState() {
   return {
+    variant: '8ball',
     balls: buildRackBalls(),
     currentPlayer: 0,
     phase: 'shoot',
     groups: [null, null],
     isBreak: true,
     kitchenOnly: false,
+    inDOnly: false,
     shotSeq: 0,
     turnCount: 0,
     lastShot: null,
@@ -595,22 +315,39 @@ function createState() {
 
 function initGame(state, _playerCount) {
   // Read room options from state._options (never state.options)
-  void state._options;
+  const variant = state && state._options && state._options.variant === 'snooker' ? 'snooker' : '8ball';
+  if (variant === 'snooker') {
+    snooker.initSnookerState(state);
+    return;
+  }
+
+  state.variant = '8ball';
   state.balls = buildRackBalls();
   state.currentPlayer = 0;
   state.phase = 'shoot';
   state.groups = [null, null];
   state.isBreak = true;
   state.kitchenOnly = false;
+  state.inDOnly = false;
   state.shotSeq = 0;
   state.turnCount = 0;
   state.lastShot = null;
   state.winner = null;
   state.winReason = null;
   state.foulCount = [0, 0];
+  delete state.scores;
+  delete state.currentBreak;
+  delete state.ballOn;
+  delete state.nominatedColour;
+  delete state.pointsRemaining;
+  delete state.respotBlackTie;
 }
 
 function handleMove(data, state, playerIndex) {
+  if (state && state.variant === 'snooker') {
+    return snooker.handleSnookerMove(data, state, playerIndex);
+  }
+
   if (state.winner !== null || state.phase === 'over') return 'g_game_over';
   if (state.currentPlayer !== playerIndex) return 'g_not_your_turn';
   if (!data || typeof data !== 'object') return 'g_unknown_action';
@@ -664,6 +401,10 @@ function handleMove(data, state, playerIndex) {
 }
 
 function botFallback(state, idx) {
+  if (state && state.variant === 'snooker') {
+    return snooker.snookerBotFallback(state, idx);
+  }
+
   if (state.phase === 'ball_in_hand') {
     const kitchenOnly = !!(state.isBreak || state.kitchenOnly);
     const spot = findSafeCueSpot(state.balls, { kitchenOnly });
@@ -711,6 +452,8 @@ exports.name = 'pool';
 exports.maxPlayers = 2;
 exports.minPlayers = 2;
 exports.TABLE = TABLE;
+exports.SNOOKER_TABLE = snooker.SNOOKER_TABLE;
+exports.snooker = snooker;
 exports.createState = createState;
 exports.initGame = initGame;
 exports.handleMove = handleMove;

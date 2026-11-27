@@ -419,4 +419,7 @@ module.exports = {
   'pool_invalid_shot': 'Invalid shot angle or power',
   'pool_invalid_place': 'Invalid cue ball placement or overlapping another ball',
   'pool_place_kitchen': 'Cue ball must be placed behind the head string in the kitchen',
+  'pool_place_d': 'Cue ball must be placed inside the D semicircle',
+  'pool_nominate_required': 'Please nominate a colour ball first',
+  'pool_invalid_nominate': 'Invalid or unavailable nominated colour ball',
 };
