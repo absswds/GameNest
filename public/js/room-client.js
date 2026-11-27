@@ -690,6 +690,9 @@
   // These games are played only in fullscreen landscape: in the room page their stage is covered by a
   // "tap to play fullscreen" card (fsLaunchCard), and leaving fullscreen brings the card back.
   const FULLSCREEN_GAMES = ['pool', 'mahjong-sichuan', 'mahjong-cantonese', 'doudizhu', 'texas', 'sanguo', 'snakebattle'];
+  // Realtime games keep running behind the card (snakes die before the player taps it), so they show
+  // the board normally and only offer the top-bar fullscreen button.
+  const FS_NO_CARD_GAMES = ['snakebattle'];
   // 方形棋盘游戏：宽屏时玩家栏放左侧、操作按钮放右侧，让棋盘占满中间高度
   const SIDE_LAYOUT_GAMES = ['chess', 'checkers', 'reversi', 'go9', 'gomoku', 'chinesechess'];
   // Other square boards that only borrow the wide three-column stage (no match score / move list)
@@ -787,7 +790,7 @@
 
   var fsLaunchCard = null;
   function syncLaunchCard() {
-    var show = roomPhase === 'playing' && isFullscreenGame() && !isFullscreen;
+    var show = roomPhase === 'playing' && isFullscreenGame() && !isFullscreen && FS_NO_CARD_GAMES.indexOf(game) === -1;
     if (show && !fsLaunchCard) {
       fsLaunchCard = document.createElement('button');
       fsLaunchCard.type = 'button';
