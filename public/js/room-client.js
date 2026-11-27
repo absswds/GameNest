@@ -24,6 +24,7 @@
   let terminalRoomError = false;
   let leavingOnPurpose = false; // the app itself is navigating away: no beforeunload prompt
   let seatSwapFromIndex = null;
+  let resultHapticPlayed = false;
 
   el.roomBadge.textContent = roomId;
 
@@ -244,6 +245,9 @@
       },
       game_state(msg) {
         var wasRestart = false;
+        if (msg.state && (msg.state.winner === null || msg.state.winner === undefined)) {
+          resultHapticPlayed = false;
+        }
         if (state && state.winner != null && msg.state &&
             (msg.state.winner === null || msg.state.winner === undefined)) {
           wasRestart = true;
@@ -274,6 +278,7 @@
         renderGame();
       },
       game_started(msg) {
+        resultHapticPlayed = false;
         state = msg.state;
         if (msg.match !== undefined) match = msg.match;
         players = msg.players;
@@ -607,7 +612,7 @@
         osc.start(t); osc.stop(t + 0.2);
       }
     } catch (e) {}
-    try { if (navigator.vibrate) navigator.vibrate(150); } catch (e) {}
+    if (window.GNHaptics) GNHaptics.play('turn');
   }
 
   // Cue only on the not-my-turn -> my-turn transition, never on every broadcast.
@@ -704,6 +709,7 @@
   }
 
   function showLobby() {
+    resultHapticPlayed = false;
     setImmersiveLandscape(false);
     el.waitingRoom.style.display = '';
     el.profileEdit.style.display = 'flex';
@@ -2047,6 +2053,14 @@
     }
     resultEl.textContent = txt;
     resultEl.classList.toggle('win-text', isWin);
+    if (!resultHapticPlayed) {
+      resultHapticPlayed = true;
+      var isDraw = (inMatch && match.over && match.winner === -1) ||
+        (winner === -1 && !(game === 'oldmaid' && state && typeof state.loser === 'number' && state.loser >= 0));
+      if (!isDraw && window.GNHaptics) {
+        GNHaptics.play(isWin ? 'win' : 'lose');
+      }
+    }
     if (subHtml) el.resultSub.innerHTML = subHtml; else el.resultSub.textContent = sub;
     overlay.style.display = 'flex';
     var st = el.status;

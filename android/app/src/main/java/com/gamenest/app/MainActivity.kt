@@ -7,10 +7,16 @@ import android.content.pm.ActivityInfo
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.util.Log
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
@@ -67,6 +73,8 @@ class MainActivity : AppCompatActivity() {
         private const val NODEJS_PROJECT_NAME = "nodejs-project"
         private const val SERVER_PORT = 3000
         private const val SERVER_URL = "http://localhost:$SERVER_PORT"
+        private const val HAPTIC_THROTTLE_MS = 30L
+        private val HAPTIC_EVENTS = setOf("turn", "card", "win", "lose", "invalid", "dice", "tick")
 
         // Cellular (rmnet/ccmni/pdp/clat), VPN (tun/ppp/ipsec) and other interfaces no LAN peer can reach.
         private val NON_LAN_IFACE = Regex("^(rmnet|ccmni|pdp|v4-|clat|tun|ppp|ipsec|dummy|lo|p2p)", RegexOption.IGNORE_CASE)
@@ -219,6 +227,171 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun setTheme(dark: Boolean) {
             runOnUiThread { applyBarTheme(dark) }
+        }
+
+        /** Called by public/js/haptics.js to trigger native haptic feedback for game events. */
+        @JavascriptInterface
+        fun haptic(event: String) {
+            if (event !in HAPTIC_EVENTS) return
+            synchronized(hapticLock) {
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastHapticAt < HAPTIC_THROTTLE_MS) return
+                lastHapticAt = now
+            }
+            playHaptic(event)
+        }
+    }
+
+    private val hapticLock = Any()
+    private var lastHapticAt = 0L
+
+    private fun getVibrator(): Vibrator? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+            vm?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
+    }
+
+    private fun playHaptic(event: String) {
+        if (event == "invalid" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed) {
+                    binding.webview.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                }
+            }
+            return
+        }
+        val vibrator = getVibrator() ?: return
+        if (!vibrator.hasVibrator()) return
+        val effect = buildHapticEffect(event, vibrator) ?: return
+        try {
+            vibrator.vibrate(effect)
+        } catch (e: Exception) {
+            Log.w(TAG, "haptic failed for $event", e)
+        }
+    }
+
+    private fun buildHapticEffect(event: String, vibrator: Vibrator): VibrationEffect? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            buildCompositionEffect(event, vibrator)?.let { return it }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            return buildPredefinedEffect(event)
+        }
+        return buildFallbackEffect(event, vibrator)
+    }
+
+    private fun buildCompositionEffect(event: String, vibrator: Vibrator): VibrationEffect? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+        val comp = VibrationEffect.startComposition()
+        when (event) {
+            "turn" -> {
+                if (!vibrator.areAllPrimitivesSupported(
+                        VibrationEffect.Composition.PRIMITIVE_QUICK_RISE,
+                        VibrationEffect.Composition.PRIMITIVE_CLICK
+                    )
+                ) return null
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.6f)
+                    .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f, 60)
+            }
+            "card" -> {
+                if (!vibrator.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_CLICK)) return null
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.7f)
+            }
+            "win" -> {
+                val endPrim = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    VibrationEffect.Composition.PRIMITIVE_THUD
+                } else {
+                    VibrationEffect.Composition.PRIMITIVE_CLICK
+                }
+                if (!vibrator.areAllPrimitivesSupported(
+                        VibrationEffect.Composition.PRIMITIVE_QUICK_RISE,
+                        VibrationEffect.Composition.PRIMITIVE_CLICK,
+                        endPrim
+                    )
+                ) return null
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.7f)
+                    .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f)
+                    .addPrimitive(endPrim, 0.9f, 80)
+            }
+            "lose" -> {
+                val endPrim = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    VibrationEffect.Composition.PRIMITIVE_THUD
+                } else {
+                    VibrationEffect.Composition.PRIMITIVE_CLICK
+                }
+                if (!vibrator.areAllPrimitivesSupported(
+                        VibrationEffect.Composition.PRIMITIVE_QUICK_FALL,
+                        endPrim
+                    )
+                ) return null
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL, 0.8f)
+                    .addPrimitive(endPrim, 0.6f, 70)
+            }
+            "dice" -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (!vibrator.areAllPrimitivesSupported(
+                            VibrationEffect.Composition.PRIMITIVE_LOW_TICK,
+                            VibrationEffect.Composition.PRIMITIVE_THUD
+                        )
+                    ) return null
+                    comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.4f)
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.5f, 35)
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.6f, 50)
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_THUD, 0.85f, 70)
+                } else {
+                    if (!vibrator.areAllPrimitivesSupported(
+                            VibrationEffect.Composition.PRIMITIVE_TICK,
+                            VibrationEffect.Composition.PRIMITIVE_CLICK
+                        )
+                    ) return null
+                    comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.5f)
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.6f, 35)
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.7f, 50)
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.9f, 70)
+                }
+            }
+            "tick" -> {
+                if (!vibrator.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_TICK)) return null
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.5f)
+            }
+            else -> return null
+        }
+        return comp.compose()
+    }
+
+    private fun buildPredefinedEffect(event: String): VibrationEffect? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+        val effectId = when (event) {
+            "turn", "win", "invalid" -> VibrationEffect.EFFECT_DOUBLE_CLICK
+            "card" -> VibrationEffect.EFFECT_CLICK
+            "lose" -> VibrationEffect.EFFECT_HEAVY_CLICK
+            "dice", "tick" -> VibrationEffect.EFFECT_TICK
+            else -> return null
+        }
+        return VibrationEffect.createPredefined(effectId)
+    }
+
+    private fun buildFallbackEffect(event: String, vibrator: Vibrator): VibrationEffect? {
+        val hasAmp = vibrator.hasAmplitudeControl()
+        fun waveform(timings: LongArray, amps: IntArray): VibrationEffect =
+            if (hasAmp) VibrationEffect.createWaveform(timings, amps, -1)
+            else VibrationEffect.createWaveform(timings, -1)
+        fun oneShot(ms: Long, amp: Int): VibrationEffect =
+            VibrationEffect.createOneShot(ms, if (hasAmp) amp else VibrationEffect.DEFAULT_AMPLITUDE)
+
+        return when (event) {
+            "turn" -> waveform(longArrayOf(0, 25, 60, 35), intArrayOf(0, 120, 0, 180))
+            "card" -> oneShot(15L, 140)
+            "win" -> waveform(longArrayOf(0, 30, 50, 40, 60, 70), intArrayOf(0, 140, 0, 180, 0, 255))
+            "lose" -> waveform(longArrayOf(0, 60, 80, 90), intArrayOf(0, 180, 0, 100))
+            "invalid" -> waveform(longArrayOf(0, 25, 40, 25), intArrayOf(0, 200, 0, 200))
+            "dice" -> VibrationEffect.createWaveform(longArrayOf(0, 15, 35, 15, 50, 20, 70, 35), -1)
+            "tick" -> oneShot(12L, 100)
+            else -> null
         }
     }
 
