@@ -453,6 +453,10 @@
       }
     }
 
+    // Server message type -> handler. A Map lookup (not obj[msg.type]) so a crafted type name can
+    // never reach an inherited or non-handler property (CodeQL js/unvalidated-dynamic-method-call).
+    const handlerMap = new Map(Object.entries(handlers));
+
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
       GNSession.touch();
@@ -465,7 +469,7 @@
         }
       }
 
-      const handler = Object.prototype.hasOwnProperty.call(handlers, msg.type) ? handlers[msg.type] : null;
+      const handler = handlerMap.get(msg.type);
       if (typeof handler === 'function') handler(msg);
     };
     ws.onclose = () => {
