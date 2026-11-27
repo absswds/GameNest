@@ -1716,8 +1716,11 @@
     'pool_opp_place_cue': '对手正在摆放母球…',
     'pool_shoot': '击球',
     'pool_power': '力度',
+    'pool_spin': '加塞',
+    'pool_spin_reset': '重置',
     'pool_aim_hint': '在球台拖动瞄准，或按住母球向后拉杆击球',
     'pool_place_hint': '点击或拖动球台摆放母球',
+    'pool_place_kitchen_hint': '仅可摆放在开球线后方（开球区）内',
     'pool_confirm_place': '确认放置',
     'pool_foul_scratch': '犯规：母球落袋（自由球）',
     'pool_foul_no_hit': '犯规：未击中任何球（自由球）',
@@ -1725,6 +1728,10 @@
     'pool_foul_early_eight': '提前打进黑八，判负！',
     'pool_respot_eight': '开球进黑八，8号球已重置回置球点',
     'pool_break_shot': '开球击球！',
+    'pool_groups_assigned': '花色已分配',
+    'pool_group_you': '你',
+    'pool_group_opp': '对手',
+    'pool_tap_close': '轻触关闭',
 
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'zh';

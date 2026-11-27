@@ -9,7 +9,7 @@ const PICK = {
   maxLoss: { easy: 500, normal: 120 },
 };
 
-const { W, H, BALL_R, FOOT_SPOT_X, FOOT_SPOT_Y, MIN_POWER, MAX_POWER, POCKETS } = pool.TABLE;
+const { W, H, BALL_R, HEAD_STRING_X, FOOT_SPOT_X, FOOT_SPOT_Y, MIN_POWER, MAX_POWER, POCKETS } = pool.TABLE;
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
@@ -68,6 +68,8 @@ function minPocketDist(x, y) {
 }
 
 function chooseBallInHand(state, playerIndex) {
+  const kitchenOnly = !!(state.isBreak || state.kitchenOnly);
+  const posOpts = { kitchenOnly };
   const targets = legalTargetBalls(state, playerIndex);
   const cands = [];
   const distances = [110, 180];
@@ -86,7 +88,7 @@ function chooseBallInHand(state, playerIndex) {
         const behind = distances[m];
         const cx = round1(t.x + ux * behind);
         const cy = round1(t.y + uy * behind);
-        if (!pool.isValidCuePos(state.balls, cx, cy)) continue;
+        if (!pool.isValidCuePos(state.balls, cx, cy, posOpts)) continue;
         const clearCue = isSegmentClear(state.balls, cx, cy, t.x, t.y, t.id, -1);
         const clearPocket = isSegmentClear(state.balls, t.x, t.y, p.x, p.y, t.id, -1);
         const pDist = minPocketDist(cx, cy);
@@ -104,14 +106,42 @@ function chooseBallInHand(state, playerIndex) {
     }
   }
 
-  const safe = pool.findSafeCueSpot(state.balls);
+  if (kitchenOnly) {
+    const kxList = [120, 185, HEAD_STRING_X];
+    const kyList = [90, 170, 250, 330, 410];
+    for (let ix = 0; ix < kxList.length; ix++) {
+      for (let iy = 0; iy < kyList.length; iy++) {
+        const cx = kxList[ix];
+        const cy = kyList[iy];
+        if (!pool.isValidCuePos(state.balls, cx, cy, posOpts)) continue;
+        let hasClear = false;
+        let minTDist = Infinity;
+        for (let i = 0; i < targets.length; i++) {
+          const t = targets[i];
+          const d = Math.hypot(t.x - cx, t.y - cy);
+          if (d < minTDist) minTDist = d;
+          if (isSegmentClear(state.balls, cx, cy, t.x, t.y, t.id, -1)) {
+            hasClear = true;
+          }
+        }
+        const pDist = minPocketDist(cx, cy);
+        const score = (hasClear ? 40 : -30) - minTDist * 0.04 + (pDist < 65 ? -40 : 15);
+        cands.push({
+          move: { type: 'place', x: cx, y: cy },
+          score,
+        });
+      }
+    }
+  }
+
+  const safe = pool.findSafeCueSpot(state.balls, posOpts);
   cands.push({
     move: { type: 'place', x: safe.x, y: safe.y },
     score: -80,
   });
 
   const chosen = pickFor(state, cands, PICK);
-  if (chosen && pool.isValidCuePos(state.balls, chosen.x, chosen.y)) {
+  if (chosen && pool.isValidCuePos(state.balls, chosen.x, chosen.y, posOpts)) {
     return chosen;
   }
   return { type: 'place', x: safe.x, y: safe.y };
@@ -119,23 +149,23 @@ function chooseBallInHand(state, playerIndex) {
 
 function chooseBreakShot(state) {
   const cue = state.balls.find((b) => b && b.id === 0 && !b.potted);
-  if (!cue) return { type: 'shot', angle: 0, power: 0.9 };
+  if (!cue) return { type: 'shot', angle: 0, power: 0.9, spinX: 0, spinY: 0 };
   const baseAngle = Math.atan2(FOOT_SPOT_Y - cue.y, FOOT_SPOT_X - cue.x);
   const candidates = [
-    { angle: baseAngle, power: 1.0 },
-    { angle: baseAngle - 0.01, power: 1.0 },
-    { angle: baseAngle + 0.01, power: 1.0 },
-    { angle: baseAngle - 0.03, power: 1.0 },
-    { angle: baseAngle + 0.03, power: 1.0 },
-    { angle: baseAngle, power: 0.92 },
+    { angle: baseAngle, power: 1.0, spinX: 0, spinY: 0 },
+    { angle: baseAngle - 0.01, power: 1.0, spinX: 0, spinY: 0 },
+    { angle: baseAngle + 0.01, power: 1.0, spinX: 0, spinY: 0 },
+    { angle: baseAngle - 0.03, power: 1.0, spinX: 0, spinY: 0 },
+    { angle: baseAngle + 0.03, power: 1.0, spinX: 0, spinY: 0 },
+    { angle: baseAngle, power: 0.92, spinX: 0, spinY: 0 },
   ];
 
   const cands = candidates.map((c) => {
-    const sim = pool.simulateShot(state.balls, c.angle, c.power, { recordFrames: false });
+    const sim = pool.simulateShot(state.balls, c.angle, c.power, { recordFrames: false, spinX: c.spinX, spinY: c.spinY });
     const scratched = sim.potted.includes(0);
     const pottedEight = sim.potted.includes(8);
     if (pottedEight && scratched) {
-      return { move: { type: 'shot', angle: c.angle, power: c.power }, score: -1000 };
+      return { move: { type: 'shot', angle: c.angle, power: c.power, spinX: c.spinX, spinY: c.spinY }, score: -1000 };
     }
     const pottedObj = sim.potted.filter((id) => id !== 0 && id !== 8).length;
     let spread = 0;
@@ -151,7 +181,7 @@ function chooseBreakShot(state) {
       (sim.firstHit === null ? -250 : 25) +
       spread * 0.02;
     return {
-      move: { type: 'shot', angle: c.angle, power: c.power },
+      move: { type: 'shot', angle: c.angle, power: c.power, spinX: c.spinX, spinY: c.spinY },
       score,
     };
   });
@@ -246,10 +276,10 @@ function scoreSim(state, playerIndex, sim, targetsBefore) {
 
 function chooseNormalShot(state, playerIndex) {
   const cue = state.balls.find((b) => b && b.id === 0 && !b.potted);
-  if (!cue) return { type: 'shot', angle: 0, power: 0.5 };
+  if (!cue) return { type: 'shot', angle: 0, power: 0.5, spinX: 0, spinY: 0 };
 
   const targets = legalTargetBalls(state, playerIndex);
-  if (targets.length === 0) return { type: 'shot', angle: 0, power: 0.5 };
+  if (targets.length === 0) return { type: 'shot', angle: 0, power: 0.5, spinX: 0, spinY: 0 };
 
   const pocketCands = [];
   for (let i = 0; i < targets.length; i++) {
@@ -324,9 +354,11 @@ function chooseNormalShot(state, playerIndex) {
 
   const capped = shotList.slice(0, 40);
   const cands = capped.map((c) => {
-    const sim = pool.simulateShot(state.balls, c.angle, c.power, { recordFrames: false });
+    const sx = clamp(Number(c.spinX) || 0, -1, 1);
+    const sy = clamp(Number(c.spinY) || 0, -1, 1);
+    const sim = pool.simulateShot(state.balls, c.angle, c.power, { recordFrames: false, spinX: sx, spinY: sy });
     return {
-      move: { type: 'shot', angle: c.angle, power: c.power },
+      move: { type: 'shot', angle: c.angle, power: c.power, spinX: sx, spinY: sy },
       score: scoreSim(state, playerIndex, sim, targets),
     };
   });
@@ -342,10 +374,12 @@ function chooseNormalShot(state, playerIndex) {
       type: 'shot',
       angle: chosen.angle,
       power: clamp(chosen.power, MIN_POWER, MAX_POWER),
+      spinX: clamp(Number(chosen.spinX) || 0, -1, 1),
+      spinY: clamp(Number(chosen.spinY) || 0, -1, 1),
     };
   }
   const fallbackAngle = Math.atan2(sortedTargets[0].y - cue.y, sortedTargets[0].x - cue.x);
-  return { type: 'shot', angle: Number.isFinite(fallbackAngle) ? fallbackAngle : 0, power: 0.55 };
+  return { type: 'shot', angle: Number.isFinite(fallbackAngle) ? fallbackAngle : 0, power: 0.55, spinX: 0, spinY: 0 };
 }
 
 function createBot(playerIndex) {
