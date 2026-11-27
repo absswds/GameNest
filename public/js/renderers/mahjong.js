@@ -2546,7 +2546,14 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
         var mMinY = pos === 'left' ? 0.54 : 0.10;
         var mMaxY = pos === 'left' ? 0.93 : 0.50;
         var mSpan = mMaxY - mMinY;
-        var mStep = Math.min(0.032, mSpan / Math.max(1, totalW));
+        // Step = one full tile height (+1 px) in table units, so meld tiles never overlap; if the
+        // groups do not fit in the span, shrink the step (and the tiles below) instead of stacking.
+        var tablePx = Math.max(1, project(txMeld, 1).y - project(txMeld, 0).y);
+        var midPt = project(txMeld, (mMinY + mMaxY) / 2);
+        var mhNom = clamp(Math.round((m.compassPx / 6) * 1.24 * (midPt.s / m.sCompass)), 12, 26);
+        var mStep = (mhNom + 1) / tablePx;
+        if (totalW * mStep > mSpan) mStep = mSpan / Math.max(1, totalW);
+        var mhMax = Math.max(8, Math.floor(mStep * tablePx) - 1);
         var mUsed = totalW * mStep;
         var curY = pos === 'left' ? (mMaxY - mUsed) : mMinY;
         for (var mi = 0; mi < mItems.length; mi++) {
@@ -2555,7 +2562,7 @@ var _resizeBound = false;  // 渲染器是单例，init 会跨局重复调用，
           curY += it.weight * mStep;
           if (it.kind === 'gap') continue;
           var mp = project(txMeld, itemCenterY);
-          var mh = clamp(Math.round((m.compassPx / 6) * 1.24 * (mp.s / m.sCompass)), 12, 26);
+          var mh = Math.min(mhMax, clamp(Math.round((m.compassPx / 6) * 1.24 * (mp.s / m.sCompass)), 12, 26));
           var mw = Math.max(16, Math.round(mh * 1.38));
           var mx = pos === 'left' ? Math.round(mp.x - mw * 0.35) : Math.round(mp.x - mw * 0.65);
           var my = Math.round(mp.y - mh * 0.5);
