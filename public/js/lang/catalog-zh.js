@@ -356,8 +356,8 @@
   };
   window.__LANG.zh.catalog.pool = {
     name: '台球',
-    subtitle: '8球对决，瞄准拉杆一杆清台',
-    description: '经典美式8球双人对战，真实物理反弹与走位，支持人机对练。',
+    subtitle: '中式八球和斯诺克，加塞走位一杆清台',
+    description: '双人台球，可选中式八球或斯诺克：真实物理反弹、加塞走位，支持人机对练。',
     players: '2人',
     duration: '约10分钟',
     category: '运动竞技',

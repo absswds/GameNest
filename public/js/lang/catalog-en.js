@@ -355,9 +355,9 @@
     tags: ['Bluffing', 'Party'],
   };
   window.__LANG.en.catalog.pool = {
-    name: '8-Ball Pool',
-    subtitle: 'Aim, pull back, clear the table',
-    description: 'Classic two-player 8-ball billiards with server physics and AI opponent.',
+    name: 'Pool',
+    subtitle: 'Chinese 8-ball or snooker, with spin',
+    description: 'Two-player billiards: Chinese 8-ball or snooker, with real cushion physics, spin and an AI opponent.',
     players: '2 Players',
     duration: '~10 min',
     category: 'Sports',
