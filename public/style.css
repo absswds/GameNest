@@ -2926,8 +2926,8 @@ body.lobby-page .wifi-note {
 
 .lb-count-seg.is-animating .lb-count-pill {
   transition:
-    transform var(--lb-dur-base) var(--lb-ease-out),
-    width var(--lb-dur-base) var(--lb-ease-out);
+    transform 360ms cubic-bezier(0.33, 1, 0.68, 1),
+    width 360ms cubic-bezier(0.33, 1, 0.68, 1);
 }
 
 .lb-count-chip {

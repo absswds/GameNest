@@ -163,7 +163,9 @@
         backdrop.hidden = true;
         backdrop.style.opacity = '';
         sheetEl.style.transform = '';
-        activeAnims = [];
+        // The close animations use fill:'forwards'; cancel them, or their final
+        // frame (opacity 0, off-screen) overrides the sheet on the next open.
+        cancelAnims();
         if (prevFocus && prevFocus.isConnected) {
           focusSafely(prevFocus);
         }
