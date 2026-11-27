@@ -397,4 +397,29 @@ module.exports = {
   'qr_invalid_player': '无效的玩家座位',
   'qr_invalid_option': '请选择有效的选项（A–D）',
   'qr_already_answered': '本题你已经作答过了',
+  // 二十一点 (bj_)
+  'bj_wrong_phase': '当前阶段不能进行该操作',
+  'bj_out_of_chips': '你已经没有筹码了',
+  'bj_already_bet': '本局你已经下过注了',
+  'bj_invalid_bet': '无效的下注金额',
+  'bj_not_enough_chips': '筹码不足',
+  'bj_cannot_double': '只能在起手两张牌时加倍',
+  'bj_invalid_action': '无效的操作',
+  // 大话骰
+  'ld_invalid_action': '无效的操作',
+  'ld_wrong_phase': '当前阶段无法执行此操作',
+  'ld_reveal_wait': '正在开骰结算，请等待下一轮',
+  'ld_nothing_to_challenge': '当前还没有叫骰，无法开骰',
+  'ld_invalid_bid': '无效的叫骰数量或点数',
+  'ld_bid_too_low': '叫骰必须高于当前叫数或同数更高点数',
+  'ld_player_out': '你已失去所有骰子，本局已淘汰',
+
+  // Pool (pool_)
+  'pool_wrong_phase': '当前阶段不能执行该操作',
+  'pool_invalid_shot': '击球角度或力度无效',
+  'pool_invalid_place': '母球摆放位置无效或与其他球重叠',
+  'pool_place_kitchen': '开球或开球洗袋后，母球只能摆放在开球线后方（开球区）',
+  'pool_place_d': '斯诺克母球只能摆放在D形区（开球半圆）内',
+  'pool_nominate_required': '请先指定要击打的彩球',
+  'pool_invalid_nominate': '指定的彩球无效或已不在台面上',
 };

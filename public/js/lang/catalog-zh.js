@@ -336,4 +336,31 @@
     category: '牌桌竞技',
     tags: ['跑牌', '三人局'],
   };
+  window.__LANG.zh.catalog.blackjack = {
+    name: '二十一点',
+    subtitle: '迎战庄家，逼近 21 点',
+    description: '经典赌场纸牌对战，支持单人挑战庄家或多人同台比拼筹码。',
+    players: '1-6人',
+    duration: '约10分钟',
+    category: '牌桌竞技',
+    tags: ['筹码', '博弈', '21点'],
+  };
+  window.__LANG.zh.catalog.liarsdice = {
+    name: '大话骰',
+    subtitle: '盲猜加码，谁在吹牛一目了然',
+    description: '暗摇五颗骰子轮流叫数加注或当场开骰，猜错扣一颗骰子，留到最后者获胜！',
+    players: '2-6人',
+    duration: '约10分钟',
+    category: '派对同乐',
+    tags: ['吹牛', '派对'],
+  };
+  window.__LANG.zh.catalog.pool = {
+    name: '台球',
+    subtitle: '中式八球和斯诺克，加塞走位一杆清台',
+    description: '双人台球，可选中式八球或斯诺克：真实物理反弹、加塞走位，支持人机对练。',
+    players: '2人',
+    duration: '约10分钟',
+    category: '运动竞技',
+    tags: ['台球', '物理', '双人'],
+  };
 })();

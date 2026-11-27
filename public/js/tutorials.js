@@ -410,6 +410,15 @@
         { h: '电脑与技巧', p: '可添加电脑并选择难度。布阵时别总靠边或排成整齐的一排；射击时命中后沿相邻四个方向探索，每艘船至少 2 格，隔格搜索更高效。' },
       ]
     },
+    pool: {
+      sections: [
+        { h: '目标', p: '房间设置可切换「中式八球」或「斯诺克」。中式八球使用小袋口标准比例球台，由 1～7 号全色球与 9～15 号花色球构成，先打完己方花色再合法打进 8 号球获胜；斯诺克则使用 15 颗红球与 6 颗彩球累计得分，台面清台或黑球决胜时分高者胜。' },
+        { h: '操作', p: '在球台拖动调整瞄准方向并观察辅助线，拖动力度条调整力度，点按加塞圆盘设置高低杆与左右塞，确认后点击「击球」。自由球阶段点击或拖动球台调整母球位置，再点击「确认放置」。' },
+        { h: '中式八球规则', p: '1 号位开球，开局先在开球线后方（开球区）自由摆放母球再击球。合法开球须有至少 1 颗目标球落袋或至少 4 颗目标球碰库，否则重新摆球并由对手开球。开球后始终为开放球局（开球进球不定花色）；开球进 8 号球时将 8 号球重放回置球点（未犯规继续击球，若同时洗袋则对手获开球区自由球）。非开球回合在开放球局中先击打非 8 号的目标球并合法打进同花色球即确定双方花色；未进球时，母球撞击目标球后须至少有一颗球碰库，否则犯规。常规犯规后对手获全场自由球；清空己方花色后合法打进 8 号球获胜，误进或伴随犯规立即判负。' },
+        { h: '斯诺克规则', p: '开局及母球落袋后只能在 D 形半圆内摆球。红球尚在时按「红球（1分）→ 任意指定彩球」交替击打，打进彩球得分并放回原置球点（被占则放最高空置球点，全占则紧靠其后方）。红球清完并完成最后一颗彩球后，须按黄(2)→绿(3)→棕(4)→蓝(5)→粉(6)→黑(7)顺序击打且不再复位。' },
+        { h: '斯诺克犯规与胜负', p: '先碰非目标球、未碰任何球、母球落袋或打进非目标球均属犯规，对手获得 max(4, 涉及球最高分) 罚分并接手击球。最后一颗黑球打进或犯规后分高者胜；若打进最后黑球双方同分，则重放黑球并由另一方从 D 区开球争黑决胜。' },
+      ]
+    },
   };
 
   TUTORIALS_ZH.undercover = {
@@ -440,6 +449,24 @@
       { h: '计分与连对', p: '答错或超时得 0 分；答对得分为 500 + 四舍五入(500 × 剩余时间比例)，越快作答分数越高（最高 1000 分）。从连续第 3 题答对起，每题额外获得 +100 连对奖励；一旦答错或超时，连对清零。' },
       { h: '双倍积分', p: '每局的最后 3 道题为「双倍积分」回合，基础与时间分翻倍（连对奖励仍为 +100），是逆转局势的关键。' },
       { h: '房间设置', p: '房主可以设置题目数量（10/15/20 题）、每题限时（10/15/20 秒）、题库分类（全部、综合常识、世界地理、自然科学、人文历史、动植物与自然、体育竞技、艺术与文化、美食、成语俗语、生活常识、中国文化、动漫影视、心算）、题目难度（混合、简单、普通、困难，每题都标了难度，选一档就只出这一档的题）以及电脑难度。电脑难度越高，答对的概率越高、反应越快，对难题的把握也比低难度的电脑强得多。' },
+    ]
+  };
+  TUTORIALS_ZH.blackjack = {
+    sections: [
+      { h: '目标', p: '二十一点支持 1～6 人同时对战系统庄家。每位玩家开局拥有 1000 筹码，在设定的局数（5/10/15 局）结束后，筹码最多的玩家获胜；若其他玩家全部破产，最后持有筹码的玩家直接获胜。' },
+      { h: '点数计算', p: '2～10 按牌面点数计算，J/Q/K 均算 10 点，A 可算 1 点或 11 点（不爆牌时优先算 11 点，称为「软牌」，如 A+6 显示为 7/17）。起手两张牌直接凑成 21 点（一张 A 加一张 10 点牌）称为「自然黑杰克」（Blackjack）。' },
+      { h: '下注与发牌', p: '每局开始先进入 20 秒同时下注阶段，可选择 10/25/50/100/200 或全下（超时自动下最小注 10）。随后每位下注玩家发两张明牌，庄家发一张明牌和一张暗牌。若庄家明牌为 A 或 10 点牌且凑成自然黑杰克，立即翻开暗牌并直接结算。' },
+      { h: '玩家行动', p: '按座位顺序轮流操作：①要牌（Hit）：再摸一张牌，超过 21 点即爆牌（Bust）并结束本回合；②停牌（Stand）：保持当前点数；③加倍（Double）：仅限起手两张牌且剩余筹码足够时可用，注码翻倍并只摸一张牌后自动停牌。本规则不含分牌、保险与投降。' },
+      { h: '庄家规则与赔率', p: '所有玩家行动完毕后，庄家翻开暗牌：点数小于 17 点必须要牌，达到 17 点及以上（含软 17，即 A+6=7/17）必须停牌。结算时：玩家爆牌直接输掉赌注；自然黑杰克赢庄家按 3:2 赔付（向下取整，若庄家也是黑杰克则平局退回本金）；普通获胜按 1:1 赔付，点数相同为平局（Push）退还本金。牌靴剩余不足 25% 时自动重新洗牌。' },
+    ]
+  };
+  TUTORIALS_ZH.liarsdice = {
+    sections: [
+      { h: '游戏目标', p: '大话骰支持 2 至 6 名玩家。每位玩家开局拥有若干颗隐藏骰子，每轮重摇后只能看自己的骰子。轮流猜测全场所有骰子的合计数量或质疑上一手的叫数，失去所有骰子的玩家淘汰，最后留存的一人获胜。' },
+      { h: '叫骰与大小顺序', p: '点数大小顺序为 2 < 3 < 4 < 5 < 6 < 1。轮到你时可以加注叫骰：要么增加数量（任意点数），要么保持数量不变并选择更大的点数。' },
+      { h: '1点万能规则', p: '当开启「1点万能」时，开骰结算中所有的 1 点都可以当作你叫的点数来计数。但如果这一轮中有人直接叫了 1 点，则本轮剩余时间内 1 点不再万能，只算作 1 点本身。' },
+      { h: '开骰与结算', p: '当你认为上一家的叫数不可能达到时，可以点击「开」进行质疑。全场亮骰统计符合条件的总颗数：如果实际颗数大于或等于叫数，挑战者失去 1 颗骰子；如果不足叫数，叫骰者失去 1 颗骰子。下一轮由扣骰者（若已淘汰则由其下家）先手。' },
+      { h: '房间设置', p: '房主可以设置初始骰子数（3/4/5 颗）、是否开启 1 点万能、每手限时（不限时/15/20/30 秒）以及电脑难度。开骰结果会展示 5 秒，点击「继续」可立即开始下一轮。' },
     ]
   };
 
@@ -852,6 +879,15 @@
         { h: 'Bots and Tips', p: 'You can add a bot and choose its difficulty. Do not always hug the edges or line ships up; when you score a hit, probe the four neighbors, and search on a checkerboard pattern since every ship is at least 2 cells long.' },
       ]
     },
+    pool: {
+      sections: [
+        { h: 'Goal and Modes', p: 'Room settings choose between Chinese 8-ball (default) and Snooker. In Chinese 8-ball, clear Solids (1-7) or Stripes (9-15) and legally pocket the 8-ball on a tighter-pocket table. In Snooker, score more points than your opponent using 15 reds and 6 colours.' },
+        { h: 'Controls', p: 'Drag anywhere on the table to aim with the guide line. Set power with the power bar and set top, back, or side spin on the cue-ball widget before tapping Shoot. During ball-in-hand, tap or drag on the table to position the cue ball, then tap Confirm Place.' },
+        { h: 'Chinese 8-ball Rules', p: 'The game starts with ball-in-hand behind the head string for the break. A legal break must pot at least 1 object ball or send at least 4 object balls to a cushion, otherwise the rack is reset and the opponent breaks. The table stays open after the break; potting the 8-ball on a legal break respots it and the breaker continues (or gives the opponent ball-in-hand behind the head string if scratched). On an open table, groups are decided when a player legally pots a ball of the same group as the first-hit ball; hitting the 8-ball first is a foul. If no ball is potted, at least one ball must hit a cushion after contact. Non-break fouls grant ball-in-hand anywhere on the table. Potting the 8-ball cleanly after clearing your group wins; an early or foul 8-ball pot loses immediately.' },
+        { h: 'Snooker Rules', p: 'On the break and after any cue-ball scratch, place the cue ball inside the D semicircle. While reds remain, alternate hitting and potting a red (1 pt) followed by a nominated colour (yellow 2, green 3, brown 4, blue 5, pink 6, black 7). Potted colours are respotted until all reds are cleared, then colours must be potted in order from yellow to black and stay down.' },
+        { h: 'Snooker Fouls and Frame End', p: 'Missing all balls, hitting the wrong ball first, potting a ball not on, or potting the cue ball awards max(4, involved ball value) penalty points to the opponent, who plays next. When the final black is potted or fouled, the higher score wins; a tie respots the black and the other player shoots from the D.' },
+      ]
+    },
   };
 
   TUTORIALS_EN.undercover = {
@@ -882,6 +918,24 @@
       { h: 'Scoring and Streaks', p: 'A wrong or missed answer scores 0. A correct answer scores 500 + round(500 x remaining time fraction), up to 1000 points for an instant answer. Starting from your 3rd consecutive correct answer, you also earn a +100 streak bonus on each correct answer until you miss.' },
       { h: 'Double Points', p: 'The last 3 questions of every match award double base and speed points, giving trailing players a chance to make a comeback.' },
       { h: 'Room Settings', p: 'The host can choose the question count (10, 15 or 20), seconds per question (10, 15 or 20), trivia category (All, General, Geography, Science, History, Nature, Sports, Culture, Food, Idioms, Daily Life, Chinese Culture, Anime and Film or Mental Math), question level (Mixed, Easy, Normal or Hard; every question is rated, and a level only draws questions of that rating) and bot difficulty. Stronger bots answer correctly more often, answer faster when they know the answer, and cope with hard questions far better than weak bots.' },
+    ]
+  };
+  TUTORIALS_EN.blackjack = {
+    sections: [
+      { h: 'Goal', p: 'Blackjack is a casino card game for 1 to 6 players against the house dealer. Everyone starts with 1000 chips. After the chosen number of rounds (5, 10 or 15), the player with the most chips wins, or the last player with chips wins early if everyone else goes broke.' },
+      { h: 'Card Values', p: 'Cards 2 through 10 count at face value, J/Q/K count 10, and Aces count 1 or 11. A hand with an Ace counted as 11 is a soft hand (shown as 7/17). An Ace plus a 10-point card on the initial two-card deal is a natural Blackjack.' },
+      { h: 'Betting and Dealing', p: 'Each round starts with a 20-second simultaneous betting phase: pick 10, 25, 50, 100, 200 or All-in (timeout bets 10 automatically). Every active player receives two face-up cards, and the dealer receives one up-card and one face-down hole card. If the dealer up-card is an Ace or 10-value and the dealer has a natural Blackjack, the hole card is revealed and the round settles immediately.' },
+      { h: 'Player Actions', p: 'Players act in seat order: Hit to draw a card (going over 21 busts and ends your turn), Stand to keep your total, or Double on your first two cards (if you have enough chips) to double your bet, draw exactly one card and stand. There is no split, insurance or surrender.' },
+      { h: 'Dealer and Payouts', p: 'Once all players finish, the dealer reveals the hole card, draws until reaching at least 17, and stands on soft 17. Natural Blackjack pays 3:2 rounded down (or pushes against a dealer Blackjack). Winning hands pay 1:1, ties push and return your bet, and busted hands lose immediately. The multi-deck shoe (1, 2 or 4 decks) reshuffles when fewer than 25% of its cards remain.' },
+    ]
+  };
+  TUTORIALS_EN.liarsdice = {
+    sections: [
+      { h: 'Goal', p: 'Liars Dice supports 2 to 6 players. Everyone rolls hidden dice at the start of each round and sees only their own roll. Take turns raising the table bid on how many dice of a face exist across all players, or challenge the last bid. Lose all your dice and you are out; the last player with dice wins.' },
+      { h: 'Bidding Order', p: 'Face strength runs 2 < 3 < 4 < 5 < 6 < 1. On your turn, raise by increasing the quantity (with any face) or keeping the quantity and picking a higher-ranked face.' },
+      { h: 'Ones Wild Rule', p: 'When Ones Wild is enabled, 1s count as any bid face during a challenge. However, if any player bids face 1 during a round, 1s stop being wild for the rest of that round.' },
+      { h: 'Challenging and Reveal', p: 'If you doubt the current bid, press Challenge to reveal every die on the table. If the matching count meets or exceeds the bid quantity, the challenger loses one die; otherwise the bidder loses one die. The loser starts the next round, or the next clockwise active player if eliminated.' },
+      { h: 'Room Settings', p: 'The host can configure starting dice (3, 4 or 5), Ones Wild on or off, turn timer (no limit, 15, 20 or 30 seconds) and bot difficulty. After a challenge, the reveal screen lasts 5 seconds or until any player taps Continue.' },
     ]
   };
 

@@ -3,96 +3,101 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>联机桌游</title>
+<meta name="theme-color" content="#f4f4f2">
+<title>GameNest</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script src="/js/theme.js"></script>
 <link rel="stylesheet" href="/style.css">
 <!-- 字体已内嵌到 assets/fonts(离线可用),不再依赖 Google Fonts -->
 </head>
 <body class="lobby-page">
-  <main class="lobby-shell" style="position:relative">
-    <div class="lang-switch" onclick="var l=window.__ACTIVE_LANG==='zh'?'en':'zh';window._switchLang(l)" style="position:absolute;top:16px;right:16px;z-index:10;cursor:pointer;font-size:14px;font-weight:700;background:rgba(255,255,255,0.85);color:#1a1a1a;border:1px solid rgba(255,255,255,0.6);border-radius:999px;padding:8px 16px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.12);">🌐 中/EN</div>
-    <section class="lobby-hero">
-      <div class="hero-copy">
-        <p class="eyebrow">LAN TABLETOP</p>
-        <h1 class="hero-title">联机桌游</h1>
-        <p class="hero-subtitle">同一 Wi-Fi 下，选一个游戏，几秒开房，直接开玩。</p>
+  <header class="lb-top" id="lobbyHeader">
+    <div class="lb-top-bg" aria-hidden="true"></div>
+    <div class="lb-top-in">
+      <div class="lb-logo">GameNest</div>
+      <div class="lb-bar" id="headerBar">
+        <div class="lb-search-wrap" id="searchWrap">
+          <svg class="lb-search-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input class="lb-search-input" id="gameSearch" type="search" placeholder="搜索游戏名、标签、类型" autocomplete="off" spellcheck="false">
+          <button type="button" class="lb-icon-btn lb-search-close" id="searchClose" aria-label="关闭搜索">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        <div class="lb-top-actions">
+          <button type="button" class="lb-icon-btn lb-search-open" id="searchOpen" aria-label="搜索游戏" aria-expanded="false" aria-controls="searchWrap">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          </button>
+          <button type="button" class="lb-icon-btn lb-theme-btn" id="themeBtn" aria-label="切换到深色模式">
+            <svg class="lb-ico-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            <svg class="lb-ico-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>
+          </button>
+          <button type="button" class="lb-icon-btn lang-switch" id="langSwitchBtn" aria-label="切换语言" onclick="var l=window.__ACTIVE_LANG==='zh'?'en':'zh';window._switchLang(l)">中/EN</button>
+        </div>
       </div>
-      <div class="hero-stats">
-        <div class="hero-stat">
-          <strong id="gameCount">32</strong>
-          <span>款游戏</span>
+    </div>
+  </header>
+
+  <main class="lobby-shell">
+    <section class="lb-resume-wrap" id="resumeSection" style="display:none">
+      <div class="lb-resume">
+        <div class="lb-resume-thumb">
+          <img id="resumeCover" class="lb-resume-cover" src="" alt="" style="display:none">
+          <div id="resumeFallback" class="lb-resume-fallback"></div>
         </div>
-        <div class="hero-stat">
-          <strong>2-10</strong>
-          <span>支持人数</span>
+        <div class="lb-resume-body">
+          <div class="lb-resume-title" id="resumeRoomName">房间</div>
+          <div class="lb-resume-meta" id="resumeRoomSub">你已在这间房中，点击返回</div>
         </div>
-        <div class="hero-stat">
-          <strong>本地</strong>
-          <span>局域网直连</span>
-        </div>
-      </div>
-      <div class="hero-panels">
-        <section class="hero-panel" id="resumeSection" style="display:none">
-          <div class="room-banner">
-            <div class="room-banner-icon">&#8635;</div>
-            <div class="room-banner-body">
-              <div class="room-banner-title" id="resumeRoomName">房间</div>
-              <div class="room-banner-meta" id="resumeRoomSub">你已在这间房中，点击返回</div>
-            </div>
-            <button class="btn btn-primary btn-sm room-banner-btn" id="resumeBtn">返回房间</button>
-          </div>
-        </section>
-        <section class="hero-panel">
-          <div class="panel-heading">加入房间</div>
-          <div class="join-row">
-            <input class="input" id="roomCodeInput" type="text" maxlength="4" placeholder="输入房间号" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
-            <button class="btn btn-outline" id="joinBtn">加入</button>
-          </div>
-        </section>
-        <section class="hero-panel" id="lanRoomsPanel">
-          <div class="lan-rooms-panel">
-            <div class="lan-rooms-header">
-              <span class="lan-rooms-title" id="lanRoomsTitle">局域网房间</span>
-              <button class="lan-refresh-btn" id="refreshRoomsBtn">↻ 刷新</button>
-            </div>
-            <div class="lan-rooms-list" id="lanRoomsList">
-              <div class="lan-rooms-empty" id="lanRoomsEmpty">暂无可加入的房间</div>
-            </div>
-          </div>
-        </section>
+        <button type="button" class="lb-resume-btn" id="resumeBtn">返回房间</button>
       </div>
     </section>
 
-    <p class="wifi-note" id="wifiNote">确保所有设备连接到同一个 Wi-Fi 或手机热点。</p>
     <div class="mobile-only-banner" id="mobileOnlyBanner" style="display:none">
       <strong id="mobileOnlyTitle">离线单机模式</strong>
       <span id="mobileOnlySub">流量下无法与他人联机，但可加 AI 玩。</span>
     </div>
-    <section class="lobby-discovery">
-      <div class="discovery-header">
-        <div>
-          <p class="eyebrow">精选推荐</p>
-          <h2>先从这些局开始</h2>
-        </div>
-        <p class="discovery-hint">先选中，再点底部创建。再次点中同一张卡也会直接开房。</p>
-      </div>
-      <div class="last-game-row" id="lastGameRow" style="display:none"><button class="category-chip" id="lastGameChip"></button></div>
-      <div class="featured-strip" id="featuredStrip"></div>
+    <p class="wifi-note" id="wifiNote" style="display:none">确保所有设备连接到同一个 Wi-Fi 或手机热点。</p>
+
+    <section class="lb-hero-section" id="heroSection" aria-label="本周新游戏">
+      <div class="lb-hero-track" id="heroTrack"></div>
+      <div class="lb-hero-dots" id="heroDots"></div>
     </section>
 
-    <section class="lobby-browser">
-      <div class="browser-toolbar">
-        <div>
-          <p class="eyebrow">浏览全部</p>
-          <h2>按风格找局</h2>
+    <section class="lb-join-section" id="joinPanel">
+      <div class="lb-join-row">
+        <input class="lb-input" id="roomCodeInput" type="text" maxlength="4" placeholder="输入房间号" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+        <button type="button" class="lb-join-btn" id="joinBtn">加入</button>
+      </div>
+      <div class="lan-rooms-panel" id="lanRoomsPanel" style="display:none">
+        <div class="lan-rooms-header">
+          <span class="lan-rooms-title" id="lanRoomsTitle">局域网房间</span>
+          <button type="button" class="lan-refresh-btn" id="refreshRoomsBtn">↻ 刷新</button>
         </div>
-        <div class="browser-tools">
-          <input class="browser-search" id="gameSearch" type="search" placeholder="搜索游戏名、标签、类型">
-          <div class="category-chips" id="categoryChips"></div>
-          <div class="category-chips count-chips" id="countChips"></div>
+        <div class="lan-rooms-list" id="lanRoomsList">
+          <div class="lan-rooms-empty" id="lanRoomsEmpty">暂无可加入的房间</div>
         </div>
       </div>
-      <div class="browse-grid" id="gameGrid"></div>
-      <p class="browse-empty" id="emptyState" style="display:none">没有找到匹配的游戏，换个关键词试试。</p>
+    </section>
+
+    <div class="last-game-row" id="lastGameRow" style="display:none">
+      <button type="button" class="lb-last-chip" id="lastGameChip"></button>
+    </div>
+
+    <section class="lb-filters" aria-label="游戏筛选">
+      <div class="lb-chips lb-cat-chips" id="categoryChips" role="tablist"></div>
+    </section>
+
+    <section class="lb-browse" aria-labelledby="allGamesHeading">
+      <div class="lb-sec">
+        <h2 id="allGamesHeading">全部游戏</h2>
+        <span class="lb-sec-count num" id="gameCount"></span>
+        <div class="lb-count-wrap">
+          <div class="lb-count-seg" id="countChips" role="group" aria-label="人数"></div>
+          <span class="lb-count-unit" id="countUnit">人</span>
+        </div>
+      </div>
+      <div class="lb-grid" id="gameGrid" data-boot="1"></div>
+      <p class="lb-empty" id="emptyState" style="display:none">没有找到匹配的游戏，换个关键词试试。</p>
     </section>
 
     <footer class="lobby-footer">
@@ -101,23 +106,28 @@
         <span>absswds / GameNest</span>
       </a>
     </footer>
-
   </main>
 
   <div class="toast" id="toast"></div>
-  <button id="quickCreate" class="quick-create-btn">创建房间</button>
+  <button type="button" id="quickCreate" class="quick-create-btn">创建房间</button>
 
 <script src="/js/session-store.js"></script>
+<script src="/js/haptics.js"></script>
 <script src="/js/lang/zh.js"></script>
 <script src="/js/lang/en.js"></script>
 <script src="/js/lang/catalog-zh.js"></script>
 <script src="/js/lang/catalog-en.js"></script>
 <script src="/js/game-catalog.js"></script>
 <script>
+const NEW_GAMES = ['pool', 'liarsdice', 'blackjack'];
+
 let selectedGame = 'monopoly';
 let activeCategory = (typeof _t === 'function' ? _t('all_categories') : '\u5168\u90e8');
 let searchText = '';
 let activeCount = 0; // 0 = any; 6 means 6 or more
+
+const reduceMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+const desktopMQ = window.matchMedia ? window.matchMedia('(min-width: 800px)') : { matches: true };
 
 // ?wifi= comes from the Android app; remember it so it survives leaving and returning to the lobby
 const __isMobileData = (function () {
@@ -169,37 +179,158 @@ function getSocketURL() {
   return protocol + location.host;
 }
 
-function buildCover(game, compact) {
+function buildCoverMedia(game, opts) {
+  const cls = opts && opts.hero ? 'lb-hero-img' : 'lb-card-img';
+  const fbCls = opts && opts.hero ? 'lb-hero-fallback' : 'lb-card-fallback';
+  const loadingAttr = opts && opts.eager ? '' : ' loading="lazy"';
   if (game.cover) {
-    return '<img class="' + (compact ? 'featured-cover' : 'browse-cover') + '" src="' + game.cover + '" alt="' + escapeHtml(game.name) + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
-      '<div class="' + (compact ? 'featured-fallback' : 'browse-fallback') + '" style="display:none">' + escapeHtml(game.icon) + '</div>';
+    return '<img class="' + cls + '" src="' + escapeHtml(game.cover) + '" alt="' + escapeHtml(game.name) + '"' + loadingAttr + ' decoding="async">' +
+      '<div class="' + fbCls + '" style="display:none">' + escapeHtml(game.icon) + '</div>';
   }
-  return '<div class="' + (compact ? 'featured-fallback' : 'browse-fallback') + '">' + escapeHtml(game.icon) + '</div>';
+  return '<div class="' + fbCls + '">' + escapeHtml(game.icon) + '</div>';
 }
 
-function buildFeaturedCard(game) {
-  const selectedClass = game.id === selectedGame ? ' selected' : '';
-  return '<button class="featured-card' + selectedClass + '" data-game="' + game.id + '">' +
-    '<div class="featured-media">' + buildCover(game, true) + '</div>' +
-    '<div class="featured-content">' +
-      '<div class="featured-topline"><span>' + escapeHtml(game.category) + '</span><span>' + escapeHtml(game.players) + '</span></div>' +
-      '<h3>' + escapeHtml(game.name) + '</h3>' +
-      '<p>' + escapeHtml(game.subtitle) + '</p>' +
-    '</div>' +
-  '</button>';
+function wireCoverImages(container) {
+  if (!container) return;
+  container.querySelectorAll('img.lb-card-img, img.lb-hero-img').forEach(function(img) {
+    var markLoaded = function() { img.classList.add('is-loaded'); };
+    var markError = function() {
+      img.style.display = 'none';
+      var fb = img.nextElementSibling;
+      if (fb) fb.style.display = 'flex';
+    };
+    if (img.complete) {
+      if (img.naturalWidth > 0) markLoaded();
+      else markError();
+    } else {
+      img.addEventListener('load', function() {
+        if (typeof img.decode === 'function') {
+          img.decode().then(markLoaded, markLoaded);
+        } else {
+          markLoaded();
+        }
+      }, { once: true });
+      img.addEventListener('error', markError, { once: true });
+    }
+  });
 }
 
-function buildBrowseCard(game) {
-  const selectedClass = game.id === selectedGame ? ' selected' : '';
-  const ai = '<span>' + _t(game.supportsAI ? 'can_add_bot' : __SOLO_GAMES.has(game.id) ? 'solo_ok' : 'pvp_only') + '</span>';
-  return '<button class="browse-card' + selectedClass + '" data-game="' + game.id + '">' +
-    '<div class="browse-card-media">' + buildCover(game, false) + '</div>' +
-    '<div class="browse-card-body">' +
-      '<div class="browse-card-meta"><span>' + escapeHtml(game.category) + '</span><span>' + escapeHtml(game.duration) + '</span></div>' +
-      '<h3>' + escapeHtml(game.name) + '</h3>' +
-      '<p>' + escapeHtml(game.description) + '</p>' +
-      '<div class="browse-card-footer"><span>' + escapeHtml(game.players) + '</span>' + ai + '</div>' +
+function getHeroGames() {
+  var list = NEW_GAMES.map(function(id) {
+    return window.gameCatalog.byId(id);
+  }).filter(function(g) {
+    return g && playable(g);
+  });
+  if (!list.length) {
+    if (featuredGames.length) list = [featuredGames[0]];
+    else if (catalog.length) list = [catalog[0]];
+  }
+  return list;
+}
+
+function renderHero() {
+  var section = document.getElementById('heroSection');
+  var track = document.getElementById('heroTrack');
+  var dots = document.getElementById('heroDots');
+  if (!section || !track) return;
+  var games = getHeroGames();
+  if (!games.length) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  var tagText = typeof _t === 'function' ? _t('lobby_new_this_week') : '本周新游戏';
+  track.classList.toggle('is-carousel', games.length > 1);
+  track.innerHTML = games.map(function(game) {
+    var isSelected = game.id === selectedGame;
+    var metaParts = [game.players, game.subtitle].filter(Boolean).join(' · ');
+    return '<button type="button" class="lb-hero-card' + (isSelected ? ' selected' : '') + '" data-game="' + escapeHtml(game.id) + '" aria-pressed="' + (isSelected ? 'true' : 'false') + '">' +
+      '<div class="lb-hero-media">' + buildCoverMedia(game, { hero: true, eager: true }) + '</div>' +
+      '<div class="lb-hero-cap">' +
+        '<span class="lb-hero-tag">' + escapeHtml(tagText) + '</span>' +
+        '<b class="lb-hero-name">' + escapeHtml(game.name) + '</b>' +
+        '<small class="lb-hero-meta num">' + escapeHtml(metaParts) + '</small>' +
+      '</div>' +
+      '<span class="lb-check" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-6.5"/></svg></span>' +
+    '</button>';
+  }).join('');
+  wireCoverImages(track);
+  track.querySelectorAll('.lb-hero-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      selectOrCreate(this.dataset.game);
+    });
+  });
+
+  if (dots) {
+    var syncHeroDots = function() {
+      var needsDots = dots.children.length > 1 && track.scrollWidth > track.clientWidth + 1;
+      dots.style.display = needsDots ? '' : 'none';
+    };
+    if (games.length > 1) {
+      var slideTpl = typeof _t === 'function' ? _t('hero_slide_n') : '查看第 %s 个新游戏';
+      dots.innerHTML = games.map(function(g, i) {
+        return '<button type="button" class="lb-hero-dot' + (i === 0 ? ' active' : '') + '" data-index="' + i + '" aria-label="' + escapeHtml(slideTpl.replace('%s', i + 1)) + '"></button>';
+      }).join('');
+      syncHeroDots();
+      dots.querySelectorAll('.lb-hero-dot').forEach(function(dot) {
+        dot.addEventListener('click', function() {
+          var idx = +this.dataset.index;
+          var slides = track.querySelectorAll('.lb-hero-card');
+          if (slides[idx]) {
+            track.scrollTo({
+              left: slides[idx].offsetLeft,
+              behavior: reduceMotion.matches ? 'auto' : 'smooth'
+            });
+          }
+        });
+      });
+      if (!track._dotsBound) {
+        track._dotsBound = true;
+        var scrollTick = false;
+        track.addEventListener('scroll', function() {
+          if (scrollTick) return;
+          scrollTick = true;
+          requestAnimationFrame(function() {
+            scrollTick = false;
+            var slides = track.querySelectorAll('.lb-hero-card');
+            var dotEls = dots.querySelectorAll('.lb-hero-dot');
+            if (!slides.length || !dotEls.length) return;
+            var best = 0;
+            var bestDist = Infinity;
+            for (var i = 0; i < slides.length; i++) {
+              var d = Math.abs(slides[i].offsetLeft - track.scrollLeft);
+              if (d < bestDist) { bestDist = d; best = i; }
+            }
+            dotEls.forEach(function(el, i) {
+              el.classList.toggle('active', i === best);
+            });
+          });
+        }, { passive: true });
+        if (!track._dotsObserved) {
+          track._dotsObserved = true;
+          var onResize = function() { syncHeroDots(); };
+          if (typeof ResizeObserver === 'function') new ResizeObserver(onResize).observe(track);
+          else window.addEventListener('resize', onResize);
+        }
+      }
+    } else {
+      dots.style.display = 'none';
+      dots.innerHTML = '';
+    }
+  }
+}
+
+function buildBrowseCard(game, idx) {
+  const isSelected = game.id === selectedGame;
+  const selectedClass = isSelected ? ' selected' : '';
+  const metaParts = [game.players, game.duration].filter(Boolean).join(' · ');
+  return '<button type="button" class="lb-card browse-card' + selectedClass + '" data-game="' + escapeHtml(game.id) + '" aria-pressed="' + (isSelected ? 'true' : 'false') + '">' +
+    '<div class="lb-card-media">' + buildCoverMedia(game, { hero: false, eager: idx < 6 }) + '</div>' +
+    '<div class="lb-card-scrim">' +
+      '<h3 class="lb-card-name">' + escapeHtml(game.name) + '</h3>' +
+      '<div class="lb-card-meta num">' + escapeHtml(metaParts) + '</div>' +
     '</div>' +
+    '<span class="lb-check" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-6.5"/></svg></span>' +
   '</button>';
 }
 
@@ -251,60 +382,245 @@ function matches(game) {
   return haystack.indexOf(searchText) >= 0 || haystack.indexOf(searchText.replace(/\s+/g, '')) >= 0;
 }
 
-function bindSelection(containerSelector) {
-  document.querySelectorAll(containerSelector).forEach(function(card) {
-    card.addEventListener('click', function() {
-      const wasSelected = this.classList.contains('selected');
-      selectedGame = this.dataset.game;
-      renderCatalog();
-      updateQuickCreate();
-      if (wasSelected) createRoom();
-    });
+function updateSelectionUI() {
+  document.querySelectorAll('.lb-card, .lb-hero-card').forEach(function(el) {
+    var on = el.dataset.game === selectedGame;
+    el.classList.toggle('selected', on);
+    el.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
 }
 
-function renderCategories() {
+function selectOrCreate(gameId) {
+  var wasSelected = selectedGame === gameId;
+  selectedGame = gameId;
+  updateSelectionUI();
+  updateQuickCreate();
+  if (wasSelected) createRoom();
+}
+
+// C1: elastic indicator underline sliding between category tabs
+var catIndControl = (function() {
+  var list = document.getElementById('categoryChips');
+  if (!list) return { place: function() {}, moveTo: function() {} };
+
+  function readPos() {
+    return {
+      x: parseFloat(list.style.getPropertyValue('--x')) || 0,
+      w: parseFloat(list.style.getPropertyValue('--w')) || 0
+    };
+  }
+
+  function place(btn) {
+    if (!btn) return;
+    list.style.setProperty('--x', btn.offsetLeft + 'px');
+    list.style.setProperty('--w', btn.offsetWidth + 'px');
+  }
+
+  function current() {
+    return list.querySelector('.lb-cat-chip.selected') || list.querySelector('.lb-cat-chip');
+  }
+
+  function stretchMove(ind, from, to) {
+    if (!ind || reduceMotion.matches) return;
+    if (from.w <= 0 || (from.x === to.x && from.w === to.w)) return;
+    var right = to.x > from.x, lead = 0.9, trail = 0.15;
+    var L = from.x + (to.x - from.x) * (right ? trail : lead);
+    var R = from.x + from.w + (to.x + to.w - from.x - from.w) * (right ? lead : trail);
+    ind.animate([
+      { transform: 'translateX(' + from.x + 'px)', width: from.w + 'px' },
+      { transform: 'translateX(' + L + 'px)', width: Math.max(0, R - L) + 'px', offset: 0.4 },
+      { transform: 'translateX(' + to.x + 'px)', width: to.w + 'px' }
+    ], { duration: 360, easing: 'cubic-bezier(0.33, 1, 0.68, 1)' });
+  }
+
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(function() {
+      place(current());
+    }).observe(list);
+  } else {
+    window.addEventListener('resize', function() { place(current()); });
+  }
+
+  return {
+    placeCurrent: function() {
+      place(current());
+    },
+    moveTo: function(btn, animate) {
+      var ind = list.querySelector('.lb-chip-ind');
+      var from = readPos();
+      place(btn);
+      if (animate) stretchMove(ind, from, readPos());
+    }
+  };
+})();
+
+function buildCategoryChips() {
   const chips = [(typeof _t === 'function' ? _t('all_categories') : '\u5168\u90e8')].concat(window.gameCatalog.categories());
   const root = document.getElementById('categoryChips');
-  root.innerHTML = chips.map(function(category) {
-    const selectedClass = category === activeCategory ? ' selected' : '';
-    return '<button class="category-chip' + selectedClass + '" data-category="' + escapeHtml(category) + '">' + escapeHtml(category) + '</button>';
+  if (!root) return;
+  root.innerHTML = '<span class="lb-chip-ind" aria-hidden="true"></span>' + chips.map(function(category) {
+    const isSel = category === activeCategory;
+    return '<button type="button" role="tab" aria-selected="' + (isSel ? 'true' : 'false') + '" class="lb-chip lb-cat-chip' + (isSel ? ' selected' : '') + '" data-category="' + escapeHtml(category) + '">' + escapeHtml(category) + '</button>';
   }).join('');
-  root.querySelectorAll('.category-chip').forEach(function(chip) {
+  root.querySelectorAll('.lb-cat-chip').forEach(function(chip) {
     chip.addEventListener('click', function() {
-      activeCategory = this.dataset.category;
-      renderCatalog();
+      var nextCat = this.dataset.category;
+      if (nextCat === activeCategory) return;
+      activeCategory = nextCat;
+      root.querySelectorAll('.lb-cat-chip').forEach(function(c) {
+        var on = c.dataset.category === activeCategory;
+        c.classList.toggle('selected', on);
+        c.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      catIndControl.moveTo(this, true);
+      renderCatalog({ animate: true });
     });
   });
+  requestAnimationFrame(catIndControl.placeCurrent);
 }
+
+function syncCategorySelection(animate) {
+  var root = document.getElementById('categoryChips');
+  if (!root) return;
+  var targetBtn = null;
+  root.querySelectorAll('.lb-cat-chip').forEach(function(c) {
+    var on = c.dataset.category === activeCategory;
+    c.classList.toggle('selected', on);
+    c.setAttribute('aria-selected', on ? 'true' : 'false');
+    if (on) targetBtn = c;
+  });
+  if (targetBtn) catIndControl.moveTo(targetBtn, !!animate);
+}
+
+// Sliding pill for player-count segmented chips
+var countPillControl = (function() {
+  var seg = document.getElementById('countChips');
+  if (!seg) return { placeCurrent: function() {}, moveTo: function() {} };
+
+  function current() {
+    return seg.querySelector('.lb-count-chip.selected') || seg.querySelector('.lb-count-chip');
+  }
+
+  // Same liquid stretch as the category indicator (catIndControl): the leading edge runs ahead,
+  // the trailing edge catches up, so the pill flows to the new chip like a drop of water.
+  function stretchMove(pill, from, to) {
+    if (!pill || from.w <= 0 || (from.x === to.x && from.w === to.w)) return;
+    var right = to.x > from.x, lead = 0.9, trail = 0.15;
+    var L = from.x + (to.x - from.x) * (right ? trail : lead);
+    var R = from.x + from.w + (to.x + to.w - from.x - from.w) * (right ? lead : trail);
+    pill.animate([
+      { transform: 'translateX(' + from.x + 'px)', width: from.w + 'px' },
+      { transform: 'translateX(' + L + 'px)', width: Math.max(0, R - L) + 'px', offset: 0.4 },
+      { transform: 'translateX(' + to.x + 'px)', width: to.w + 'px' }
+    ], { duration: 360, easing: 'cubic-bezier(0.33, 1, 0.68, 1)' });
+  }
+
+  function place(btn, animate) {
+    if (!btn) return;
+    var w = btn.offsetWidth;
+    if (w <= 0) return;
+    var shouldAnimate = !!animate && !reduceMotion.matches && seg.classList.contains('is-ready');
+    var from = {
+      x: parseFloat(seg.style.getPropertyValue('--pill-x')) || 0,
+      w: parseFloat(seg.style.getPropertyValue('--pill-w')) || 0
+    };
+    seg.style.setProperty('--pill-x', btn.offsetLeft + 'px');
+    seg.style.setProperty('--pill-w', w + 'px');
+    if (shouldAnimate) stretchMove(seg.querySelector('.lb-count-pill'), from, { x: btn.offsetLeft, w: w });
+    if (!seg.classList.contains('is-ready')) {
+      seg.classList.add('is-ready');
+    }
+  }
+
+  function snapCurrent() {
+    place(current(), false);
+  }
+
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(snapCurrent).observe(seg);
+  } else {
+    window.addEventListener('resize', snapCurrent);
+  }
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(snapCurrent);
+  }
+
+  return {
+    placeCurrent: snapCurrent,
+    moveTo: function(btn, animate) {
+      place(btn, animate);
+    }
+  };
+})();
 
 function renderCountChips() {
   const root = document.getElementById('countChips');
   if (!root) return;
-  const label = _t('players_filter');
-  root.innerHTML = '<span class="count-chips-label">' + escapeHtml(label) + '</span>' + [0, 1, 2, 3, 4, 5, 6].map(function(n) {
-    const text = n === 0 ? _t('players_any') : n === 6 ? _t('players_n_plus').replace('%s', n) : _t('players_n').replace('%s', n);
-    return '<button class="category-chip' + (n === activeCount ? ' selected' : '') + '" data-count="' + n + '">' + escapeHtml(text) + '</button>';
+  if (typeof _t === 'function') {
+    root.setAttribute('aria-label', _t('players_filter'));
+  }
+  const unitEl = document.getElementById('countUnit');
+  if (unitEl && typeof _t === 'function') {
+    unitEl.textContent = _t('players_unit');
+  }
+  root.classList.remove('is-ready');
+  root.innerHTML = '<span class="lb-count-pill" aria-hidden="true"></span>' + [0, 1, 2, 3, 4, 5, 6].map(function(n) {
+    const aria = n === 0 ? _t('players_any') : n === 6 ? _t('players_n_plus').replace('%s', n) : _t('players_n').replace('%s', n);
+    const label = n === 0 ? _t('players_any') : n === 6 ? '6+' : String(n);
+    const on = n === activeCount;
+    return '<button type="button" class="lb-count-chip' + (on ? ' selected' : '') + '" data-count="' + n + '" aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + escapeHtml(aria) + '">' + escapeHtml(label) + '</button>';
   }).join('');
-  root.querySelectorAll('.category-chip').forEach(function(chip) {
+  root.querySelectorAll('.lb-count-chip').forEach(function(chip) {
     chip.addEventListener('click', function() {
-      activeCount = +this.dataset.count;
-      renderCatalog();
+      var nextCount = +this.dataset.count;
+      if (nextCount === activeCount) return;
+      activeCount = nextCount;
+      root.querySelectorAll('.lb-count-chip').forEach(function(c) {
+        var on = +c.dataset.count === activeCount;
+        c.classList.toggle('selected', on);
+        c.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      countPillControl.moveTo(this, true);
+      renderCatalog({ animate: true });
     });
   });
+  countPillControl.placeCurrent();
+  requestAnimationFrame(countPillControl.placeCurrent);
 }
 
-function renderCatalog() {
-  const countEl = document.getElementById('gameCount');
-  if (countEl) countEl.textContent = catalog.length;
-  document.getElementById('featuredStrip').innerHTML = featuredGames.map(buildFeaturedCard).join('');
+function syncCountSelection(animate) {
+  var root = document.getElementById('countChips');
+  if (!root) return;
+  var targetBtn = null;
+  root.querySelectorAll('.lb-count-chip').forEach(function(c) {
+    var on = +c.dataset.count === activeCount;
+    c.classList.toggle('selected', on);
+    c.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (on) targetBtn = c;
+  });
+  if (targetBtn) countPillControl.moveTo(targetBtn, !!animate);
+}
+
+function renderCatalog(opts) {
   const filtered = catalog.filter(matches);
-  document.getElementById('gameGrid').innerHTML = filtered.map(buildBrowseCard).join('');
+  const countEl = document.getElementById('gameCount');
+  if (countEl) {
+    var tpl = typeof _t === 'function' ? _t('lobby_games_count') : '%s 款';
+    countEl.textContent = tpl.replace('%s', filtered.length);
+  }
+  const grid = document.getElementById('gameGrid');
+  grid.removeAttribute('data-boot');
+  grid.innerHTML = filtered.map(buildBrowseCard).join('');
   document.getElementById('emptyState').style.display = filtered.length ? 'none' : '';
-  bindSelection('.featured-card');
-  bindSelection('.browse-card');
-  renderCategories();
-  renderCountChips();
+  wireCoverImages(grid);
+  grid.querySelectorAll('.lb-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      selectOrCreate(this.dataset.game);
+    });
+  });
+  if (opts && opts.animate && !reduceMotion.matches && typeof grid.animate === 'function') {
+    grid.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
+  }
 }
 
 function toast(msg) {
@@ -333,11 +649,17 @@ function renderLastGame() {
     activeCategory = (typeof _t === 'function' ? _t('all_categories') : '全部');
     searchText = '';
     activeCount = 0;
-    document.getElementById('gameSearch').value = '';
+    var searchInput = document.getElementById('gameSearch');
+    var searchWrap = document.getElementById('searchWrap');
+    if (searchInput) searchInput.value = '';
+    if (searchWrap) searchWrap.classList.remove('has-value');
+    syncCategorySelection(true);
+    syncCountSelection(true);
     renderCatalog();
+    updateSelectionUI();
     updateQuickCreate();
     var card = document.querySelector('.browse-card[data-game="' + id + '"]');
-    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (card) card.scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'center' });
   };
   row.style.display = '';
 }
@@ -437,13 +759,16 @@ function fetchLanRooms() {
 }
 
 function renderLanRooms(rooms) {
+  var panel = document.getElementById('lanRoomsPanel');
   var list = document.getElementById('lanRoomsList');
   if (!list) return;
   if (!rooms || rooms.length === 0) {
+    if (panel) panel.style.display = 'none';
     list.innerHTML = '<div class="lan-rooms-empty" id="lanRoomsEmpty">' +
-      (typeof _t === 'function' ? _t('lan_rooms_empty') : '暂无可加入的房间') + '</div>';
+      escapeHtml(typeof _t === 'function' ? _t('lan_rooms_empty') : '暂无可加入的房间') + '</div>';
     return;
   }
+  if (panel) panel.style.display = '';
   var html = '';
   for (var i = 0; i < rooms.length; i++) {
     var r = rooms[i];
@@ -452,19 +777,19 @@ function renderLanRooms(rooms) {
     var name = (g && g.name) || r.gameName || r.game;
     var hostTemplate = typeof _t === 'function' ? _t('lan_room_host') : '房主：%s';
     var hostText = hostTemplate.replace('%s', r.hostName || 'Host');
-    html += '<div class="lan-room-card" data-room-id="' + r.roomId + '">' +
+    html += '<button type="button" class="lan-room-card" data-room-id="' + escapeHtml(r.roomId) + '">' +
       '<div class="lan-room-card-main">' +
-        '<span class="lan-room-icon">' + icon + '</span>' +
+        '<span class="lan-room-icon">' + escapeHtml(icon) + '</span>' +
         '<div class="lan-room-info">' +
-          '<span class="lan-room-name">' + name + '</span>' +
-          '<span class="lan-room-host">' + hostText + '</span>' +
+          '<span class="lan-room-name">' + escapeHtml(name) + '</span>' +
+          '<span class="lan-room-host">' + escapeHtml(hostText) + '</span>' +
         '</div>' +
       '</div>' +
       '<div class="lan-room-card-right">' +
-        '<span class="lan-room-badge">' + r.roomId + '</span>' +
-        '<span class="lan-room-count">' + r.playerCount + '/' + r.maxPlayers + '</span>' +
+        '<span class="lan-room-badge num">' + escapeHtml(r.roomId) + '</span>' +
+        '<span class="lan-room-count num">' + escapeHtml(r.playerCount + '/' + r.maxPlayers) + '</span>' +
       '</div>' +
-    '</div>';
+    '</button>';
   }
   list.innerHTML = html;
   var cards = list.querySelectorAll('.lan-room-card');
@@ -479,10 +804,176 @@ function renderLanRooms(rooms) {
 var refreshBtn = document.getElementById('refreshRoomsBtn');
 if (refreshBtn) refreshBtn.addEventListener('click', fetchLanRooms);
 
-document.getElementById('gameSearch').addEventListener('input', function() {
-  searchText = this.value.trim().toLowerCase();
-  renderCatalog();
-});
+// Header: C6 scroll hide on phones + C2 search expand + C4 circular reveal theme switch
+(function() {
+  var header = document.getElementById('lobbyHeader');
+  var bar = document.getElementById('headerBar');
+  var searchWrap = document.getElementById('searchWrap');
+  var searchInput = document.getElementById('gameSearch');
+  var searchOpen = document.getElementById('searchOpen');
+  var searchClose = document.getElementById('searchClose');
+  var themeBtn = document.getElementById('themeBtn');
+
+  function syncSearchTabIndex() {
+    var active = desktopMQ.matches || bar.classList.contains('searching');
+    searchInput.tabIndex = active ? 0 : -1;
+    searchClose.tabIndex = active ? 0 : -1;
+  }
+
+  function setSearching(on, focusBack) {
+    bar.classList.toggle('searching', on);
+    searchOpen.setAttribute('aria-expanded', on ? 'true' : 'false');
+    syncSearchTabIndex();
+    if (on) {
+      header.classList.remove('hide');
+      requestAnimationFrame(function() { searchInput.focus({ preventScroll: true }); });
+    } else if (focusBack) {
+      searchOpen.focus({ preventScroll: true });
+    }
+  }
+
+  function updateHasValue() {
+    searchWrap.classList.toggle('has-value', !!searchInput.value);
+  }
+
+  searchInput.addEventListener('input', function() {
+    updateHasValue();
+    searchText = this.value.trim().toLowerCase();
+    renderCatalog();
+  });
+
+  searchOpen.addEventListener('click', function() {
+    setSearching(true, false);
+  });
+
+  searchClose.addEventListener('click', function() {
+    var hadText = !!searchInput.value;
+    searchInput.value = '';
+    updateHasValue();
+    if (hadText) {
+      searchText = '';
+      renderCatalog();
+    }
+    if (desktopMQ.matches) {
+      searchInput.focus({ preventScroll: true });
+    } else {
+      setSearching(false, true);
+    }
+  });
+
+  searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var hadText = !!searchInput.value;
+      searchInput.value = '';
+      updateHasValue();
+      if (hadText) {
+        searchText = '';
+        renderCatalog();
+      }
+      if (!desktopMQ.matches) setSearching(false, true);
+      else searchInput.blur();
+    }
+  });
+
+  searchInput.addEventListener('blur', function() {
+    setTimeout(function() {
+      if (!desktopMQ.matches && !searchInput.value && !bar.contains(document.activeElement)) {
+        setSearching(false, false);
+      }
+    }, 0);
+  });
+
+  if (desktopMQ.addEventListener) {
+    desktopMQ.addEventListener('change', function() {
+      if (desktopMQ.matches) header.classList.remove('hide');
+      syncSearchTabIndex();
+    });
+  }
+  syncSearchTabIndex();
+  updateHasValue();
+
+  // C6: sticky header hides on scroll down and reappears immediately on scroll up (phones only)
+  var lastY = window.scrollY;
+  var ticking = false;
+  window.addEventListener('scroll', function() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function() {
+      var y = window.scrollY;
+      var dy = y - lastY;
+      if (!desktopMQ.matches) {
+        if (Math.abs(dy) > 6) {
+          // Only an active search with text keeps the header pinned. Focus merely left on a header
+          // button (e.g. the search icon after closing search) or an empty open search used to block
+          // hiding forever, so scrolling down now drops that focus / closes the empty search.
+          var typing = !!searchInput.value && (bar.classList.contains('searching') || document.activeElement === searchInput);
+          var shouldHide = dy > 0 && y > header.offsetHeight && !typing;
+          if (shouldHide) {
+            if (bar.classList.contains('searching')) setSearching(false, false);
+            var ae = document.activeElement;
+            if (ae && ae !== document.body && header.contains(ae) && typeof ae.blur === 'function') ae.blur();
+          }
+          header.classList.toggle('hide', shouldHide);
+          lastY = y;
+        }
+      } else {
+        header.classList.remove('hide');
+        lastY = y;
+      }
+      header.classList.toggle('scrolled', y > 4);
+      ticking = false;
+    });
+  }, { passive: true });
+
+  // C4: circular reveal from theme button
+  async function circleReveal(e, update) {
+    if (!document.startViewTransition || reduceMotion.matches) {
+      update();
+      return;
+    }
+    var btn = e.currentTarget;
+    var b = btn.getBoundingClientRect();
+    var x = e.detail ? e.clientX : b.left + b.width / 2;
+    var y = e.detail ? e.clientY : b.top + b.height / 2;
+    var r = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+    var root = document.documentElement;
+    var updated = false;
+    root.classList.add('theming');
+    try {
+      var t = document.startViewTransition(function() {
+        updated = true;
+        update();
+      });
+      t.finished.finally(function() { root.classList.remove('theming'); });
+      await t.ready;
+      root.animate(
+        { clipPath: ['circle(0 at ' + x + 'px ' + y + 'px)', 'circle(' + r + 'px at ' + x + 'px ' + y + 'px)'] },
+        { duration: 320, easing: 'cubic-bezier(0.33, 1, 0.68, 1)', pseudoElement: '::view-transition-new(root)' }
+      );
+    } catch (err) {
+      root.classList.remove('theming');
+      if (!updated) update();
+    }
+  }
+
+  if (themeBtn) {
+    themeBtn.addEventListener('click', function(e) {
+      circleReveal(e, function() {
+        if (window.GNTheme) window.GNTheme.toggle();
+      });
+    });
+  }
+})();
+
+function syncThemeBtn() {
+  var btn = document.getElementById('themeBtn');
+  if (!btn || !window.GNTheme) return;
+  var dark = window.GNTheme.get() === 'dark';
+  var label = typeof _t === 'function' ? _t(dark ? 'theme_light' : 'theme_dark') : (dark ? '切换到浅色模式' : '切换到深色模式');
+  btn.setAttribute('aria-label', label);
+  btn.setAttribute('title', label);
+}
+window.addEventListener('gnthemechange', syncThemeBtn);
 
 function renderResumeBanner() {
   var saved = GNSession.get();
@@ -493,8 +984,29 @@ function renderResumeBanner() {
   var sub = document.getElementById('resumeRoomSub');
   var section = document.getElementById('resumeSection');
   var btn = document.getElementById('resumeBtn');
+  var cover = document.getElementById('resumeCover');
+  var fb = document.getElementById('resumeFallback');
   if (title) title.textContent = (typeof _t === 'function' ? '\u300a' + game.name + '\u300b ' + _t('room') + ' ' + roomId : '\u300a' + game.name + '\u300b \u623f\u95f4 ' + roomId);
   if (sub) sub.textContent = (typeof _t === 'function' ? _t('resume_subtitle') : '\u4f60\u5df2\u5728\u8fd9\u95f4\u623f\u4e2d\uff0c\u70b9\u51fb\u8fd4\u56de');
+  if (cover && fb) {
+    fb.textContent = game.icon || '🎮';
+    if (game.cover) {
+      cover.alt = game.name || '';
+      cover.onload = function() { cover.style.display = 'block'; fb.style.display = 'none'; };
+      cover.onerror = function() { cover.style.display = 'none'; fb.style.display = 'flex'; };
+      cover.src = game.cover;
+      if (cover.complete && cover.naturalWidth > 0) {
+        cover.style.display = 'block';
+        fb.style.display = 'none';
+      } else {
+        cover.style.display = 'none';
+        fb.style.display = 'flex';
+      }
+    } else {
+      cover.style.display = 'none';
+      fb.style.display = 'flex';
+    }
+  }
   if (section) section.style.display = '';
   if (btn) btn.onclick = function() {
     location.href = '/game.html';
@@ -520,7 +1032,7 @@ if (__saved && __saved.roomId && __saved.resumeToken) {
   // Mobile-data mode: hide multiplayer UI, show offline banner
   // (?wifi=0 is set by the Android MainActivity when active network is not WiFi/Ethernet)
   if (__isMobileData) {
-    var joinPanel = document.querySelector('.hero-panels .hero-panel:nth-of-type(2)');
+    var joinPanel = document.getElementById('joinPanel');
     if (joinPanel) joinPanel.style.display = 'none';
     var qc = document.getElementById('quickCreate');
     if (qc) qc.style.display = 'none';
@@ -564,6 +1076,9 @@ if (__saved && __saved.roomId && __saved.resumeToken) {
   joinBtn.click();
 })();
 
+renderHero();
+buildCategoryChips();
+renderCountChips();
 renderCatalog();
 updateQuickCreate();
 renderLastGame();
@@ -583,16 +1098,6 @@ if (sessionStorage.getItem('_returnFromGame')) {
 (function() {
   if (typeof _t !== 'function') return;
   var el;
-  el = document.querySelector('.hero-title');
-  if (el) el.textContent = _t('hero_title');
-  el = document.querySelector('.hero-subtitle');
-  if (el) el.textContent = _t('hero_subtitle');
-  var stats = document.querySelectorAll('.hero-stat span');
-  if (stats.length >= 3) {
-    stats[0].textContent = _t('hero_game_count');
-    stats[1].textContent = _t('hero_player_count');
-    stats[2].textContent = _t('hero_connection');
-  }
   el = document.getElementById('roomCodeInput');
   if (el) el.placeholder = _t('room_code_placeholder');
   el = document.getElementById('joinBtn');
@@ -607,31 +1112,29 @@ if (sessionStorage.getItem('_returnFromGame')) {
   if (el) el.placeholder = _t('search_placeholder');
   el = document.getElementById('emptyState');
   if (el) el.textContent = _t('no_results');
+  el = document.getElementById('allGamesHeading');
+  if (el) el.textContent = _t('lobby_all_games');
+  el = document.getElementById('searchOpen');
+  if (el) el.setAttribute('aria-label', _t('search_open'));
+  el = document.getElementById('searchClose');
+  if (el) el.setAttribute('aria-label', _t('search_close'));
+  el = document.getElementById('langSwitchBtn');
+  if (el) el.setAttribute('aria-label', _t('lang_toggle_label'));
+  el = document.getElementById('heroSection');
+  if (el) el.setAttribute('aria-label', _t('hero_carousel_label'));
+  el = document.querySelector('.wifi-note');
+  if (el) el.textContent = _t('wifi_note');
+  document.title = 'GameNest — ' + _t('hero_title');
+  syncThemeBtn();
+  renderHero();
+  buildCategoryChips();
+  renderCountChips();
+  renderCatalog();
   updateQuickCreate();
   renderResumeBanner();
   renderLastGame();
   el = document.getElementById('resumeBtn');
   if (el) el.textContent = _t('resume_btn');
-  // Title tag
-  document.title = _t('hero_title');
-  // Additional i18n for section headers
-  el = document.querySelector('.discovery-hint');
-  if (el) el.textContent = _t('discovery_hint');
-  el = document.querySelector('.wifi-note');
-  if (el) el.textContent = _t('wifi_note');
-  var sectionTitles = document.querySelectorAll('.lobby-discovery .eyebrow');
-  if (sectionTitles.length > 0) sectionTitles[0].textContent = _t('featured_label');
-  sectionTitles = document.querySelectorAll('.lobby-browser .eyebrow');
-  if (sectionTitles.length > 0) sectionTitles[0].textContent = _t('browse_label');
-  var sectionHeadings = document.querySelectorAll('.discovery-header h2');
-  if (sectionHeadings.length > 0) sectionHeadings[0].textContent = _t('featured_title');
-  sectionHeadings = document.querySelectorAll('.browser-toolbar h2');
-  if (sectionHeadings.length > 0) sectionHeadings[0].textContent = _t('browse_title');
-  var catChips = document.querySelectorAll('#categoryChips .category-chip');
-  if (catChips.length > 0) catChips[0].textContent = _t('all_categories');
-  if (typeof renderCountChips === 'function') renderCountChips();
-  el = document.querySelector('.panel-heading');
-  if (el) el.textContent = _t('join_room');
 })();
 </script>
 </body>

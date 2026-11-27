@@ -65,6 +65,10 @@ node mcp/server.js --http=3333        # 或 MCP_HTTP_PORT=3333
 - 断线会用 resume token 自动重连原座位。日志只写 stderr。
 - `suggest_move` 用项目内置电脑算法在你这个座位看得到的局面上给建议，不会偷看别人的手牌；数独由 MCP 自己解当前盘面。
 
+### 协议版本与工具标注
+
+服务基于 `@modelcontextprotocol/server` v2（`^2.4.0`，需 Node.js 20+），在 stdio 与 Streamable HTTP 下均支持无状态的 **2026-07-28** MCP 协议（`server/discover` 与逐请求 `_meta` 信封），并自动兼容 **2025-11-25** 及早期 2025 客户端。所有工具均附带人类可读的 `title` 与 MCP `annotations`（全部工具 `openWorldHint: false`；`list_games`、`get_rules`、`get_state`、`get_canvas`、`suggest_move`、`wait_for_turn` 标注 `readOnlyHint: true`；`remove_bot`、`clear_canvas`、`leave_room` 标注 `destructiveHint: true`；`get_*` 与 `set_option` 标注 `idempotentHint: true`）。`get_state` 和 `wait_for_turn` 还声明了 Zod `outputSchema`，并在返回文本内容的同时返回 `structuredContent`。
+
 ## 已知限制
 
 - **一个进程只占一个座位**：同一个 MCP 进程（包括 HTTP 模式）同一时间只能在一个房间坐一个座位；想让多个 AI 同局，要启动多个 MCP 进程。

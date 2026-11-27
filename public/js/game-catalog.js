@@ -491,6 +491,46 @@
     maxPlayers: 8,
     cover: '/assets/game-covers/quizrace.webp',
   };
+
+  zhCatalog.blackjack = {
+    name: '二十一点',
+    icon: '🃏',
+    subtitle: '迎战庄家，逼近 21 点',
+    description: '经典赌场纸牌对战，支持单人挑战庄家或多人同台比拼筹码。',
+    players: '1-6人',
+    duration: '约10分钟',
+    category: '牌桌竞技',
+    tags: ['筹码', '博弈', '21点'],
+    featured: false,
+    supportsAI: true,
+    maxPlayers: 6,
+  };
+  zhCatalog.liarsdice = {
+    name: '大话骰',
+    icon: '🎲',
+    subtitle: '盲猜加码，谁在吹牛一目了然',
+    description: '暗摇五颗骰子轮流叫数加注或当场开骰，猜错扣一颗骰子，留到最后者获胜！',
+    players: '2-6人',
+    duration: '约10分钟',
+    category: '派对同乐',
+    tags: ['吹牛', '派对'],
+    supportsAI: true,
+    maxPlayers: 6,
+    cover: '/assets/game-covers/liarsdice.webp',
+  };
+  zhCatalog.pool = {
+    name: '台球',
+    icon: '🎱',
+    subtitle: '中式八球和斯诺克，加塞走位一杆清台',
+    description: '双人台球，可选中式八球或斯诺克：真实物理反弹、加塞走位，支持人机对练。',
+    players: '2人',
+    duration: '约10分钟',
+    category: '运动竞技',
+    tags: ['台球', '物理', '双人'],
+    featured: false,
+    supportsAI: true,
+    maxPlayers: 2,
+  };
   var catalog = zhCatalog;
 
   Object.keys(catalog).forEach(function(id) {
@@ -534,7 +574,7 @@
     'sanguo',
     'snakebattle',
     'battleship',
-    'undercover', 'paodekuai', 'quizrace'
+    'undercover', 'paodekuai', 'quizrace', 'blackjack', 'liarsdice', 'pool'
   ];
 
   function getLangPack() {
@@ -554,7 +594,7 @@
   }
 
   // Games that can be started and played solo (no AI / opponent needed). Read by the lobby player filter and room-client.js.
-  window.SOLO_GAMES = ['2048', 'sudoku', 'minesweeper', 'sheeptile', 'numberbomb', 'twentyfour', 'suikabattle', 'drawguess', 'quizrace'];
+  window.SOLO_GAMES = ['2048', 'sudoku', 'minesweeper', 'sheeptile', 'numberbomb', 'twentyfour', 'suikabattle', 'drawguess', 'quizrace', 'blackjack'];
 
   window.gameCatalog = {
     byId: function(id) {

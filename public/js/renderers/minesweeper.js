@@ -177,7 +177,7 @@
           _preventNextClick = true;
           if (alive[playerIndex] === false) return;
           window.makeGameMove({ action: 'flag', row: parseInt(self.dataset.r), col: parseInt(self.dataset.c) });
-          if (navigator.vibrate) navigator.vibrate(15);
+          if (window.GNHaptics) GNHaptics.play('tick');
         }
       }, 500);
     }, { passive: true });

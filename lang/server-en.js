@@ -397,4 +397,29 @@ module.exports = {
   'qr_invalid_player': 'Invalid player seat',
   'qr_invalid_option': 'Please choose a valid option (0-3)',
   'qr_already_answered': 'You have already answered this question',
+  // Blackjack (bj_)
+  'bj_wrong_phase': 'Cannot do that in the current phase',
+  'bj_out_of_chips': 'You have no chips left',
+  'bj_already_bet': 'You have already placed a bet this round',
+  'bj_invalid_bet': 'Invalid bet amount',
+  'bj_not_enough_chips': 'Not enough chips',
+  'bj_cannot_double': 'You can only double down on your first two cards',
+  'bj_invalid_action': 'Invalid action',
+  // Liars Dice
+  'ld_invalid_action': 'Invalid action',
+  'ld_wrong_phase': 'Cannot do that in the current phase',
+  'ld_reveal_wait': 'Revealing dice, please wait for the next round',
+  'ld_nothing_to_challenge': 'No current bid to challenge',
+  'ld_invalid_bid': 'Invalid bid quantity or die face',
+  'ld_bid_too_low': 'Bid must raise the quantity or pick a higher face at the same quantity',
+  'ld_player_out': 'You have no dice left and are out of the game',
+
+  // Pool (pool_)
+  'pool_wrong_phase': 'Cannot perform that action in the current phase',
+  'pool_invalid_shot': 'Invalid shot angle or power',
+  'pool_invalid_place': 'Invalid cue ball placement or overlapping another ball',
+  'pool_place_kitchen': 'Cue ball must be placed behind the head string in the kitchen',
+  'pool_place_d': 'Cue ball must be placed inside the D semicircle',
+  'pool_nominate_required': 'Please nominate a colour ball first',
+  'pool_invalid_nominate': 'Invalid or unavailable nominated colour ball',
 };

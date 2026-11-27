@@ -336,4 +336,31 @@
     category: 'Cards & Tiles',
     tags: ['Climbing', '3 players'],
   };
+  window.__LANG.en.catalog.blackjack = {
+    name: 'Blackjack',
+    subtitle: 'Beat the dealer without going over 21',
+    description: 'Classic casino table game for 1-6 players with simultaneous betting, double down, and 3:2 natural blackjack.',
+    players: '1-6 players',
+    duration: '~10 min',
+    category: 'Cards & Tiles',
+    tags: ['Chips', 'Betting', '21'],
+  };
+  window.__LANG.en.catalog.liarsdice = {
+    name: 'Liars Dice',
+    subtitle: 'Bid on hidden dice and call out bluffs',
+    description: 'Roll concealed dice, raise the table bid or challenge a bluff, and keep at least one die to win.',
+    players: '2-6 players',
+    duration: '~10 min',
+    category: 'Party',
+    tags: ['Bluffing', 'Party'],
+  };
+  window.__LANG.en.catalog.pool = {
+    name: 'Pool',
+    subtitle: 'Chinese 8-ball or snooker, with spin',
+    description: 'Two-player billiards: Chinese 8-ball or snooker, with real cushion physics, spin and an AI opponent.',
+    players: '2 Players',
+    duration: '~10 min',
+    category: 'Sports',
+    tags: ['Billiards', 'Physics', '2-Player'],
+  };
 })();

@@ -6,14 +6,14 @@ plugins {
 android {
     namespace 'com.gamenest.app'
     compileSdk 36
-    ndkVersion "24.0.8215888"
+    ndkVersion "27.3.13750724"
 
     defaultConfig {
         applicationId "com.gamenest.app"
         minSdk 26
         targetSdk 36
-        versionCode 8
-        versionName "2.2.0"
+        versionCode 9
+        versionName "2.3.0"
 
         ndk {
             // 排除 x86_64（仅模拟器用）。每个 ABI 都含一份 47MB 的 libnode.so，

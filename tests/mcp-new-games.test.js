@@ -6,10 +6,11 @@ const path = require('path');
 const net = require('net');
 const { spawn } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
-const SDK = path.join(ROOT, 'mcp', 'node_modules', '@modelcontextprotocol', 'sdk');
-const hasSdk = require('fs').existsSync(SDK);
-const { Client } = hasSdk ? require(SDK + '/dist/cjs/client/index.js') : {};
-const { StdioClientTransport } = hasSdk ? require(SDK + '/dist/cjs/client/stdio.js') : {};
+const CLIENT = path.join(ROOT, 'mcp', 'node_modules', '@modelcontextprotocol', 'client');
+const hasSdk = require('fs').existsSync(CLIENT);
+const mcpRequire = require('module').createRequire(path.join(ROOT, 'mcp', 'package.json'));
+const { Client } = hasSdk ? mcpRequire('@modelcontextprotocol/client') : {};
+const { StdioClientTransport } = hasSdk ? mcpRequire('@modelcontextprotocol/client/stdio') : {};
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -30,6 +31,7 @@ const GAMES = [
   { game: 'undercover', bots: 4, guide: /speech/i },
   { game: 'paodekuai', bots: 2, guide: /cards/ },
   { game: 'quizrace', bots: 1, guide: /answer/, options: { questionCount: 10, timePerQuestion: 10 } },
+  { game: 'blackjack', bots: 2, guide: /bet/i, options: { rounds: 5 } },
 ];
 
 for (const g of GAMES) {

@@ -9,6 +9,8 @@
 
     <!-- Keep screen on during game -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- navigator.vibrate() in the WebView is a silent no-op without this -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:allowBackup="true"
