@@ -1467,6 +1467,7 @@
     'mj_btn_auto_discard': 'Auto',
     'mj_auto_discard_label': 'Auto Discard',
     'mj_win_panel_title': 'Can Win',
+    'mj_tenpai_count_n': '%s left',
     'uc_role_civilian': 'Civilian',
     'uc_role_undercover': 'Undercover',
     'uc_role_blank': 'Blank',

@@ -1467,6 +1467,7 @@
     'mj_btn_auto_discard': '摸打',
     'mj_auto_discard_label': '自动摸打',
     'mj_win_panel_title': '可胡',
+    'mj_tenpai_count_n': '%s 张',
     'uc_role_civilian': '平民',
     'uc_role_undercover': '卧底',
     'uc_role_blank': '白板',
