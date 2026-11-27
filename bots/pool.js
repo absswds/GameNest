@@ -111,7 +111,23 @@ function chooseBallInHand(state, playerIndex) {
   }
 
   if (kitchenOnly) {
-    const kxList = [120, 185, HEAD_STRING_X];
+    if (state.isBreak) {
+      const breakSpots = [
+        [HEAD_STRING_X, 250, 120],
+        [HEAD_STRING_X, 210, 95],
+        [HEAD_STRING_X, 290, 95],
+        [HEAD_STRING_X, 170, 80],
+        [HEAD_STRING_X, 330, 80],
+        [130, 250, 85],
+      ];
+      for (let b = 0; b < breakSpots.length; b++) {
+        const [bx, by, bScore] = breakSpots[b];
+        if (pool.isValidCuePos(state.balls, bx, by, posOpts)) {
+          cands.push({ move: { type: 'place', x: bx, y: by }, score: bScore });
+        }
+      }
+    }
+    const kxList = [60, 120, HEAD_STRING_X];
     const kyList = [90, 170, 250, 330, 410];
     for (let ix = 0; ix < kxList.length; ix++) {
       for (let iy = 0; iy < kyList.length; iy++) {
@@ -167,11 +183,9 @@ function chooseBreakShot(state) {
   const cands = candidates.map((c) => {
     const sim = pool.simulateShot(state.balls, c.angle, c.power, { recordFrames: false, spinX: c.spinX, spinY: c.spinY });
     const scratched = sim.potted.includes(0);
-    const pottedEight = sim.potted.includes(8);
-    if (pottedEight && scratched) {
-      return { move: { type: 'shot', angle: c.angle, power: c.power, spinX: c.spinX, spinY: c.spinY }, score: -1000 };
-    }
-    const pottedObj = sim.potted.filter((id) => id !== 0 && id !== 8).length;
+    const pottedObj = sim.potted.filter((id) => id !== 0).length;
+    const objRailHits = (sim.railHits || []).filter((id) => id !== 0).length;
+    const legalBreak = pottedObj >= 1 || objRailHits >= 4;
     let spread = 0;
     for (let i = 0; i < sim.balls.length; i++) {
       const b = sim.balls[i];
@@ -181,6 +195,7 @@ function chooseBreakShot(state) {
     }
     const score =
       pottedObj * 180 +
+      (!legalBreak ? -350 : 0) +
       (scratched ? -220 : 0) +
       (sim.firstHit === null ? -250 : 25) +
       spread * 0.02;
@@ -216,6 +231,7 @@ function scoreSim(state, playerIndex, sim, targetsBefore) {
 
   const scratched = sim.potted.includes(0);
   const pottedEight = sim.potted.includes(8);
+  const pottedAnyObj = sim.potted.some((id) => id !== 0);
   let foul = false;
   if (scratched) {
     foul = true;
@@ -226,6 +242,9 @@ function scoreSim(state, playerIndex, sim, targetsBefore) {
   } else if (remOwnBefore > 0) {
     if (ballType(sim.firstHit) !== myGroup) foul = true;
   } else if (sim.firstHit !== 8) {
+    foul = true;
+  }
+  if (!foul && !pottedAnyObj && !sim.railAfterContact) {
     foul = true;
   }
 
@@ -243,11 +262,12 @@ function scoreSim(state, playerIndex, sim, targetsBefore) {
 
   let ownPotted = 0;
   let oppPotted = 0;
+  const firstHitGroup = sim.firstHit !== null ? ballType(sim.firstHit) : null;
   for (let i = 0; i < sim.potted.length; i++) {
     const id = sim.potted[i];
     if (id === 0 || id === 8) continue;
     const bt = ballType(id);
-    if (!myGroup || bt === myGroup) ownPotted++;
+    if (myGroup ? bt === myGroup : bt === firstHitGroup) ownPotted++;
     else oppPotted++;
   }
 
@@ -352,8 +372,8 @@ function chooseNormalShot(state, playerIndex) {
   for (let i = 0; i < directCount; i++) {
     const t = sortedTargets[i];
     const ang = Math.atan2(t.y - cue.y, t.x - cue.x);
-    shotList.push({ angle: ang, power: 0.45 });
-    shotList.push({ angle: ang, power: 0.65 });
+    shotList.push({ angle: ang, power: 0.55 });
+    shotList.push({ angle: ang, power: 0.75 });
   }
 
   const capped = shotList.slice(0, 40);

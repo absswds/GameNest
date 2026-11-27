@@ -11,6 +11,8 @@ const { TABLE } = pool;
 function makeClearState(ballsList, overrides = {}) {
   const s = pool.createState();
   pool.initGame(s, 2);
+  s.phase = 'shoot';
+  s.kitchenOnly = false;
   const byId = new Map(ballsList.map((b) => [b.id, b]));
   for (let i = 0; i < s.balls.length; i++) {
     const id = s.balls[i].id;
@@ -28,29 +30,33 @@ function makeClearState(ballsList, overrides = {}) {
 }
 
 describe('Pool — initial rack & exports', () => {
-  it('exports required interface and TABLE constants', () => {
+  it('exports required interface and Chinese 8-ball TABLE constants', () => {
     assert.equal(pool.name, 'pool');
     assert.equal(pool.minPlayers, 2);
     assert.equal(pool.maxPlayers, 2);
     assert.equal(TABLE.W, 1000);
     assert.equal(TABLE.H, 500);
     assert.equal(TABLE.BALL_R, 14);
+    assert.equal(TABLE.HEAD_STRING_X, 177);
     assert.equal(TABLE.POCKETS.length, 6);
+    assert.equal(TABLE.POCKETS[0].r, 23);
+    assert.equal(TABLE.POCKETS[1].r, 20);
   });
 
-  it('sets up 16 non-overlapping balls with cue at (250,250), 8-ball at row 2 center, and valid back corners', () => {
+  it('starts in ball_in_hand behind head string with cue at (177,250) and valid rack', () => {
     const s = pool.createState();
     pool.initGame(s, 2);
 
     assert.equal(s.balls.length, 16);
     assert.equal(s.currentPlayer, 0);
-    assert.equal(s.phase, 'shoot');
+    assert.equal(s.phase, 'ball_in_hand');
+    assert.equal(s.kitchenOnly, true);
     assert.deepEqual(s.groups, [null, null]);
     assert.equal(s.isBreak, true);
     assert.equal(s.winner, null);
 
     const cue = s.balls.find((b) => b.id === 0);
-    assert.equal(cue.x, 250);
+    assert.equal(cue.x, 177);
     assert.equal(cue.y, 250);
     assert.equal(cue.type, 'cue');
     assert.equal(cue.potted, false);
@@ -122,7 +128,7 @@ describe('Pool — deterministic physics', () => {
     const f0 = r1.frames[0];
     assert.equal(f0.length, 16 * 3);
     assert.equal(f0[0], 0);
-    assert.equal(f0[1], 250);
+    assert.equal(f0[1], 177);
     assert.equal(f0[2], 250);
 
     // recordFrames: false returns empty frames with identical outcome
@@ -176,7 +182,28 @@ describe('Pool — potting & open table group assignment', () => {
     assert.equal(s.phase, 'shoot');
   });
 
-  it('miss without potting switches turn without ball-in-hand', () => {
+  it('on open table, hitting a solid first and potting only a stripe does not assign groups', () => {
+    const s = makeClearState([
+      { id: 0, x: 850, y: 150 },
+      { id: 1, x: 920, y: 80 },
+      { id: 9, x: 950, y: 50 },
+      { id: 2, x: 200, y: 400 },
+      { id: 8, x: 400, y: 400 },
+    ], { isBreak: false, currentPlayer: 0, groups: [null, null] });
+
+    const angle = Math.atan2(80 - 150, 920 - 850);
+    assert.equal(pool.handleMove({ type: 'shot', angle, power: 0.6 }, s, 0), null);
+
+    assert.equal(s.lastShot.firstHit, 1);
+    assert.ok(s.lastShot.potted.includes(9));
+    assert.equal(s.lastShot.potted.includes(1), false);
+    assert.equal(s.lastShot.foul, null);
+    assert.deepEqual(s.groups, [null, null]);
+    assert.equal(s.currentPlayer, 1);
+    assert.equal(s.phase, 'shoot');
+  });
+
+  it('miss without potting switches turn without ball-in-hand when a ball hits a rail after contact', () => {
     const s = makeClearState([
       { id: 0, x: 500, y: 250 },
       { id: 1, x: 560, y: 250 },
@@ -184,11 +211,110 @@ describe('Pool — potting & open table group assignment', () => {
       { id: 8, x: 300, y: 400 },
     ], { isBreak: false, currentPlayer: 0, groups: ['solid', 'stripe'] });
 
-    assert.equal(pool.handleMove({ type: 'shot', angle: 0, power: 0.2 }, s, 0), null);
+    assert.equal(pool.handleMove({ type: 'shot', angle: 0, power: 0.55 }, s, 0), null);
     assert.equal(s.lastShot.firstHit, 1);
     assert.equal(s.lastShot.foul, null);
     assert.equal(s.currentPlayer, 1);
     assert.equal(s.phase, 'shoot');
+  });
+});
+
+describe('Pool — Chinese 8-ball break rules & placement', () => {
+  it('enforces behind-head-string placement at break and free placement after non-break foul', () => {
+    const s = pool.createState();
+    pool.initGame(s, 2);
+
+    assert.equal(s.phase, 'ball_in_hand');
+    assert.equal(s.kitchenOnly, true);
+    assert.equal(pool.handleMove({ type: 'place', x: 178, y: 250 }, s, 0), 'pool_place_kitchen');
+    assert.equal(pool.handleMove({ type: 'place', x: 150, y: 200 }, s, 0), null);
+    assert.equal(s.phase, 'shoot');
+    const cue = s.balls.find((b) => b.id === 0);
+    assert.equal(cue.x, 150);
+    assert.equal(cue.y, 200);
+
+    // Non-break foul allows placement anywhere on the table
+    const sf = makeClearState([
+      { id: 0, x: 300, y: 250 },
+      { id: 1, x: 150, y: 400 },
+      { id: 8, x: 250, y: 400 },
+    ], { isBreak: false, currentPlayer: 0, groups: ['solid', 'stripe'] });
+    assert.equal(pool.handleMove({ type: 'shot', angle: 0, power: 0.3 }, sf, 0), null);
+    assert.equal(sf.phase, 'ball_in_hand');
+    assert.equal(sf.kitchenOnly, false);
+    assert.equal(sf.currentPlayer, 1);
+    assert.equal(pool.handleMove({ type: 'place', x: 800, y: 250 }, sf, 1), null);
+    assert.equal(sf.phase, 'shoot');
+  });
+
+  it('illegal break re-racks all balls and passes the break to the opponent', () => {
+    const s = pool.createState();
+    pool.initGame(s, 2);
+    assert.equal(pool.handleMove({ type: 'place', x: 177, y: 250 }, s, 0), null);
+
+    // Soft shot downward misses the rack: 0 potted, 0 object balls hit a cushion
+    assert.equal(pool.handleMove({ type: 'shot', angle: Math.PI / 2, power: 0.1 }, s, 0), null);
+    assert.equal(s.lastShot.illegalBreak, true);
+    assert.equal(s.lastShot.foul, 'illegal_break');
+    assert.equal(s.currentPlayer, 1);
+    assert.equal(s.isBreak, true);
+    assert.equal(s.kitchenOnly, true);
+    assert.equal(s.phase, 'ball_in_hand');
+    assert.equal(s.winner, null);
+    assert.deepEqual(s.groups, [null, null]);
+    assert.equal(s.balls.every((b) => !b.potted), true);
+    const cue = s.balls.find((b) => b.id === 0);
+    assert.equal(cue.x, TABLE.HEAD_STRING_X);
+    assert.equal(cue.y, TABLE.FOOT_SPOT_Y);
+  });
+
+  it('legal break potting an object ball keeps turn and leaves the table open', () => {
+    const s = makeClearState([
+      { id: 0, x: 850, y: 150 },
+      { id: 1, x: 950, y: 50 },
+      { id: 2, x: 200, y: 400 },
+      { id: 9, x: 300, y: 400 },
+      { id: 8, x: 400, y: 400 },
+    ], { isBreak: true, currentPlayer: 0, groups: [null, null] });
+
+    const angle = Math.atan2(50 - 150, 950 - 850);
+    assert.equal(pool.handleMove({ type: 'shot', angle, power: 0.6 }, s, 0), null);
+
+    assert.equal(s.isBreak, false);
+    assert.equal(s.lastShot.illegalBreak, false);
+    assert.equal(s.lastShot.foul, null);
+    assert.ok(s.lastShot.potted.includes(1));
+    assert.deepEqual(s.groups, [null, null]);
+    assert.equal(s.currentPlayer, 0);
+    assert.equal(s.phase, 'shoot');
+  });
+
+  it('8-ball potted on break WITH scratch respots 8-ball and gives opponent ball in hand behind head string', () => {
+    const s = makeClearState([
+      { id: 0, x: 464.38, y: 48 },
+      { id: 8, x: 490, y: 27 },
+      { id: 1, x: 200, y: 400 },
+      { id: 9, x: 300, y: 400 },
+    ], { isBreak: true, currentPlayer: 0, groups: [null, null] });
+
+    assert.equal(pool.handleMove({ type: 'shot', angle: 0, power: 0.9 }, s, 0), null);
+
+    assert.equal(s.winner, null);
+    assert.equal(s.isBreak, false);
+    assert.equal(s.phase, 'ball_in_hand');
+    assert.equal(s.kitchenOnly, true);
+    assert.equal(s.currentPlayer, 1);
+    assert.equal(s.lastShot.respotEight, true);
+    assert.equal(s.lastShot.foul, 'scratch');
+
+    const eight = s.balls.find((b) => b.id === 8);
+    assert.equal(eight.potted, false);
+    assert.equal(eight.x, TABLE.FOOT_SPOT_X);
+    assert.equal(eight.y, TABLE.FOOT_SPOT_Y);
+
+    const cue = s.balls.find((b) => b.id === 0);
+    assert.equal(cue.potted, false);
+    assert.ok(cue.x <= TABLE.HEAD_STRING_X);
   });
 });
 
@@ -226,6 +352,35 @@ describe('Pool — fouls & ball-in-hand', () => {
     assert.equal(s.lastShot.foul, 'no_hit');
     assert.equal(s.currentPlayer, 1);
     assert.equal(s.phase, 'ball_in_hand');
+  });
+
+  it('no_rail foul when no ball is potted and no ball hits a rail after contact', () => {
+    const s = makeClearState([
+      { id: 0, x: 300, y: 250 },
+      { id: 1, x: 340, y: 250 },
+      { id: 9, x: 200, y: 400 },
+      { id: 8, x: 300, y: 400 },
+    ], { isBreak: false, currentPlayer: 0, groups: ['solid', 'stripe'] });
+
+    assert.equal(pool.handleMove({ type: 'shot', angle: 0, power: 0.1 }, s, 0), null);
+    assert.equal(s.lastShot.firstHit, 1);
+    assert.equal(s.lastShot.foul, 'no_rail');
+    assert.equal(s.currentPlayer, 1);
+    assert.equal(s.phase, 'ball_in_hand');
+    assert.equal(s.kitchenOnly, false);
+
+    // Cushion hit BEFORE contact does not satisfy post-contact rail rule
+    const sPre = makeClearState([
+      { id: 0, x: 30, y: 250 },
+      { id: 1, x: 80, y: 250 },
+      { id: 8, x: 400, y: 400 },
+    ], { isBreak: false, currentPlayer: 0, groups: ['solid', 'stripe'] });
+
+    assert.equal(pool.handleMove({ type: 'shot', angle: Math.PI, power: 0.18 }, sPre, 0), null);
+    assert.equal(sPre.lastShot.firstHit, 1);
+    assert.equal(sPre.lastShot.foul, 'no_rail');
+    assert.equal(sPre.currentPlayer, 1);
+    assert.equal(sPre.phase, 'ball_in_hand');
   });
 
   it('wrong_ball foul when hitting opponent ball first or hitting 8-ball first on open table', () => {
@@ -382,16 +537,18 @@ describe('Pool — error keys, i18n, and botFallback', () => {
     pool.initGame(s, 2);
 
     const errors = [];
-    errors.push(pool.handleMove({ type: 'shot', angle: 0, power: 0.5 }, s, 1)); // g_not_your_turn
+    errors.push(pool.handleMove({ type: 'place', x: 150, y: 250 }, s, 1)); // g_not_your_turn
     errors.push(pool.handleMove({ type: 'unknown' }, s, 0)); // g_unknown_action
-    errors.push(pool.handleMove({ type: 'place', x: 200, y: 200 }, s, 0)); // pool_wrong_phase
+    errors.push(pool.handleMove({ type: 'shot', angle: 0, power: 0.5 }, s, 0)); // pool_wrong_phase
+    errors.push(pool.handleMove({ type: 'place', x: 5, y: 5 }, s, 0)); // pool_invalid_place
+    errors.push(pool.handleMove({ type: 'place', x: 300, y: 250 }, s, 0)); // pool_place_kitchen
+
+    // Place legally to transition to shoot
+    assert.equal(pool.handleMove({ type: 'place', x: 177, y: 250 }, s, 0), null);
+    errors.push(pool.handleMove({ type: 'place', x: 150, y: 250 }, s, 0)); // pool_wrong_phase
     errors.push(pool.handleMove({ type: 'shot', angle: NaN, power: 0.5 }, s, 0)); // pool_invalid_shot
     errors.push(pool.handleMove({ type: 'shot', angle: 0, power: 0.01 }, s, 0)); // pool_invalid_shot
     errors.push(pool.handleMove({ type: 'shot', angle: 0, power: 1.5 }, s, 0)); // pool_invalid_shot
-
-    s.phase = 'ball_in_hand';
-    errors.push(pool.handleMove({ type: 'place', x: 5, y: 5 }, s, 0)); // pool_invalid_place
-    errors.push(pool.handleMove({ type: 'shot', angle: 0, power: 0.5 }, s, 0)); // pool_wrong_phase
 
     s.phase = 'over';
     s.winner = 0;
@@ -404,9 +561,15 @@ describe('Pool — error keys, i18n, and botFallback', () => {
     }
   });
 
-  it('botFallback returns legal moves in both shoot and ball_in_hand phases', () => {
+  it('botFallback returns legal moves in both ball_in_hand and shoot phases', () => {
     const s = pool.createState();
     pool.initGame(s, 2);
+
+    // Game starts in ball_in_hand behind head string
+    const mvBreakPlace = pool.botFallback(s, 0);
+    assert.equal(mvBreakPlace.type, 'place');
+    assert.equal(pool.handleMove(mvBreakPlace, s, 0), null);
+    assert.equal(s.phase, 'shoot');
 
     const mvShoot = pool.botFallback(s, 0);
     assert.equal(mvShoot.type, 'shot');

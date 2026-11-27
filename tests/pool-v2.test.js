@@ -23,7 +23,8 @@ function makeClearState(ballsList, overrides = {}) {
       s.balls[i].potted = true;
     }
   }
-  Object.assign(s, overrides);
+  // Chinese 8-ball starts in ball_in_hand; these positions are already placed.
+  Object.assign(s, { phase: 'shoot' }, overrides);
   return s;
 }
 
@@ -111,34 +112,11 @@ describe('Pool v2 — kitchen ball-in-hand rules', () => {
     assert.ok(serverZh[errOut]);
     assert.ok(serverEn[errOut]);
 
-    assert.equal(pool.handleMove({ type: 'place', x: 180, y: 250 }, s, 0), null);
+    assert.equal(pool.handleMove({ type: 'place', x: 150, y: 250 }, s, 0), null);
     assert.equal(s.phase, 'shoot');
     const cue = s.balls.find((b) => b.id === 0);
-    assert.equal(cue.x, 180);
+    assert.equal(cue.x, 150);
     assert.equal(cue.y, 250);
-  });
-
-  it('scratch on the break restricts opponent ball-in-hand to the kitchen', () => {
-    const s = makeClearState([
-      { id: 0, x: 100, y: 100 },
-      { id: 1, x: 750, y: 250 },
-      { id: 8, x: 820, y: 250 },
-    ], { isBreak: true, currentPlayer: 0, groups: [null, null] });
-
-    const scratchAngle = Math.atan2(0 - 100, 0 - 100);
-    assert.equal(pool.handleMove({ type: 'shot', angle: scratchAngle, power: 0.7 }, s, 0), null);
-    assert.equal(s.lastShot.foul, 'scratch');
-    assert.equal(s.phase, 'ball_in_hand');
-    assert.equal(s.currentPlayer, 1);
-    assert.equal(s.kitchenOnly, true);
-
-    const cueAfterScratch = s.balls.find((b) => b.id === 0);
-    assert.ok(cueAfterScratch.x <= TABLE.HEAD_STRING_X);
-
-    assert.equal(pool.handleMove({ type: 'place', x: 400, y: 250 }, s, 1), 'pool_place_kitchen');
-    assert.equal(pool.handleMove({ type: 'place', x: 200, y: 300 }, s, 1), null);
-    assert.equal(s.phase, 'shoot');
-    assert.equal(s.kitchenOnly, false);
   });
 
   it('after a non-break foul, placement anywhere valid on the table is accepted', () => {
