@@ -1759,6 +1759,11 @@
     'snooker_foul_toast': '犯规（%s）：对手加 %s 分',
     'snooker_respot_black': '平分争黑！黑球已重放，对手从D区开球',
     'snooker_pts_unit': '分',
+    'pool_cue_pull_hint': '下拉蓄力',
+    'pool_cue_cancel': '松手取消',
+    'pool_fine_aim': '微调',
+    'pool_spin_dbltap': '双击重置',
+    'pool_drag_cue_ball': '拖动母球放置',
 
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'zh';

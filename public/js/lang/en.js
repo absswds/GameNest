@@ -1759,6 +1759,11 @@
     'snooker_foul_toast': 'Foul (%s): +%s pts to opponent',
     'snooker_respot_black': 'Tie on final black! Black respotted, opponent plays from the D',
     'snooker_pts_unit': 'pts',
+    'pool_cue_pull_hint': 'Pull down',
+    'pool_cue_cancel': 'Cancel',
+    'pool_fine_aim': 'Fine aim',
+    'pool_spin_dbltap': 'Double tap reset',
+    'pool_drag_cue_ball': 'Drag cue ball',
 
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'en';

@@ -216,38 +216,98 @@
     '.pool-wrap.sideways .pool-spin-label { display:none; }',
     '.pool-wrap.sideways .pool-btn { width:100%; min-height:34px; padding:4px 6px; font-size:13px; white-space:nowrap; }',
     '.pool-wrap.sideways .pool-hint { display:none !important; }',
+    '.pool-fs-only { display:none; }',
     'body.gn-fs:has(.pool-wrap) { overflow:hidden; height:100dvh; max-height:100dvh; padding:0 !important; }',
     'body.gn-fs:has(.pool-wrap) #gameStage { width:100%; height:100%; max-width:none !important; padding:0 !important; margin:0 !important; }',
     'body.gn-fs:has(.pool-wrap) .board-wrap { width:100%; height:100%; padding:0 !important; margin:0 !important; }',
     'body.gn-fs:has(.pool-wrap) #boardArea { width:100%; height:100%; padding:0 !important; margin:0 !important; max-width:none !important; }',
-    'body.gn-fs .pool-wrap { width:100vw; height:100dvh; max-width:none; padding:6px 8px; box-sizing:border-box; overflow:hidden; display:grid; grid-template-columns:var(--pool-fs-left, 152px) minmax(0, 1fr) var(--pool-fs-right, 132px); grid-template-rows:auto minmax(0, 1fr); column-gap:8px; row-gap:4px; align-items:stretch; }',
+    'body.gn-fs .pool-wrap { width:100vw; height:100dvh; max-width:none; padding:4px 6px 6px; box-sizing:border-box; overflow:hidden; background:radial-gradient(ellipse at 50% 54%, #1f2b25 0%, #111815 100%); color:var(--ge-paper, #fffdf8); display:grid; grid-template-columns:var(--pool-fs-left, 70px) minmax(0, 1fr) var(--pool-fs-right, 102px); grid-template-rows:var(--pool-fs-top, 56px) minmax(0, 1fr); column-gap:6px; row-gap:4px; align-items:stretch; }',
+    'body.gn-fs .pool-wrap #poolHud, body.gn-fs .pool-wrap #poolBar { display:none !important; }',
     'body.gn-fs .pool-wrap .pool-main { display:contents; }',
-    'body.gn-fs .pool-wrap .pool-hud { grid-column:1; grid-row:1 / -1; display:flex; flex-direction:column; justify-content:center; align-items:stretch; gap:8px; height:100%; padding-top:56px; box-sizing:border-box; overflow:hidden; }',
-    'body.gn-fs .pool-wrap .pool-seat, body.gn-fs .pool-wrap .pool-seat--right { align-items:flex-start; text-align:left; padding:6px 8px; gap:4px; }',
-    'body.gn-fs .pool-wrap .pool-seat--right .pool-seat-top { flex-direction:row; }',
-    'body.gn-fs .pool-wrap .pool-seat--right .snooker-score { margin-left:auto; margin-right:0; }',
-    'body.gn-fs .pool-wrap .pool-seat-name { font-size:12px; }',
-    'body.gn-fs .pool-wrap .pool-dots { display:flex; gap:3px; }',
-    'body.gn-fs .pool-wrap .pool-dot { width:11px; height:11px; }',
-    'body.gn-fs .pool-wrap .snooker-seat-meta { display:flex; }',
-    'body.gn-fs .pool-wrap .pool-status-pill { white-space:normal; word-break:break-word; padding:5px 8px; font-size:11px; }',
-    'body.gn-fs .pool-wrap .snooker-nom-bar { grid-column:2; grid-row:1; padding:3px 8px; gap:4px; }',
-    'body.gn-fs .pool-wrap .pool-canvas-wrap { grid-column:2; grid-row:2; width:100%; height:100%; display:flex; align-items:center; justify-content:center; min-width:0; min-height:0; }',
-    'body.gn-fs .pool-wrap .pool-bar { grid-column:3; grid-row:1 / -1; width:100%; height:100%; min-height:0; align-items:stretch; }',
-    'body.gn-fs .pool-wrap .pool-panel { flex-direction:column; flex-wrap:nowrap; justify-content:space-between; align-items:center; padding:8px 8px; gap:8px; width:100%; height:100%; overflow:hidden; }',
-    'body.gn-fs .pool-wrap .pool-spin-wrap { order:1; flex-direction:column; align-items:center; gap:4px; width:100%; }',
-    'body.gn-fs .pool-wrap .pool-spin-ball { width:90px; height:90px; }',
-    'body.gn-fs .pool-wrap .pool-spin-dot { width:14px; height:14px; }',
-    'body.gn-fs .pool-wrap .pool-spin-meta { flex-direction:row; align-items:center; justify-content:center; gap:4px; }',
-    'body.gn-fs .pool-wrap .pool-spin-label { display:none; }',
-    'body.gn-fs .pool-wrap .pool-power-wrap { order:2; flex-direction:column; flex:1 1 auto; min-height:0; width:100%; max-width:none; min-width:0; gap:4px; align-items:center; }',
-    'body.gn-fs .pool-wrap .pool-power-head { width:100%; justify-content:space-between; }',
-    'body.gn-fs .pool-wrap .pool-power-slider { writing-mode:vertical-lr; direction:rtl; width:34px; height:100%; min-height:64px; max-height:none; min-width:0; flex:1 1 auto; }',
-    'body.gn-fs .pool-wrap .pool-btn { order:3; width:100%; min-height:52px; padding:10px 8px; font-size:16px; font-weight:800; border-radius:12px; white-space:nowrap; }',
-    'body.gn-fs .pool-wrap #poolAimHint { display:none !important; }',
-    'body.gn-fs .pool-wrap #poolPlaceBar { justify-content:center; gap:12px; }',
-    'body.gn-fs .pool-wrap #poolWaitBar { justify-content:center; align-items:center; text-align:center; }',
-    '@media (prefers-reduced-motion: reduce) { .pool-group-overlay, .pool-seat { transition:none !important; animation:none !important; } }',
+    'body.gn-fs .pool-wrap .pool-fs-top { grid-column:1 / -1; grid-row:1; display:grid; grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr); align-items:center; gap:8px; padding:2px 6px 2px 68px; min-width:0; box-sizing:border-box; }',
+    'body.gn-fs .pool-wrap .pool-fs-side { display:flex; align-items:center; gap:8px; min-width:0; }',
+    'body.gn-fs .pool-wrap .pool-fs-side--opp { flex-direction:row-reverse; text-align:right; }',
+    'body.gn-fs .pool-wrap .pool-fs-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:rgba(255,253,248,0.12); border:2px solid rgba(255,253,248,0.18); font-size:18px; font-weight:800; color:var(--ge-paper, #fffdf8); box-sizing:border-box; transition:box-shadow 220ms cubic-bezier(0.23,1,0.32,1), border-color 220ms cubic-bezier(0.23,1,0.32,1); }',
+    'body.gn-fs .pool-wrap .pool-fs-avatar--active { border-color:var(--ge-gold, #c8a45c); box-shadow:0 0 0 2.5px var(--ge-gold, #c8a45c), 0 0 12px rgba(200,164,92,0.5); }',
+    'body.gn-fs .pool-wrap .pool-fs-info { display:flex; flex-direction:column; gap:3px; min-width:0; flex:1 1 auto; }',
+    'body.gn-fs .pool-wrap .pool-fs-side--opp .pool-fs-info { align-items:flex-end; }',
+    'body.gn-fs .pool-wrap .pool-fs-name { font-size:13px; font-weight:700; color:var(--ge-paper, #fffdf8); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; line-height:1.15; }',
+    'body.gn-fs .pool-wrap .pool-fs-rack { display:flex; align-items:center; gap:4px; min-height:18px; }',
+    'body.gn-fs .pool-wrap .pool-fs-side--opp .pool-fs-rack { flex-direction:row-reverse; }',
+    'body.gn-fs .pool-wrap .pool-fs-bdot { position:relative; width:15px; height:15px; border-radius:50%; background:rgba(148,163,184,0.28); border:1.5px solid rgba(255,253,248,0.24); box-sizing:border-box; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; }',
+    'body.gn-fs .pool-wrap .pool-fs-bdot-fill { position:absolute; inset:0; border-radius:50%; opacity:1; transition:opacity 200ms cubic-bezier(0.23,1,0.32,1); }',
+    'body.gn-fs .pool-wrap .pool-fs-bdot-fill--stripe { background:linear-gradient(180deg, #fff 24%, currentColor 25%, currentColor 75%, #fff 76%) !important; }',
+    'body.gn-fs .pool-wrap .pool-fs-bdot.is-potted .pool-fs-bdot-fill { opacity:0; }',
+    'body.gn-fs .pool-wrap .pool-fs-bdot.is-unknown { background:transparent; border:1.5px dashed rgba(255,253,248,0.45); }',
+    'body.gn-fs .pool-wrap .pool-fs-bdot.is-unknown .pool-fs-bdot-fill { opacity:0; }',
+    'body.gn-fs .pool-wrap .pool-fs-bdot-q { position:relative; z-index:1; font-size:10px; font-weight:800; line-height:1; color:rgba(255,253,248,0.78); display:none; }',
+    'body.gn-fs .pool-wrap .pool-fs-bdot.is-unknown .pool-fs-bdot-q { display:block; }',
+    'body.gn-fs .pool-wrap .pool-fs-rack.no-anim .pool-fs-bdot-fill { transition:none !important; }',
+    'body.gn-fs .pool-wrap .pool-fs-eight-dot { width:16px; height:16px; border-radius:50%; background:#151518; border:1.5px solid rgba(255,253,248,0.75); box-shadow:0 0 0 1px rgba(0,0,0,0.4); color:#fff; font-size:9px; font-weight:800; display:none; align-items:center; justify-content:center; flex-shrink:0; }',
+    'body.gn-fs .pool-wrap .pool-fs-eight-dot.is-visible { display:inline-flex; }',
+    'body.gn-fs .pool-wrap .pool-fs-eight-dot.is-potted { opacity:0.25; }',
+    'body.gn-fs .pool-wrap .pool-fs-snooker { display:none; align-items:center; gap:6px; min-height:18px; }',
+    'body.gn-fs .pool-wrap .pool-fs-side--opp .pool-fs-snooker { flex-direction:row-reverse; }',
+    'body.gn-fs .pool-wrap .pool-fs-score { font-size:16px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--ge-paper, #fffdf8); line-height:1; }',
+    'body.gn-fs .pool-wrap .pool-fs-break { display:none; padding:1px 7px; border-radius:999px; background:rgba(200,164,92,0.24); border:1px solid rgba(200,164,92,0.55); color:#fde68a; font-size:11px; font-weight:700; white-space:nowrap; }',
+    'body.gn-fs .pool-wrap .pool-fs-break.is-visible { display:inline-flex; align-items:center; }',
+    'body.gn-fs .pool-wrap .pool-fs-mid { display:flex; align-items:center; justify-content:center; min-width:0; }',
+    'body.gn-fs .pool-wrap .pool-fs-turn-pill { padding:4px 12px; border-radius:999px; background:rgba(255,253,248,0.1); border:1px solid rgba(255,253,248,0.18); font-size:12px; font-weight:700; color:var(--ge-paper, #fffdf8); white-space:nowrap; }',
+    'body.gn-fs .pool-wrap .pool-fs-turn-pill--mine { background:rgba(200,164,92,0.24); border-color:var(--ge-gold, #c8a45c); color:#fef3c7; }',
+    'body.gn-fs .pool-wrap .pool-fs-snooker-mid { display:none; align-items:center; gap:8px; padding:4px 12px; border-radius:999px; background:rgba(255,253,248,0.1); border:1px solid rgba(255,253,248,0.18); font-size:12px; font-weight:700; white-space:nowrap; }',
+    'body.gn-fs .pool-wrap .pool-fs-snooker-mid--mine { background:rgba(200,164,92,0.22); border-color:var(--ge-gold, #c8a45c); }',
+    'body.gn-fs .pool-wrap .pool-fs-on-wrap { display:inline-flex; align-items:center; gap:5px; }',
+    'body.gn-fs .pool-wrap .pool-fs-on-dot { width:11px; height:11px; border-radius:50%; border:1px solid rgba(255,255,255,0.45); flex-shrink:0; }',
+    'body.gn-fs .pool-wrap .pool-fs-rem-wrap { display:inline-flex; align-items:center; gap:3px; color:rgba(255,253,248,0.82); font-variant-numeric:tabular-nums; }',
+    'body.gn-fs .pool-wrap .pool-fs-snooker-phase { color:#fde68a; font-size:11px; font-weight:700; }',
+    'body.gn-fs .pool-wrap .pool-fs-left { grid-column:1; grid-row:2; display:flex; flex-direction:column; align-items:center; padding:8px 2px 4px; min-height:0; box-sizing:border-box; }',
+    'body.gn-fs .pool-wrap .pool-fs-cue-track { position:relative; width:100%; min-width:52px; flex:1 1 auto; min-height:0; border-radius:16px; background:rgba(12,18,15,0.78); border:1.5px solid rgba(255,253,248,0.15); box-shadow:inset 0 2px 10px rgba(0,0,0,0.55); overflow:hidden; touch-action:none; cursor:ns-resize; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }',
+    'body.gn-fs .pool-wrap .pool-fs-cue-track.is-disabled { opacity:0.36; cursor:default; }',
+    'body.gn-fs .pool-wrap .pool-fs-cue-fill { position:absolute; inset:0; background:linear-gradient(180deg, rgba(34,197,94,0.42) 0%, rgba(234,179,8,0.48) 55%, rgba(239,68,68,0.56) 100%); transform-origin:top center; transform:scaleY(0); pointer-events:none; }',
+    'body.gn-fs .pool-wrap .pool-fs-cue-scale { position:absolute; top:10px; bottom:10px; right:5px; width:8px; pointer-events:none; background:repeating-linear-gradient(180deg, rgba(255,253,248,0.34) 0 1.5px, transparent 1.5px 12px); opacity:0.75; }',
+    'body.gn-fs .pool-wrap .pool-fs-cue-stick { position:relative; z-index:2; margin-top:10px; width:14px; height:64%; min-height:92px; display:flex; flex-direction:column; align-items:center; pointer-events:none; will-change:transform; filter:drop-shadow(0 3px 6px rgba(0,0,0,0.55)); }',
+    'body.gn-fs .pool-wrap .pool-fs-cue-tip { width:7px; height:5px; border-radius:3px 3px 1px 1px; background:#38bdf8; flex-shrink:0; }',
+    'body.gn-fs .pool-wrap .pool-fs-cue-ferrule { width:7px; height:6px; background:#f8fafc; flex-shrink:0; }',
+    'body.gn-fs .pool-wrap .pool-fs-cue-shaft { width:8px; flex:1 1 0; background:linear-gradient(90deg, #e7d1a8 0%, #f5e6c8 45%, #c79a5b 100%); }',
+    'body.gn-fs .pool-wrap .pool-fs-cue-wrap { width:10px; height:22%; background:linear-gradient(90deg, #3b2416 0%, #5c3924 50%, #24140c 100%); border-radius:1px; flex-shrink:0; }',
+    'body.gn-fs .pool-wrap .pool-fs-cue-butt { width:12px; height:26%; background:linear-gradient(90deg, #1e110a 0%, #3d2417 45%, #120905 100%); border-radius:2px 2px 5px 5px; flex-shrink:0; border-top:2px solid #c8a252; }',
+    'body.gn-fs .pool-wrap .pool-fs-cue-badge { position:absolute; left:4px; right:4px; bottom:6px; z-index:3; padding:3px 4px; border-radius:8px; background:rgba(12,18,15,0.82); border:1px solid rgba(255,253,248,0.16); color:var(--ge-paper, #fffdf8); font-size:10px; font-weight:800; text-align:center; line-height:1.15; font-variant-numeric:tabular-nums; pointer-events:none; }',
+    'body.gn-fs .pool-wrap .pool-fs-cue-badge.is-cancel { color:#fca5a5; border-color:rgba(248,113,113,0.45); }',
+    'body.gn-fs .pool-wrap .pool-canvas-wrap { grid-column:2; grid-row:2; position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; min-width:0; min-height:0; }',
+    'body.gn-fs .pool-wrap .pool-canvas { box-shadow:0 14px 36px rgba(0,0,0,0.52); }',
+    'body.gn-fs .pool-wrap .snooker-nom-bar { grid-column:2; grid-row:2; align-self:center; justify-self:center; z-index:25; width:auto; max-width:calc(100% - 16px); padding:8px 12px; gap:6px; border-radius:16px; background:rgba(255,253,248,0.96); box-shadow:0 12px 32px rgba(0,0,0,0.42); }',
+    'body.gn-fs .pool-wrap .snooker-nom-bar.snooker-nom-bar--picked { align-self:start; margin-top:8px; }',
+    'body.gn-fs .pool-wrap .snooker-nom-btn { min-height:44px; padding:6px 11px; font-size:12px; transition:transform 120ms cubic-bezier(0.23,1,0.32,1); }',
+    'body.gn-fs .pool-wrap .snooker-nom-btn:active:not(:disabled) { transform:scale(0.97); }',
+    'body.gn-fs .pool-wrap .pool-fs-right { grid-column:3; grid-row:2; display:flex; flex-direction:column; align-items:center; gap:8px; padding:2px 2px 4px; min-height:0; box-sizing:border-box; }',
+    'body.gn-fs .pool-wrap .pool-fs-spin-ball { position:relative; width:var(--pool-fs-spin, 86px); height:var(--pool-fs-spin, 86px); min-width:84px; min-height:84px; border-radius:50%; background:radial-gradient(circle at 32% 28%, #ffffff 0%, #f1efe7 62%, #d2cec2 100%); border:2px solid rgba(255,253,248,0.55); box-shadow:inset 0 -4px 8px rgba(0,0,0,0.22), 0 4px 14px rgba(0,0,0,0.38); touch-action:none; cursor:pointer; flex-shrink:0; box-sizing:border-box; }',
+    'body.gn-fs .pool-wrap .pool-fs-spin-ball::before { content:""; position:absolute; left:50%; top:8px; bottom:8px; width:1px; background:rgba(28,25,23,0.16); transform:translateX(-0.5px); pointer-events:none; }',
+    'body.gn-fs .pool-wrap .pool-fs-spin-ball::after { content:""; position:absolute; top:50%; left:8px; right:8px; height:1px; background:rgba(28,25,23,0.16); transform:translateY(-0.5px); pointer-events:none; }',
+    'body.gn-fs .pool-wrap .pool-fs-spin-ring { position:absolute; inset:13%; border-radius:50%; border:1px dashed rgba(28,25,23,0.18); pointer-events:none; }',
+    'body.gn-fs .pool-wrap .pool-fs-spin-ball.is-offset { border-color:var(--ge-gold, #c8a45c); box-shadow:inset 0 -4px 8px rgba(0,0,0,0.22), 0 0 0 2px rgba(200,164,92,0.45); }',
+    'body.gn-fs .pool-wrap .pool-fs-spin-dot { position:absolute; width:13px; height:13px; border-radius:50%; background:#dc2626; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,0.5); transform:translate(-50%,-50%); left:50%; top:50%; pointer-events:none; }',
+    'body.gn-fs .pool-wrap .pool-fs-ruler { position:relative; flex:1 1 auto; width:100%; min-width:52px; min-height:80px; border-radius:16px; background:rgba(12,18,15,0.78); border:1.5px solid rgba(255,253,248,0.15); box-shadow:inset 0 2px 10px rgba(0,0,0,0.55); overflow:hidden; touch-action:none; cursor:ns-resize; }',
+    'body.gn-fs .pool-wrap .pool-fs-ruler.is-disabled { opacity:0.36; cursor:default; }',
+    'body.gn-fs .pool-wrap .pool-fs-ruler-ticks { position:absolute; left:0; right:0; top:-40px; height:960px; pointer-events:none; will-change:transform; display:flex; flex-direction:column; align-items:flex-end; padding-right:10px; box-sizing:border-box; }',
+    'body.gn-fs .pool-wrap .pool-fs-rtick { height:8px; width:18px; position:relative; flex-shrink:0; }',
+    'body.gn-fs .pool-wrap .pool-fs-rtick::after { content:""; position:absolute; right:0; top:3px; height:1.5px; width:14px; border-radius:1px; background:rgba(255,253,248,0.34); }',
+    'body.gn-fs .pool-wrap .pool-fs-rtick--major::after { width:30px; height:2px; background:rgba(255,253,248,0.72); }',
+    'body.gn-fs .pool-wrap .pool-fs-rtick--mid::after { width:21px; background:rgba(255,253,248,0.52); }',
+    'body.gn-fs .pool-wrap .pool-fs-ruler-marker { position:absolute; left:8px; right:8px; top:50%; height:2px; transform:translateY(-50%); background:var(--ge-gold, #c8a45c); box-shadow:0 0 8px rgba(200,164,92,0.7); pointer-events:none; }',
+    'body.gn-fs .pool-wrap .pool-fs-ruler-marker::before { content:""; position:absolute; left:-2px; top:50%; transform:translateY(-50%); border-top:5px solid transparent; border-bottom:5px solid transparent; border-left:7px solid var(--ge-gold, #c8a45c); }',
+    'body.gn-fs .pool-wrap .pool-fs-ruler-label { position:absolute; left:4px; right:4px; bottom:5px; text-align:center; font-size:10px; font-weight:700; color:rgba(255,253,248,0.68); pointer-events:none; }',
+    'body.gn-fs .pool-wrap .pool-fs-place-wrap { display:none; flex:1 1 auto; width:100%; flex-direction:column; align-items:center; justify-content:center; gap:8px; }',
+    'body.gn-fs .pool-wrap .pool-fs-confirm-btn { width:100%; min-height:52px; padding:10px 6px; border-radius:14px; border:none; background:var(--ge-gold, #c8a45c); color:#fff; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.36); transition:transform 120ms cubic-bezier(0.23,1,0.32,1), opacity 160ms ease; }',
+    'body.gn-fs .pool-wrap .pool-fs-confirm-btn:active:not(:disabled) { transform:scale(0.97); }',
+    'body.gn-fs .pool-wrap .pool-fs-confirm-btn:disabled { opacity:0.38; cursor:not-allowed; }',
+    'body.gn-fs .pool-wrap .pool-fs-place-hint { font-size:11px; font-weight:600; color:rgba(255,253,248,0.78); text-align:center; line-height:1.25; }',
+    '@media (min-height: 600px) {',
+    '  body.gn-fs .pool-wrap .pool-fs-avatar { width:42px; height:42px; font-size:20px; }',
+    '  body.gn-fs .pool-wrap .pool-fs-name { font-size:14px; }',
+    '  body.gn-fs .pool-wrap .pool-fs-bdot { width:18px; height:18px; }',
+    '  body.gn-fs .pool-wrap .pool-fs-score { font-size:19px; }',
+    '}',
+    '@media (prefers-reduced-motion: reduce) { .pool-group-overlay, .pool-seat, body.gn-fs .pool-wrap .pool-fs-avatar, body.gn-fs .pool-wrap .snooker-nom-btn, body.gn-fs .pool-wrap .pool-fs-confirm-btn { transition:none !important; animation:none !important; } }',
   ].join('\n');
 
   var containerEl = null;
@@ -273,6 +333,26 @@
   var shootBtnEl = null;
   var confirmPlaceBtnEl = null;
 
+  var fsTopBarEl = null;
+  var fsMeEl = null;
+  var fsOppEl = null;
+  var fsMidEl = null;
+  var fsLeftEl = null;
+  var fsCueTrackEl = null;
+  var fsCueFillEl = null;
+  var fsCueStickEl = null;
+  var fsCueBadgeEl = null;
+  var fsRightEl = null;
+  var fsSpinPadEl = null;
+  var fsSpinDotEl = null;
+  var fsRulerEl = null;
+  var fsRulerTicksEl = null;
+  var fsPlaceWrapEl = null;
+  var fsConfirmPlaceBtnEl = null;
+  var fsPlaceHintEl = null;
+  var fsSideRefs = null;
+  var fsMidRefs = null;
+
   var currentState = null;
   var myPlayerIndex = 0;
   var displayBalls = [];
@@ -291,11 +371,35 @@
   var aimSpinX = 0;
   var aimSpinY = 0;
   var spinDragging = false;
+  var fsSpinDragging = false;
+  var lastSpinTapMs = 0;
+  var lastSpinTapX = 0;
+  var lastSpinTapY = 0;
+  var fsSpinMoved = false;
   var selectedNominate = null;
   var lastNomSeq = -1;
   var placeX = HEAD_STRING_X;
   var placeY = FOOT_SPOT_Y;
+  var placeGrabDx = 0;
+  var placeGrabDy = 0;
   var dragMode = null; // null | 'aim' | 'place'
+
+  var fsCharging = false;
+  var fsChargePower = 0;
+  var fsCuePointerId = null;
+  var fsCueStartY = 0;
+  var fsCueMaxDrag = 160;
+
+  var fineDragging = false;
+  var finePointerId = null;
+  var fineLastY = 0;
+  var fineRulerScrollPx = 0;
+
+  var myStrikeAnim = null;
+  var strikeRafId = null;
+  var pendingMyReplay = null;
+  var awaitingShotSeq = null;
+  var awaitingShotTimer = null;
 
   var oppAimPreview = null;
   var lastSeatCueAngle = {};
@@ -303,6 +407,8 @@
   var ballRoll = {};
   var prevBallPos = {};
   var prevGroups = null;
+  var prevSnapshot = null;
+  var scoreRollRafs = {};
   var groupOverlayEl = null;
   var groupOverlayTimer = null;
 
@@ -741,19 +847,28 @@
   }
 
   function syncSpinUI() {
+    var leftPct = (50 + aimSpinX * 36) + '%';
+    var topPct = (50 - aimSpinY * 36) + '%';
+    var isZero = Math.abs(aimSpinX) < 0.01 && Math.abs(aimSpinY) < 0.01;
     if (spinDotEl) {
-      spinDotEl.style.left = (50 + aimSpinX * 36) + '%';
-      spinDotEl.style.top = (50 - aimSpinY * 36) + '%';
+      spinDotEl.style.left = leftPct;
+      spinDotEl.style.top = topPct;
     }
     if (spinResetEl) {
-      var isZero = Math.abs(aimSpinX) < 0.01 && Math.abs(aimSpinY) < 0.01;
       spinResetEl.dataset.zero = isZero ? '1' : '0';
+    }
+    if (fsSpinDotEl) {
+      fsSpinDotEl.style.left = leftPct;
+      fsSpinDotEl.style.top = topPct;
+    }
+    if (fsSpinPadEl) {
+      fsSpinPadEl.classList.toggle('is-offset', !isZero);
     }
   }
 
-  function updateSpinFromPointer(e) {
-    if (!spinPadEl) return;
-    var rect = spinPadEl.getBoundingClientRect();
+  function updateSpinFromElement(e, el) {
+    if (!el) return;
+    var rect = el.getBoundingClientRect();
     var r = (rect.width || 40) * 0.42;
     var cx = rect.left + rect.width / 2;
     var cy = rect.top + rect.height / 2;
@@ -770,6 +885,85 @@
     aimSpinX = Math.round(nx * 100) / 100;
     aimSpinY = Math.round(ny * 100) / 100;
     syncSpinUI();
+  }
+
+  function updateSpinFromPointer(e) {
+    updateSpinFromElement(e, spinPadEl);
+  }
+
+  function syncFsCueUI() {
+    var p = clamp(fsChargePower, 0, 1);
+    if (fsCueFillEl) {
+      fsCueFillEl.style.transform = 'scaleY(' + p + ')';
+    }
+    if (fsCueStickEl) {
+      var trackH = fsCueTrackEl ? fsCueTrackEl.clientHeight : 220;
+      var stickH = fsCueStickEl.offsetHeight || 120;
+      var maxTravel = Math.max(24, trackH - stickH - 28);
+      var pullPx = Math.round(p * maxTravel);
+      fsCueStickEl.style.transform = 'translateY(' + pullPx + 'px)';
+    }
+    if (fsCueBadgeEl) {
+      if (fsCharging && p < 0.05) {
+        fsCueBadgeEl.textContent = t('pool_cue_cancel');
+        fsCueBadgeEl.classList.add('is-cancel');
+      } else if (fsCharging) {
+        fsCueBadgeEl.textContent = Math.round(p * 100) + '%';
+        fsCueBadgeEl.classList.remove('is-cancel');
+      } else {
+        fsCueBadgeEl.textContent = t('pool_cue_pull_hint');
+        fsCueBadgeEl.classList.remove('is-cancel');
+      }
+    }
+  }
+
+  function updateFsControlsEnabled() {
+    var canShoot = !!(currentState && isMyTurn() && !replaying && !myStrikeAnim && awaitingShotSeq === null && currentState.phase === 'shoot');
+    if (fsCueTrackEl) fsCueTrackEl.classList.toggle('is-disabled', !canShoot);
+    if (fsRulerEl) fsRulerEl.classList.toggle('is-disabled', !canShoot);
+  }
+
+  function getPlayerInfo(seatIdx) {
+    var list = window.gamePlayers || window._players;
+    var p = null;
+    if (Array.isArray(list)) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i] && list[i].index === seatIdx) {
+          p = list[i];
+          break;
+        }
+      }
+      if (!p && list[seatIdx]) p = list[seatIdx];
+    }
+    var name = (p && p.name) ? p.name : (window.getPlayerName ? window.getPlayerName(seatIdx) : ('P' + (seatIdx + 1)));
+    var avatar = (p && p.avatar) ? p.avatar : (p && p.isBot ? '🤖' : String(name || 'P').trim().charAt(0).toUpperCase());
+    return { name: name, avatar: avatar, isBot: !!(p && p.isBot) };
+  }
+
+  function rollNumber(el, key, fromVal, toVal, durationMs) {
+    if (!el) return;
+    if (scoreRollRafs[key]) {
+      cancelAnimationFrame(scoreRollRafs[key]);
+      delete scoreRollRafs[key];
+    }
+    if (fromVal === null || fromVal === undefined || fromVal === toVal || isReducedMotion()) {
+      el.textContent = String(toVal);
+      return;
+    }
+    var start = performance.now();
+    var dur = durationMs || 600;
+    function step(now) {
+      var u = clamp((now - start) / dur, 0, 1);
+      var eased = 1 - Math.pow(1 - u, 3);
+      el.textContent = String(Math.round(fromVal + (toVal - fromVal) * eased));
+      if (u < 1) {
+        scoreRollRafs[key] = requestAnimationFrame(step);
+      } else {
+        delete scoreRollRafs[key];
+        el.textContent = String(toVal);
+      }
+    }
+    scoreRollRafs[key] = requestAnimationFrame(step);
   }
 
   function pickDefaultAimAngle(state) {
@@ -873,8 +1067,10 @@
       wrapEl.classList.toggle('sideways', !isFs && isSideways);
       wrapEl.classList.toggle('portrait', !isFs && isPortrait);
       if (!isFs) {
+        wrapEl.style.removeProperty('--pool-fs-top');
         wrapEl.style.removeProperty('--pool-fs-left');
         wrapEl.style.removeProperty('--pool-fs-right');
+        wrapEl.style.removeProperty('--pool-fs-spin');
       }
     }
 
@@ -887,14 +1083,18 @@
     if (isFs) {
       var vw = window.innerWidth || 640;
       var vh = window.innerHeight || 360;
-      var leftW = clamp(Math.round(vw * 0.17), 132, 184);
-      var rightW = clamp(Math.round(vw * 0.15), 118, 152);
+      var topH = vh >= 560 ? 64 : 56;
+      var leftW = clamp(Math.round(vw * 0.085), 68, 84);
+      var rightW = clamp(Math.round(vw * 0.12), 96, 124);
+      var spinSize = clamp(Math.min(rightW - 10, Math.round(vh * 0.23)), 84, 108);
       if (wrapEl) {
+        wrapEl.style.setProperty('--pool-fs-top', topH + 'px');
         wrapEl.style.setProperty('--pool-fs-left', leftW + 'px');
         wrapEl.style.setProperty('--pool-fs-right', rightW + 'px');
+        wrapEl.style.setProperty('--pool-fs-spin', spinSize + 'px');
       }
-      var availWFs = Math.max(200, vw - leftW - rightW - 32);
-      var availHFs = Math.max(120, vh - nomH - 12);
+      var availWFs = Math.max(200, vw - leftW - rightW - 24);
+      var availHFs = Math.max(120, vh - topH - 14);
       var scaleFs = Math.min(availWFs / CW, availHFs / CH);
       dispW = Math.max(200, Math.floor(CW * scaleFs));
       dispH = Math.max(100, Math.floor(CH * scaleFs));
@@ -938,6 +1138,7 @@
 
     lastLayoutKey = window.innerWidth + 'x' + window.innerHeight + ':' + (containerEl ? containerEl.clientWidth : 0) + ':' + (isFs ? 'fs' : (isSideways ? 's' : (isPortrait ? 'p' : 'l'))) + ':' + (isSnooker ? 'sn' : '8b');
 
+    if (isFs) syncFsCueUI();
     draw();
   }
 
@@ -1298,16 +1499,16 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Translucent ghost ball ring
-    ctx.strokeStyle = 'rgba(255,255,255,0.78)';
-    ctx.fillStyle = 'rgba(255,255,255,0.16)';
-    ctx.lineWidth = 1.6;
+    // Translucent hollow ghost ball ring
+    ctx.strokeStyle = 'rgba(255,255,255,0.88)';
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.arc(gx, gy, BALL_R, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    // Target deflection arrow when hitting an object ball
+    // Target deflection arrow + cue ball deflection path when hitting an object ball
     if (hit.hitBall) {
       var nx = hit.hitBall.x - hit.gx;
       var ny = hit.hitBall.y - hit.gy;
@@ -1318,7 +1519,7 @@
       var ty0 = RAIL + hit.hitBall.y;
       var tx1 = tx0 + nx * 68;
       var ty1 = ty0 + ny * 68;
-      ctx.strokeStyle = 'rgba(253,224,71,0.9)';
+      ctx.strokeStyle = 'rgba(253,224,71,0.92)';
       ctx.lineWidth = 2.4;
       ctx.beginPath();
       ctx.moveTo(tx0, ty0);
@@ -1326,13 +1527,42 @@
       ctx.stroke();
 
       var ang = Math.atan2(ny, nx);
-      ctx.fillStyle = 'rgba(253,224,71,0.9)';
+      ctx.fillStyle = 'rgba(253,224,71,0.92)';
       ctx.beginPath();
       ctx.moveTo(tx1, ty1);
       ctx.lineTo(tx1 - 9 * Math.cos(ang - 0.45), ty1 - 9 * Math.sin(ang - 0.45));
       ctx.lineTo(tx1 - 9 * Math.cos(ang + 0.45), ty1 - 9 * Math.sin(ang + 0.45));
       ctx.closePath();
       ctx.fill();
+
+      // Cue ball post-impact deflection path (tangential component)
+      var ax = Math.cos(angToUse);
+      var ay = Math.sin(angToUse);
+      var dot = ax * nx + ay * ny;
+      var cxDef = ax - dot * nx;
+      var cyDef = ay - dot * ny;
+      var cLen = Math.hypot(cxDef, cyDef);
+      if (cLen >= 0.06) {
+        var cux = cxDef / cLen;
+        var cuy = cyDef / cLen;
+        var defLen = 20 + 32 * clamp(cLen, 0, 1);
+        var cdx = gx + cux * defLen;
+        var cdy = gy + cuy * defLen;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.78)';
+        ctx.lineWidth = 1.8;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(gx, gy);
+        ctx.lineTo(cdx, cdy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255,255,255,0.82)';
+        ctx.beginPath();
+        ctx.arc(cdx, cdy, 2.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
     }
 
     // Wooden cue stick behind cue ball, clamped to stay inside the canvas
@@ -1437,12 +1667,35 @@
 
   function drawBallInHandGhost(kitchenOnly) {
     var valid = isValidCuePosLocal(displayBalls, placeX, placeY, kitchenOnly);
-    drawBall({ id: 0, x: placeX, y: placeY, potted: false, type: 'cue' }, 0.72);
+    var cx = RAIL + placeX;
+    var cy = RAIL + placeY;
+    var handleR = BALL_R * 2.8;
+    ctx.save();
+    ctx.fillStyle = valid ? 'rgba(34, 197, 94, 0.16)' : 'rgba(239, 68, 68, 0.20)';
+    ctx.strokeStyle = valid ? 'rgba(255, 255, 255, 0.78)' : 'rgba(248, 113, 113, 0.9)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, handleR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // 4 subtle directional pips on the drag handle rim
+    ctx.fillStyle = valid ? 'rgba(255, 255, 255, 0.78)' : 'rgba(248, 113, 113, 0.9)';
+    var pipR = handleR - 6;
+    for (var d = 0; d < 4; d++) {
+      var a = d * Math.PI * 0.5;
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(a) * pipR, cy + Math.sin(a) * pipR, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    drawBall({ id: 0, x: placeX, y: placeY, potted: false, type: 'cue' }, 0.78);
     ctx.save();
     ctx.strokeStyle = valid ? '#22c55e' : '#ef4444';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(RAIL + placeX, RAIL + placeY, BALL_R + 4, 0, Math.PI * 2);
+    ctx.arc(cx, cy, BALL_R + 3, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
@@ -1505,9 +1758,15 @@
         }
       }
       drawAimGuide(cue, balls, curAng, curPwr);
+    } else if (myStrikeAnim && cue) {
+      var sElapsed = Math.max(0, performance.now() - myStrikeAnim.startTime);
+      var su = clamp(sElapsed / myStrikeAnim.duration, 0, 1);
+      var sPwr = myStrikeAnim.fromPower * (1 - su * su);
+      drawAimGuide(cue, balls, myStrikeAnim.angle, sPwr);
     } else if (currentState && isMyTurn() && !replaying) {
       if (currentState.phase === 'shoot' && cue) {
-        drawAimGuide(cue, balls);
+        var guidePwr = isFullscreenMode() ? (fsCharging ? fsChargePower : 0) : aimPower;
+        drawAimGuide(cue, balls, aimAngle, guidePwr);
       } else if (currentState.phase === 'ball_in_hand') {
         drawBallInHandGhost(kitchenOnly);
       }
@@ -1609,10 +1868,135 @@
     el.querySelector('.pool-group-badge').textContent = badgeText;
   }
 
+  function updateFsSide(sideKey, seatIdx, state, ballById, activeSeat) {
+    var refs = fsSideRefs && fsSideRefs[sideKey];
+    if (!refs) return;
+    var info = getPlayerInfo(seatIdx);
+    refs.avatar.textContent = info.avatar;
+    refs.avatar.classList.toggle('pool-fs-avatar--active', activeSeat === seatIdx);
+    refs.name.textContent = info.name;
+
+    if (isSnooker) {
+      refs.rack.style.display = 'none';
+      refs.snooker.style.display = 'flex';
+      var score = (state.scores && typeof state.scores[seatIdx] === 'number') ? state.scores[seatIdx] : 0;
+      var prevScore = (prevSnapshot && prevSnapshot.variant === 'snooker' && prevSnapshot.scores) ? prevSnapshot.scores[seatIdx] : null;
+      rollNumber(refs.score, 'score_' + sideKey, prevScore, score, 600);
+      var brk = (activeSeat === seatIdx && state.currentBreak > 0) ? state.currentBreak : 0;
+      refs.brk.classList.toggle('is-visible', brk > 0);
+      if (brk > 0) {
+        refs.brk.textContent = t('snooker_break') + ' ' + brk;
+      }
+      return;
+    }
+
+    refs.rack.style.display = 'flex';
+    refs.snooker.style.display = 'none';
+    var group = state.groups ? state.groups[seatIdx] : null;
+    var isFirstSnap = !prevSnapshot || prevSnapshot.variant !== '8ball';
+    if (isFirstSnap) refs.rack.classList.add('no-anim');
+
+    if (!group) {
+      for (var u = 0; u < 7; u++) {
+        refs.dots[u].className = 'pool-fs-bdot is-unknown';
+        refs.fills[u].className = 'pool-fs-bdot-fill';
+        refs.fills[u].style.background = '';
+        refs.fills[u].style.color = '';
+      }
+      refs.eightDot.classList.remove('is-visible', 'is-potted');
+    } else {
+      var startId = group === 'solid' ? 1 : 9;
+      var ownLeft = 0;
+      for (var d = 0; d < 7; d++) {
+        var bid = startId + d;
+        var b = ballById[bid];
+        var potted = !!(b && b.potted);
+        if (!potted) ownLeft++;
+        var isStripe = bid >= 9;
+        var col = BALL_COLORS[bid];
+        refs.dots[d].className = 'pool-fs-bdot' + (potted ? ' is-potted' : '');
+        refs.fills[d].className = 'pool-fs-bdot-fill' + (isStripe ? ' pool-fs-bdot-fill--stripe' : '');
+        refs.fills[d].style.background = col;
+        refs.fills[d].style.color = col;
+      }
+      var eight = ballById[8];
+      refs.eightDot.classList.toggle('is-visible', ownLeft === 0);
+      refs.eightDot.classList.toggle('is-potted', !!(eight && eight.potted));
+    }
+
+    if (isFirstSnap) {
+      void refs.rack.offsetWidth;
+      refs.rack.classList.remove('no-anim');
+    }
+  }
+
+  function updateFsTopBar(state) {
+    if (!fsTopBarEl || !fsSideRefs || !fsMidRefs || !state) return;
+    var meIdx = myPlayerIndex;
+    var oppIdx = 1 - meIdx;
+    var activeSeat = (state.winner === null && state.phase !== 'over') ? state.currentPlayer : -1;
+    var ballById = {};
+    var balls = state.balls || [];
+    for (var i = 0; i < balls.length; i++) {
+      if (balls[i]) ballById[balls[i].id] = balls[i];
+    }
+
+    updateFsSide('me', meIdx, state, ballById, activeSeat);
+    updateFsSide('opp', oppIdx, state, ballById, activeSeat);
+
+    var mine = isMyTurn();
+    var mainText;
+    if (state.phase === 'over' || state.winner !== null) {
+      mainText = state.winner === myPlayerIndex ? t('rv_you_win') : (state.winner === -1 ? t('rv_draw') : t('rv_you_lose'));
+    } else if (state.phase === 'ball_in_hand') {
+      mainText = mine ? t('pool_place_cue') : t('pool_opp_place_cue');
+    } else if (state.isBreak && mine) {
+      mainText = t('pool_break_shot');
+    } else {
+      mainText = mine ? t('pool_your_turn') : t('pool_opp_turn');
+    }
+
+    if (!isSnooker) {
+      fsMidRefs.turnPill.style.display = 'inline-flex';
+      fsMidRefs.snookerMid.style.display = 'none';
+      fsMidRefs.turnPill.className = 'pool-fs-turn-pill' + (mine ? ' pool-fs-turn-pill--mine' : '');
+      fsMidRefs.turnPill.textContent = mainText;
+    } else {
+      fsMidRefs.turnPill.style.display = 'none';
+      fsMidRefs.snookerMid.style.display = 'inline-flex';
+      fsMidRefs.snookerMid.className = 'pool-fs-snooker-mid' + (mine ? ' pool-fs-snooker-mid--mine' : '');
+      var ballOn = state.ballOn || 'red';
+      var dotColor = ballOn === 'colour'
+        ? (selectedNominate ? SNOOKER_COLOUR_HEX[selectedNominate] : 'linear-gradient(135deg,#eab308,#1d4ed8,#ec4899)')
+        : (SNOOKER_COLOUR_HEX[ballOn] || '#c81e1e');
+      var onLabel = ballOn === 'colour' && selectedNominate
+        ? t('snooker_ball_' + selectedNominate)
+        : t('snooker_ball_' + ballOn);
+      var remPts = typeof state.pointsRemaining === 'number' ? state.pointsRemaining : 0;
+      fsMidRefs.onDot.style.background = dotColor;
+      fsMidRefs.onText.textContent = t('snooker_on') + ': ' + onLabel;
+      fsMidRefs.remLbl.textContent = ' · ' + t('snooker_left') + ': ';
+      var prevRem = (prevSnapshot && prevSnapshot.variant === 'snooker') ? prevSnapshot.pointsRemaining : null;
+      rollNumber(fsMidRefs.remVal, 'snooker_rem', prevRem, remPts, 600);
+      var showPhase = state.phase === 'ball_in_hand' || state.phase === 'over' || state.winner !== null;
+      fsMidRefs.snookerPhase.style.display = showPhase ? 'inline' : 'none';
+      if (showPhase) {
+        fsMidRefs.snookerPhase.textContent = ' · ' + mainText;
+      }
+    }
+
+    prevSnapshot = {
+      variant: isSnooker ? 'snooker' : '8ball',
+      scores: isSnooker && state.scores ? [state.scores[0] || 0, state.scores[1] || 0] : [0, 0],
+      pointsRemaining: isSnooker && typeof state.pointsRemaining === 'number' ? state.pointsRemaining : 0,
+    };
+  }
+
   function updateHUD() {
     if (!currentState) return;
     updateSeatCard(seat0El, 0);
     updateSeatCard(seat1El, 1);
+    updateFsTopBar(currentState);
 
     if (!statusEl) return;
     var mine = isMyTurn();
@@ -1654,15 +2038,34 @@
       t('snooker_on') + ': ' + onLabel + ' · ' + t('snooker_left') + ': ' + remPts;
   }
 
-  function closeGroupPopup() {
+  function closeGroupPopup(immediate) {
     if (groupOverlayTimer) {
       clearTimeout(groupOverlayTimer);
       groupOverlayTimer = null;
     }
-    if (groupOverlayEl) {
-      if (groupOverlayEl.parentNode) groupOverlayEl.parentNode.removeChild(groupOverlayEl);
-      groupOverlayEl = null;
+    var oldEl = groupOverlayEl;
+    groupOverlayEl = null;
+    if (!oldEl) return;
+    if (immediate || typeof oldEl.animate !== 'function' || isReducedMotion()) {
+      if (oldEl.parentNode) oldEl.parentNode.removeChild(oldEl);
+      return;
     }
+    var removed = false;
+    function finishRemove() {
+      if (removed) return;
+      removed = true;
+      if (oldEl.parentNode) oldEl.parentNode.removeChild(oldEl);
+    }
+    try {
+      var anim = oldEl.animate([
+        { opacity: 1, transform: 'translate(-50%,-50%) scale(1)' },
+        { opacity: 0, transform: 'translate(-50%,-50%) scale(0.94)' },
+      ], { duration: 190, easing: 'cubic-bezier(0.23,1,0.32,1)', fill: 'forwards' });
+      anim.onfinish = finishRemove;
+    } catch (_e) {
+      finishRemove();
+    }
+    setTimeout(finishRemove, 220);
   }
 
   function buildGroupBallsHtml(group) {
@@ -1677,7 +2080,7 @@
   }
 
   function showGroupPopup(groups) {
-    closeGroupPopup();
+    closeGroupPopup(true);
     if (!document.body || !groups) return;
     var myGroup = groups[myPlayerIndex];
     var oppGroup = groups[1 - myPlayerIndex];
@@ -1706,11 +2109,29 @@
     el.querySelector('[data-role="you"]').textContent = t('pool_group_you') + ': ' + myLabel;
     el.querySelector('[data-role="opp"]').textContent = t('pool_group_opp') + ': ' + oppLabel;
     el.querySelector('.pool-group-tap').textContent = t('pool_tap_close');
-    el.addEventListener('click', closeGroupPopup);
+    el.addEventListener('click', function () { closeGroupPopup(false); });
+
+    if (isFullscreenMode() && canvas) {
+      var rect = canvas.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        el.style.left = Math.round(rect.left + rect.width / 2) + 'px';
+        el.style.top = Math.round(rect.top + rect.height / 2) + 'px';
+      }
+    }
 
     document.body.appendChild(el);
     groupOverlayEl = el;
-    groupOverlayTimer = setTimeout(closeGroupPopup, 2500);
+    if (typeof el.animate === 'function') {
+      if (isReducedMotion()) {
+        el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'cubic-bezier(0.23,1,0.32,1)', fill: 'backwards' });
+      } else {
+        el.animate([
+          { opacity: 0, transform: 'translate(-50%,-50%) scale(0.88)' },
+          { opacity: 1, transform: 'translate(-50%,-50%) scale(1)' },
+        ], { duration: 300, easing: 'cubic-bezier(0.34,1.56,0.64,1)', fill: 'backwards' });
+      }
+    }
+    groupOverlayTimer = setTimeout(function () { closeGroupPopup(false); }, 2500);
   }
 
   function maybeShowGroupPopup(state) {
@@ -1748,9 +2169,12 @@
       }
     }
 
+    nomBarEl.classList.toggle('snooker-nom-bar--picked', !!(needNom && selectedNominate));
+
     if (shootBtnEl) {
       shootBtnEl.disabled = !!(needNom && !selectedNominate);
     }
+    updateFsControlsEnabled();
 
     var isVisibleNow = nomBarEl.style.display !== 'none';
     if (wasVisible !== isVisibleNow) {
@@ -1792,6 +2216,21 @@
         waitBarEl.textContent = t('pool_opp_turn');
       }
     }
+
+    if (fsRulerEl && fsPlaceWrapEl) {
+      var showFsPlace = mine && currentState.phase === 'ball_in_hand';
+      fsRulerEl.style.display = showFsPlace ? 'none' : 'block';
+      fsPlaceWrapEl.style.display = showFsPlace ? 'flex' : 'none';
+      if (fsConfirmPlaceBtnEl) {
+        fsConfirmPlaceBtnEl.disabled = !isValidCuePosLocal(displayBalls, placeX, placeY, kitchenOnly);
+      }
+      if (fsPlaceHintEl) {
+        fsPlaceHintEl.textContent = t('pool_drag_cue_ball');
+      }
+    }
+    syncSpinUI();
+    syncFsCueUI();
+    updateFsControlsEnabled();
     syncNominateUI();
   }
 
@@ -1833,9 +2272,34 @@
     return map;
   }
 
+  function clearStrikeAndPending() {
+    myStrikeAnim = null;
+    pendingMyReplay = null;
+    awaitingShotSeq = null;
+    if (awaitingShotTimer) {
+      clearTimeout(awaitingShotTimer);
+      awaitingShotTimer = null;
+    }
+    if (strikeRafId) {
+      cancelAnimationFrame(strikeRafId);
+      strikeRafId = null;
+    }
+  }
+
+  function cancelActiveFsInputs() {
+    fsCharging = false;
+    fsChargePower = 0;
+    fsCuePointerId = null;
+    fineDragging = false;
+    finePointerId = null;
+    fsSpinDragging = false;
+    syncFsCueUI();
+  }
+
   function finishReplay(shot) {
     replaying = false;
     oppAimPreview = null;
+    clearStrikeAndPending();
     prevBallPos = {};
     if (reducedTimerId) {
       clearTimeout(reducedTimerId);
@@ -2077,12 +2541,12 @@
   }
 
   function trySendShot() {
-    if (!currentState || !isMyTurn() || replaying || currentState.phase !== 'shoot') return;
+    if (!currentState || !isMyTurn() || replaying || currentState.phase !== 'shoot') return false;
     if (isSnooker && currentState.ballOn === 'colour' && !selectedNominate) {
       if (typeof window.showToast === 'function') {
         window.showToast(t('snooker_pick_colour_first'));
       }
-      return;
+      return false;
     }
     var mv = {
       type: 'shot',
@@ -2095,21 +2559,100 @@
       mv.nominate = selectedNominate;
     }
     sendMove(mv);
+    return true;
+  }
+
+  function launchFullscreenShot(shotAngle, shotPower) {
+    if (!trySendShot()) return;
+    awaitingShotSeq = (currentState.lastShot && typeof currentState.lastShot.seq === 'number')
+      ? currentState.lastShot.seq : (currentState.shotSeq || 0);
+    if (awaitingShotTimer) clearTimeout(awaitingShotTimer);
+    awaitingShotTimer = setTimeout(function () {
+      awaitingShotSeq = null;
+      awaitingShotTimer = null;
+      updateFsControlsEnabled();
+    }, 2500);
+
+    if (isReducedMotion()) {
+      updateFsControlsEnabled();
+      draw();
+      return;
+    }
+
+    if (strikeRafId) {
+      cancelAnimationFrame(strikeRafId);
+      strikeRafId = null;
+    }
+    myStrikeAnim = {
+      angle: shotAngle,
+      fromPower: clamp(shotPower, 0.05, 1.0),
+      startTime: performance.now(),
+      duration: 90,
+    };
+    updateFsControlsEnabled();
+
+    function strikeStep(now) {
+      if (!myStrikeAnim) {
+        strikeRafId = null;
+        return;
+      }
+      var elapsed = now - myStrikeAnim.startTime;
+      if (elapsed >= myStrikeAnim.duration) {
+        myStrikeAnim = null;
+        strikeRafId = null;
+        if (pendingMyReplay) {
+          var pending = pendingMyReplay;
+          pendingMyReplay = null;
+          try {
+            startReplay(pending.state, pending.prevAngle);
+          } catch (_err) {
+            finishReplay(pending.state && pending.state.lastShot);
+          }
+        } else {
+          draw();
+        }
+        return;
+      }
+      draw();
+      strikeRafId = requestAnimationFrame(strikeStep);
+    }
+
+    draw();
+    strikeRafId = requestAnimationFrame(strikeStep);
+  }
+
+  function syncPlaceConfirmDisabled(kitchenOnly) {
+    var invalid = !isValidCuePosLocal(displayBalls, placeX, placeY, kitchenOnly);
+    if (confirmPlaceBtnEl) confirmPlaceBtnEl.disabled = invalid;
+    if (fsConfirmPlaceBtnEl) fsConfirmPlaceBtnEl.disabled = invalid;
+  }
+
+  function submitCuePlacement() {
+    if (!currentState || !isMyTurn() || replaying || currentState.phase !== 'ball_in_hand') return;
+    if (isValidCuePosLocal(displayBalls, placeX, placeY, isKitchenPlace(currentState))) {
+      sendMove({ type: 'place', x: round1(placeX), y: round1(placeY) });
+    }
   }
 
   function onPointerDown(e) {
-    if (!currentState || !isMyTurn() || replaying) return;
+    if (!currentState || !isMyTurn() || replaying || myStrikeAnim || awaitingShotSeq !== null) return;
     var pt = clientToTable(e);
 
     if (currentState.phase === 'ball_in_hand') {
       var kitchenOnly = isKitchenPlace(currentState);
-      var clamped = clampPlacePos(pt.x, pt.y, kitchenOnly);
+      var dist = Math.hypot(pt.x - placeX, pt.y - placeY);
+      if (dist <= BALL_R * 3.2) {
+        placeGrabDx = placeX - pt.x;
+        placeGrabDy = placeY - pt.y;
+      } else {
+        placeGrabDx = 0;
+        placeGrabDy = 0;
+      }
+      var clamped = clampPlacePos(pt.x + placeGrabDx, pt.y + placeGrabDy, kitchenOnly);
       dragMode = 'place';
       placeX = clamped.x;
       placeY = clamped.y;
-      if (confirmPlaceBtnEl) {
-        confirmPlaceBtnEl.disabled = !isValidCuePosLocal(displayBalls, placeX, placeY, kitchenOnly);
-      }
+      syncPlaceConfirmDisabled(kitchenOnly);
       try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
       draw();
       return;
@@ -2137,12 +2680,10 @@
 
     if (dragMode === 'place') {
       var kitchenOnly = isKitchenPlace(currentState);
-      var clamped = clampPlacePos(pt.x, pt.y, kitchenOnly);
+      var clamped = clampPlacePos(pt.x + placeGrabDx, pt.y + placeGrabDy, kitchenOnly);
       placeX = clamped.x;
       placeY = clamped.y;
-      if (confirmPlaceBtnEl) {
-        confirmPlaceBtnEl.disabled = !isValidCuePosLocal(displayBalls, placeX, placeY, kitchenOnly);
-      }
+      syncPlaceConfirmDisabled(kitchenOnly);
       draw();
       return;
     }
@@ -2165,8 +2706,68 @@
   function onPointerUp(e) {
     if (!dragMode) return;
     dragMode = null;
+    placeGrabDx = 0;
+    placeGrabDy = 0;
     try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
     draw();
+  }
+
+  function buildFsSideHtml(sideKey) {
+    var cap = sideKey === 'me' ? 'Me' : 'Opp';
+    var dotsHtml = '';
+    for (var i = 0; i < 7; i++) {
+      dotsHtml +=
+        '<span class="pool-fs-bdot is-unknown" data-dot-idx="' + i + '">' +
+          '<span class="pool-fs-bdot-fill"></span>' +
+          '<span class="pool-fs-bdot-q">?</span>' +
+        '</span>';
+    }
+    dotsHtml += '<span class="pool-fs-eight-dot" id="poolFsEight' + cap + '">8</span>';
+    return (
+      '<div class="pool-fs-side pool-fs-side--' + sideKey + '" id="poolFsSide' + cap + '">' +
+        '<div class="pool-fs-avatar" id="poolFsAvatar' + cap + '"></div>' +
+        '<div class="pool-fs-info">' +
+          '<div class="pool-fs-name" id="poolFsName' + cap + '"></div>' +
+          '<div class="pool-fs-rack" id="poolFsRack' + cap + '">' + dotsHtml + '</div>' +
+          '<div class="pool-fs-snooker" id="poolFsSnooker' + cap + '">' +
+            '<span class="pool-fs-score" id="poolFsScore' + cap + '">0</span>' +
+            '<span class="pool-fs-break" id="poolFsBreak' + cap + '"></span>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function cacheFsSideRefs(sideKey) {
+    var cap = sideKey === 'me' ? 'Me' : 'Opp';
+    var rack = document.getElementById('poolFsRack' + cap);
+    var dotEls = rack ? rack.querySelectorAll('.pool-fs-bdot') : [];
+    var dots = [];
+    var fills = [];
+    for (var i = 0; i < dotEls.length; i++) {
+      dots.push(dotEls[i]);
+      fills.push(dotEls[i].querySelector('.pool-fs-bdot-fill'));
+    }
+    return {
+      root: document.getElementById('poolFsSide' + cap),
+      avatar: document.getElementById('poolFsAvatar' + cap),
+      name: document.getElementById('poolFsName' + cap),
+      rack: rack,
+      dots: dots,
+      fills: fills,
+      eightDot: document.getElementById('poolFsEight' + cap),
+      snooker: document.getElementById('poolFsSnooker' + cap),
+      score: document.getElementById('poolFsScore' + cap),
+      brk: document.getElementById('poolFsBreak' + cap),
+    };
+  }
+
+  function cancelAllScoreRolls() {
+    var keys = Object.keys(scoreRollRafs);
+    for (var i = 0; i < keys.length; i++) {
+      cancelAnimationFrame(scoreRollRafs[keys[i]]);
+    }
+    scoreRollRafs = {};
   }
 
   function init(container) {
@@ -2179,11 +2780,14 @@
       cancelAnimationFrame(rafId);
       rafId = null;
     }
+    clearStrikeAndPending();
+    cancelAllScoreRolls();
     replaying = false;
     oppAimPreview = null;
     lastSeatCueAngle = {};
-    closeGroupPopup();
+    closeGroupPopup(true);
     prevGroups = null;
+    prevSnapshot = null;
     resetBallRoll();
     ensureAudioCtxUnlocked();
 
@@ -2194,10 +2798,23 @@
     currentState = null;
     displayBalls = [];
     dragMode = null;
+    placeGrabDx = 0;
+    placeGrabDy = 0;
     aimPower = 0.58;
     aimSpinX = 0;
     aimSpinY = 0;
     spinDragging = false;
+    fsSpinDragging = false;
+    lastSpinTapMs = 0;
+    lastSpinTapX = 0;
+    lastSpinTapY = 0;
+    fsSpinMoved = false;
+    fsCharging = false;
+    fsChargePower = 0;
+    fsCuePointerId = null;
+    fineDragging = false;
+    finePointerId = null;
+    fineRulerScrollPx = 0;
     selectedNominate = null;
     lastNomSeq = -1;
     nomButtons = {};
@@ -2216,8 +2833,32 @@
         '</button>';
     }
 
+    var rulerTicksHtml = '';
+    for (var rt = 0; rt < 120; rt++) {
+      var tickMod = rt % 5 === 0 ? ' pool-fs-rtick--major' : (rt % 5 === 2 ? ' pool-fs-rtick--mid' : '');
+      rulerTicksHtml += '<div class="pool-fs-rtick' + tickMod + '"></div>';
+    }
+
     container.innerHTML =
       '<div class="pool-wrap" id="poolWrap">' +
+        '<div class="pool-fs-top pool-fs-only" id="poolFsTopBar">' +
+          buildFsSideHtml('me') +
+          '<div class="pool-fs-mid" id="poolFsMid">' +
+            '<div class="pool-fs-turn-pill" id="poolFsTurnPill"></div>' +
+            '<div class="pool-fs-snooker-mid" id="poolFsSnookerMid">' +
+              '<span class="pool-fs-on-wrap">' +
+                '<span class="pool-fs-on-dot" id="poolFsOnDot"></span>' +
+                '<span id="poolFsOnText"></span>' +
+              '</span>' +
+              '<span class="pool-fs-rem-wrap">' +
+                '<span id="poolFsRemLbl"></span>' +
+                '<span id="poolFsRemVal">0</span>' +
+              '</span>' +
+              '<span class="pool-fs-snooker-phase" id="poolFsSnookerPhase"></span>' +
+            '</div>' +
+          '</div>' +
+          buildFsSideHtml('opp') +
+        '</div>' +
         '<div class="pool-hud" id="poolHud">' +
           '<div id="poolSeat0" class="pool-seat"></div>' +
           '<div id="poolStatus" class="pool-status-pill"></div>' +
@@ -2228,8 +2869,37 @@
           nomBtnsHtml +
         '</div>' +
         '<div class="pool-main">' +
+          '<div class="pool-fs-left pool-fs-only" id="poolFsLeft">' +
+            '<div class="pool-fs-cue-track" id="poolFsCueTrack" role="slider" aria-label="Shot power">' +
+              '<div class="pool-fs-cue-fill" id="poolFsCueFill"></div>' +
+              '<div class="pool-fs-cue-scale"></div>' +
+              '<div class="pool-fs-cue-stick" id="poolFsCueStick">' +
+                '<div class="pool-fs-cue-tip"></div>' +
+                '<div class="pool-fs-cue-ferrule"></div>' +
+                '<div class="pool-fs-cue-shaft"></div>' +
+                '<div class="pool-fs-cue-wrap"></div>' +
+                '<div class="pool-fs-cue-butt"></div>' +
+              '</div>' +
+              '<div class="pool-fs-cue-badge" id="poolFsCueBadge"></div>' +
+            '</div>' +
+          '</div>' +
           '<div class="pool-canvas-wrap">' +
             '<canvas id="poolCanvas" class="pool-canvas"></canvas>' +
+          '</div>' +
+          '<div class="pool-fs-right pool-fs-only" id="poolFsRight">' +
+            '<div class="pool-fs-spin-ball" id="poolFsSpinPad" role="slider" tabindex="0" aria-label="Spin">' +
+              '<div class="pool-fs-spin-ring"></div>' +
+              '<span class="pool-fs-spin-dot" id="poolFsSpinDot"></span>' +
+            '</div>' +
+            '<div class="pool-fs-ruler" id="poolFsFineRuler" aria-label="Fine aim">' +
+              '<div class="pool-fs-ruler-ticks" id="poolFsRulerTicks">' + rulerTicksHtml + '</div>' +
+              '<div class="pool-fs-ruler-marker"></div>' +
+              '<div class="pool-fs-ruler-label" id="poolFsRulerLabel"></div>' +
+            '</div>' +
+            '<div class="pool-fs-place-wrap" id="poolFsPlaceWrap">' +
+              '<button type="button" class="pool-fs-confirm-btn" id="poolFsConfirmPlaceBtn"></button>' +
+              '<div class="pool-fs-place-hint" id="poolFsPlaceHint"></div>' +
+            '</div>' +
           '</div>' +
           '<div class="pool-bar" id="poolBar">' +
             '<div id="poolShootBar" class="pool-panel" style="display:none">' +
@@ -2282,6 +2952,38 @@
     shootBtnEl = document.getElementById('poolShootBtn');
     confirmPlaceBtnEl = document.getElementById('poolConfirmPlaceBtn');
 
+    fsTopBarEl = document.getElementById('poolFsTopBar');
+    fsMidEl = document.getElementById('poolFsMid');
+    fsMeEl = document.getElementById('poolFsSideMe');
+    fsOppEl = document.getElementById('poolFsSideOpp');
+    fsLeftEl = document.getElementById('poolFsLeft');
+    fsCueTrackEl = document.getElementById('poolFsCueTrack');
+    fsCueFillEl = document.getElementById('poolFsCueFill');
+    fsCueStickEl = document.getElementById('poolFsCueStick');
+    fsCueBadgeEl = document.getElementById('poolFsCueBadge');
+    fsRightEl = document.getElementById('poolFsRight');
+    fsSpinPadEl = document.getElementById('poolFsSpinPad');
+    fsSpinDotEl = document.getElementById('poolFsSpinDot');
+    fsRulerEl = document.getElementById('poolFsFineRuler');
+    fsRulerTicksEl = document.getElementById('poolFsRulerTicks');
+    fsPlaceWrapEl = document.getElementById('poolFsPlaceWrap');
+    fsConfirmPlaceBtnEl = document.getElementById('poolFsConfirmPlaceBtn');
+    fsPlaceHintEl = document.getElementById('poolFsPlaceHint');
+
+    fsSideRefs = {
+      me: cacheFsSideRefs('me'),
+      opp: cacheFsSideRefs('opp'),
+    };
+    fsMidRefs = {
+      turnPill: document.getElementById('poolFsTurnPill'),
+      snookerMid: document.getElementById('poolFsSnookerMid'),
+      onDot: document.getElementById('poolFsOnDot'),
+      onText: document.getElementById('poolFsOnText'),
+      remLbl: document.getElementById('poolFsRemLbl'),
+      remVal: document.getElementById('poolFsRemVal'),
+      snookerPhase: document.getElementById('poolFsSnookerPhase'),
+    };
+
     document.getElementById('snookerNomLabel').textContent = t('snooker_pick_colour');
     var nomBtnEls = nomBarEl.querySelectorAll('.snooker-nom-btn');
     for (var nb = 0; nb < nomBtnEls.length; nb++) {
@@ -2309,7 +3011,11 @@
     placeHintEl.textContent = t('pool_place_hint');
     shootBtnEl.textContent = t('pool_shoot');
     confirmPlaceBtnEl.textContent = t('pool_confirm_place');
+    fsConfirmPlaceBtnEl.textContent = t('pool_confirm_place');
+    fsPlaceHintEl.textContent = t('pool_drag_cue_ball');
+    document.getElementById('poolFsRulerLabel').textContent = t('pool_fine_aim');
     syncSpinUI();
+    syncFsCueUI();
 
     powerInputEl.addEventListener('input', function () {
       aimPower = clamp(Number(powerInputEl.value) / 100, 0.05, 1.0);
@@ -2341,16 +3047,138 @@
       syncSpinUI();
     });
 
+    var fsSpinStartX = 0;
+    var fsSpinStartY = 0;
+    fsSpinPadEl.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      fsSpinDragging = true;
+      fsSpinMoved = false;
+      fsSpinStartX = e.clientX;
+      fsSpinStartY = e.clientY;
+      updateSpinFromElement(e, fsSpinPadEl);
+      try { fsSpinPadEl.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    fsSpinPadEl.addEventListener('pointermove', function (e) {
+      if (!fsSpinDragging) return;
+      if (Math.hypot(e.clientX - fsSpinStartX, e.clientY - fsSpinStartY) > 6) {
+        fsSpinMoved = true;
+      }
+      updateSpinFromElement(e, fsSpinPadEl);
+    });
+    function endFsSpinDrag(e) {
+      if (!fsSpinDragging) return;
+      fsSpinDragging = false;
+      try { fsSpinPadEl.releasePointerCapture(e.pointerId); } catch (_) {}
+      if (!fsSpinMoved && e.type === 'pointerup') {
+        var nowMs = performance.now();
+        if (nowMs - lastSpinTapMs < 320 && Math.hypot(e.clientX - lastSpinTapX, e.clientY - lastSpinTapY) < 18) {
+          aimSpinX = 0;
+          aimSpinY = 0;
+          syncSpinUI();
+          lastSpinTapMs = 0;
+          return;
+        }
+        lastSpinTapMs = nowMs;
+        lastSpinTapX = e.clientX;
+        lastSpinTapY = e.clientY;
+      }
+    }
+    fsSpinPadEl.addEventListener('pointerup', endFsSpinDrag);
+    fsSpinPadEl.addEventListener('pointercancel', endFsSpinDrag);
+    fsSpinPadEl.addEventListener('dblclick', function (e) {
+      e.preventDefault();
+      aimSpinX = 0;
+      aimSpinY = 0;
+      syncSpinUI();
+    });
+
+    fsCueTrackEl.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      if (!isFullscreenMode() || !currentState || !isMyTurn() || replaying || myStrikeAnim || awaitingShotSeq !== null) return;
+      if (currentState.phase !== 'shoot') return;
+      if (isSnooker && currentState.ballOn === 'colour' && !selectedNominate) {
+        if (typeof window.showToast === 'function') {
+          window.showToast(t('snooker_pick_colour_first'));
+        }
+        return;
+      }
+      var rect = fsCueTrackEl.getBoundingClientRect();
+      fsCharging = true;
+      fsCuePointerId = e.pointerId;
+      fsCueStartY = e.clientY;
+      fsCueMaxDrag = Math.max(70, (rect.height || 180) * 0.68);
+      fsChargePower = 0;
+      try { fsCueTrackEl.setPointerCapture(e.pointerId); } catch (_) {}
+      syncFsCueUI();
+      draw();
+    });
+    fsCueTrackEl.addEventListener('pointermove', function (e) {
+      if (!fsCharging || e.pointerId !== fsCuePointerId) return;
+      var dy = e.clientY - fsCueStartY;
+      var raw = clamp(dy / fsCueMaxDrag, 0, 1);
+      fsChargePower = raw < 0.05 ? 0 : raw;
+      syncFsCueUI();
+      draw();
+    });
+    function endFsCueDrag(e) {
+      if (!fsCharging || e.pointerId !== fsCuePointerId) return;
+      var pwr = fsChargePower;
+      fsCharging = false;
+      fsCuePointerId = null;
+      fsChargePower = 0;
+      try { fsCueTrackEl.releasePointerCapture(e.pointerId); } catch (_) {}
+      syncFsCueUI();
+      if (e.type === 'pointerup' && pwr >= 0.05) {
+        aimPower = clamp(pwr, 0.05, 1.0);
+        syncPowerUI();
+        launchFullscreenShot(aimAngle, aimPower);
+      } else {
+        draw();
+      }
+    }
+    fsCueTrackEl.addEventListener('pointerup', endFsCueDrag);
+    fsCueTrackEl.addEventListener('pointercancel', endFsCueDrag);
+
+    fsRulerEl.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      if (!isFullscreenMode() || !currentState || !isMyTurn() || replaying || myStrikeAnim || awaitingShotSeq !== null) return;
+      if (currentState.phase !== 'shoot') return;
+      fineDragging = true;
+      finePointerId = e.pointerId;
+      fineLastY = e.clientY;
+      var curSeq = (currentState.lastShot && typeof currentState.lastShot.seq === 'number')
+        ? currentState.lastShot.seq : (currentState.shotSeq || 0);
+      lastAimInitSeq = curSeq;
+      try { fsRulerEl.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    fsRulerEl.addEventListener('pointermove', function (e) {
+      if (!fineDragging || e.pointerId !== finePointerId) return;
+      if (!currentState || !isMyTurn() || replaying || currentState.phase !== 'shoot') return;
+      var dy = e.clientY - fineLastY;
+      fineLastY = e.clientY;
+      aimAngle += dy * 0.0018;
+      fineRulerScrollPx += dy;
+      if (fsRulerTicksEl) {
+        var modOffset = ((fineRulerScrollPx % 40) + 40) % 40;
+        fsRulerTicksEl.style.transform = 'translateY(' + modOffset + 'px)';
+      }
+      draw();
+    });
+    function endFineDrag(e) {
+      if (!fineDragging || e.pointerId !== finePointerId) return;
+      fineDragging = false;
+      finePointerId = null;
+      try { fsRulerEl.releasePointerCapture(e.pointerId); } catch (_) {}
+    }
+    fsRulerEl.addEventListener('pointerup', endFineDrag);
+    fsRulerEl.addEventListener('pointercancel', endFineDrag);
+
     shootBtnEl.addEventListener('click', function () {
       trySendShot();
     });
 
-    confirmPlaceBtnEl.addEventListener('click', function () {
-      if (!currentState || !isMyTurn() || replaying || currentState.phase !== 'ball_in_hand') return;
-      if (isValidCuePosLocal(displayBalls, placeX, placeY, isKitchenPlace(currentState))) {
-        sendMove({ type: 'place', x: round1(placeX), y: round1(placeY) });
-      }
-    });
+    confirmPlaceBtnEl.addEventListener('click', submitCuePlacement);
+    fsConfirmPlaceBtnEl.addEventListener('click', submitCuePlacement);
 
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('pointermove', onPointerMove);
@@ -2369,7 +3197,10 @@
     window._poolResizeHandler = resizeCanvas;
     window._poolOrientHandler = function () { setTimeout(resizeCanvas, 80); };
     window._poolFsHandler = function () {
+      cancelActiveFsInputs();
       lastLayoutKey = '';
+      updateHUD();
+      updateBar();
       resizeCanvas();
       if (typeof requestAnimationFrame === 'function') {
         requestAnimationFrame(resizeCanvas);
@@ -2424,6 +3255,11 @@
     if (state.lastShot && state.lastShot.seq > lastPlayedSeq) {
       var shot = state.lastShot;
       lastPlayedSeq = shot.seq;
+      awaitingShotSeq = null;
+      if (awaitingShotTimer) {
+        clearTimeout(awaitingShotTimer);
+        awaitingShotTimer = null;
+      }
       if (reducedTimerId) {
         clearTimeout(reducedTimerId);
         reducedTimerId = null;
@@ -2455,8 +3291,8 @@
       var reduced = isReducedMotion();
       var frames = shot.frames;
       if (reduced) {
+        clearStrikeAndPending();
         if (isOpponent && Array.isArray(frames) && frames.length >= 1) {
-          updateHUD();
           if (layoutKey !== lastLayoutKey) {
             resizeCanvas();
           }
@@ -2472,14 +3308,18 @@
           finishReplay(shot);
         }
       } else if (!Array.isArray(frames) || frames.length < 2) {
+        clearStrikeAndPending();
         if (layoutKey !== lastLayoutKey) {
           resizeCanvas();
         }
         finishReplay(shot);
       } else {
-        updateHUD();
         if (layoutKey !== lastLayoutKey) {
           resizeCanvas();
+        }
+        if (!isOpponent && myStrikeAnim) {
+          pendingMyReplay = { state: state, prevAngle: prevAngle };
+          return;
         }
         try {
           startReplay(state, prevAngle);
@@ -2501,18 +3341,22 @@
         cancelAnimationFrame(rafId);
         rafId = null;
       }
+      clearStrikeAndPending();
+      cancelActiveFsInputs();
+      cancelAllScoreRolls();
       replaying = false;
       oppAimPreview = null;
       lastSeatCueAngle = {};
-      closeGroupPopup();
+      closeGroupPopup(true);
       prevGroups = [null, null];
+      prevSnapshot = null;
       resetBallRoll();
       aimSpinX = 0;
       aimSpinY = 0;
       syncSpinUI();
     }
 
-    if (!replaying) {
+    if (!replaying && !myStrikeAnim && !pendingMyReplay) {
       displayBalls = state.balls;
       if (turnPhaseKey !== lastTurnPhaseKey) {
         lastTurnPhaseKey = turnPhaseKey;
