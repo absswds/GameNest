@@ -414,7 +414,12 @@ function handleMove(data, state, playerIndex) {
       spinY = Math.max(-1, Math.min(1, data.spinY));
     }
     const clampedPower = Math.max(TABLE.MIN_POWER, Math.min(TABLE.MAX_POWER, power));
-    const sim = simulateShot(state.balls, angle, clampedPower, { recordFrames: true, spinX, spinY });
+    const sim = simulateShot(state.balls, angle, clampedPower, {
+      recordFrames: true,
+      spinX,
+      spinY,
+      isBreak: !!state.isBreak,
+    });
     applyShotRules(state, playerIndex, angle, clampedPower, sim, spinX, spinY);
     return null;
   }

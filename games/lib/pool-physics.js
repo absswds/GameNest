@@ -29,6 +29,91 @@ const DEFAULT_TABLE = {
 };
 
 const MAX_FRAMES = 300;
+const BREAK_K_POOL = 0.66;
+const BREAK_K_SNOOKER = 0.22;
+const BREAK_ANGULAR_JITTER = 0.16;
+const BREAK_SPEED_MIN = 0.55;
+const BREAK_SPEED_MAX = 1.0;
+const BREAK_PACK_RADIUS_MULT = 8;
+const BREAK_MIN_PACK_BALLS = 6;
+
+function hashInt(h, v) {
+  h ^= v | 0;
+  return Math.imul(h, 16777619) >>> 0;
+}
+
+function createBreakRng(simBalls, angle, power, spinX, spinY) {
+  let h = 2166136261;
+  h = hashInt(h, Math.round(angle * 1e6));
+  h = hashInt(h, Math.round(power * 1e6));
+  h = hashInt(h, Math.round(spinX * 1e4));
+  h = hashInt(h, Math.round(spinY * 1e4));
+  for (let i = 0; i < simBalls.length; i++) {
+    const b = simBalls[i];
+    if (b.potted) continue;
+    h = hashInt(h, b.id);
+    h = hashInt(h, Math.round(b.x * 10));
+    h = hashInt(h, Math.round(b.y * 10));
+  }
+  let state = h >>> 0;
+  return function nextRand() {
+    state = (state + 0x6D2B79F5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Distribute outward energy across the tight rack on first break contact so
+// multi-ball collisions do not soak up all of the cue ball's momentum.
+function applyBreakAssist(simBalls, cueBall, hitBall, cueSpeed, table, angle, nextRand, isSnooker) {
+  if (cueSpeed <= 1e-6) return;
+  const candidates = [];
+  for (let i = 0; i < simBalls.length; i++) {
+    const b = simBalls[i];
+    if (b.potted || b.id === 0) continue;
+    if (isSnooker && b.type !== 'red') continue;
+    candidates.push(b);
+  }
+  if (candidates.length < BREAK_MIN_PACK_BALLS) return;
+
+  let sumX = 0;
+  let sumY = 0;
+  for (let i = 0; i < candidates.length; i++) {
+    sumX += candidates[i].x;
+    sumY += candidates[i].y;
+  }
+  const cx = sumX / candidates.length;
+  const cy = sumY / candidates.length;
+  const maxR = BREAK_PACK_RADIUS_MULT * table.BALL_R;
+  const maxR2 = maxR * maxR;
+
+  const packBalls = [];
+  for (let i = 0; i < candidates.length; i++) {
+    const b = candidates[i];
+    const dx = b.x - cx;
+    const dy = b.y - cy;
+    if (dx * dx + dy * dy <= maxR2) {
+      packBalls.push(b);
+    }
+  }
+  if (packBalls.length < BREAK_MIN_PACK_BALLS) return;
+
+  const contactX = (cueBall.x + hitBall.x) * 0.5;
+  const contactY = (cueBall.y + hitBall.y) * 0.5;
+  const k = isSnooker ? BREAK_K_SNOOKER : BREAK_K_POOL;
+
+  for (let i = 0; i < packBalls.length; i++) {
+    const b = packBalls[i];
+    const dx = b.x - contactX;
+    const dy = b.y - contactY;
+    const baseDir = (dx * dx + dy * dy > 1e-6) ? Math.atan2(dy, dx) : angle;
+    const dir = baseDir + (nextRand() - 0.5) * 2 * BREAK_ANGULAR_JITTER;
+    const spd = k * cueSpeed * (BREAK_SPEED_MIN + (BREAK_SPEED_MAX - BREAK_SPEED_MIN) * nextRand());
+    b.vx += Math.cos(dir) * spd;
+    b.vy += Math.sin(dir) * spd;
+  }
+}
 
 function defaultBallType(id) {
   if (id === 0) return 'cue';
@@ -89,6 +174,10 @@ function simulateShot(balls, angle, power, opts) {
   }
 
   let firstHit = null;
+  const isBreak = !!(opts && opts.isBreak === true);
+  const isSnooker = isBreak && simBalls.some((b) => b.type === 'red');
+  const breakRng = isBreak ? createBreakRng(simBalls, angle, clampedPower, cueSpinX, cueSpinY) : null;
+  let breakAssistDone = false;
   const potted = [];
   const railHitIds = new Set();
   let railAfterContact = false;
@@ -223,6 +312,8 @@ function simulateShot(balls, angle, power, opts) {
             const vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
             if (vn < 0) {
               const cueBall = a.id === 0 ? a : (b.id === 0 ? b : null);
+              const isFirstCueContact = isBreak && !breakAssistDone && cueBall !== null;
+              const cueContactSpeed = isFirstCueContact ? Math.hypot(cueBall.vx, cueBall.vy) : 0;
               let preSpd = 0;
               let dirX = 0;
               let dirY = 0;
@@ -251,6 +342,13 @@ function simulateShot(balls, angle, power, opts) {
               }
               if (cueBall && cueSpinX !== 0) {
                 cueSpinX *= 0.8;
+              }
+              if (isFirstCueContact) {
+                breakAssistDone = true;
+                const hitBall = cueBall === a ? b : a;
+                if (!isSnooker || hitBall.type === 'red') {
+                  applyBreakAssist(simBalls, cueBall, hitBall, cueContactSpeed, table, angle, breakRng, isSnooker);
+                }
               }
             }
           }

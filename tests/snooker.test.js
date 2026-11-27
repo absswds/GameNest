@@ -458,3 +458,42 @@ describe('Snooker — bot, fallback, and i18n contracts', () => {
     }
   });
 });
+
+describe('Snooker — break assist', () => {
+  it('opens the red pack moderately and deterministically without scattering reds to all cushions', () => {
+    const balls = snooker.buildSnookerBalls();
+    const cue = balls.find((b) => b.id === 0);
+    const apex = balls.find((b) => b.id === 1);
+    // Break off the side of the pack: aiming straight at the apex hits the pink spotted in front of it.
+    const angle = Math.atan2(apex.y + SNOOKER_TABLE.BALL_R * 2.2 - cue.y, apex.x + SNOOKER_TABLE.BALL_R - cue.x);
+
+    const sim1 = pool.simulateShot(balls, angle, 0.72, {
+      recordFrames: false,
+      table: SNOOKER_TABLE,
+      ballType: snooker.snookerBallType,
+      isBreak: true,
+    });
+    const sim2 = pool.simulateShot(balls, angle, 0.72, {
+      recordFrames: false,
+      table: SNOOKER_TABLE,
+      ballType: snooker.snookerBallType,
+      isBreak: true,
+    });
+    assert.deepEqual(sim1, sim2);
+
+    const byIdBefore = new Map(balls.map((b) => [b.id, b]));
+    let redDispSum = 0;
+    for (let i = 0; i < sim1.balls.length; i++) {
+      const b = sim1.balls[i];
+      if (b.id >= 1 && b.id <= 15 && !b.potted) {
+        const before = byIdBefore.get(b.id);
+        redDispSum += Math.hypot(b.x - before.x, b.y - before.y);
+      }
+    }
+    const avgRedDisp = redDispSum / 15;
+    assert.ok(avgRedDisp > SNOOKER_TABLE.BALL_R, `Expected red pack to open, avgDisp=${avgRedDisp}`);
+
+    const redRailHits = (sim1.railHits || []).filter((id) => id >= 1 && id <= 15).length;
+    assert.ok(redRailHits <= 8, `Expected moderate snooker break without all reds hitting cushions, got ${redRailHits}`);
+  });
+});

@@ -181,7 +181,12 @@ function chooseBreakShot(state) {
   ];
 
   const cands = candidates.map((c) => {
-    const sim = pool.simulateShot(state.balls, c.angle, c.power, { recordFrames: false, spinX: c.spinX, spinY: c.spinY });
+    const sim = pool.simulateShot(state.balls, c.angle, c.power, {
+      recordFrames: false,
+      spinX: c.spinX,
+      spinY: c.spinY,
+      isBreak: true,
+    });
     const scratched = sim.potted.includes(0);
     const pottedObj = sim.potted.filter((id) => id !== 0).length;
     const objRailHits = (sim.railHits || []).filter((id) => id !== 0).length;
@@ -582,6 +587,7 @@ function chooseSnookerBreakShot(state) {
       spinY: 0,
       table: SNOOKER_TABLE,
       ballType: snooker.snookerBallType,
+      isBreak: true,
     });
     return {
       move: { type: 'shot', angle: c.angle, power: c.power, spinX: 0, spinY: 0 },

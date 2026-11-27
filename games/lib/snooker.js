@@ -520,6 +520,7 @@ function handleSnookerMove(data, state, playerIndex) {
       spinY,
       table: SNOOKER_TABLE,
       ballType: snookerBallType,
+      isBreak: !!state.isBreak,
     });
     applySnookerShotRules(state, playerIndex, angle, clampedPower, sim, spinX, spinY, nominate);
     return null;
