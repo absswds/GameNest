@@ -3359,6 +3359,66 @@ body.lobby-page .toast {
   color: var(--text);
 }
 
+/* Fullscreen-only games: the room page shows a "tap to play fullscreen" card over the stage. */
+#gameStage.fs-gated {
+  position: relative;
+  min-height: min(62vh, 520px);
+}
+#gameStage.fs-gated > :not(.fs-launch-card) {
+  visibility: hidden;
+}
+.fs-launch-card {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  width: 100%;
+  border: 0;
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 90% at 50% 40%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
+    var(--surface);
+  box-shadow: var(--ge-shadow-rest);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.fs-launch-card[hidden] {
+  display: none;
+}
+.fs-launch-card:active {
+  transform: scale(.98);
+}
+.fs-launch-icon {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.fs-launch-text {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+@media (hover: hover) and (pointer: fine) {
+  .fs-launch-card:hover .fs-launch-icon {
+    transform: scale(1.04);
+  }
+  .fs-launch-icon {
+    transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+}
+
 .fs-exit-btn {
   display: none;
   position: fixed;

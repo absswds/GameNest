@@ -1724,6 +1724,7 @@
     'ui_done': '完成',
     'ui_private_short': '私密',
     'ui_fullscreen': '全屏横屏',
+    'ui_fs_tap_to_play': '点击全屏游玩',
     'ui_exit_fullscreen': '退出全屏',
 
     // ---- Pool (pool_) ----

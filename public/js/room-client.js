@@ -79,7 +79,6 @@
 
   function clearExpiredRoomAndReturn() {
     exitFullscreen();
-    autoImmersiveApplied = false;
     setImmersiveLandscape(false);
     terminalRoomError = true;
     GNSession.clear();
@@ -290,7 +289,6 @@
       },
       game_started(msg) {
         resultHapticPlayed = false;
-        autoImmersiveApplied = false;
         state = msg.state;
         if (msg.match !== undefined) match = msg.match;
         players = msg.players;
@@ -334,7 +332,6 @@
       // Host removed this player from the room: clear local state and go back to lobby.
       kicked(msg) {
         exitFullscreen();
-        autoImmersiveApplied = false;
         setImmersiveLandscape(false);
         terminalRoomError = true;
         GNSession.clear();
@@ -689,25 +686,19 @@
   }
 
   // ---- UI Toggle ----
-  // 麻将竖屏放不下 14 张手牌（360dp 宽最多容 ~8 张可点的牌），锁横屏 + 沉浸式全屏。
   // 安卓走 WebAppBridge；普通浏览器退化到 Screen Orientation API（多数需已全屏，失败静默）。
-  const IMMERSIVE_GAMES = ['mahjong-sichuan', 'mahjong-cantonese'];
-  const FULLSCREEN_GAMES = ['pool', 'mahjong-sichuan', 'mahjong-cantonese'];
+  // These games are played only in fullscreen landscape: in the room page their stage is covered by a
+  // "tap to play fullscreen" card (fsLaunchCard), and leaving fullscreen brings the card back.
+  const FULLSCREEN_GAMES = ['pool', 'mahjong-sichuan', 'mahjong-cantonese', 'doudizhu', 'texas', 'sanguo', 'snakebattle'];
   // 方形棋盘游戏：宽屏时玩家栏放左侧、操作按钮放右侧，让棋盘占满中间高度
   const SIDE_LAYOUT_GAMES = ['chess', 'checkers', 'reversi', 'go9', 'gomoku', 'chinesechess'];
   // Other square boards that only borrow the wide three-column stage (no match score / move list)
   const SIDE_STAGE_GAMES = SIDE_LAYOUT_GAMES.concat(['connect4', 'tictactoe']);
   let isFullscreen = false;
-  let autoImmersiveApplied = false;
 
   function isFullscreenGame() {
     var eff = typeof window._effectiveGameKey === 'function' ? window._effectiveGameKey() : game;
     return FULLSCREEN_GAMES.indexOf(game) !== -1 || FULLSCREEN_GAMES.indexOf(eff) !== -1;
-  }
-
-  function isMahjongGame() {
-    var eff = typeof window._effectiveGameKey === 'function' ? window._effectiveGameKey() : game;
-    return IMMERSIVE_GAMES.indexOf(game) !== -1 || IMMERSIVE_GAMES.indexOf(eff) !== -1;
   }
 
   function getFullscreenElement() {
@@ -756,6 +747,7 @@
       }
     }
 
+    syncLaunchCard();
     window.dispatchEvent(new CustomEvent('gn:fullscreen', { detail: { on: true } }));
     requestAnimationFrame(function() {
       window.dispatchEvent(new Event('resize'));
@@ -765,7 +757,6 @@
   function exitFullscreen() {
     if (!isFullscreen) return;
     isFullscreen = false;
-    autoImmersiveApplied = false;
     document.body.classList.remove('gn-fs');
     setImmersiveLandscape(false);
     if (getFullscreenElement()) {
@@ -777,6 +768,7 @@
         }
       } catch (e) {}
     }
+    syncLaunchCard();
     window.dispatchEvent(new CustomEvent('gn:fullscreen', { detail: { on: false } }));
     requestAnimationFrame(function() {
       window.dispatchEvent(new Event('resize'));
@@ -793,6 +785,24 @@
   if (el.fsEnterBtn) el.fsEnterBtn.addEventListener('click', enterFullscreen);
   if (el.fsExitBtn) el.fsExitBtn.addEventListener('click', exitFullscreen);
 
+  var fsLaunchCard = null;
+  function syncLaunchCard() {
+    var show = roomPhase === 'playing' && isFullscreenGame() && !isFullscreen;
+    if (show && !fsLaunchCard) {
+      fsLaunchCard = document.createElement('button');
+      fsLaunchCard.type = 'button';
+      fsLaunchCard.className = 'fs-launch-card';
+      fsLaunchCard.innerHTML = '<span class="fs-launch-icon" aria-hidden="true"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></span><span class="fs-launch-text"></span>';
+      fsLaunchCard.addEventListener('click', enterFullscreen);
+    }
+    if (fsLaunchCard) {
+      fsLaunchCard.querySelector('.fs-launch-text').textContent = _t('ui_fs_tap_to_play');
+      if (show && fsLaunchCard.parentNode !== el.gameStage) el.gameStage.appendChild(fsLaunchCard);
+      fsLaunchCard.hidden = !show;
+    }
+    el.gameStage.classList.toggle('fs-gated', show);
+  }
+
   function showGame() {
     el.waitingRoom.style.display = 'none';
     el.profileEdit.style.display = 'none';
@@ -803,10 +813,7 @@
     // 动作条现在在文档流最底部、不遮挡棋盘，所有游戏都照常显示
     el.gameActions.style.display = '';
     if (el.fsEnterBtn) el.fsEnterBtn.style.display = isFullscreenGame() ? '' : 'none';
-    if (!isFullscreen && !autoImmersiveApplied && isMahjongGame() && window.innerWidth < 600 && window.innerHeight > window.innerWidth) {
-      autoImmersiveApplied = true;
-      setImmersiveLandscape(true);
-    }
+    syncLaunchCard();
     el.gameStage.classList.toggle('stage-side', SIDE_STAGE_GAMES.indexOf(game) !== -1);
     syncWakeLock();
     // 棋盘在等待房间还显示时就量过尺寸，舞台出现后让各渲染器按真实位置重新量一次
@@ -816,9 +823,9 @@
   function showLobby() {
     resultHapticPlayed = false;
     exitFullscreen();
-    autoImmersiveApplied = false;
     setImmersiveLandscape(false);
     if (el.fsEnterBtn) el.fsEnterBtn.style.display = 'none';
+    syncLaunchCard();
     el.waitingRoom.style.display = '';
     el.profileEdit.style.display = 'flex';
     el.emojiRow.style.display = '';
@@ -2279,7 +2286,6 @@
     if (typeof window._beforeLeaveRoom === 'function') window._beforeLeaveRoom();
     // 页面马上要 location.replace 跳走，showLobby() 不会执行，必须在这里主动解锁横屏
     exitFullscreen();
-    autoImmersiveApplied = false;
     setImmersiveLandscape(false);
     leavingOnPurpose = true;
     send('leave_room');

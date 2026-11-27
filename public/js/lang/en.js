@@ -1724,6 +1724,7 @@
     'ui_done': 'Done',
     'ui_private_short': 'Private',
     'ui_fullscreen': 'Fullscreen',
+    'ui_fs_tap_to_play': 'Tap to play fullscreen',
     'ui_exit_fullscreen': 'Exit fullscreen',
 
     // ---- Pool (pool_) ----
