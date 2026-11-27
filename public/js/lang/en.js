@@ -1826,6 +1826,22 @@
     'pool_fine_aim': 'Fine aim',
     'pool_spin_dbltap': 'Double tap reset',
     'pool_drag_cue_ball': 'Drag cue ball',
+    'pool_chip_cue': 'Cue',
+    'pool_list_sep': ', ',
+    'pool_banner_you_potted': 'You potted %s',
+    'pool_banner_opp_potted': '%s potted %s',
+    'pool_banner_foul_scratch': '%s scratched · foul',
+    'pool_banner_foul_no_hit': '%s missed all balls · foul',
+    'pool_banner_foul_wrong_ball': '%s hit wrong ball · foul',
+    'pool_banner_foul_no_rail': '%s no cushion · foul',
+    'pool_banner_foul_early_eight': '%s early 8-ball · foul',
+    'pool_banner_illegal_break': '%s illegal break · re-rack',
+    'pool_banner_respot_eight': '%s potted 8-ball on break · respotted',
+    'pool_banner_respot_eight_foul': '%s scratched · 8-ball respotted',
+    'snooker_banner_pot': '+%s %s',
+    'snooker_banner_foul_you': 'Foul +%s to opponent',
+    'snooker_banner_foul_opp': '%s foul · +%s to you',
+    'snooker_banner_respot_black': 'Tie on black · respotted',
 
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'en';

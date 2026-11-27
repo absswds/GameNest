@@ -470,6 +470,21 @@ function botFallback(state, idx) {
   return { type: 'shot', angle, power: state.isBreak ? 0.9 : 0.6, spinX: 0, spinY: 0 };
 }
 
+const BOT_PAUSE_MS = 1000;
+const BOT_AIM_MS = 1500;
+const BOT_DELAY_MAX_MS = 15000;
+
+function botDelayMs(state) {
+  const shot = state && state.lastShot;
+  const frames = shot && Array.isArray(shot.frames) ? shot.frames : null;
+  let replayMs = 0;
+  if (frames && frames.length > 0) {
+    const fps = (typeof shot.fps === 'number' && Number.isFinite(shot.fps) && shot.fps > 0) ? shot.fps : 30;
+    replayMs = frames.length * (1000 / fps);
+  }
+  return Math.min(BOT_DELAY_MAX_MS, Math.round(replayMs + BOT_PAUSE_MS + BOT_AIM_MS));
+}
+
 exports.name = 'pool';
 exports.maxPlayers = 2;
 exports.minPlayers = 2;
@@ -483,3 +498,4 @@ exports.simulateShot = simulateShot;
 exports.isValidCuePos = isValidCuePos;
 exports.findSafeCueSpot = findSafeCueSpot;
 exports.botFallback = botFallback;
+exports.botDelayMs = botDelayMs;

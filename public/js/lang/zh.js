@@ -1826,6 +1826,22 @@
     'pool_fine_aim': '微调',
     'pool_spin_dbltap': '双击重置',
     'pool_drag_cue_ball': '拖动母球放置',
+    'pool_chip_cue': '母球',
+    'pool_list_sep': '、',
+    'pool_banner_you_potted': '你打进 %s 号球',
+    'pool_banner_opp_potted': '%s 打进 %s 号球',
+    'pool_banner_foul_scratch': '%s 母球落袋 · 犯规',
+    'pool_banner_foul_no_hit': '%s 未击中球 · 犯规',
+    'pool_banner_foul_wrong_ball': '%s 击中错球 · 犯规',
+    'pool_banner_foul_no_rail': '%s 无球碰库 · 犯规',
+    'pool_banner_foul_early_eight': '%s 提前打进黑八 · 犯规',
+    'pool_banner_illegal_break': '%s 开球违例 · 重新开球',
+    'pool_banner_respot_eight': '%s 开球进黑八 · 黑八重置',
+    'pool_banner_respot_eight_foul': '%s 母球落袋 · 黑八重置',
+    'snooker_banner_pot': '+%s %s',
+    'snooker_banner_foul_you': '犯规 +%s 给对手',
+    'snooker_banner_foul_opp': '%s 犯规 · 你 +%s',
+    'snooker_banner_respot_black': '平分争黑 · 黑球重置',
 
   };
   if (!window.__ACTIVE_LANG) window.__ACTIVE_LANG = 'zh';
